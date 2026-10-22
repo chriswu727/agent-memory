@@ -1,0 +1,109 @@
+{
+  "contract_version": "1.0.0-draft",
+  "status": "target_specification_not_implemented",
+  "title": "Headless Autonomous Agent Memory Runtime",
+  "description": "规定自主记忆产品与宿主的运行责任。此文件不新增已实现的 HTTP 或 MCP 方法，也不把当前底层服务声明为完整自主大脑。",
+  "product_boundary": {
+    "primary_deliverable": "运行在 Agent 推理生命周期中的持久认知记忆运行时",
+    "management_ui_required": false,
+    "end_user_memory_commands_required": false,
+    "primary_agent_memory_tool_calls_required": false,
+    "host_integration": "宿主在初始化时绑定稳定大脑身份及生命周期适配器；适配器自动编排每轮操作",
+    "context_authority": "运行时管理记忆上下文；宿主保留系统规则、工具协议与行动权限的权威",
+    "identity": "大脑身份跨模型与进程保持稳定；参与者、关系、任务与分支有独立范围",
+    "mcp_role": "补充主动探索、诊断、更正和授权删除；不作为自动记忆运行的必要触发器"
+  },
+  "full_integration_requirements": [
+    "认证后的稳定 Agent、参与者、会话、分支与消息标识",
+    "自动接收输入、消息修订、工具结果和生成取消事件",
+    "每次需要记忆的模型调用前可读取并替换记忆上下文，而非只追加历史",
+    "保留必要的最近对话、工具调用与结果配对以及宿主系统规则",
+    "生成状态与实际交付状态分离；缺少交付确认时保留 unknown",
+    "提交前检查工作修订和依赖代际；重复回调保持幂等",
+    "中断与恢复时能够重新构造工作状态并继续处理持久队列",
+    "持续报告实际验证过的能力；缺少关键控制权时明确降级"
+  ],
+  "automatic_cycle": [
+    {
+      "stage": "receive",
+      "trigger": "宿主收到输入、工具结果或外部反馈",
+      "owner": "lifecycle_adapter",
+      "behavior": "可靠捕获真实事件，区分草稿、计划、表达和实际结果；不依赖主 Agent 判断是否调用保存工具",
+      "existing_primitives": ["observe"]
+    },
+    {
+      "stage": "orient_and_recall",
+      "trigger": "推理前或本轮出现新的信息缺口",
+      "owner": "cognitive_controller",
+      "behavior": "结合当前目标、指代、关系和未完事项形成回忆需求，激活候选，检查证据；在总预算内继续寻找、澄清或停止",
+      "existing_primitives": ["prepare", "recall", "inspect"]
+    },
+    {
+      "stage": "compose_context",
+      "trigger": "模型即将推理",
+      "owner": "context_manager",
+      "behavior": "从持久状态构造有限工作区，保留来源、时间和未知；压缩临时上下文不改变长期记忆的事实来源",
+      "existing_primitives": ["prepare"]
+    },
+    {
+      "stage": "reconcile_results",
+      "trigger": "收到交付确认、工具执行结果或取消信号",
+      "owner": "lifecycle_adapter_and_cognitive_controller",
+      "behavior": "提交真实结果，更新工作状态、未完事项及有证据的学习候选；模型自述成功不等于执行成功",
+      "existing_primitives": ["observe", "commit", "correct"]
+    },
+    {
+      "stage": "consolidate",
+      "trigger": "新增证据、冲突、任务结果或待处理积压",
+      "owner": "durable_background_controller",
+      "behavior": "增量形成概括、关联和方法，保留反例及适用条件；调整活跃度和细节策略；没有新证据的反思不增加真实性",
+      "existing_primitives": []
+    },
+    {
+      "stage": "resume",
+      "trigger": "进程重启、会话恢复或上下文重建",
+      "owner": "lifecycle_adapter",
+      "behavior": "从持久状态恢复，不要求用户重复讲述或手动重新导入；恢复旧数据前应用当前删除与更正约束",
+      "existing_primitives": ["checkpoint", "prepare"]
+    }
+  ],
+  "development_observability": {
+    "status": "target_contract_not_complete_in_current_service",
+    "surfaces": [
+      "经过鉴权的就绪状态、生命周期覆盖与队列水位",
+      "前台及后台的成本、上下文占用、耗时、失败和降级指标",
+      "按 turn_id 与 trace_id 查询有序的结构化运行事件",
+      "按权限展开来源、版本和策略以解释某次记忆决策"
+    ],
+    "trace_fields": [
+      "trace_id", "turn_id", "brain_id", "stage", "event_kind", "occurred_at",
+      "input_event_ids", "selected_memory_versions", "snapshot_revision",
+      "policy_version", "provider_version", "reason_code", "outcome",
+      "budget", "usage", "latency_ms", "error_code"
+    ],
+    "diagnostic_questions": [
+      "这一轮为何想起这些记忆，证据来自哪里？",
+      "为何没有继续回忆：信息足够、无匹配、歧义、超限还是服务故障？",
+      "一次纠正改变了哪些认识，旧结论是否仍进入上下文？",
+      "哪些整理尚未完成，各自消耗多少时间和资源？"
+    ],
+    "content_in_logs_by_default": false,
+    "hidden_reasoning_in_logs": false,
+    "access": "来源展开使用与记忆服务相同的认证和范围检查；日志不能成为绕过删除或隔离的副本",
+    "failure_policy": "诊断写入失败必须可见；诊断服务不替代持久化确认，也不修改记忆事务结果"
+  },
+  "acceptance_invariants": [
+    "关闭全部页面与主 Agent 的记忆工具，仍能自动形成并使用记忆",
+    "业务层不逐轮手写记忆操作；宿主适配器保证生命周期覆盖",
+    "不给用户历史聊天窗口，重启后仍可恢复有关状态并正确使用旧来源",
+    "含糊线索通过情境激活旧证据，不能只复述本轮提示冒充回忆",
+    "新证据能改变已有认识；反例、修正、无依据的模型输出分别处理",
+    "完整轨迹能解释来源、策略、停止原因和成本；不需要管理页面或隐藏推理",
+    "只有工具连接的宿主不能被标记为 full_lifecycle"
+  ],
+  "current_implementation": {
+    "available": ["底层事件与版本存储", "词法线索回忆", "预算工作区", "来源约束", "更正删除", "HTTP/SDK/MCP 底层接口"],
+    "remaining": ["自动宿主适配器", "情境理解与回忆控制器", "完整上下文生命周期管理", "语义巩固", "关联与活跃度调度", "方法与未完事项学习", "统一结构化运行日志接口"],
+    "full_runtime_acceptance_executed": false
+  }
+}
