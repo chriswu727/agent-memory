@@ -2,7 +2,7 @@
   "contract_version": "1.0.0-draft",
   "status": "target_specification_partially_implemented",
   "title": "Headless Autonomous Agent Memory Runtime",
-  "description": "规定自主记忆产品与宿主的运行责任。同步文本生命周期已实现，完整认知控制器仍为目标；此文件不能作为全部能力已经完成的声明。",
+  "description": "规定自主记忆产品与宿主的运行责任。同步文本生命周期和可选的有预算语义回忆控制器已实现，完整认知架构仍为目标；此文件不能作为全部能力已经完成的声明。",
   "product_boundary": {
     "primary_deliverable": "运行在 Agent 推理生命周期中的持久认知记忆运行时",
     "management_ui_required": false,
@@ -140,11 +140,16 @@
       "Python 同步文本自动生命周期",
       "持久轮次、租约与原子输出捕获",
       "鉴权状态与阶段日志接口",
-      "生成输出的来源依赖与删除传播"
+      "生成输出的来源依赖与删除传播",
+      "按时间和范围限定的最近对话情境",
+      "可选模型驱动的线索搜索、歧义判断与来源选择",
+      "服务端复核的持久回忆计划与确定性重建",
+      "请求前持久预留的模型调用次数与输入字节额度",
+      "不含正文的回忆决策轨迹与停止原因"
     ],
     "remaining": [
       "工具循环、流式与宿主消息修订适配器",
-      "情境理解与回忆控制器",
+      "更完整的情境理解、关联搜索与真实模型质量评测",
       "完整上下文生命周期管理",
       "语义巩固",
       "关联与活跃度调度",
@@ -153,6 +158,17 @@
     ],
     "full_runtime_acceptance_executed": false,
     "adapter_guarantee": "partial_automation",
-    "verification": "Deterministic callbacks and real PostgreSQL; no paid model or full cognitive benchmark executed."
+    "verification": "Deterministic recall and generation callbacks, mocked provider HTTP, and real PostgreSQL; no paid model or full cognitive benchmark executed.",
+    "recall_budget_scope": {
+      "durable_per_turn": [
+        "model_calls",
+        "input_bytes"
+      ],
+      "per_planning_attempt": [
+        "search_calls",
+        "elapsed_ms"
+      ],
+      "actual_provider_billing_recorded": false
+    }
   }
 }

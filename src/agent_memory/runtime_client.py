@@ -87,6 +87,7 @@ class RuntimeClient:
         context_fingerprint: str | None = None, context_generation: int | None = None,
         working_revision: int | None = None, durable_sequence: int | None = None,
         context_tokens: int | None = None,
+        recall_plan: Mapping[str, Any] | None = None,
     ) -> JsonObject:
         return self._post(
             turn_id, "advance", lease_token=lease_token, expected_revision=expected_revision,
@@ -96,7 +97,20 @@ class RuntimeClient:
             context_event_refs=[dict(ref) for ref in context_event_refs] if context_event_refs is not None else None,
             context_fingerprint=context_fingerprint, context_generation=context_generation,
             working_revision=working_revision, durable_sequence=durable_sequence,
-            context_tokens=context_tokens,
+            context_tokens=context_tokens, recall_plan=dict(recall_plan) if recall_plan is not None else None,
+        )
+
+    def reserve_recall(
+        self, turn_id: str, *, lease_token: str, expected_revision: int, input_bytes: int,
+        max_model_calls: int, max_input_bytes: int, context_generation: int,
+        source_refs: Sequence[Mapping[str, Any]], request_fingerprint: str,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "recall-reservations", lease_token=lease_token,
+            expected_revision=expected_revision, input_bytes=input_bytes,
+            max_model_calls=max_model_calls, max_input_bytes=max_input_bytes,
+            context_generation=context_generation, source_refs=[dict(ref) for ref in source_refs],
+            request_fingerprint=request_fingerprint,
         )
 
     def record_output(

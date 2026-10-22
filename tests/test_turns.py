@@ -123,6 +123,114 @@ def test_begin_is_durable_idempotent_and_binds_input_and_scope(turns):
     assert len(turns.call("history")) == 1
 
 
+def captured_recall(turns):
+    turns.begin()
+    turns.claim()
+    turns.advance("captured", input_event_refs=[turns.observe()])
+    source = turns.observe("Private historical detail for recall.", conversation="earlier")
+    return {
+        "lease_token": turns.token, "expected_revision": turns.row["revision"],
+        "input_bytes": 100, "max_model_calls": 2, "max_input_bytes": 200,
+        "context_generation": turns.store.status(turns.principal, turns.brain)["dependency_generation"],
+        "source_refs": [source], "request_fingerprint": digest("recall request"),
+    }
+
+
+def recall_plan(row):
+    return {
+        "version": "evidence-recall-v1", "memory_versions": [], "recent_event_refs": [],
+        "observed_event_refs": row["context_event_refs"], "outcome": "insufficient",
+        "model_calls": row["recall_model_calls"], "search_calls": 0,
+        "input_bytes": row["recall_input_bytes"], "elapsed_ms": 10,
+        "coverage_limitations": [], "trace": [],
+    }
+
+
+def test_recall_reservation_is_durable_idempotent_and_cas_guarded(turns):
+    params = captured_recall(turns)
+    first = turns.call("reserve_recall", **params)
+    assert first["stage"] == "captured"
+    assert first["recall_model_calls"] == 1
+    assert first["recall_input_bytes"] == 100
+    turns.call("renew", lease_token=turns.token)
+    assert turns.call("reserve_recall", **params)["revision"] == first["revision"]
+    recovered = TurnStore(turns.database).get(turns.principal, turns.brain, turns.turn_id)
+    assert recovered["recall_model_calls"] == 1
+    assert recovered["context_event_refs"] == params["source_refs"]
+    assert len(turns.call("history")) == 4
+    with pytest.raises(DomainError, match="revision has changed"):
+        turns.call("reserve_recall", **{**params, "request_fingerprint": digest("different request")})
+
+
+def test_recall_reservation_budgets_survive_release_and_restart(turns):
+    params = captured_recall(turns)
+    first = turns.call("reserve_recall", **params)
+    turns.call("release", lease_token=turns.token, expected_revision=first["revision"])
+    turns.store = TurnStore(turns.database)
+    claimed = turns.claim()
+    params.update(lease_token=turns.token, expected_revision=claimed["revision"])
+    with pytest.raises(DomainError, match="durable turn budget"):
+        turns.call("reserve_recall", **{**params, "max_model_calls": 1})
+    with pytest.raises(DomainError, match="durable turn budget"):
+        turns.call("reserve_recall", **{**params, "input_bytes": 101})
+    second = turns.call("reserve_recall", **params)
+    assert (second["recall_model_calls"], second["recall_input_bytes"]) == (2, 200)
+    assert second["context_event_refs"] == params["source_refs"]
+    with pytest.raises(DomainError, match="durable turn budget"):
+        turns.call("reserve_recall", **{**params, "expected_revision": second["revision"]})
+
+
+def test_recall_reservation_replay_revalidates_sources_and_generation(turns):
+    params = captured_recall(turns)
+    first = turns.call("reserve_recall", **params)
+    turns.action("forget", {
+        "idempotency_key": uid(), "selector": {"kind": "events", "ids": [params["source_refs"][0]["event_id"]]},
+        "mode": "erase_content", "expected_scope_generation": 1,
+    })
+    with pytest.raises(DomainError) as error:
+        turns.call("reserve_recall", **params)
+    assert error.value.code in {"context_stale", "source_unavailable"}
+    row = turns.call("get")
+    assert row["recall_model_calls"] == first["recall_model_calls"]
+    assert row["recall_input_bytes"] == first["recall_input_bytes"]
+
+
+def test_recall_reservation_rejects_changed_context_and_unavailable_refs_without_charge(turns):
+    params = captured_recall(turns)
+    with pytest.raises(DomainError, match="Memory changed"):
+        turns.call("reserve_recall", **{**params, "context_generation": params["context_generation"] + 1})
+    with pytest.raises(DomainError, match="no longer available"):
+        turns.call("reserve_recall", **{**params, "source_refs": [{"event_id": uid(), "revision": 1}]})
+    assert turns.call("get")["recall_model_calls"] == 0
+
+
+def test_recall_plan_preserves_observed_sources_and_matches_charges(turns):
+    params = captured_recall(turns)
+    turns.row = turns.call("reserve_recall", **params)
+    plan = recall_plan(turns.row)
+    fields = {
+        "context_event_refs": turns.row["context_event_refs"], "context_fingerprint": digest("context"),
+        "context_generation": params["context_generation"], "working_revision": 0,
+    }
+    with pytest.raises(DomainError, match="final recall plan"):
+        turns.advance("prepared", **fields)
+    with pytest.raises(DomainError, match="retain observed recall sources"):
+        turns.advance("prepared", **{**fields, "context_event_refs": []}, recall_plan=plan)
+    for invalid in ({**plan, "model_calls": 0}, {**plan, "input_bytes": 0},
+                    {**plan, "observed_event_refs": [{"event_id": uid(), "revision": 1}]}):
+        with pytest.raises(DomainError, match="match charged usage"):
+            turns.advance("prepared", **fields, recall_plan=invalid)
+    with pytest.raises(DomainError, match="Invalid RecallPlan"):
+        turns.advance("prepared", **fields, recall_plan={**plan, "reasoning": "Private recollection."})
+    prepared = turns.advance("prepared", **fields, recall_plan=plan)
+    assert prepared["recall_plan"] == plan
+    serialized = json.dumps({"turn": turns.call("get"), "history": turns.call("history")})
+    assert "Private" not in serialized
+    assert "recall request" not in serialized
+    with pytest.raises(DomainError, match="captured turn"):
+        turns.call("reserve_recall", **{**params, "expected_revision": prepared["revision"]})
+
+
 def test_two_workers_cannot_claim_the_same_turn(turns):
     turns.begin()
     barrier = Barrier(2)

@@ -259,6 +259,8 @@ class MemoryClient:
         latest_input_event_ids: Sequence[str] = (), read_fence: Mapping[str, Any] | None = None,
         budget: Mapping[str, Any] | None = None, capabilities: Mapping[str, Any] | None = None,
         evidence_mode: str | None = None, evidence_cutoff: Mapping[str, Any] | None = None,
+        recent_event_limit: int | None = None, recall_plan: Mapping[str, Any] | None = None,
+        expected_dependency_generation: int | None = None,
         request_id: str | None = None,
     ) -> JsonObject:
         payload = {
@@ -269,6 +271,12 @@ class MemoryClient:
         }
         if evidence_mode is not None:
             payload["evidence_mode"] = evidence_mode
+        if recent_event_limit is not None:
+            payload["recent_event_limit"] = recent_event_limit
+        if recall_plan is not None:
+            payload["recall_plan"] = dict(recall_plan)
+        if expected_dependency_generation is not None:
+            payload["expected_dependency_generation"] = expected_dependency_generation
         if evidence_cutoff is not None:
             payload["evidence_cutoff"] = dict(evidence_cutoff)
         return self.action("prepare", payload, conversation_id=conversation_id,

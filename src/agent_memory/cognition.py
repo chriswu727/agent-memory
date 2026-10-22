@@ -488,6 +488,9 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     worlds = set(request.get("world_filter", ["real_world"]))
     requested_time = _range(request["valid_time_filter"]) if "valid_time_filter" in request else None
     scored = []
+    selected_order = {(item["memory_id"], item["revision"]): index
+                      for index, item in enumerate(state.get("selected_versions", []))}
+    selecting = "selected_versions" in state
     historical = history_status != "not_requested"
     if not coverage["read_fence_satisfied"] or history_status == "unavailable":
         candidates = []
@@ -498,10 +501,12 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             break
         if memory["lifecycle"] not in {"active", "dormant"} or memory["world"] not in worlds:
             continue
+        if selecting and (memory["memory_id"], memory["revision"]) not in selected_order:
+            continue
         if any(evidence_overlaps(reference, old) for reference in memory["evidence_refs"]
                for old in state.get("superseded_evidence_refs", [])):
             continue
-        score = _lexical_score(query, memory["statement"])
+        score = (1 / (1 + selected_order[(memory["memory_id"], memory["revision"])])) if selecting else _lexical_score(query, memory["statement"])
         if score <= 0:
             continue
         if not _scope_allows(memory["scope"], scope):
@@ -537,18 +542,20 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             activation /= 1 + math.log1p(days)
         scored.append((score + activation * 0.05, score, activation, memory))
     scored.sort(key=lambda row: (-row[0], row[3]["memory_id"]))
+    if selecting:
+        scored.sort(key=lambda row: selected_order[(row[3]["memory_id"], row[3]["revision"])])
     for _, lexical, activation, memory in scored:
         tail = any(event_map[ref["event_id"]]["sequence"] > state["indexed_sequence"]
                    for ref in memory["evidence_refs"])
         item = {
             "memory": copy.deepcopy(memory),
             "rank_signals": [
-                {"method": "keyword", "score": lexical,
+                {"method": "reranker" if selecting else "keyword", "score": lexical,
                  "meaning": "ranking_only_not_probability",
-                 "model_or_index_version": RETRIEVAL_VERSION},
-                {"method": "recency", "score": activation,
+                 "model_or_index_version": "evidence-recall-v1" if selecting else RETRIEVAL_VERSION},
+                *([] if selecting else [{"method": "recency", "score": activation,
                  "meaning": "ranking_only_not_probability",
-                 "model_or_index_version": "external-activation-v1"},
+                 "model_or_index_version": "external-activation-v1"}]),
             ],
             "retrieved_from": "unindexed_tail" if tail else "index",
             "display_mode": "explicit_recollection" if historical else "background_context",
@@ -566,6 +573,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         result["status"] = "partial"
         result["next_step"] = "answer_with_limits"
         result["unknowns"].append(
+            "Model-selected sources do not independently verify claims or exhaustive recall." if selecting else
             "Lexical candidates retain source roles; semantic answer sufficiency is not assessed."
         )
         if request["intent"] == "exact_quote" and all(
@@ -704,6 +712,18 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             "due_time": loop["due_time"],
         }), loop["evidence_refs"]))
         metadata.append(None)
+    for event in state.get("recent_events", []):
+        observed = event["observed"]
+        blocks.append(("recent_context", _serialized({
+            "actor_role": observed["actor_role"], "actor_ref": observed["actor_ref"],
+            "content": observed["content"], "delivery_state": observed["delivery_state"],
+            "sequence": event["sequence"], "occurred_time": observed["occurred_time"],
+            "world": _world(observed, _content_text(observed["content"])),
+            "utterance_segments": event["utterance_segments"],
+            "use": "conversation_context_only_not_independent_historical_evidence",
+        }), [{"event_id": event["event_id"], "event_revision": event["revision"],
+              "source_content_sha256": event["content_sha256"], "relationship": "context_only"}]))
+        metadata.append(None)
     for item in recall_result["items"]:
         if item["display_mode"] == "do_not_surface":
             continue
@@ -720,6 +740,14 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
         "limitations": result["coverage"]["limitations"],
         "context_truncated": False,
     }
+    if "recall_plan" in payload:
+        plan = payload["recall_plan"]
+        uncertainty.update(
+            recall_status="partial" if plan["memory_versions"] else "no_match",
+            recall_decision=plan["outcome"],
+            unknowns=["Model relevance judgments do not verify source claims or exhaustive recall."],
+            limitations=copy.deepcopy(plan["coverage_limitations"]),
+        )
 
     def uncertainty_block() -> dict:
         text = _serialized(uncertainty)

@@ -1669,7 +1669,8 @@
             "verbatim_evidence",
             "uncertainty",
             "open_loops",
-            "integration_status"
+            "integration_status",
+            "recent_context"
           ]
         },
         "text": {
@@ -2462,6 +2463,19 @@
         },
         "evidence_cutoff": {
           "$ref": "#/$defs/EvidenceCutoff"
+        },
+        "recent_event_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "recall_plan": {
+          "$ref": "#/$defs/RecallPlan"
+        },
+        "expected_dependency_generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
         }
       },
       "required": [
@@ -2472,7 +2486,27 @@
         "capabilities"
       ],
       "additionalProperties": false,
-      "description": "客户端能力报告仅供协商；服务端应查验已绑定适配器的连接测试记录，不能信任客户端自称 verified 或 full_lifecycle。 evidence_mode 和 evidence_cutoff 可省略；普通检索可使用当前合法输入。服务端检测历史记忆断言时应自动建立证据边界，不能因客户端省略模式而允许提示污染。"
+      "description": "客户端能力报告仅供协商；服务端应查验已绑定适配器的连接测试记录，不能信任客户端自称 verified 或 full_lifecycle。 evidence_mode 和 evidence_cutoff 可省略；普通检索可使用当前合法输入。服务端检测历史记忆断言时应自动建立证据边界，不能因客户端省略模式而允许提示污染。",
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "recall_plan"
+            ]
+          },
+          "then": {
+            "required": [
+              "expected_dependency_generation",
+              "evidence_mode"
+            ],
+            "properties": {
+              "evidence_mode": {
+                "const": "prior_record_check"
+              }
+            }
+          }
+        }
+      ]
     },
     "RecallPayload": {
       "$ref": "#/$defs/RecallRequest"
@@ -4232,6 +4266,206 @@
       ],
       "additionalProperties": false,
       "description": "客户端提出的反馈，不是可信 RecallTrace。服务端从已认证来源、交付记录和 speech act 验证类型；模型只能报告 background_influence 估计，不能自报 user_confirmed 或 observed_outcome 后获得外部确认资格。"
+    },
+    "RecallPlan": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "evidence-recall-v1"
+        },
+        "memory_versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "memory_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "memory_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 16,
+          "uniqueItems": true
+        },
+        "recent_event_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "event_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "observed_event_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "event_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "outcome": {
+          "enum": [
+            "sufficient",
+            "ambiguous",
+            "insufficient",
+            "not_needed",
+            "budget_exhausted",
+            "reasoner_unavailable",
+            "invalid_decision"
+          ]
+        },
+        "model_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "search_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "input_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 262144
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600000
+        },
+        "coverage_limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "approximate_search",
+              "index_lag",
+              "source_unavailable",
+              "budget_exhausted",
+              "partial_scope",
+              "deleted_source",
+              "ambiguous_identity",
+              "dependency_failure",
+              "unknown",
+              "rebuilding"
+            ]
+          },
+          "maxItems": 16,
+          "uniqueItems": true
+        },
+        "trace": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 16
+              },
+              "action": {
+                "enum": [
+                  "search",
+                  "finish",
+                  "stop"
+                ]
+              },
+              "reason": {
+                "enum": [
+                  "sufficient",
+                  "ambiguous",
+                  "insufficient",
+                  "not_needed",
+                  "budget_exhausted",
+                  "reasoner_unavailable",
+                  "invalid_decision",
+                  "continue"
+                ]
+              },
+              "query_hashes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 128
+              },
+              "selected_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 16
+              }
+            },
+            "required": [
+              "step",
+              "action",
+              "reason",
+              "query_hashes",
+              "candidate_count",
+              "selected_count"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "version",
+        "memory_versions",
+        "recent_event_refs",
+        "observed_event_refs",
+        "outcome",
+        "model_calls",
+        "search_calls",
+        "input_bytes",
+        "elapsed_ms",
+        "coverage_limitations",
+        "trace"
+      ],
+      "additionalProperties": false
     }
   },
   "x-runtime-invariants": [

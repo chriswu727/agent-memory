@@ -283,6 +283,28 @@ def test_dream_is_only_retrieved_when_its_world_is_requested():
     assert result["items"][0]["memory"]["world"] == "dream"
 
 
+@pytest.mark.parametrize("blocked_by", [None, "world", "scope", "evidence", "revision"])
+def test_model_selection_changes_relevance_but_not_evidence_eligibility(blocked_by):
+    source = event("河畔有一只小狗。")
+    memories = cognition.extract_event(source)
+    selected = [{"memory_id": memories[0]["memory_id"], "revision": memories[0]["revision"]}]
+    if blocked_by == "world":
+        memories[0]["world"] = "dream"
+    elif blocked_by == "scope":
+        memories[0]["scope"]["tenant_id"] = "other"
+    elif blocked_by == "evidence":
+        memories[0]["evidence_refs"] = []
+    elif blocked_by == "revision":
+        selected[0]["revision"] += 1
+    result = cognition.recall(scope(), request("unrelated cue"), memories, [source],
+                              state(selected_versions=selected))
+    if blocked_by:
+        assert not result["items"]
+    else:
+        assert result["items"][0]["memory"]["memory_id"] == selected[0]["memory_id"]
+        assert [signal["method"] for signal in result["items"][0]["rank_signals"]] == ["reranker"]
+
+
 def test_activation_cannot_create_evidence_and_recall_does_not_mutate_memory():
     source = event("书店门口有只橘猫。")
     memories = cognition.extract_event(source)

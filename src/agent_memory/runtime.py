@@ -16,6 +16,7 @@ from .client import (
     prepared_context,
 )
 from .helpers import digest
+from .recall_control import RecallController
 from .runtime_client import RuntimeClient
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class RuntimePolicy:
     max_input_tokens: int = 32000
     max_output_bytes: int = 64000
     lease_seconds: int = 30
+    recent_context_events: int = 6
 
     def __post_init__(self):
         for value in (self.memory_context_tokens, self.max_input_tokens, self.max_output_bytes):
@@ -40,6 +42,8 @@ class RuntimePolicy:
                 raise ValueError("Budgets must be positive integers")
         if not 10 <= self.lease_seconds <= 300:
             raise ValueError("lease_seconds must be between 10 and 300")
+        if type(self.recent_context_events) is not int or not 0 <= self.recent_context_events <= 8:
+            raise ValueError("recent_context_events must be an integer between 0 and 8")
 
 
 @dataclass(frozen=True)
@@ -135,6 +139,15 @@ class _Lease:
             )
             return self.row
 
+    def reserve_recall(self, **fields):
+        with self.lock:
+            self.check()
+            self.row = self.journal.reserve_recall(
+                self.row["turn_id"], lease_token=self.token,
+                expected_revision=self.row["revision"], **fields,
+            )
+            return self.row
+
     def __exit__(self, *exc):
         self.stopped.set()
         self.thread.join(timeout=5)
@@ -156,6 +169,7 @@ class BrainRuntime:
         deliver: Callable[[DeliveryRequest], DeliveryReceipt] | None = None,
         instructions: str = "", policy: RuntimePolicy | None = None,
         generation_is_idempotent: bool = False, delivery_is_idempotent: bool = False,
+        recall_controller: RecallController | None = None,
     ):
         if not memory.brain_id:
             raise ValueError("Bind a stable brain_id before creating the runtime")
@@ -164,6 +178,7 @@ class BrainRuntime:
         self.policy = policy or RuntimePolicy()
         self.generation_is_idempotent = generation_is_idempotent
         self.delivery_is_idempotent = delivery_is_idempotent
+        self.recall_controller = recall_controller
         self.journal = RuntimeClient(memory)
         self.worker_id = str(uuid4())
 
@@ -180,7 +195,9 @@ class BrainRuntime:
         result["limitations"] = [
             "This adapter manages synchronous text turns and host-confirmed delivery.",
             "It does not intercept arbitrary agents, tool loops, streaming, edits, or compaction.",
-            "Semantic consolidation and associative recall are not implemented.",
+            "Semantic consolidation and learned associative dynamics are not implemented.",
+            ("A bounded semantic recall controller is configured; its decisions remain fallible."
+             if self.recall_controller else "Semantic recall planning is not configured; recall is lexical."),
             "External callbacks require idempotency or reconciliation after uncertain outcomes.",
         ]
         return result
@@ -264,11 +281,7 @@ class BrainRuntime:
         if recovering and not self.generation_is_idempotent:
             raise RuntimeBlocked("generation_uncertain", turn_id)
         lease.check()
-        prepared = self.memory.prepare(
-            turn_id, latest_input_event_ids=[r["event_id"] for r in lease.row["input_event_refs"]],
-            read_fence=default_read_fence(lease.row["durable_sequence"] or 0),
-            budget=default_budget(self.policy.memory_context_tokens), capabilities=self.capabilities(), **scope,
-        )["result"]
+        prepared, plan = self._recall(lease, text, scope)
         if not prepared["coverage"]["read_fence_satisfied"]:
             raise RuntimeBlocked("memory_coverage_incomplete", turn_id)
         prompt = self._prompt(turn_id, text, prepared)
@@ -276,6 +289,8 @@ class BrainRuntime:
             (reference["event_id"], reference["event_revision"])
             for block in prepared["blocks"] for reference in block["evidence_refs"]
         }
+        if plan is not None:
+            refs.update((ref["event_id"], ref["revision"]) for ref in plan["observed_event_refs"])
         fields = {
             "context_event_refs": [{"event_id": i, "revision": rev} for i, rev in sorted(refs)],
             "context_fingerprint": digest(prompt.messages),
@@ -283,6 +298,8 @@ class BrainRuntime:
             "working_revision": prepared["working_state"]["revision"],
             "context_tokens": prompt.input_tokens_estimate,
         }
+        if plan is not None:
+            fields["recall_plan"] = plan
         if recovering or lease.row["stage"] == "prepared":
             if any(lease.row[key] != fields[key] for key in ("context_fingerprint", "context_generation", "working_revision")):
                 raise RuntimeBlocked("context_stale", turn_id)
@@ -296,6 +313,55 @@ class BrainRuntime:
             raise RuntimeBlocked("invalid_or_oversized_model_output", turn_id)
         lease.check()
         lease.record_output(output, "draft")
+
+    def _recall(self, lease, text, scope):
+        turn_id = lease.row["turn_id"]
+        arguments = {
+            "latest_input_event_ids": [ref["event_id"] for ref in lease.row["input_event_refs"]],
+            "read_fence": default_read_fence(lease.row["durable_sequence"] or 0),
+            "budget": default_budget(self.policy.memory_context_tokens),
+            "capabilities": self.capabilities(), **scope,
+        }
+        saved = lease.row.get("recall_plan")
+        if saved is not None:
+            return self.memory.prepare(
+                turn_id, recall_plan=saved, evidence_mode="prior_record_check",
+                expected_dependency_generation=lease.row["context_generation"], **arguments,
+            )["result"], saved
+        controller = self.recall_controller if lease.row["stage"] == "captured" else None
+        prepared = self.memory.prepare(
+            turn_id, recent_event_limit=self.policy.recent_context_events,
+            evidence_mode="prior_record_check" if controller else None, **arguments,
+        )["result"]
+        if controller is None:
+            return prepared, None
+        generation = prepared["coverage"]["dependency_generation"]
+
+        def reserve(**fields):
+            return lease.reserve_recall(
+                max_model_calls=controller.policy.max_model_calls,
+                max_input_bytes=controller.policy.max_input_bytes,
+                context_generation=generation, **fields,
+            )
+
+        plan = controller.plan(
+            self.memory, turn_id=turn_id, input_text=text, initial_packet=prepared,
+            reserve=reserve, check=lease.check,
+            prior_model_calls=lease.row["recall_model_calls"],
+            prior_input_bytes=lease.row["recall_input_bytes"], **scope,
+        )
+        refs = {(ref["event_id"], ref["revision"])
+                for ref in plan["observed_event_refs"] + lease.row["context_event_refs"]}
+        plan["observed_event_refs"] = [{"event_id": event_id, "revision": revision}
+                                       for event_id, revision in sorted(refs)]
+        lease.check()
+        selected = self.memory.prepare(
+            turn_id, recall_plan=plan, evidence_mode="prior_record_check",
+            expected_dependency_generation=generation, **arguments,
+        )["result"]
+        if selected["working_state"]["revision"] != prepared["working_state"]["revision"]:
+            raise RuntimeBlocked("context_stale", turn_id)
+        return selected, plan
 
     def _output(self, turn_id):
         outputs = self.journal.sources(turn_id)["output_events"]

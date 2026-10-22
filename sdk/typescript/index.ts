@@ -1,7 +1,7 @@
 import type {
   Action, ActionPayloads, ActionRequest, ActionResponse, Budget, ReadFence,
   ScopeSelector, IntegrationCapabilities, ObservedEventInput, RecallPayload,
-  PreparePayload, CommitPayload, CorrectPayload, ForgetPayload, RestorePayload,
+  PreparePayload, PrepareRecallSelection, CommitPayload, CorrectPayload, ForgetPayload, RestorePayload,
   ExportPayload, InspectPayload, CheckpointPayload, ContextPacket,
 } from "./contract.ts";
 
@@ -65,6 +65,9 @@ export type ScopeOptions = {
   requestId?: string;
 };
 export type BranchOptions = ScopeOptions & { conversationId: string; branchId: string };
+export type PrepareOptions = BranchOptions & Partial<Omit<PreparePayload,
+  "turn_id" | "recall_plan" | "evidence_mode" | "expected_dependency_generation"
+>> & PrepareRecallSelection;
 export type ClientOptions = {
   baseUrl: string;
   apiKey: string;
@@ -246,7 +249,7 @@ export class MemoryClient {
     }, { conversationId, branchId, brainId, requestId });
   }
 
-  prepare(turnId: string, options: BranchOptions & Partial<Omit<PreparePayload, "turn_id">>) {
+  prepare(turnId: string, options: PrepareOptions) {
     const { conversationId, branchId, brainId, requestId, ...payload } = options;
     return this.action("prepare", {
       latest_input_event_ids: [], read_fence: defaultReadFence(), budget: defaultBudget(),

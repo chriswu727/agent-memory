@@ -368,25 +368,34 @@ class MemoryService:
                 if not any(cognition.evidence_overlaps(reference, old)
                            for reference in memory["evidence_refs"] for old in superseded)]
 
-    def _retrieval(self, conn, principal, brain, target, query):
+    def _retrieval(self, conn, principal, brain, target, query, recall_plan=None):
         params = self._params(principal, brain["id"])
         candidate_limit = min(128, max(4, query["budget"]["max_context_tokens"] // 512))
         total = conn.execute(
             "SELECT count(*) AS value FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
             "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed", params,
         ).fetchone()["value"]
-        rows = conn.execute(
-            "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-            "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
-            "AND embedding_model='lexical-feature-hash' AND embedding_version='v1-d256-blake2s' "
-            "ORDER BY embedding <=> %s::vector NULLS LAST,id LIMIT %s", (*params, _vector(query["query"]), candidate_limit),
-        ).fetchall()
+        if recall_plan is None:
+            rows = conn.execute(
+                "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
+                "AND embedding_model='lexical-feature-hash' AND embedding_version='v1-d256-blake2s' "
+                "ORDER BY embedding <=> %s::vector NULLS LAST,id LIMIT %s", (*params, _vector(query["query"]), candidate_limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
+                "AND id=ANY(%s::text[])", (*params, [v["memory_id"] for v in recall_plan["memory_versions"]]),
+            ).fetchall()
         memories = [self._rebind(row["document"], principal, brain) for row in rows]
         raw_working = self._working(conn, principal, brain, target, None)
         source_ids = {r["event_id"] for memory in memories for r in memory["evidence_refs"]}
         source_ids.update(r["event_id"] for field in ("items", "open_loops") for item in raw_working[field] for r in item["evidence_refs"])
         source_ids.update(query.get("query_event_ids", []))
         source_ids.update(query["cue_event_ids"])
+        if recall_plan is not None:
+            source_ids.update(ref["event_id"] for ref in recall_plan["observed_event_refs"])
         if query.get("evidence_cutoff", {}).get("event_id"):
             source_ids.add(query["evidence_cutoff"]["event_id"])
         events = self._events(conn, principal, brain, event_ids=sorted(source_ids)[:1024], limit=1024)
@@ -395,6 +404,19 @@ class MemoryService:
         events = list({event["event_id"]: event for event in events + tail[:128]}.values())
         working = self._working(conn, principal, brain, target, events)
         state = self._state(conn, principal, brain, total)
+        if recall_plan is not None:
+            lookup = {(event["event_id"], event["revision"]): event for event in events}
+            scope = self._scope(principal, brain, target)
+            for ref in recall_plan["observed_event_refs"]:
+                source = lookup.get((ref["event_id"], ref["revision"]))
+                if source is None or not cognition._scope_allows(source["scope"], scope):
+                    raise DomainError("source_unavailable", "A source observed during recall is unavailable.")
+            known = {(memory["memory_id"], memory["revision"]) for memory in memories}
+            for event in events:
+                for memory in self._current_captures(conn, principal, brain, event):
+                    if (memory["memory_id"], memory["revision"]) not in known:
+                        memories.append(self._rebind(memory, principal, brain))
+            state["selected_versions"] = recall_plan["memory_versions"]
         state["source_truncated"] = truncated
         state["superseded_evidence_refs"] = self._superseded_evidence(
             conn, principal, brain, [event["event_id"] for event in events]
@@ -407,6 +429,15 @@ class MemoryService:
         }
         state["verified_working_evidence_refs"] = [r for field in ("items", "open_loops") for item in working[field] for r in item["evidence_refs"]]
         result = cognition.recall(self._scope(principal, brain, target), query, memories, events, state)
+        if recall_plan is not None:
+            expected = {(v["memory_id"], v["revision"]) for v in recall_plan["memory_versions"]}
+            found = {(item["memory"]["memory_id"], item["memory"]["revision"]) for item in result["items"]}
+            observed = {(ref["event_id"], ref["revision"]) for ref in recall_plan["observed_event_refs"]}
+            if expected != found or any(
+                (ref["event_id"], ref["event_revision"]) not in observed
+                for item in result["items"] for ref in item["memory"]["evidence_refs"]
+            ):
+                raise DomainError("invalid_evidence", "Selected memory versions are unavailable or unsupported.")
         self._save_traces(conn, principal, brain, result.get("recall_traces", []))
         return result, working, state
 
@@ -415,6 +446,9 @@ class MemoryService:
 
     def _prepare(self, conn, principal, brain, request):
         payload = request["payload"]
+        if ("expected_dependency_generation" in payload
+                and payload["expected_dependency_generation"] != brain["dependency_generation"]):
+            raise DomainError("context_stale", "Memory changed during recall planning.")
         events = self._events(conn, principal, brain, event_ids=payload["latest_input_event_ids"], limit=128)
         lookup = {e["event_id"]: e for e in events}
         if any(i not in lookup for i in payload["latest_input_event_ids"]):
@@ -427,7 +461,9 @@ class MemoryService:
         for field in ("evidence_mode", "evidence_cutoff"):
             if field in payload:
                 query[field] = payload[field]
-        result, working, state = self._retrieval(conn, principal, brain, request["target"], query)
+        plan = payload.get("recall_plan")
+        result, working, state = self._retrieval(conn, principal, brain, request["target"], query, plan)
+        state["recent_events"] = self._recent_context(conn, principal, brain, request["target"], payload)
         safe_payload = copy.deepcopy(payload)
         capabilities = safe_payload["capabilities"]
         capabilities["verification_state"] = "declared"
@@ -438,6 +474,53 @@ class MemoryService:
         packet = cognition.prepare(self._scope(principal, brain, request["target"]), safe_payload, working, result, state)
         self._save_traces(conn, principal, brain, packet.get("recall_traces", []))
         return packet
+
+    def _recent_context(self, conn, principal, brain, target, payload):
+        plan = payload.get("recall_plan")
+        limit = payload.get("recent_event_limit", 0)
+        if plan is None and not limit:
+            return []
+        params = self._params(principal, brain["id"])
+        inputs = self._events(conn, principal, brain, event_ids=payload["latest_input_event_ids"], limit=128)
+        cutoff = min((event["sequence"] for event in inputs), default=brain["durable_sequence"] + 1)
+        if plan is None:
+            rows = conn.execute(
+                "SELECT document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND conversation_id=%s AND branch_id=%s AND is_current AND NOT deleted AND NOT suppressed "
+                "AND NOT retired AND document IS NOT NULL AND sequence<%s AND NOT (id=ANY(%s::text[])) "
+                "AND document #>> '{observed,event_kind}'='message' "
+                "AND document #>> '{observed,actor_role}' IN ('user','assistant') "
+                "AND document #>> '{observed,delivery_state}' IN ('received','delivered','partially_delivered') "
+                "ORDER BY sequence DESC LIMIT %s",
+                (*params, target.get("conversation_ref"), target.get("branch_ref"), cutoff,
+                 payload["latest_input_event_ids"], limit),
+            ).fetchall()
+            events = [self._rebind(row["document"], principal, brain) for row in reversed(rows)]
+        else:
+            events = self._events(conn, principal, brain,
+                                  event_ids=[ref["event_id"] for ref in plan["recent_event_refs"]], limit=8)
+            lookup = {(event["event_id"], event["revision"]): event for event in events}
+            events = []
+            observed = {(ref["event_id"], ref["revision"]) for ref in plan["observed_event_refs"]}
+            for ref in plan["recent_event_refs"]:
+                key = (ref["event_id"], ref["revision"])
+                event = lookup.get(key)
+                if (event is None or key not in observed or event["event_id"] in payload["latest_input_event_ids"]
+                        or event["sequence"] >= cutoff
+                        or event["scope"]["conversation_id"] != target.get("conversation_ref")
+                        or event["scope"]["branch_id"] != target.get("branch_ref")
+                        or event["observed"]["event_kind"] != "message"
+                        or event["observed"]["actor_role"] not in ("user", "assistant")
+                        or event["observed"]["delivery_state"] not in ("received", "delivered", "partially_delivered")):
+                    raise DomainError("source_unavailable", "Recent conversation context changed.")
+                events.append(event)
+        superseded = {ref["event_id"] for ref in self._superseded_evidence(
+            conn, principal, brain, [event["event_id"] for event in events]
+        )}
+        if plan is not None and any(event["event_id"] in superseded for event in events):
+            raise DomainError("context_stale", "Recent conversation context was corrected.")
+        return sorted((event for event in events if event["event_id"] not in superseded),
+                      key=lambda event: event["sequence"])
 
     def _usage(self, text, budget, elapsed=0):
         tokens = len(json.dumps(text, ensure_ascii=False, separators=(",", ":")).encode())

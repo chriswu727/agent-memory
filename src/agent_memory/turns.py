@@ -5,6 +5,7 @@ from contextlib import contextmanager
 
 from psycopg.types.json import Jsonb
 
+from .contracts import validate
 from .helpers import DomainError, digest
 
 STAGES = (
@@ -21,6 +22,7 @@ PUBLIC_FIELDS = (
     "revision", "fence", "claim_count", "generation_count", "worker_id", "lease_expires_at",
     "recovery_required", "input_event_refs", "context_event_refs", "output_event_refs", "context_fingerprint",
     "context_generation", "working_revision", "durable_sequence", "context_tokens",
+    "recall_plan", "recall_model_calls", "recall_input_bytes",
     "failure_code", "created_at", "updated_at",
 )
 
@@ -267,9 +269,56 @@ class TurnStore:
             ).fetchone()
             return self._public(conn, principal, row)
 
+    def reserve_recall(self, principal, brain_id, turn_id, *, lease_token, expected_revision,
+                       input_bytes, max_model_calls, max_input_bytes, context_generation,
+                       source_refs, request_fingerprint):
+        _integer(expected_revision, 1)
+        _integer(input_bytes, 1, 262144)
+        _integer(max_model_calls, 1, 8)
+        _integer(max_input_bytes, 1, 262144)
+        _integer(context_generation)
+        references = _refs(source_refs)
+        _hash(request_fingerprint)
+        fingerprint = digest({
+            "operation": "reserve_recall", "revision": expected_revision,
+            "input_bytes": input_bytes, "max_model_calls": max_model_calls,
+            "max_input_bytes": max_input_bytes, "context_generation": context_generation,
+            "source_refs": references, "request_fingerprint": request_fingerprint,
+        })
+        with self._transaction(principal, brain_id) as (conn, brain):
+            row = self._row(conn, principal, brain_id, turn_id)
+            self._lease(row, lease_token)
+            if row["stage"] != "captured":
+                raise DomainError("stage_conflict", "Recall reservations require a captured turn.")
+            if context_generation != brain["dependency_generation"] or (
+                    row["context_generation"] is not None and row["context_generation"] != context_generation):
+                raise DomainError("context_stale", "Memory changed before recall reservation.")
+            combined = row["context_event_refs"] + [ref for ref in references if ref not in row["context_event_refs"]]
+            candidate = {**row, "context_event_refs": _refs(combined)}
+            if self._unavailable(conn, principal, candidate):
+                raise DomainError("source_unavailable", "A recall source is no longer available.")
+            if row["revision"] == expected_revision + 1 and row["last_transition_hash"] == fingerprint:
+                return self._public(conn, principal, row)
+            self._lease(row, lease_token, expected_revision)
+            if (row["recall_model_calls"] + 1 > max_model_calls
+                    or row["recall_input_bytes"] + input_bytes > max_input_bytes):
+                raise DomainError("budget_exceeded", "Recall would exceed the durable turn budget.")
+            row = conn.execute(
+                "UPDATE memory_runtime_turns SET revision=revision+1,recall_model_calls=recall_model_calls+1,"
+                "recall_input_bytes=recall_input_bytes+%s,context_generation=%s,context_event_refs=%s,"
+                "last_transition_hash=%s,updated_at=clock_timestamp() "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
+                "RETURNING *,clock_timestamp() AS db_now",
+                (input_bytes, context_generation, Jsonb(combined), fingerprint,
+                 *self._params(principal, brain_id, turn_id)),
+            ).fetchone()
+            self._record(conn, row, "advance")
+            return self._public(conn, principal, row)
+
     def advance(self, principal, brain_id, turn_id, *, lease_token, expected_revision, stage,
                 input_event_refs=None, context_event_refs=None, output_event_refs=None, context_fingerprint=None,
-                context_generation=None, working_revision=None, durable_sequence=None, context_tokens=None):
+                context_generation=None, working_revision=None, durable_sequence=None, context_tokens=None,
+                recall_plan=None):
         _integer(expected_revision, 1)
         if stage not in STAGES[1:-2]:
             raise DomainError("validation_failed", "Stage is not a valid advance target.")
@@ -278,13 +327,15 @@ class TurnStore:
             "output_event_refs": output_event_refs,
             "context_fingerprint": context_fingerprint, "context_generation": context_generation,
             "working_revision": working_revision, "durable_sequence": durable_sequence,
-            "context_tokens": context_tokens,
+            "context_tokens": context_tokens, "recall_plan": recall_plan,
         }.items() if value is not None}
         for key, value in changes.items():
             if key.endswith("_refs"):
                 changes[key] = _refs(value)
             elif key.endswith("fingerprint"):
                 _hash(value)
+            elif key == "recall_plan":
+                validate("RecallPlan", value)
             else:
                 _integer(value)
         allowed_at = {
@@ -292,6 +343,7 @@ class TurnStore:
             "output_event_refs": {"generated", "delivered"},
             "context_fingerprint": {"prepared"}, "context_generation": {"prepared"},
             "context_tokens": {"prepared"}, "working_revision": {"prepared", "committed"},
+            "recall_plan": {"prepared"},
         }
         if any(stage not in allowed_at[key] for key in changes if key in allowed_at):
             raise DomainError("validation_failed", "Stage cannot replace previously bound turn metadata.")
@@ -313,6 +365,19 @@ class TurnStore:
                     row["stage"] not in STAGES[:-1] or STAGES[STAGES.index(row["stage"]) + 1] != stage):
                 raise DomainError("stage_conflict", "Turn stages must advance in order.")
             candidate = {**row, **changes}
+            if stage == "prepared":
+                plan = candidate["recall_plan"]
+                if row["recall_model_calls"] and plan is None:
+                    raise DomainError("validation_failed", "Reserved recall requires a final recall plan.")
+                if any(ref not in candidate["context_event_refs"] for ref in row["context_event_refs"]):
+                    raise DomainError("invalid_evidence", "Prepared context must retain observed recall sources.")
+                if plan is not None and (
+                        plan["model_calls"] != row["recall_model_calls"]
+                        or plan["input_bytes"] != row["recall_input_bytes"]
+                        or any(ref not in candidate["context_event_refs"] for ref in plan["observed_event_refs"])):
+                    raise DomainError("invalid_evidence", "Recall plan must match charged usage and observed sources.")
+                if row["context_generation"] is not None and row["context_generation"] != candidate["context_generation"]:
+                    raise DomainError("context_stale", "Prepared context cannot replace the reserved recall generation.")
             if not candidate["input_event_refs"] or (stage in STAGES[4:] and not candidate["output_event_refs"]):
                 raise DomainError("validation_failed", "This stage requires durable source references.")
             if self._unavailable(conn, principal, candidate):
@@ -355,7 +420,7 @@ class TurnStore:
             assignments, values = [], []
             for key, value in changes.items():
                 assignments.append(f"{key}=%s")
-                values.append(Jsonb(value) if key.endswith("_refs") else value)
+                values.append(Jsonb(value) if key.endswith("_refs") or key == "recall_plan" else value)
             assignments.extend([
                 "stage=%s", "revision=revision+1", "updated_at=clock_timestamp()", "last_transition_hash=%s",
                 "recovery_required=NULL", "generation_count=generation_count+%s",

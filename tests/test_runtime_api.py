@@ -19,6 +19,11 @@ BEGIN = {
     "turn_id": "turn", "conversation_id": "conversation", "branch_id": "branch",
     "input_fingerprint": "a" * 64,
 }
+RESERVATION = {
+    "lease_token": "lease", "expected_revision": 1, "input_bytes": 100,
+    "max_model_calls": 2, "max_input_bytes": 200, "context_generation": 0,
+    "source_refs": [{"event_id": "event", "revision": 1}], "request_fingerprint": "c" * 64,
+}
 
 
 class RecordingTurns:
@@ -60,6 +65,9 @@ class RecordingTurns:
 
     def advance(self, principal, brain_id, turn_id, **payload):
         return self.record("advance", principal, brain_id, turn_id, **payload)
+
+    def reserve_recall(self, principal, brain_id, turn_id, **payload):
+        return self.record("reserve_recall", principal, brain_id, turn_id, **payload)
 
     def release(self, principal, brain_id, turn_id, **payload):
         return self.record("release", principal, brain_id, turn_id, **payload)
@@ -105,6 +113,7 @@ def runtime_api():
     ("POST", TURN + "/claim", {"worker_id": "worker"}),
     ("POST", TURN + "/renew", {"lease_token": "lease"}),
     ("POST", TURN + "/advance", {"lease_token": "lease", "expected_revision": 1, "stage": "captured"}),
+    ("POST", TURN + "/recall-reservations", RESERVATION),
     ("POST", TURN + "/release", {"lease_token": "lease", "expected_revision": 1}),
     ("POST", TURN + "/finish", {"lease_token": "lease", "expected_revision": 1}),
     ("POST", TURN + "/output", {"lease_token": "lease", "expected_revision": 1,
@@ -146,6 +155,16 @@ def test_every_runtime_endpoint_requires_authenticated_principal(runtime_api, me
                           "context_generation": "2"}),
     (TURN + "/advance", {"lease_token": "lease", "expected_revision": 1, "stage": "prepared",
                           "context_event_refs": [{"event_id": "event", "revision": True}]}),
+    (TURN + "/recall-reservations", {**RESERVATION, "input_bytes": True}),
+    (TURN + "/recall-reservations", {**RESERVATION, "input_bytes": 0}),
+    (TURN + "/recall-reservations", {**RESERVATION, "input_bytes": 262145}),
+    (TURN + "/recall-reservations", {**RESERVATION, "max_model_calls": 9}),
+    (TURN + "/recall-reservations", {**RESERVATION, "max_input_bytes": 262145}),
+    (TURN + "/recall-reservations", {**RESERVATION, "request_fingerprint": "private query"}),
+    (TURN + "/recall-reservations", {**RESERVATION, "context_generation": "0"}),
+    (TURN + "/recall-reservations", {**RESERVATION, "source_refs": [{"event_id": "event", "revision": 1,
+                                                                 "text": "Private source"}]}),
+    (TURN + "/recall-reservations", {**RESERVATION, "query": "Private query"}),
 ])
 def test_runtime_bodies_reject_extra_fields_and_coercion_before_dispatch(runtime_api, path, body):
     client, turns = runtime_api
@@ -233,9 +252,11 @@ def test_runtime_client_uses_existing_transport_for_all_operations(runtime_api):
         )
         assert "text" not in recorded
         assert "lease_token" not in recorded
+        reserved = runtime.reserve_recall("turn", **RESERVATION)
+        assert "lease_token" not in reserved
     assert [call[0] for call in turns.calls] == [
         "begin", "get", "list", "history", "status", "sources", "claim", "renew", "advance",
-        "release", "fail", "finish", "record_output",
+        "release", "fail", "finish", "record_output", "reserve_recall",
     ]
     assert turns.calls[2][-1] == {"limit": 5}
     assert turns.calls[3][-1] == {"limit": 7}
@@ -246,6 +267,7 @@ def test_runtime_client_uses_existing_transport_for_all_operations(runtime_api):
         "lease_token": token, "expected_revision": 6,
         "text": "一段真实交付。", "delivery_state": "delivered",
     }
+    assert turns.calls[13][-1] == RESERVATION
 
 
 @pytest.mark.parametrize("delivery_state", ["draft", "delivered", "partially_delivered", "cancelled"])

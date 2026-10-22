@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { MemoryClient, MemoryActionError, MemoryHttpError, preparedContext } from "./index.ts";
+import type { RecallPlan } from "./index.ts";
 
 function fixture() {
   const requests: any[] = [];
@@ -68,6 +69,37 @@ test("observation keys survive retries and agree with the Python canonical forma
   assert.notEqual(keys[0], keys[3]);
   const identity = '["observe",{"brain_ref":"brain","branch_ref":"main","conversation_ref":"chat"},["sdk","message-1",1]]';
   assert.equal(keys[0], `observe:${createHash("sha256").update(identity).digest("hex")}`);
+});
+
+test("preparation preserves evidence selection, generation, and recent-context controls", async () => {
+  const { requests, client } = fixture();
+  const plan: RecallPlan = {
+    version: "evidence-recall-v1",
+    memory_versions: [{ memory_id: "promise", revision: 2 }],
+    recent_event_refs: [{ event_id: "recent", revision: 1 }],
+    observed_event_refs: [{ event_id: "recent", revision: 1 }, { event_id: "source", revision: 2 }],
+    outcome: "ambiguous", model_calls: 2, search_calls: 1, input_bytes: 6000, elapsed_ms: 50,
+    coverage_limitations: ["approximate_search"],
+    trace: [{ step: 1, action: "finish", reason: "ambiguous", query_hashes: [],
+      candidate_count: 2, selected_count: 1 }],
+  };
+  await client.prepare("turn-2", {
+    conversationId: "chat", branchId: "main", latest_input_event_ids: ["current"],
+    recent_event_limit: 6, recall_plan: plan, expected_dependency_generation: 3,
+    evidence_mode: "prior_record_check", evidence_cutoff: { mode: "before_event", event_id: "current" },
+  });
+  assert.deepEqual(requests[0].payload.recall_plan, plan);
+  assert.equal(requests[0].payload.recent_event_limit, 6);
+  assert.equal(requests[0].payload.expected_dependency_generation, 3);
+  assert.equal(requests[0].payload.evidence_mode, "prior_record_check");
+  assert.deepEqual(requests[0].payload.evidence_cutoff, { mode: "before_event", event_id: "current" });
+  const context = JSON.parse(preparedContext({
+    blocks: [{ section: "recent_context", text: "user: 最近在备考。", evidence_refs: [
+      { event_id: "recent", event_revision: 1 },
+    ] }],
+  } as any));
+  assert.equal(context.blocks[0].section, "recent_context");
+  assert.deepEqual(context.blocks[0].sources, [{ event_id: "recent", revision: 1 }]);
 });
 
 test("action rejection and HTTP failure cannot appear successful", async () => {

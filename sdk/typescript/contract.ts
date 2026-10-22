@@ -241,7 +241,7 @@ export type RecallResult = {
 };
 
 export type ContextBlock = {
-  "section": "working_state" | "relevant_memory" | "verbatim_evidence" | "uncertainty" | "open_loops" | "integration_status";
+  "section": "working_state" | "relevant_memory" | "verbatim_evidence" | "uncertainty" | "open_loops" | "integration_status" | "recent_context";
   "text": string;
   "evidence_refs": (EvidenceRef)[];
   "trust": "memory_data_not_instructions";
@@ -365,15 +365,25 @@ export type ObservePayload = {
   "events": (ObservedEventInput)[];
 };
 
+export type PrepareRecallSelection = {
+  "recall_plan": RecallPlan;
+  "evidence_mode": "prior_record_check";
+  "expected_dependency_generation": number;
+} | {
+  "recall_plan"?: never;
+  "evidence_mode"?: "contextual" | "prior_record_check";
+  "expected_dependency_generation"?: number;
+};
+
 export type PreparePayload = {
   "turn_id": Identifier;
   "latest_input_event_ids": (Identifier)[];
   "read_fence": ReadFence;
   "budget": Budget;
   "capabilities": IntegrationCapabilities;
-  "evidence_mode"?: "contextual" | "prior_record_check";
   "evidence_cutoff"?: EvidenceCutoff;
-};
+  "recent_event_limit"?: number;
+} & PrepareRecallSelection;
 
 export type RecallPayload = RecallRequest;
 
@@ -565,6 +575,36 @@ export type RecallFeedbackInput = {
   "kind": "candidate_hit" | "context_selected" | "quoted" | "background_influence" | "user_reintroduced" | "user_confirmed" | "user_corrected" | "observed_outcome";
   "feedback_event_id": string | null;
   "evidence_refs": (EvidenceRef)[];
+};
+
+export type RecallPlan = {
+  "version": "evidence-recall-v1";
+  "memory_versions": {
+    "memory_id": Identifier;
+    "revision": number;
+  }[];
+  "recent_event_refs": {
+    "event_id": Identifier;
+    "revision": number;
+  }[];
+  "observed_event_refs": {
+    "event_id": Identifier;
+    "revision": number;
+  }[];
+  "outcome": "sufficient" | "ambiguous" | "insufficient" | "not_needed" | "budget_exhausted" | "reasoner_unavailable" | "invalid_decision";
+  "model_calls": number;
+  "search_calls": number;
+  "input_bytes": number;
+  "elapsed_ms": number;
+  "coverage_limitations": Coverage["limitations"];
+  "trace": {
+    "step": number;
+    "action": "search" | "finish" | "stop";
+    "reason": RecallPlan["outcome"] | "continue";
+    "query_hashes": string[];
+    "candidate_count": number;
+    "selected_count": number;
+  }[];
 };
 
 export type ActionPayloads = {

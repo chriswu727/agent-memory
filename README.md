@@ -2,7 +2,7 @@
 
 一个独立于模型、无界面的 Agent 记忆运行时。目标是让宿主接入一次后，运行时持续管理 Agent 的工作记忆、长期认识和回忆过程。普通用户正常交流即可；主 Agent 不需要主动调用保存或搜索工具，系统也必须正常形成和使用记忆。
 
-完整目标见 [架构与验收规范](architecture/architecture.html)，产品边界与宿主责任见 [自主记忆运行契约](architecture/autonomous-runtime.contract.json)。当前已实现底层记忆服务和同步文本自动生命周期适配器；情境理解、联想、语义巩固等认知控制器仍待实现。自动存取不等于完整自主大脑。
+完整目标见 [架构与验收规范](architecture/architecture.html)，产品边界与宿主责任见 [自主记忆运行契约](architecture/autonomous-runtime.contract.json)。当前已实现底层记忆服务、同步文本自动生命周期和可选的语义回忆控制器：结合最近对话判断回忆需求，按预算换线索查找，再选择有来源的记忆。跨经历概括、语义巩固和学习关联仍待实现，当前不能视为完整自主大脑。
 
 ## 产品与接入目标
 
@@ -66,6 +66,41 @@ result = runtime.respond(text, message_id=message_id, conversation_id=conversati
 
 `RuntimePolicy` 分别限制记忆资料与完整消息预算，使用 UTF-8 字节数保守估计；宿主应按模型的总窗口为输出和模型协议开销预留空间。当前文本输出服务上限为 64,000 字节。同步适配器不处理工具循环、流式消息、自动消息编辑、上下文压缩或多个并行轮次的分支合并，其能力明确标记为 `partial_automation`。
 
+### 语义回忆
+
+宿主可在初始化时为回忆配置一个模型。主 Agent 仍然只接收组装好的上下文，不必决定何时调用记忆工具。以下代码沿用前面的 `memory`、`generate`、`deliver`；实际模型请求会使用宿主提供的 API 凭据：
+
+```python
+import os
+
+from agent_memory.recall_control import RecallController, RecallPolicy
+from agent_memory.recall_provider import ChatCompletionsRecallReasoner
+
+with ChatCompletionsRecallReasoner(
+    base_url=os.environ["MEMORY_REASONER_BASE_URL"],
+    api_key=os.environ["MEMORY_REASONER_API_KEY"],
+    model=os.environ["MEMORY_REASONER_MODEL"],
+) as reason:
+    runtime = BrainRuntime(
+        memory, generate, deliver=deliver,
+        recall_controller=RecallController(reason, RecallPolicy(
+            max_model_calls=3, max_search_calls=4,
+            max_input_bytes=48000, max_request_bytes=16000,
+        )),
+    )
+    result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
+```
+
+适配器使用 Chat Completions 的 JSON mode，要求提供方支持 `response_format: {"type": "json_object"}`。`base_url` 是 API 根路径，适配器追加 `chat/completions`；模型名称由宿主显式选择。协议参考 [DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode/) 和 [Chat Completion API](https://api-docs.deepseek.com/api/create-chat-completion)。也可直接传入自己的 `reason(RecallReasoningRequest) -> str` 函数，按照请求中的 JSON Schema 返回决定。未配置控制器时继续使用词法回忆，不调用额外模型。
+
+每轮自动保留同一会话、同一分支最近的已接收或已交付消息，默认最多六条，可用 `RuntimePolicy(recent_context_events=...)` 调整为零到八条。它们按时间顺序提供情境，明确标记为对话资料；问题中的假设、助手的说法和梦境不会因此变成客观事实。最近消息和长期候选共同受上下文预算约束。
+
+控制器可以结束回忆，也可以提出新线索继续查找；结束时只能选择已经展示过的记忆 ID。所有搜索沿用本轮输入之前的证据边界，最终由服务端重新检查来源、版本、更正、删除和范围。无法区分多个候选时保留 `ambiguous`，找不到充分依据时保留 `insufficient`；`sufficient` 只表示模型认为内容相关，不代表事实已经验证或历史已穷尽。
+
+选定的版本、最近对话引用和覆盖限制在生成前作为 `recall_plan` 持久保存。恢复使用同一计划重新构造上下文；来源失效时停止，不静默改用另一份记忆。模型调用次数和输入字节数在每次请求前持久预留，进程中断后不会归零。搜索次数与耗时限制作用于每次规划尝试；它们不是跨重启累计计数。失败请求也消耗已预留额度，适配器不会自动重试。
+
+默认每次规划最多 15 秒，单次模型输出最多 1,024 token，并检查返回内容的字节上限。超时采用网络操作超时和返回后检查，不能强制中断任意宿主回调。调用与字节预算限制的是资源使用量，尚未接入提供方实际 token 计费，不等于金额上限。提供方故障、非法决定或预算耗尽会记录停止原因，并让回答保留不确定性。
+
 ## 开发监控接口
 
 接口使用与记忆服务一致的 Bearer 认证：
@@ -74,11 +109,13 @@ result = runtime.respond(text, message_id=message_id, conversation_id=conversati
 | --- | --- |
 | `/status` | 持久化与索引进度、待处理任务数、轮次阶段、活动租约数 |
 | `/turns?limit=100` | 最近轮次，最多 200 条 |
-| `/turns/{turn_id}` | 当前阶段、修订、来源版本、上下文占用、恢复状态 |
+| `/turns/{turn_id}` | 当前阶段、修订、来源版本、上下文占用、回忆计划、累计调用额度、恢复状态 |
 | `/turns/{turn_id}/history?limit=100` | 有序阶段日志，最多 200 条 |
 | `/turns/{turn_id}/sources` | 单独按权限展开当前有效输入和输出 |
 
-监控记录不复制正文，也不保存租约凭证或隐藏推理。来源更正后依赖输出退出有效回忆；擦除来源时递归擦除派生输出，并过滤服务器持有的导出档案。档案保留事件依赖供恢复后继续执行删除约束；运行中的租约和未完成轮次不随记忆档案迁移。完整回忆决策解释、模型成本和延迟指标仍待认知控制器接入。
+`recall_plan` 包含选择的记忆版本、观察过的来源版本、停止原因、搜索次数、耗时、覆盖限制和结构化决策轨迹。轨迹只保存动作、查询哈希与候选数量，不复制查询文本或模型解释；`recall_model_calls` 和 `recall_input_bytes` 提供跨恢复累计的额度记录。实际计费和完整后台指标仍待实现。
+
+监控记录不复制正文，也不保存租约凭证或隐藏推理。来源更正后依赖输出退出有效回忆；擦除来源时递归擦除派生输出，并过滤服务器持有的导出档案。档案保留事件依赖供恢复后继续执行删除约束；运行中的租约和未完成轮次不随记忆档案迁移。
 
 ## 当前底层接口
 
@@ -123,16 +160,16 @@ MCP 允许模型主动回忆和提交有来源标记的笔记。它不会自动�
 | --- | --- |
 | 保存 | PostgreSQL 原始事件、来源修订、幂等提交、事务内任务入队 |
 | 工作状态 | 分支状态、修订检查、压缩交接 |
-| 回忆 | 中文与关键词线索、词法特征索引、原文补读、来源检查、预算和覆盖报告 |
+| 回忆 | 可选模型驱动的线索改写与候选选择、最近对话情境、词法搜索、来源复核、持久计划与额度 |
 | 整理 | 确定性的经历捕获，保留说话人、表达性质和原文；不是模型语义提炼 |
 | 更正与删除 | 版本更新、同步失效、派生依赖清理、档案恢复时检查删除记录 |
 | 隔离 | 服务端身份绑定、应用查询过滤、PostgreSQL 强制行级隔离 |
 | 接入 | Python 同步文本自动运行时；HTTP、Python、TypeScript、MCP 底层操作 |
-| 开发辅助 | 鉴权状态、轮次与阶段日志、独立来源展开；可移除的本地工作台 |
+| 开发辅助 | 鉴权状态、轮次与阶段日志、回忆停止原因与额度、独立来源展开；可移除的本地工作台 |
 
 语义模型提炼、跨经历概括、学习程序性方法、条件触发的前瞻记忆、经过校准的衰减与关联传播、多模态理解、宿主插件、云端账号与共享权限仍需实现和验证。当前仅支持拥有者私有范围；共享集合请求会明确拒绝。数据库装有 pgvector，当前候选向量是带版本标识的词法特征哈希，不是语义 embedding。
 
-原始表达有来源，不代表其中的客观世界事实已经被独立验证。默认词法回忆返回有依据的候选，并以 `partial` 说明语义充分性尚未判断。引用原文中的一个子串，不足以证明它可以独立成为新的结论。
+原始表达有来源，不代表其中的客观世界事实已经被独立验证。默认词法回忆返回有依据的候选，并以 `partial` 说明语义充分性尚未判断。可选控制器的语义判断仍可能出错，也不能保证通过词法搜索找齐所有相关历史。引用原文中的一个子串，不足以证明它可以独立成为新的结论。
 
 当前只有保持原文含义和来源归属的直接表述可进入有依据的工作状态。结构化事实提炼与计划状态验证仍待语义处理器实现；未决事项目前只接受 `unknown` 状态，不能把一条有引用的笔记直接宣布为已经完成。
 
@@ -143,6 +180,8 @@ MCP 允许模型主动回忆和提交有来源标记的笔记。它不会自动�
 ## 工程结构
 
 - `src/agent_memory/cognition.py`：经历捕获、线索回忆、证据边界和工作区组装。
+- `src/agent_memory/runtime.py`、`turns.py`：自动文本生命周期、持久阶段与调用额度。
+- `src/agent_memory/recall_control.py`、`recall_provider.py`：语义回忆决策与可选模型适配器。
 - `src/agent_memory/service.py`：事务、版本、生命周期与十个记忆操作。
 - `src/agent_memory/storage.py`、`migrations/`：PostgreSQL 数据模型与隔离。
 - `src/agent_memory/api.py`、`web/`：认证、HTTP 与本地工作台。
@@ -160,5 +199,7 @@ uv build
 ```
 
 TypeScript 测试与类型检查命令见 `sdk/typescript/package.json`。没有配置数据库时，数据库相关测试会跳过；跳过不代表通过。测试使用新建的随机租户与大脑，不依赖私人对话，也不调用付费模型或 Codex／Claude 订阅。
+
+GitHub Actions 仅保留手动触发，不在 push 或 pull request 时自动运行。日常开发优先执行与修改相关的本地检查；发布前按改动影响验证，避免重复运行云 CI。
 
 接口结构校验、确定性回归测试、真实 MCP 协议往返和数据库测试，只验证各自覆盖的行为。完整架构中的 52 个系统场景尚不能据此宣称全部通过，也未宣称在长期记忆质量上超过任何基线。

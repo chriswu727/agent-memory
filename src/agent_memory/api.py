@@ -74,6 +74,16 @@ class RuntimeAdvance(RuntimeLeaseMutation):
     working_revision: RuntimeCounter | None = None
     durable_sequence: RuntimeCounter | None = None
     context_tokens: RuntimeCounter | None = None
+    recall_plan: dict | None = None
+
+
+class RuntimeRecallReservation(RuntimeLeaseMutation):
+    input_bytes: Annotated[int, Field(ge=1, le=262144)]
+    max_model_calls: Annotated[int, Field(ge=1, le=8)]
+    max_input_bytes: Annotated[int, Field(ge=1, le=262144)]
+    context_generation: RuntimeCounter
+    source_refs: Annotated[list[RuntimeEventRef], Field(max_length=64)]
+    request_fingerprint: RuntimeFingerprint
 
 
 class RuntimeFail(RuntimeLeaseMutation):
@@ -91,6 +101,8 @@ def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
     if include_lease:
         allowed.add("lease_token")
     result = {key: value for key, value in record.items() if key in allowed}
+    if result.get("recall_plan") is not None:
+        validate("RecallPlan", result["recall_plan"])
     for field in ("input_event_refs", "output_event_refs", "context_event_refs", "unavailable_event_refs"):
         if field in result:
             result[field] = [
@@ -343,6 +355,16 @@ def create_app(settings: Settings | None = None, service=None, turns=None) -> Fa
         from starlette.concurrency import run_in_threadpool
 
         result = await run_in_threadpool(turn_store().advance, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/recall-reservations")
+    async def reserve_turn_recall(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeRecallReservation)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().reserve_recall, principal, brain_id, turn_id, **body)
         return runtime_metadata(result)
 
     @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/output")
