@@ -1,18 +1,103 @@
 import hashlib
 import json
 from importlib.resources import files
+from typing import Annotated, Literal
 
 import psycopg
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from .config import Settings
 from .contracts import CONTRACT_VERSION, schema, validate
 from .helpers import DomainError, Principal
+
+RuntimeIdentifier = Annotated[str, Field(min_length=1, max_length=256)]
+RuntimeFingerprint = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+RuntimeCounter = Annotated[int, Field(ge=0, le=2**63 - 1)]
+RuntimeRevision = Annotated[int, Field(ge=1, le=2**63 - 1)]
+RuntimeLeaseSeconds = Annotated[int, Field(ge=1, le=300)]
+
+
+class RuntimeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class RuntimeBegin(RuntimeBody):
+    turn_id: RuntimeIdentifier
+    conversation_id: RuntimeIdentifier
+    branch_id: RuntimeIdentifier
+    input_fingerprint: RuntimeFingerprint
+
+
+class RuntimeClaim(RuntimeBody):
+    worker_id: RuntimeIdentifier
+    lease_seconds: RuntimeLeaseSeconds = 30
+    expected_revision: RuntimeRevision | None = None
+
+
+class RuntimeRenew(RuntimeBody):
+    lease_token: RuntimeIdentifier
+    lease_seconds: RuntimeLeaseSeconds = 30
+    expected_revision: RuntimeRevision | None = None
+
+
+class RuntimeLeaseMutation(RuntimeBody):
+    lease_token: RuntimeIdentifier
+    expected_revision: RuntimeRevision
+
+
+class RuntimeEventRef(RuntimeBody):
+    event_id: RuntimeIdentifier
+    revision: RuntimeRevision
+
+
+class RuntimeOutput(RuntimeLeaseMutation):
+    text: Annotated[str, Field(max_length=64000)]
+    delivery_state: Literal["draft", "delivered", "partially_delivered", "cancelled"]
+
+
+class RuntimeAdvance(RuntimeLeaseMutation):
+    stage: Literal[
+        "captured", "prepared", "generating", "generated", "delivering",
+        "delivered",
+    ]
+    input_event_refs: Annotated[list[RuntimeEventRef], Field(max_length=64)] | None = None
+    output_event_refs: Annotated[list[RuntimeEventRef], Field(max_length=64)] | None = None
+    context_event_refs: Annotated[list[RuntimeEventRef], Field(max_length=64)] | None = None
+    context_fingerprint: RuntimeFingerprint | None = None
+    context_generation: RuntimeCounter | None = None
+    working_revision: RuntimeCounter | None = None
+    durable_sequence: RuntimeCounter | None = None
+    context_tokens: RuntimeCounter | None = None
+
+
+class RuntimeFail(RuntimeLeaseMutation):
+    failure_code: Literal[
+        "capture_failed", "prepare_failed", "generation_failed", "generation_uncertain",
+        "delivery_failed", "delivery_uncertain", "commit_failed", "source_unavailable",
+        "context_stale", "cancelled", "budget_exceeded", "dependency_unavailable", "internal_error",
+    ]
+
+
+def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
+    from .turns import PUBLIC_FIELDS
+
+    allowed = {*PUBLIC_FIELDS, "lease_active", "unavailable_event_refs", "sources_available"}
+    if include_lease:
+        allowed.add("lease_token")
+    result = {key: value for key, value in record.items() if key in allowed}
+    for field in ("input_event_refs", "output_event_refs", "context_event_refs", "unavailable_event_refs"):
+        if field in result:
+            result[field] = [
+                {key: value for key, value in ref.items() if key in {"event_id", "revision"}}
+                for ref in result[field]
+            ]
+    return result
 
 
 def capabilities() -> dict:
@@ -46,7 +131,7 @@ def capabilities() -> dict:
     return result
 
 
-def create_app(settings: Settings | None = None, service=None) -> FastAPI:
+def create_app(settings: Settings | None = None, service=None, turns=None) -> FastAPI:
     settings = settings or Settings.from_env()
     if service is None:
         from .service import MemoryService
@@ -55,6 +140,7 @@ def create_app(settings: Settings | None = None, service=None) -> FastAPI:
         service = MemoryService(Database(settings.database_url, settings.migration_database_url))
     app = FastAPI(title="Agent Memory", version=__version__)
     app.state.service = service
+    app.state.turns = turns
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     bearer = HTTPBearer(auto_error=False)
 
@@ -86,6 +172,31 @@ def create_app(settings: Settings | None = None, service=None) -> FastAPI:
         except (ValueError, UnicodeDecodeError) as error:
             raise DomainError("validation_failed", "A valid JSON object is required") from error
 
+    def turn_store():
+        if app.state.turns is None:
+            from .storage import Database
+            from .turns import TurnStore
+
+            app.state.turns = TurnStore(Database(
+                settings.database_url, settings.migration_database_url,
+            ))
+        return app.state.turns
+
+    async def runtime_body(request: Request, model: type[RuntimeBody]) -> dict:
+        document = await read_document(request)
+        try:
+            return model.model_validate(document).model_dump(exclude_none=True)
+        except ValidationError as error:
+            raise DomainError("validation_failed", "Runtime request fields are invalid.") from error
+
+    def runtime_limit(request: Request) -> int:
+        if set(request.query_params) - {"limit"} or len(request.query_params.getlist("limit")) > 1:
+            raise DomainError("validation_failed", "Only one limit parameter is supported.")
+        value = request.query_params.get("limit", "100")
+        if len(value) > 3 or not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 200:
+            raise DomainError("validation_failed", "Limit must be an integer from 1 to 200.")
+        return int(value)
+
     @app.middleware("http")
     async def response_headers(request: Request, call_next):
         response = await call_next(request)
@@ -103,6 +214,8 @@ def create_app(settings: Settings | None = None, service=None) -> FastAPI:
         status = {
             "unauthorized": 401, "not_found_or_forbidden": 404,
             "version_conflict": 409, "idempotency_conflict": 409,
+            "lease_conflict": 409, "stage_conflict": 409, "turn_terminal": 409,
+            "source_unavailable": 409, "context_stale": 409,
             "dependency_unavailable": 503, "budget_exceeded": 413,
         }.get(error.code, 422)
         return JSONResponse({"error": error.as_dict()}, status_code=status)
@@ -154,6 +267,123 @@ def create_app(settings: Settings | None = None, service=None) -> FastAPI:
         result = await run_in_threadpool(service.handle, principal, body)
         validate("ActionResponse", result)
         return result
+
+    @app.get("/v1/brains/{brain_id}/runtime/status")
+    def runtime_status(brain_id: str, principal: Principal = Depends(authenticate)):
+        result = turn_store().status(principal, brain_id)
+        fields = {
+            "brain_id", "durable_sequence", "indexed_sequence", "dependency_generation",
+            "scope_generation", "turn_count", "active_lease_count", "stage_counts", "pending_job_count",
+        }
+        return {key: value for key, value in result.items() if key in fields}
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns", status_code=201)
+    async def begin_turn(
+        brain_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeBegin)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().begin, principal, brain_id, **body)
+        return runtime_metadata(result)
+
+    @app.get("/v1/brains/{brain_id}/runtime/turns")
+    def list_turns(
+        brain_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        return {"turns": [runtime_metadata(record) for record in turn_store().list(
+            principal, brain_id, limit=runtime_limit(request),
+        )]}
+
+    @app.get("/v1/brains/{brain_id}/runtime/turns/{turn_id}")
+    def get_turn(brain_id: str, turn_id: str, principal: Principal = Depends(authenticate)):
+        return runtime_metadata(turn_store().get(principal, brain_id, turn_id))
+
+    @app.get("/v1/brains/{brain_id}/runtime/turns/{turn_id}/sources")
+    def turn_sources(brain_id: str, turn_id: str, principal: Principal = Depends(authenticate)):
+        return turn_store().sources(principal, brain_id, turn_id)
+
+    @app.get("/v1/brains/{brain_id}/runtime/turns/{turn_id}/history")
+    def turn_history(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        fields = {"revision", "stage", "operation", "fence", "failure_code", "occurred_at"}
+        return {"history": [
+            {key: value for key, value in record.items() if key in fields}
+            for record in turn_store().history(
+                principal, brain_id, turn_id, limit=runtime_limit(request),
+            )
+        ]}
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/claim")
+    async def claim_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeClaim)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().claim, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result, include_lease=True)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/renew")
+    async def renew_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeRenew)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().renew, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/advance")
+    async def advance_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeAdvance)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().advance, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/output")
+    async def record_turn_output(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeOutput)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().record_output, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/release")
+    async def release_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeLeaseMutation)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().release, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/fail")
+    async def fail_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeFail)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().fail, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/finish")
+    async def finish_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeLeaseMutation)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().finish, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
 
     @app.get("/v1/archives/{archive_id}")
     def download_archive(archive_id: str, principal: Principal = Depends(authenticate)):

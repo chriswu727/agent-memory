@@ -1,8 +1,8 @@
 {
   "contract_version": "1.0.0-draft",
-  "status": "target_specification_not_implemented",
+  "status": "target_specification_partially_implemented",
   "title": "Headless Autonomous Agent Memory Runtime",
-  "description": "规定自主记忆产品与宿主的运行责任。此文件不新增已实现的 HTTP 或 MCP 方法，也不把当前底层服务声明为完整自主大脑。",
+  "description": "规定自主记忆产品与宿主的运行责任。同步文本生命周期已实现，完整认知控制器仍为目标；此文件不能作为全部能力已经完成的声明。",
   "product_boundary": {
     "primary_deliverable": "运行在 Agent 推理生命周期中的持久认知记忆运行时",
     "management_ui_required": false,
@@ -29,28 +29,40 @@
       "trigger": "宿主收到输入、工具结果或外部反馈",
       "owner": "lifecycle_adapter",
       "behavior": "可靠捕获真实事件，区分草稿、计划、表达和实际结果；不依赖主 Agent 判断是否调用保存工具",
-      "existing_primitives": ["observe"]
+      "existing_primitives": [
+        "observe"
+      ]
     },
     {
       "stage": "orient_and_recall",
       "trigger": "推理前或本轮出现新的信息缺口",
       "owner": "cognitive_controller",
       "behavior": "结合当前目标、指代、关系和未完事项形成回忆需求，激活候选，检查证据；在总预算内继续寻找、澄清或停止",
-      "existing_primitives": ["prepare", "recall", "inspect"]
+      "existing_primitives": [
+        "prepare",
+        "recall",
+        "inspect"
+      ]
     },
     {
       "stage": "compose_context",
       "trigger": "模型即将推理",
       "owner": "context_manager",
       "behavior": "从持久状态构造有限工作区，保留来源、时间和未知；压缩临时上下文不改变长期记忆的事实来源",
-      "existing_primitives": ["prepare"]
+      "existing_primitives": [
+        "prepare"
+      ]
     },
     {
       "stage": "reconcile_results",
       "trigger": "收到交付确认、工具执行结果或取消信号",
       "owner": "lifecycle_adapter_and_cognitive_controller",
       "behavior": "提交真实结果，更新工作状态、未完事项及有证据的学习候选；模型自述成功不等于执行成功",
-      "existing_primitives": ["observe", "commit", "correct"]
+      "existing_primitives": [
+        "observe",
+        "commit",
+        "correct"
+      ]
     },
     {
       "stage": "consolidate",
@@ -64,7 +76,10 @@
       "trigger": "进程重启、会话恢复或上下文重建",
       "owner": "lifecycle_adapter",
       "behavior": "从持久状态恢复，不要求用户重复讲述或手动重新导入；恢复旧数据前应用当前删除与更正约束",
-      "existing_primitives": ["checkpoint", "prepare"]
+      "existing_primitives": [
+        "checkpoint",
+        "prepare"
+      ]
     }
   ],
   "development_observability": {
@@ -76,10 +91,23 @@
       "按权限展开来源、版本和策略以解释某次记忆决策"
     ],
     "trace_fields": [
-      "trace_id", "turn_id", "brain_id", "stage", "event_kind", "occurred_at",
-      "input_event_ids", "selected_memory_versions", "snapshot_revision",
-      "policy_version", "provider_version", "reason_code", "outcome",
-      "budget", "usage", "latency_ms", "error_code"
+      "trace_id",
+      "turn_id",
+      "brain_id",
+      "stage",
+      "event_kind",
+      "occurred_at",
+      "input_event_ids",
+      "selected_memory_versions",
+      "snapshot_revision",
+      "policy_version",
+      "provider_version",
+      "reason_code",
+      "outcome",
+      "budget",
+      "usage",
+      "latency_ms",
+      "error_code"
     ],
     "diagnostic_questions": [
       "这一轮为何想起这些记忆，证据来自哪里？",
@@ -102,8 +130,29 @@
     "只有工具连接的宿主不能被标记为 full_lifecycle"
   ],
   "current_implementation": {
-    "available": ["底层事件与版本存储", "词法线索回忆", "预算工作区", "来源约束", "更正删除", "HTTP/SDK/MCP 底层接口"],
-    "remaining": ["自动宿主适配器", "情境理解与回忆控制器", "完整上下文生命周期管理", "语义巩固", "关联与活跃度调度", "方法与未完事项学习", "统一结构化运行日志接口"],
-    "full_runtime_acceptance_executed": false
+    "available": [
+      "底层事件与版本存储",
+      "词法线索回忆",
+      "预算工作区",
+      "来源约束",
+      "更正删除",
+      "HTTP/SDK/MCP 底层接口",
+      "Python 同步文本自动生命周期",
+      "持久轮次、租约与原子输出捕获",
+      "鉴权状态与阶段日志接口",
+      "生成输出的来源依赖与删除传播"
+    ],
+    "remaining": [
+      "工具循环、流式与宿主消息修订适配器",
+      "情境理解与回忆控制器",
+      "完整上下文生命周期管理",
+      "语义巩固",
+      "关联与活跃度调度",
+      "方法与未完事项学习",
+      "完整决策、成本与延迟观测"
+    ],
+    "full_runtime_acceptance_executed": false,
+    "adapter_guarantee": "partial_automation",
+    "verification": "Deterministic callbacks and real PostgreSQL; no paid model or full cognitive benchmark executed."
   }
 }

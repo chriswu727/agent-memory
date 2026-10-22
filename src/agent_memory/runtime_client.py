@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from typing import Any
+from urllib.parse import quote
+
+from .client import JsonObject, MemoryClient
+
+
+class RuntimeClient:
+    def __init__(self, memory: MemoryClient):
+        self.memory = memory
+
+    def _path(self, turn_id: str | None = None, operation: str | None = None) -> str:
+        brain_id = self.memory._scope()["brain_ref"]
+        path = f"v1/brains/{quote(brain_id, safe='')}/runtime/turns"
+        if turn_id is not None:
+            path += f"/{quote(turn_id, safe='')}"
+        if operation is not None:
+            path += f"/{operation}"
+        return path
+
+    def _post(self, turn_id: str, operation: str, **payload: Any) -> JsonObject:
+        return self.memory._request(
+            "POST", self._path(turn_id, operation),
+            json={key: value for key, value in payload.items() if value is not None},
+        )
+
+    def begin(
+        self, *, turn_id: str, conversation_id: str, branch_id: str, input_fingerprint: str,
+    ) -> JsonObject:
+        return self.memory._request("POST", self._path(), json={
+            "turn_id": turn_id, "conversation_id": conversation_id,
+            "branch_id": branch_id, "input_fingerprint": input_fingerprint,
+        })
+
+    def get(self, turn_id: str) -> JsonObject:
+        return self.memory._request("GET", self._path(turn_id))
+
+    def sources(self, turn_id: str) -> JsonObject:
+        return self.memory._request("GET", self._path(turn_id, "sources"))
+
+    def list(self, *, limit: int = 100) -> list[JsonObject]:
+        result = self.memory._request("GET", self._path(), params={"limit": limit})
+        return self._records(result, "turns")
+
+    def history(self, turn_id: str, *, limit: int = 100) -> list[JsonObject]:
+        result = self.memory._request(
+            "GET", self._path(turn_id, "history"), params={"limit": limit},
+        )
+        return self._records(result, "history")
+
+    @staticmethod
+    def _records(result: JsonObject, key: str) -> list[JsonObject]:
+        records = result.get(key)
+        if not isinstance(records, list) or any(not isinstance(item, dict) for item in records):
+            raise ValueError(f"Runtime API returned an invalid {key} collection")
+        return records
+
+    def status(self) -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/status")
+
+    def claim(
+        self, turn_id: str, *, worker_id: str, lease_seconds: int = 30,
+        expected_revision: int | None = None,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "claim", worker_id=worker_id, lease_seconds=lease_seconds,
+            expected_revision=expected_revision,
+        )
+
+    def renew(
+        self, turn_id: str, *, lease_token: str, lease_seconds: int = 30,
+        expected_revision: int | None = None,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "renew", lease_token=lease_token, lease_seconds=lease_seconds,
+            expected_revision=expected_revision,
+        )
+
+    def advance(
+        self, turn_id: str, *, lease_token: str, expected_revision: int, stage: str,
+        input_event_refs: Sequence[Mapping[str, Any]] | None = None,
+        output_event_refs: Sequence[Mapping[str, Any]] | None = None,
+        context_event_refs: Sequence[Mapping[str, Any]] | None = None,
+        context_fingerprint: str | None = None, context_generation: int | None = None,
+        working_revision: int | None = None, durable_sequence: int | None = None,
+        context_tokens: int | None = None,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "advance", lease_token=lease_token, expected_revision=expected_revision,
+            stage=stage,
+            input_event_refs=[dict(ref) for ref in input_event_refs] if input_event_refs is not None else None,
+            output_event_refs=[dict(ref) for ref in output_event_refs] if output_event_refs is not None else None,
+            context_event_refs=[dict(ref) for ref in context_event_refs] if context_event_refs is not None else None,
+            context_fingerprint=context_fingerprint, context_generation=context_generation,
+            working_revision=working_revision, durable_sequence=durable_sequence,
+            context_tokens=context_tokens,
+        )
+
+    def record_output(
+        self, turn_id: str, *, lease_token: str, expected_revision: int,
+        text: str, delivery_state: str,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "output", lease_token=lease_token, expected_revision=expected_revision,
+            text=text, delivery_state=delivery_state,
+        )
+
+    def release(self, turn_id: str, *, lease_token: str, expected_revision: int) -> JsonObject:
+        return self._post(
+            turn_id, "release", lease_token=lease_token, expected_revision=expected_revision,
+        )
+
+    def fail(
+        self, turn_id: str, *, lease_token: str, expected_revision: int, failure_code: str,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "fail", lease_token=lease_token, expected_revision=expected_revision,
+            failure_code=failure_code,
+        )
+
+    def finish(self, turn_id: str, *, lease_token: str, expected_revision: int) -> JsonObject:
+        return self._post(
+            turn_id, "finish", lease_token=lease_token, expected_revision=expected_revision,
+        )

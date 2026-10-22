@@ -179,6 +179,24 @@ class MemoryService:
         ).fetchall()
         return sorted({row["id"] for row in rows})
 
+    def _dependent_events(self, conn, principal, brain, event_ids):
+        params = self._params(principal, brain["id"])
+        return {row["id"] for row in conn.execute(
+            "WITH RECURSIVE affected(id) AS (SELECT unnest(%s::text[]) UNION "
+            "SELECT d.output_event_id FROM memory_event_dependencies d JOIN affected a "
+            "ON d.input_event_id=a.id WHERE d.tenant_id=%s AND d.owner_id=%s AND d.brain_id=%s) "
+            "SELECT id FROM affected", (list(event_ids), *params),
+        )}
+
+    def _retire_dependent_events(self, conn, principal, brain, event_ids):
+        descendants = self._dependent_events(conn, principal, brain, event_ids) - set(event_ids)
+        conn.execute(
+            "UPDATE memory_events SET retired=true WHERE tenant_id=%s AND owner_id=%s "
+            "AND brain_id=%s AND id=ANY(%s::text[])",
+            (*self._params(principal, brain["id"]), list(descendants)),
+        )
+        return descendants
+
     def _append_event(self, conn, principal, brain, target, incoming, *, event_id=None, imported=False):
         params = self._params(principal, brain["id"])
         previous = conn.execute(
@@ -204,7 +222,8 @@ class MemoryService:
                 "UPDATE memory_events SET is_current=false WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                 (*params, previous["id"]),
             )
-            self._invalidate(conn, principal, brain, event_ids=[previous["id"]])
+            descendants = self._retire_dependent_events(conn, principal, brain, [previous["id"]])
+            self._invalidate(conn, principal, brain, event_ids=[previous["id"], *descendants])
             self._advance(conn, principal, brain)
         brain["durable_sequence"] += 1
         document = {
@@ -674,7 +693,9 @@ class MemoryService:
             if any(cognition.evidence_overlaps(reference, old)
                    for reference in candidate["document"]["evidence_refs"] for old in old_evidence):
                 affected_ids.add(candidate["id"])
-        invalidated = self._invalidate(conn, principal, brain, memory_ids=sorted(affected_ids))
+        descendants = self._retire_dependent_events(conn, principal, brain, row["event_ids"])
+        invalidated = self._invalidate(conn, principal, brain, event_ids=descendants,
+                                       memory_ids=sorted(affected_ids))
         conn.execute(
             "UPDATE memory_assertions SET is_current=false WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
             (*params, row["id"]),
@@ -725,6 +746,7 @@ class MemoryService:
                 (*params, ids) if kind != "all_authorized_scope" else params,
             ).fetchall()
             event_ids.update(row["id"] for row in rows)
+        event_ids = self._dependent_events(conn, principal, brain, event_ids)
         memory_ids.update(self._invalidate(conn, principal, brain, event_ids, memory_ids))
         self._advance(conn, principal, brain, scope=True)
         for object_kind, object_ids in (("event", event_ids), ("memory", memory_ids)):
@@ -775,6 +797,11 @@ class MemoryService:
         identities = {e["event_id"] for e in data["events"]}
         identities.update(m["memory_id"] for m in data["memories"])
         identities.update(r["event_id"] for m in data["memories"] for r in m["evidence_refs"])
+        identities.update(value for edge in data.get("event_dependencies", []) for value in edge.values())
+        identities.update(r["event_id"] for m in data["memories"]
+                          for path in m["disclosure_basis"]["support_paths"] for r in path["evidence_refs"])
+        identities.update(r["event_id"] for state in data["working_states"] for field in ("items", "open_loops")
+                          for item in state[field] for r in item["evidence_refs"])
         tombstones = [dict(row) for row in conn.execute(
             "SELECT object_kind,object_id,mode FROM memory_tombstones "
             "WHERE tenant_id=%s AND owner_id=%s AND object_id=ANY(%s::text[])",
@@ -784,6 +811,12 @@ class MemoryService:
                          if t["object_kind"] == "event" and t["mode"] == "erase_content"}
         erased_memories = {t["object_id"] for t in tombstones
                            if t["object_kind"] == "memory" and t["mode"] == "erase_content"}
+        edges = data.get("event_dependencies", [])
+        while True:
+            descendants = {edge["output_event_id"] for edge in edges if edge["input_event_id"] in erased_events}
+            if descendants.issubset(erased_events):
+                break
+            erased_events.update(descendants)
         removed_events = {e["event_id"] for e in data["events"] if e["event_id"] in erased_events}
         while True:
             invalidated = {
@@ -798,10 +831,15 @@ class MemoryService:
         original_memory_count = len(data["memories"])
         data["events"] = [e for e in data["events"] if e["event_id"] not in erased_events]
         data["memories"] = [m for m in data["memories"] if m["memory_id"] not in erased_memories]
-        if removed_events or len(data["memories"]) != original_memory_count:
+        working_affected = any(r["event_id"] in erased_events for state in data["working_states"]
+                               for field in ("items", "open_loops") for item in state[field]
+                               for r in item["evidence_refs"])
+        if removed_events or len(data["memories"]) != original_memory_count or working_affected:
             data["working_states"] = []
         data["excluded_deleted_event_ids"] = sorted(set(data.get("excluded_deleted_event_ids", [])) | removed_events)
         data["retired_event_ids"] = [i for i in data.get("retired_event_ids", []) if i not in erased_events]
+        tombstones.extend({"object_kind": "event", "object_id": event_id, "mode": "erase_content"}
+                          for event_id in removed_events)
         data["tombstones"] = list({(t["object_kind"], t["object_id"], t["mode"]): t for t in tombstones}.values())
         return data
 
@@ -846,6 +884,9 @@ class MemoryService:
                 "source_brain_id": brain["id"], "created_at": now()}
         data["retired_event_ids"] = [r["id"] for r in conn.execute(
             "SELECT DISTINCT id FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND retired", params)]
+        data["event_dependencies"] = [dict(row) for row in conn.execute(
+            "SELECT input_event_id,output_event_id FROM memory_event_dependencies "
+            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s", params)]
         self._validate_archive(data)
         data = self._sanitize_archive(conn, principal, data)
         archive_id, manifest = uid(), digest(data)
@@ -888,6 +929,14 @@ class MemoryService:
         excluded = document.get("excluded_deleted_event_ids", [])
         if not isinstance(excluded, list) or not all(isinstance(x, str) for x in excluded):
             raise DomainError("invalid_archive", "Invalid excluded source manifest.")
+        edges = document.get("event_dependencies", [])
+        if not isinstance(edges, list) or len(edges) > 100000:
+            raise DomainError("invalid_archive", "Invalid event dependency manifest.")
+        for edge in edges:
+            if (not isinstance(edge, dict) or set(edge) != {"input_event_id", "output_event_id"}
+                    or any(not isinstance(value, str) or not 1 <= len(value) <= 256 for value in edge.values())
+                    or edge["input_event_id"] == edge["output_event_id"]):
+                raise DomainError("invalid_archive", "Invalid event dependency manifest.")
         by_id = {m["memory_id"]: m for m in document["memories"]}
         visiting, visited = set(), set()
         def visit(memory_id):
@@ -935,6 +984,12 @@ class MemoryService:
         )] + data["tombstones"]
         blocked_events = {t["object_id"] for t in tombstones if t["object_kind"] == "event"}
         blocked_memories = {t["object_id"] for t in tombstones if t["object_kind"] == "memory"}
+        while True:
+            descendants = {edge["output_event_id"] for edge in data.get("event_dependencies", [])
+                           if edge["input_event_id"] in blocked_events}
+            if descendants.issubset(blocked_events):
+                break
+            blocked_events.update(descendants)
         self._advance(conn, principal, brain, scope=True)
         for tombstone in tombstones:
             conn.execute(
@@ -965,6 +1020,13 @@ class MemoryService:
                 conn.execute("UPDATE memory_events SET retired=true WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                              (*params, event["event_id"]))
             imported += 1
+        if data.get("event_dependencies"):
+            conn.cursor().executemany(
+                "INSERT INTO memory_event_dependencies(tenant_id,owner_id,brain_id,input_event_id,output_event_id) "
+                "VALUES(%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
+                [(*params, edge["input_event_id"], edge["output_event_id"])
+                 for edge in data["event_dependencies"]],
+            )
         available = self._events(conn, principal, brain, event_ids=[e["event_id"] for e in data["events"]], limit=5000)
         lookup = {e["event_id"]: e for e in available}
         for memory in data["memories"]:

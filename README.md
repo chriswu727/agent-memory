@@ -2,7 +2,7 @@
 
 一个独立于模型、无界面的 Agent 记忆运行时。目标是让宿主接入一次后，运行时持续管理 Agent 的工作记忆、长期认识和回忆过程。普通用户正常交流即可；主 Agent 不需要主动调用保存或搜索工具，系统也必须正常形成和使用记忆。
 
-完整目标见 [架构与验收规范](architecture/architecture.html)，产品边界与宿主责任见 [自主记忆运行契约](architecture/autonomous-runtime.contract.json)。当前已实现底层记忆服务；自动生命周期接入和完整认知控制器仍待实现，不能把当前低层接口描述为已经完成的自主大脑。
+完整目标见 [架构与验收规范](architecture/architecture.html)，产品边界与宿主责任见 [自主记忆运行契约](architecture/autonomous-runtime.contract.json)。当前已实现底层记忆服务和同步文本自动生命周期适配器；情境理解、联想、语义巩固等认知控制器仍待实现。自动存取不等于完整自主大脑。
 
 ## 产品与接入目标
 
@@ -37,6 +37,48 @@ uv run agent-memory worker
 服务地址为 <http://127.0.0.1:8787>，访问密钥保存在 `.local/access-token`。当前开发工作台也在此地址，可用于手工检查底层行为；目标产品不要求打开它。`init` 只运行一次；配置存在时不会覆盖。`.env` 与 `.local/` 包含本机凭据，已排除在版本管理之外。
 
 数据库默认绑定 `127.0.0.1:55432`，HTTP 服务绑定 `127.0.0.1:8787`。工作台、API 与后台处理器共用一个内核。可用 `uv run agent-memory worker --once` 手动处理每个大脑的一项待处理工作。`docker compose down` 停止数据库而保留数据卷；不要使用 `down -v`，除非确实要删除整个数据库。
+
+## 自动接入
+
+Python 的 `BrainRuntime` 接管同步文本轮次。宿主初始化一次，提供模型生成函数和实际发送函数；业务层只提交收到的消息，不调用记忆工具或逐轮编排存取：
+
+```python
+from agent_memory.runtime import BrainRuntime, DeliveryReceipt
+
+def generate(request):
+    return model.generate(messages=list(request.messages))
+
+def deliver(request):
+    channel.send(request.text)
+    return DeliveryReceipt("delivered")
+
+runtime = BrainRuntime(memory, generate, deliver=deliver, instructions=agent_instructions)
+result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
+```
+
+上例的 `memory` 是绑定固定 `brain_id` 的 `MemoryClient`；`model`、`channel` 和身份来自宿主。生成函数必须使用运行时提供的 `messages`，其中保留宿主系统指令，加入有来源和预算的记忆资料及当前输入。`message_id` 是宿主收到消息时持久分配的标识，重试必须不变；新进程使用同一个大脑身份即可重新接入。可运行的无模型示例见 [examples/autonomous.py](examples/autonomous.py)。
+
+运行时自动执行输入落盘、回答前回忆、草稿保存、交付确认、有效工作状态保留与 checkpoint。每轮使用租约和修订检查；草稿写入和阶段推进、交付记录和阶段推进各自在同一事务中。`runtime.resume(turn_id)` 从持久阶段继续，完成过的轮次直接返回已交付结果，不重新生成或发送。工作状态当前只保留已验证内容，不自动推断新的计划或任务完成状态。
+
+只有宿主确认实际发送后才能返回 `delivered`；部分发送使用 `DeliveryReceipt("partially_delivered", delivered_text=actual_text)`，取消使用 `cancelled`，发送结果无法确认使用 `unknown`。没有发送函数时停在 `generated`，草稿不进入回忆。`delivered` 指宿主确认交付，不声称用户已经读过消息。
+
+外部模型调用或发送的结果不明确时，默认停止并报告 `generation_uncertain` / `delivery_uncertain`。仅当宿主根据 `request_id` / `delivery_id` 实现了持久去重或结果查询，才可开启 `generation_is_idempotent=True` / `delivery_is_idempotent=True`。普通 HTTP 重试、打印输出或一般模型 API 本身不能保证这个性质。租约失效可阻止后续存储与调用，但不能撤销已经进入外部系统的请求。删除或更正同样不能收回已经提供给模型或发送渠道的内容；后续生成结果会被重新检查。
+
+`RuntimePolicy` 分别限制记忆资料与完整消息预算，使用 UTF-8 字节数保守估计；宿主应按模型的总窗口为输出和模型协议开销预留空间。当前文本输出服务上限为 64,000 字节。同步适配器不处理工具循环、流式消息、自动消息编辑、上下文压缩或多个并行轮次的分支合并，其能力明确标记为 `partial_automation`。
+
+## 开发监控接口
+
+接口使用与记忆服务一致的 Bearer 认证：
+
+| GET 路径（前缀 `/v1/brains/{brain_id}/runtime`） | 内容 |
+| --- | --- |
+| `/status` | 持久化与索引进度、待处理任务数、轮次阶段、活动租约数 |
+| `/turns?limit=100` | 最近轮次，最多 200 条 |
+| `/turns/{turn_id}` | 当前阶段、修订、来源版本、上下文占用、恢复状态 |
+| `/turns/{turn_id}/history?limit=100` | 有序阶段日志，最多 200 条 |
+| `/turns/{turn_id}/sources` | 单独按权限展开当前有效输入和输出 |
+
+监控记录不复制正文，也不保存租约凭证或隐藏推理。来源更正后依赖输出退出有效回忆；擦除来源时递归擦除派生输出，并过滤服务器持有的导出档案。档案保留事件依赖供恢复后继续执行删除约束；运行中的租约和未完成轮次不随记忆档案迁移。完整回忆决策解释、模型成本和延迟指标仍待认知控制器接入。
 
 ## 当前底层接口
 
@@ -85,8 +127,8 @@ MCP 允许模型主动回忆和提交有来源标记的笔记。它不会自动�
 | 整理 | 确定性的经历捕获，保留说话人、表达性质和原文；不是模型语义提炼 |
 | 更正与删除 | 版本更新、同步失效、派生依赖清理、档案恢复时检查删除记录 |
 | 隔离 | 服务端身份绑定、应用查询过滤、PostgreSQL 强制行级隔离 |
-| 接入 | HTTP、Python、TypeScript、MCP stdio |
-| 开发辅助 | 可移除的本地工作台；当前诊断接口尚不构成完整 monitoring/logging 接口 |
+| 接入 | Python 同步文本自动运行时；HTTP、Python、TypeScript、MCP 底层操作 |
+| 开发辅助 | 鉴权状态、轮次与阶段日志、独立来源展开；可移除的本地工作台 |
 
 语义模型提炼、跨经历概括、学习程序性方法、条件触发的前瞻记忆、经过校准的衰减与关联传播、多模态理解、宿主插件、云端账号与共享权限仍需实现和验证。当前仅支持拥有者私有范围；共享集合请求会明确拒绝。数据库装有 pgvector，当前候选向量是带版本标识的词法特征哈希，不是语义 embedding。
 
