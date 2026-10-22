@@ -1,0 +1,13 @@
+.venv/
+.env
+.local/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+node_modules/
+.DS_Store
+coverage.xml
+.coverage

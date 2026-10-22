@@ -1,0 +1,4245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-memory:contract:1.0.0-draft",
+  "title": "Agent Memory Contract — Architecture Specification",
+  "description": "设计规范，不表示服务、协议适配或任何验收已实现。结构校验只覆盖 JSON 层；身份绑定、权限、来源真实性、引用存在、时间一致性、跨字段预算与恢复删除约束必须由运行时和验收验证。",
+  "x-design-status": "target_specification",
+  "x-fixed-actions": [
+    "observe",
+    "prepare",
+    "recall",
+    "inspect",
+    "commit",
+    "checkpoint",
+    "correct",
+    "forget",
+    "export",
+    "restore"
+  ],
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ActionRequest"
+    },
+    {
+      "$ref": "#/$defs/ActionResponse"
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "TimeRange": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "end": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "precision": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "day",
+            "month",
+            "year",
+            "approximate",
+            "unknown"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "source_explicit",
+            "source_relative_resolved",
+            "inferred",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "precision",
+        "basis"
+      ],
+      "additionalProperties": false,
+      "description": "事件发生或陈述有效的时间范围；未知边界使用 null，不以录入时间冒充发生时间。非空 end 不得早于 start，需运行时验证。"
+    },
+    "SystemTime": {
+      "type": "object",
+      "properties": {
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "superseded_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "recorded_at",
+        "superseded_at"
+      ],
+      "additionalProperties": false,
+      "description": "服务器记录和取代该版本的时间，与现实世界的有效时间分离。"
+    },
+    "ScopeSelector": {
+      "type": "object",
+      "properties": {
+        "brain_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "conversation_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "branch_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "collection_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "brain_ref"
+      ],
+      "additionalProperties": false,
+      "description": "客户端请求的目标范围，不是身份声明。服务端必须将其与已认证 principal 的许可相交；不得从客户端 user_id、tenant_id 或脑内文本取得权限。"
+    },
+    "BoundScope": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "brain_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "principal_binding_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "conversation_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "private",
+            "conversation",
+            "explicit_shared"
+          ]
+        },
+        "access_policy_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "policy_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "tenant_id",
+        "brain_id",
+        "principal_binding_id",
+        "conversation_id",
+        "branch_id",
+        "visibility",
+        "access_policy_id",
+        "policy_revision",
+        "scope_generation"
+      ],
+      "additionalProperties": false,
+      "description": "仅服务器生成的授权上下文。身份、策略和可见范围不能由语言模型填写后生效；导入时重新绑定。"
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "event_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "span": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "end": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unit": {
+              "const": "unicode_code_point"
+            }
+          },
+          "required": [
+            "start",
+            "end",
+            "unit"
+          ],
+          "additionalProperties": false
+        },
+        "source_content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "relationship": {
+          "type": "string",
+          "enum": [
+            "supports",
+            "contradicts",
+            "corrects",
+            "context_only"
+          ]
+        }
+      },
+      "required": [
+        "event_id",
+        "event_revision",
+        "source_content_sha256",
+        "relationship"
+      ],
+      "additionalProperties": false,
+      "description": "指向已经存在且调用方有权读取的事件版本。span 需在来源长度内；end 大于 start。引用有效性、授权和哈希须运行时校验，引用不等于来源陈述已被证实。"
+    },
+    "EventContent": {
+      "type": "object",
+      "properties": {
+        "media_type": {
+          "type": "string",
+          "enum": [
+            "text/plain",
+            "application/json",
+            "artifact/reference"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "structured": {
+          "type": "object"
+        },
+        "artifact_ref": {
+          "$ref": "#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "media_type"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "media_type": {
+                "const": "text/plain"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "text"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "media_type": {
+                "const": "application/json"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "structured"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "media_type": {
+                "const": "artifact/reference"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "artifact_ref"
+            ]
+          }
+        }
+      ]
+    },
+    "ObservedEventInput": {
+      "type": "object",
+      "properties": {
+        "source_event_key": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "source_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "producer_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "actor_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "actor_role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "tool",
+            "operator",
+            "system",
+            "external"
+          ]
+        },
+        "event_kind": {
+          "type": "string",
+          "enum": [
+            "message",
+            "tool_result",
+            "artifact",
+            "feedback",
+            "message_edit",
+            "delivery_receipt",
+            "source_correction"
+          ]
+        },
+        "content": {
+          "$ref": "#/$defs/EventContent"
+        },
+        "occurred_time": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "received_at_client": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "interpretation_hint": {
+          "type": "string",
+          "enum": [
+            "real_world_report",
+            "quotation",
+            "roleplay",
+            "hypothetical",
+            "dream",
+            "unknown"
+          ]
+        },
+        "delivery_state": {
+          "type": "string",
+          "enum": [
+            "received",
+            "delivered",
+            "partially_delivered",
+            "draft",
+            "cancelled",
+            "unknown"
+          ]
+        },
+        "parent_source_event_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "speech_act_hint": {
+          "type": "string",
+          "enum": [
+            "direct_statement",
+            "inquiry",
+            "presupposition",
+            "correction",
+            "confirmation",
+            "instruction",
+            "unknown",
+            "not_applicable"
+          ]
+        }
+      },
+      "required": [
+        "source_event_key",
+        "source_revision",
+        "producer_ref",
+        "actor_ref",
+        "actor_role",
+        "event_kind",
+        "content",
+        "occurred_time",
+        "interpretation_hint",
+        "delivery_state"
+      ],
+      "additionalProperties": false,
+      "description": "宿主提交实际接收、生成或交付的记录。producer 和 actor 必须与已授权适配器映射校验；客户端标签只是声明，不授予真实事件或权威事实地位。相同幂等键且内容不同必须冲突。"
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "observed": {
+          "$ref": "#/$defs/ObservedEventInput"
+        },
+        "system_time": {
+          "$ref": "#/$defs/SystemTime"
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "user_statement",
+            "assistant_output",
+            "tool_observation",
+            "document_import",
+            "external_message",
+            "operator_correction",
+            "system_observation"
+          ]
+        },
+        "origin_verification": {
+          "type": "string",
+          "enum": [
+            "verified_producer",
+            "unverified_import",
+            "unknown"
+          ]
+        },
+        "previous_revision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "utterance_segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UtteranceSegment"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "event_id",
+        "revision",
+        "sequence",
+        "scope",
+        "observed",
+        "system_time",
+        "content_sha256",
+        "origin",
+        "origin_verification",
+        "previous_revision",
+        "utterance_segments"
+      ],
+      "additionalProperties": false,
+      "description": "服务器认可的记录：确认谁提交了什么，不自动确认内容客观真实。草稿、取消输出与已经送达的消息必须区分；事件的删除由专门擦除流程处理。 utterance_segments 是可修正的来源解释，不是客观事实认证；混合提问和陈述需按区段解释，模型及适配器的提示不能直接授予确认地位。"
+    },
+    "MemoryDynamics": {
+      "type": "object",
+      "properties": {
+        "activation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "retention_priority": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "detail_level": {
+          "type": "string",
+          "enum": [
+            "verbatim",
+            "episode",
+            "gist",
+            "index_only"
+          ]
+        },
+        "last_external_reinforcement_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "last_recalled_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "decay_policy_version": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "user_pinned": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "explicit_user_request",
+              "validated_outcome",
+              "external_repetition",
+              "distinctive_event",
+              "open_commitment",
+              "current_relevance",
+              "default_policy"
+            ]
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "activation",
+        "retention_priority",
+        "detail_level",
+        "last_external_reinforcement_at",
+        "last_recalled_at",
+        "decay_policy_version",
+        "user_pinned",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "description": "活跃度、保留价值、细节程度分别控制；数值均非真实性概率。模型复述自己的陈述不能增加证据强度；用户删除优先于置顶。 candidate_hit 不增真实性或保留价值；context_selected、quoted、background_influence 至多影响短期活跃度。只有经独立来源验证的外部反馈才可触发重新评估，且提及次数不能代替证据。"
+    },
+    "MemoryAssertion": {
+      "type": "object",
+      "properties": {
+        "memory_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "memory_kind": {
+          "type": "string",
+          "enum": [
+            "episodic",
+            "semantic",
+            "prospective",
+            "procedural",
+            "interaction_preference",
+            "relationship",
+            "self_model"
+          ]
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epistemic_status": {
+          "type": "string",
+          "enum": [
+            "supported_report",
+            "observed_result",
+            "derived_inference",
+            "disputed",
+            "unknown"
+          ]
+        },
+        "world": {
+          "type": "string",
+          "enum": [
+            "real_world",
+            "quoted",
+            "roleplay",
+            "hypothetical",
+            "dream",
+            "unknown"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "valid_time": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "system_time": {
+          "$ref": "#/$defs/SystemTime"
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "active",
+            "dormant",
+            "superseded",
+            "retracted"
+          ]
+        },
+        "supersedes_memory_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "derivation": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": [
+                "direct_capture",
+                "extraction",
+                "aggregation",
+                "human_correction",
+                "verified_procedure"
+              ]
+            },
+            "rule_version": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "model_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_memory_versions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "memory_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "memory_id",
+                  "revision"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "method",
+            "rule_version",
+            "model_version",
+            "source_memory_versions"
+          ],
+          "additionalProperties": false
+        },
+        "dynamics": {
+          "$ref": "#/$defs/MemoryDynamics"
+        },
+        "disclosure_basis": {
+          "$ref": "#/$defs/DisclosureBasis"
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "scope",
+        "memory_kind",
+        "statement",
+        "epistemic_status",
+        "world",
+        "evidence_refs",
+        "valid_time",
+        "system_time",
+        "lifecycle",
+        "supersedes_memory_ids",
+        "derivation",
+        "dynamics",
+        "disclosure_basis"
+      ],
+      "additionalProperties": false,
+      "description": "从事件形成的可修正陈述，与 Event 严格分离。supported_report 只表示有据可查的陈述，不是客观事实认证；未知认识可无证据。 每个派生版本还需通过 disclosure_basis 验证实际支持路径的权限；文字概括、图关系和向量命中均不能扩大来源可披露范围。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "epistemic_status": {
+                "enum": [
+                  "supported_report",
+                  "observed_result",
+                  "derived_inference",
+                  "disputed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "epistemic_status": {
+                "enum": [
+                  "supported_report",
+                  "observed_result",
+                  "derived_inference",
+                  "disputed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "disclosure_basis": {
+                "properties": {
+                  "support_paths": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "WorkingItem": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "value": {},
+        "knowledge_state": {
+          "type": "string",
+          "enum": [
+            "grounded",
+            "inferred",
+            "unknown"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "key",
+        "value",
+        "knowledge_state",
+        "evidence_refs",
+        "expires_at",
+        "updated_at"
+      ],
+      "additionalProperties": false,
+      "description": "工作记忆可表达当前主题、指代、交流需求或未知值；只有可依据既有数据的状态才附证据。unknown 不应伪造引用。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "knowledge_state": {
+                "const": "grounded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "knowledge_state": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "OpenLoop": {
+      "type": "object",
+      "properties": {
+        "loop_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "planned",
+            "in_progress",
+            "completed",
+            "cancelled",
+            "unknown"
+          ]
+        },
+        "due_time": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "last_updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "loop_id",
+        "description",
+        "state",
+        "due_time",
+        "evidence_refs",
+        "last_updated_at"
+      ],
+      "additionalProperties": false,
+      "description": "意图、计划和实际完成分开表示；到期不自动转成已发生。未知状态允许空证据。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "proposed",
+                  "planned",
+                  "in_progress",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "WorkingState": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkingItem"
+          },
+          "minItems": 0
+        },
+        "open_loops": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OpenLoop"
+          },
+          "minItems": 0
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "scope",
+        "revision",
+        "through_sequence",
+        "items",
+        "open_loops",
+        "updated_at"
+      ],
+      "additionalProperties": false,
+      "description": "会话分支局部的工作状态；空 items 和 open_loops 是合法初始状态。修订必须用 compare-and-swap 防止并发覆盖。"
+    },
+    "Budget": {
+      "type": "object",
+      "properties": {
+        "max_context_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_model_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_embedding_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_expansion_steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_wall_time_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_cost_microunits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "token_counting": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "conservative_estimate"
+          ]
+        },
+        "tokenizer_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "max_context_tokens",
+        "max_model_calls",
+        "max_embedding_calls",
+        "max_expansion_steps",
+        "max_wall_time_ms",
+        "max_cost_microunits",
+        "currency",
+        "token_counting",
+        "tokenizer_id"
+      ],
+      "additionalProperties": false,
+      "description": "调用方上限与租户上限取更严者。成本包括本次触发的模型、嵌入及后台工作预留；未知计价不得声明低于预算。没有目标 tokenizer 时明确采用保守估计。"
+    },
+    "Usage": {
+      "type": "object",
+      "properties": {
+        "context_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "token_counting": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "conservative_estimate"
+          ]
+        },
+        "model_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "embedding_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expansion_steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "actual_cost_microunits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reserved_background_cost_microunits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "stopped_by": {
+          "type": "string",
+          "enum": [
+            "sufficient_evidence",
+            "no_candidates",
+            "context_limit",
+            "model_call_limit",
+            "embedding_call_limit",
+            "expansion_limit",
+            "deadline",
+            "cost_limit",
+            "unavailable_dependency",
+            "completed"
+          ]
+        }
+      },
+      "required": [
+        "context_tokens",
+        "token_counting",
+        "model_calls",
+        "embedding_calls",
+        "expansion_steps",
+        "elapsed_ms",
+        "actual_cost_microunits",
+        "reserved_background_cost_microunits",
+        "currency",
+        "stopped_by"
+      ],
+      "additionalProperties": false
+    },
+    "ReadFence": {
+      "type": "object",
+      "properties": {
+        "minimum_durable_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consistency": {
+          "type": "string",
+          "enum": [
+            "read_your_writes",
+            "snapshot",
+            "best_available"
+          ]
+        },
+        "snapshot_revision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "minimum_dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "minimum_durable_sequence",
+        "consistency",
+        "snapshot_revision"
+      ],
+      "additionalProperties": false,
+      "description": "若所需序列未覆盖，返回 indexing 或 degraded，并报告实际覆盖；不能静默给出完整成功。"
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "durable_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indexed_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tail_covered_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "snapshot_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "read_fence_satisfied": {
+          "type": "boolean"
+        },
+        "search_exhaustive": {
+          "type": "boolean"
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "approximate_search",
+              "index_lag",
+              "source_unavailable",
+              "budget_exhausted",
+              "partial_scope",
+              "deleted_source",
+              "ambiguous_identity",
+              "dependency_failure",
+              "unknown",
+              "rebuilding"
+            ]
+          },
+          "minItems": 0
+        },
+        "dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projection_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rebuilding": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "durable_through_sequence",
+        "indexed_through_sequence",
+        "tail_covered_through_sequence",
+        "snapshot_revision",
+        "read_fence_satisfied",
+        "search_exhaustive",
+        "limitations",
+        "dependency_generation",
+        "projection_generation",
+        "rebuilding"
+      ],
+      "additionalProperties": false,
+      "description": "覆盖范围说明。无命中不意味着用户从未说过；向量近似检索默认不得宣称穷尽全部档案。 dependency_generation 为已提交的当前依赖代际，projection_generation 为实际使用投影的代际。rebuilding 只表示本请求所需覆盖仍在重建，返回 partial；即使 worker 停止，旧代际投影也不得继续作为有效事实被读取。直接来源已充分覆盖的请求可不受重建影响。"
+    },
+    "RecallRequest": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intent": {
+          "type": "string",
+          "enum": [
+            "continue_conversation",
+            "exact_quote",
+            "current_fact",
+            "episode",
+            "timeline",
+            "open_commitment",
+            "procedure",
+            "cue_recovery",
+            "explore"
+          ]
+        },
+        "cue_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "additional_cues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "valid_time_filter": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "world_filter": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "real_world",
+              "quoted",
+              "roleplay",
+              "hypothetical",
+              "dream",
+              "unknown"
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "previous_recall_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "read_fence": {
+          "$ref": "#/$defs/ReadFence"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "evidence_mode": {
+          "type": "string",
+          "enum": [
+            "contextual",
+            "prior_record_check"
+          ]
+        },
+        "evidence_cutoff": {
+          "$ref": "#/$defs/EvidenceCutoff"
+        },
+        "query_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "query",
+        "intent",
+        "cue_event_ids",
+        "additional_cues",
+        "read_fence",
+        "budget"
+      ],
+      "additionalProperties": false,
+      "description": "检索必须结合授权范围和当前会话；新线索可以唤回旧依据，不能把提醒中新说出的内容冒充找回的旧记忆。 evidence_mode 和 evidence_cutoff 可省略；普通检索可使用当前合法输入。服务端检测历史记忆断言时应自动建立证据边界，不能因客户端省略模式而允许提示污染。"
+    },
+    "RankSignal": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "keyword",
+            "vector",
+            "entity",
+            "temporal",
+            "association",
+            "recency",
+            "reranker"
+          ]
+        },
+        "score": {
+          "type": "number"
+        },
+        "meaning": {
+          "const": "ranking_only_not_probability"
+        },
+        "model_or_index_version": {
+          "$ref": "#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "method",
+        "score",
+        "meaning",
+        "model_or_index_version"
+      ],
+      "additionalProperties": false,
+      "description": "检索分数只能排序，不能转写成真实性概率或回忆正确率。"
+    },
+    "RecallItem": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "$ref": "#/$defs/MemoryAssertion"
+        },
+        "rank_signals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RankSignal"
+          },
+          "minItems": 0
+        },
+        "retrieved_from": {
+          "type": "string",
+          "enum": [
+            "index",
+            "unindexed_tail",
+            "archive_scan"
+          ]
+        },
+        "display_mode": {
+          "type": "string",
+          "enum": [
+            "explicit_recollection",
+            "background_context",
+            "do_not_surface"
+          ]
+        }
+      },
+      "required": [
+        "memory",
+        "rank_signals",
+        "retrieved_from",
+        "display_mode"
+      ],
+      "additionalProperties": false
+    },
+    "RecallResult": {
+      "type": "object",
+      "properties": {
+        "recall_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "grounded",
+            "partial",
+            "ambiguous",
+            "conflicted",
+            "no_match",
+            "indexing",
+            "degraded",
+            "deleted"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecallItem"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ambiguities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "candidate_memory_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Identifier"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "question",
+              "candidate_memory_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "memory_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Identifier"
+                },
+                "minItems": 2,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "description",
+              "memory_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "next_step": {
+          "type": "string",
+          "enum": [
+            "answer_with_evidence",
+            "answer_with_limits",
+            "request_cue",
+            "expand_search",
+            "retry_after_indexing",
+            "retry_service",
+            "do_not_reconstruct_deleted"
+          ]
+        },
+        "retrieval_snapshot": {
+          "$ref": "#/$defs/RetrievalSnapshot"
+        },
+        "recall_traces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecallTrace"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "recall_id",
+        "scope",
+        "status",
+        "items",
+        "unknowns",
+        "ambiguities",
+        "conflicts",
+        "coverage",
+        "usage",
+        "next_step",
+        "retrieval_snapshot",
+        "recall_traces"
+      ],
+      "additionalProperties": false,
+      "description": "grounded 表示有来源支撑，不是来源内容已被客观证实。deleted 仅向有权知道删除状态的主体返回；无权访问的对象按统一不可见策略处理。no_match 不证明从未发生。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "grounded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1,
+                "items": {
+                  "properties": {
+                    "memory": {
+                      "properties": {
+                        "epistemic_status": {
+                          "enum": [
+                            "supported_report",
+                            "observed_result",
+                            "derived_inference"
+                          ]
+                        },
+                        "lifecycle": {
+                          "enum": [
+                            "active",
+                            "dormant"
+                          ]
+                        },
+                        "disclosure_basis": {
+                          "properties": {
+                            "validation_state": {
+                              "const": "current"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "coverage": {
+                "properties": {
+                  "read_fence_satisfied": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "no_match",
+                  "deleted"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ambiguous"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "ambiguities": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "conflicted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "conflicts": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "coverage": {
+                "properties": {
+                  "rebuilding": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "partial"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "retrieval_snapshot": {
+                "properties": {
+                  "historical_evidence_status": {
+                    "const": "unavailable"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "partial",
+                  "degraded",
+                  "indexing"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ContextBlock": {
+      "type": "object",
+      "properties": {
+        "section": {
+          "type": "string",
+          "enum": [
+            "working_state",
+            "relevant_memory",
+            "verbatim_evidence",
+            "uncertainty",
+            "open_loops",
+            "integration_status"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "trust": {
+          "const": "memory_data_not_instructions"
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "section",
+        "text",
+        "evidence_refs",
+        "trust",
+        "token_count"
+      ],
+      "additionalProperties": false,
+      "description": "原文和记忆均作为资料提供。检索出来的指令不能改变系统权限或获得执行权；状态说明和未知概括允许空引用。"
+    },
+    "ContextPacket": {
+      "type": "object",
+      "properties": {
+        "packet_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "turn_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "working_state": {
+          "$ref": "#/$defs/WorkingState"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContextBlock"
+          },
+          "minItems": 0
+        },
+        "recall_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecallResult"
+          },
+          "minItems": 0
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "integration": {
+          "$ref": "#/$defs/IntegrationCapabilities"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "retrieval_snapshot": {
+          "$ref": "#/$defs/RetrievalSnapshot"
+        },
+        "recall_traces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecallTrace"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "packet_id",
+        "turn_id",
+        "scope",
+        "working_state",
+        "blocks",
+        "recall_results",
+        "coverage",
+        "budget",
+        "usage",
+        "integration",
+        "created_at",
+        "retrieval_snapshot",
+        "recall_traces"
+      ],
+      "additionalProperties": false,
+      "description": "回答前上下文包。宿主通过确定性的 render_context 将 blocks 转成实际模型输入，max_context_tokens 覆盖全部注入块、来源标签与序列化开销；控制平面中的 scope、trace、usage 等元数据不自动注入。预算是宿主扣除系统指令、当前输入和输出预留后分配给记忆的额度。HTTP 响应体另有字节上限。生成器须继续遵守权限及未知边界。"
+    },
+    "IntegrationCapabilities": {
+      "type": "object",
+      "properties": {
+        "adapter_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "adapter_version": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "protocol_version": {
+          "const": "1.0.0-draft"
+        },
+        "transport": {
+          "type": "string",
+          "enum": [
+            "mcp_stdio",
+            "mcp_streamable_http",
+            "rest",
+            "sdk",
+            "api_proxy",
+            "host_plugin"
+          ]
+        },
+        "supported_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "observe",
+              "prepare",
+              "recall",
+              "inspect",
+              "commit",
+              "checkpoint",
+              "correct",
+              "forget",
+              "export",
+              "restore"
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "capture": {
+          "type": "object",
+          "properties": {
+            "user_messages": {
+              "type": "boolean"
+            },
+            "delivered_assistant_messages": {
+              "type": "boolean"
+            },
+            "tool_results": {
+              "type": "boolean"
+            },
+            "message_edits": {
+              "type": "boolean"
+            },
+            "message_deletions": {
+              "type": "boolean"
+            },
+            "stable_source_ids": {
+              "type": "boolean"
+            },
+            "branch_identity": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "user_messages",
+            "delivered_assistant_messages",
+            "tool_results",
+            "message_edits",
+            "message_deletions",
+            "stable_source_ids",
+            "branch_identity"
+          ],
+          "additionalProperties": false
+        },
+        "hooks": {
+          "type": "object",
+          "properties": {
+            "before_turn": {
+              "type": "boolean"
+            },
+            "after_delivery": {
+              "type": "boolean"
+            },
+            "before_compaction": {
+              "type": "boolean"
+            },
+            "on_resume": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "before_turn",
+            "after_delivery",
+            "before_compaction",
+            "on_resume"
+          ],
+          "additionalProperties": false
+        },
+        "context_control": {
+          "type": "string",
+          "enum": [
+            "none",
+            "tool_output_only",
+            "pre_prompt",
+            "inference_loop"
+          ]
+        },
+        "active_recall": {
+          "type": "boolean"
+        },
+        "automatic_capture": {
+          "type": "boolean"
+        },
+        "automatic_recall": {
+          "type": "boolean"
+        },
+        "guarantee_level": {
+          "type": "string",
+          "enum": [
+            "tools_only",
+            "partial_automation",
+            "full_lifecycle"
+          ]
+        },
+        "verification_state": {
+          "type": "string",
+          "enum": [
+            "declared",
+            "verified",
+            "unavailable"
+          ]
+        },
+        "verified_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "adapter_id",
+        "adapter_version",
+        "protocol_version",
+        "transport",
+        "supported_actions",
+        "capture",
+        "hooks",
+        "context_control",
+        "active_recall",
+        "automatic_capture",
+        "automatic_recall",
+        "guarantee_level",
+        "verification_state",
+        "verified_at",
+        "limitations"
+      ],
+      "additionalProperties": false,
+      "description": "适配器能力声明；连接测试确认后才能标为 verified。MCP 可用不推出自动观察和上下文接管；代理不知道身份和分支时必须降级。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "guarantee_level": {
+                "const": "full_lifecycle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "automatic_capture": {
+                "const": true
+              },
+              "automatic_recall": {
+                "const": true
+              },
+              "verification_state": {
+                "const": "verified"
+              },
+              "capture": {
+                "properties": {
+                  "user_messages": {
+                    "const": true
+                  },
+                  "delivered_assistant_messages": {
+                    "const": true
+                  },
+                  "stable_source_ids": {
+                    "const": true
+                  },
+                  "branch_identity": {
+                    "const": true
+                  }
+                }
+              },
+              "hooks": {
+                "properties": {
+                  "before_turn": {
+                    "const": true
+                  },
+                  "after_delivery": {
+                    "const": true
+                  },
+                  "before_compaction": {
+                    "const": true
+                  },
+                  "on_resume": {
+                    "const": true
+                  }
+                }
+              },
+              "context_control": {
+                "enum": [
+                  "pre_prompt",
+                  "inference_loop"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "verification_state": {
+                "const": "verified"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "verified_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AssertionProposal": {
+      "type": "object",
+      "properties": {
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory_kind": {
+          "type": "string",
+          "enum": [
+            "episodic",
+            "semantic",
+            "prospective",
+            "procedural",
+            "interaction_preference",
+            "relationship",
+            "self_model"
+          ]
+        },
+        "world_hint": {
+          "type": "string",
+          "enum": [
+            "real_world",
+            "quoted",
+            "roleplay",
+            "hypothetical",
+            "dream",
+            "unknown"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "proposal_reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "statement",
+        "memory_kind",
+        "world_hint",
+        "evidence_refs",
+        "proposal_reason"
+      ],
+      "additionalProperties": false,
+      "description": "模型或适配器的提议，不是已确认记忆；必须经服务端来源、范围和世界状态验证才能形成 MemoryAssertion。无来源推测只能作为明确假设或未知。"
+    },
+    "ObservationReceipt": {
+      "type": "object",
+      "properties": {
+        "accepted_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "duplicate_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "durable_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indexed_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consolidation_job_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "accepted_event_ids",
+        "duplicate_event_ids",
+        "durable_through_sequence",
+        "indexed_through_sequence",
+        "consolidation_job_ids",
+        "scope_generation"
+      ],
+      "additionalProperties": false,
+      "description": "仅在配置的持久化策略确认后应答 accepted。该回执不表示巩固完成。"
+    },
+    "CheckpointReceipt": {
+      "type": "object",
+      "properties": {
+        "checkpoint_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "working_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "restore_strategy": {
+          "type": "string",
+          "enum": [
+            "indexed_state",
+            "state_plus_unindexed_tail",
+            "not_ready"
+          ]
+        },
+        "compaction_safe": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "checkpoint_id",
+        "working_revision",
+        "coverage",
+        "restore_strategy",
+        "compaction_safe",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "description": "只有原始事件持久化、工作状态已提交且恢复路径覆盖所需序列，才能标记压缩交接安全。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "compaction_safe": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "restore_strategy": {
+                "enum": [
+                  "indexed_state",
+                  "state_plus_unindexed_tail"
+                ]
+              },
+              "coverage": {
+                "properties": {
+                  "read_fence_satisfied": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "JobReceipt": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "job_id",
+        "state",
+        "revision",
+        "created_at",
+        "details"
+      ],
+      "additionalProperties": false
+    },
+    "DeletionReceipt": {
+      "type": "object",
+      "properties": {
+        "deletion_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "suppress_recall",
+            "erase_content"
+          ]
+        },
+        "scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recall_blocked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "purge_state": {
+          "type": "string",
+          "enum": [
+            "not_requested",
+            "queued",
+            "running",
+            "completed"
+          ]
+        },
+        "backup_expiry_deadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "tombstone_recorded": {
+          "type": "boolean"
+        },
+        "affected_object_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "deletion_id",
+        "mode",
+        "scope_generation",
+        "recall_blocked_at",
+        "purge_state",
+        "backup_expiry_deadline",
+        "tombstone_recorded",
+        "affected_object_count"
+      ],
+      "additionalProperties": false,
+      "description": "删除回执不宣称所有历史备份即时物理擦除。恢复必须先应用当前删除清单；erase_content 清除原文与派生内容，suppress_recall 只限制召回并须明确展示区别。"
+    },
+    "PortableArchive": {
+      "type": "object",
+      "properties": {
+        "archive_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "format": {
+          "const": "agent-memory-jsonl-bundle"
+        },
+        "format_version": {
+          "const": "1.0.0-draft"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "preparing",
+            "ready",
+            "failed"
+          ]
+        },
+        "download_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "events",
+              "assertions",
+              "working_states",
+              "relations",
+              "policies",
+              "tombstones",
+              "provenance",
+              "model_versions"
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "job": {
+          "$ref": "#/$defs/JobReceipt"
+        }
+      },
+      "required": [
+        "archive_id",
+        "format",
+        "format_version",
+        "manifest_sha256",
+        "status",
+        "download_ref",
+        "expires_at",
+        "includes",
+        "job"
+      ],
+      "additionalProperties": false,
+      "description": "可迁移档案包含原文、来源、状态和删除记录；不以向量作为唯一可移植记忆。不导出密钥、认证令牌或其他租户权限。"
+    },
+    "RuntimeError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "unauthorized",
+            "not_found_or_forbidden",
+            "invalid_evidence",
+            "identity_unverified",
+            "version_conflict",
+            "idempotency_conflict",
+            "budget_exceeded",
+            "dependency_unavailable",
+            "unsupported_capability",
+            "invalid_archive",
+            "deletion_in_progress",
+            "validation_failed"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false,
+      "description": "错误必须可区分且不泄露无权主体或记录的存在。"
+    },
+    "ObservePayload": {
+      "type": "object",
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObservedEventInput"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "PreparePayload": {
+      "type": "object",
+      "properties": {
+        "turn_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "latest_input_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "read_fence": {
+          "$ref": "#/$defs/ReadFence"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/IntegrationCapabilities"
+        },
+        "evidence_mode": {
+          "type": "string",
+          "enum": [
+            "contextual",
+            "prior_record_check"
+          ]
+        },
+        "evidence_cutoff": {
+          "$ref": "#/$defs/EvidenceCutoff"
+        }
+      },
+      "required": [
+        "turn_id",
+        "latest_input_event_ids",
+        "read_fence",
+        "budget",
+        "capabilities"
+      ],
+      "additionalProperties": false,
+      "description": "客户端能力报告仅供协商；服务端应查验已绑定适配器的连接测试记录，不能信任客户端自称 verified 或 full_lifecycle。 evidence_mode 和 evidence_cutoff 可省略；普通检索可使用当前合法输入。服务端检测历史记忆断言时应自动建立证据边界，不能因客户端省略模式而允许提示污染。"
+    },
+    "RecallPayload": {
+      "$ref": "#/$defs/RecallRequest"
+    },
+    "InspectPayload": {
+      "type": "object",
+      "properties": {
+        "memory_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "include_successors": {
+          "type": "boolean"
+        },
+        "include_corrections": {
+          "type": "boolean"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "memory_ids",
+        "evidence_refs",
+        "include_successors",
+        "include_corrections",
+        "budget"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "memory_ids": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "evidence_refs": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "CommitPayload": {
+      "type": "object",
+      "properties": {
+        "turn_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "expected_working_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "delivered_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "proposed_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkingItem"
+          },
+          "minItems": 0
+        },
+        "proposed_open_loops": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OpenLoop"
+          },
+          "minItems": 0
+        },
+        "assertion_proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssertionProposal"
+          },
+          "minItems": 0
+        },
+        "recall_feedback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecallFeedbackInput"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "turn_id",
+        "idempotency_key",
+        "expected_working_revision",
+        "delivered_event_ids",
+        "proposed_items",
+        "proposed_open_loops",
+        "assertion_proposals"
+      ],
+      "additionalProperties": false,
+      "description": "已交付事件必须先 observe；本动作提交分支工作状态及提议。服务端不得把尚未交付草稿或模型自述当成用户事实。"
+    },
+    "CheckpointPayload": {
+      "type": "object",
+      "properties": {
+        "expected_working_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "compaction",
+            "shutdown",
+            "migration",
+            "manual"
+          ]
+        }
+      },
+      "required": [
+        "expected_working_revision",
+        "through_sequence",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "CorrectPayload": {
+      "type": "object",
+      "properties": {
+        "memory_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "correction_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "replacement": {
+          "$ref": "#/$defs/AssertionProposal"
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "replace",
+            "retract",
+            "clarify"
+          ]
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "expected_dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "memory_id",
+        "expected_revision",
+        "correction_event_ids",
+        "operation",
+        "idempotency_key",
+        "expected_dependency_generation"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [
+                  "replace",
+                  "clarify"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "replacement"
+            ]
+          }
+        }
+      ],
+      "description": "纠正必须受版本与依赖代际约束。成功表示事务已记录纠正并阻断旧支持路径；不表示异步重建已完成。"
+    },
+    "ForgetPayload": {
+      "type": "object",
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "selector": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "events",
+                "memories",
+                "conversation",
+                "all_authorized_scope"
+              ]
+            },
+            "ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "kind",
+            "ids"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "events",
+                      "memories",
+                      "conversation"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "ids": {
+                    "minItems": 1
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "all_authorized_scope"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "ids": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "suppress_recall",
+            "erase_content"
+          ]
+        },
+        "expected_scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "selector",
+        "mode",
+        "expected_scope_generation"
+      ],
+      "additionalProperties": false
+    },
+    "ExportPayload": {
+      "type": "object",
+      "properties": {
+        "include_events": {
+          "type": "boolean"
+        },
+        "include_working_states": {
+          "type": "boolean"
+        },
+        "include_assertions": {
+          "type": "boolean"
+        },
+        "include_provenance": {
+          "const": true
+        },
+        "include_tombstones": {
+          "const": true
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "include_events",
+        "include_working_states",
+        "include_assertions",
+        "include_provenance",
+        "include_tombstones",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "RestorePayload": {
+      "type": "object",
+      "properties": {
+        "uploaded_archive_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "expected_manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "new_brain",
+            "merge_authorized_brain"
+          ]
+        },
+        "apply_current_tombstones": {
+          "const": true
+        },
+        "expected_scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "uploaded_archive_ref",
+        "expected_manifest_sha256",
+        "mode",
+        "apply_current_tombstones",
+        "expected_scope_generation",
+        "budget"
+      ],
+      "additionalProperties": false,
+      "description": "导入先验证格式、哈希和引用，重新绑定权限，隔离未验证来源。先应用删除清单再开放查询；不能信任档案里的 principal。"
+    },
+    "ObserveResult": {
+      "$ref": "#/$defs/ObservationReceipt"
+    },
+    "PrepareResult": {
+      "$ref": "#/$defs/ContextPacket"
+    },
+    "InspectResult": {
+      "type": "object",
+      "properties": {
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryAssertion"
+          },
+          "minItems": 0
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "minItems": 0
+        },
+        "unavailable_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requested_ref": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "not_found_or_forbidden",
+                  "deleted",
+                  "purge_pending",
+                  "source_unavailable"
+                ]
+              }
+            },
+            "required": [
+              "requested_ref",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "memories",
+        "events",
+        "unavailable_refs",
+        "usage"
+      ],
+      "additionalProperties": false
+    },
+    "CommitResult": {
+      "type": "object",
+      "properties": {
+        "working_state": {
+          "$ref": "#/$defs/WorkingState"
+        },
+        "accepted_proposal_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected_proposal_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consolidation_job_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "recall_traces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecallTrace"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "working_state",
+        "accepted_proposal_count",
+        "rejected_proposal_count",
+        "consolidation_job_ids",
+        "recall_traces"
+      ],
+      "additionalProperties": false
+    },
+    "CheckpointResult": {
+      "$ref": "#/$defs/CheckpointReceipt"
+    },
+    "CorrectResult": {
+      "type": "object",
+      "properties": {
+        "updated_memory": {
+          "$ref": "#/$defs/MemoryAssertion"
+        },
+        "invalidated_derivation_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0
+        },
+        "rebuild_job": {
+          "$ref": "#/$defs/JobReceipt"
+        },
+        "transaction": {
+          "$ref": "#/$defs/CorrectionCommit"
+        }
+      },
+      "required": [
+        "updated_memory",
+        "invalidated_derivation_ids",
+        "rebuild_job",
+        "transaction"
+      ],
+      "additionalProperties": false
+    },
+    "ForgetResult": {
+      "$ref": "#/$defs/DeletionReceipt"
+    },
+    "ExportResult": {
+      "$ref": "#/$defs/PortableArchive"
+    },
+    "RestoreResult": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "#/$defs/JobReceipt"
+        },
+        "scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "imported_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quarantined_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_deleted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "read_enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job",
+        "scope_generation",
+        "imported_event_count",
+        "quarantined_event_count",
+        "excluded_deleted_count",
+        "read_enabled"
+      ],
+      "additionalProperties": false
+    },
+    "ActionRequest": {
+      "type": "object",
+      "properties": {
+        "message_type": {
+          "const": "request"
+        },
+        "contract_version": {
+          "const": "1.0.0-draft"
+        },
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "observe",
+            "prepare",
+            "recall",
+            "inspect",
+            "commit",
+            "checkpoint",
+            "correct",
+            "forget",
+            "export",
+            "restore"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/ScopeSelector"
+        },
+        "payload": {}
+      },
+      "required": [
+        "message_type",
+        "contract_version",
+        "request_id",
+        "action",
+        "target",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "description": "授权身份来自认证通道而非 JSON 字段。schema 结构校验不替代服务端的授权、引用、时间范围和预算校验。",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "observe"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ObservePayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "prepare"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/PreparePayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "recall"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/RecallPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "inspect"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/InspectPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "commit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/CommitPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "checkpoint"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/CheckpointPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "correct"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/CorrectPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "forget"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ForgetPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "export"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ExportPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "restore"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/RestorePayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "prepare",
+                  "commit",
+                  "checkpoint"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "required": [
+                  "conversation_ref",
+                  "branch_ref"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ActionResponse": {
+      "type": "object",
+      "properties": {
+        "message_type": {
+          "const": "response"
+        },
+        "contract_version": {
+          "const": "1.0.0-draft"
+        },
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "observe",
+            "prepare",
+            "recall",
+            "inspect",
+            "commit",
+            "checkpoint",
+            "correct",
+            "forget",
+            "export",
+            "restore"
+          ]
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "completed",
+            "degraded",
+            "conflict",
+            "rejected",
+            "failed"
+          ]
+        },
+        "server_scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "result": {},
+        "error": {
+          "$ref": "#/$defs/RuntimeError"
+        }
+      },
+      "required": [
+        "message_type",
+        "contract_version",
+        "request_id",
+        "action",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "accepted",
+                  "completed",
+                  "degraded"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "server_scope",
+              "result"
+            ],
+            "not": {
+              "required": [
+                "error"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "error"
+            ],
+            "not": {
+              "required": [
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "observe"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/ObserveResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "prepare"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/PrepareResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "recall"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/RecallResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "inspect"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/InspectResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "commit"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/CommitResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "checkpoint"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/CheckpointResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "correct"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/CorrectResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "forget"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/ForgetResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "export"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/ExportResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "restore"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/RestoreResult"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "UtteranceSegment": {
+      "type": "object",
+      "properties": {
+        "act": {
+          "type": "string",
+          "enum": [
+            "direct_statement",
+            "inquiry",
+            "presupposition",
+            "correction",
+            "confirmation",
+            "instruction",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "span": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "end": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unit": {
+              "const": "unicode_code_point"
+            }
+          },
+          "required": [
+            "start",
+            "end",
+            "unit"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "act"
+      ],
+      "additionalProperties": false,
+      "description": "按内容区段区分直接陈述、询问与预设。询问“你还记得我们去过海边吗”只证明有人这样问过，不能独立证明去过海边；未知分类不能按直接陈述处理。非文本事件可使用 not_applicable。"
+    },
+    "EvidenceCutoff": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "before_event",
+            "through_sequence"
+          ]
+        },
+        "event_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "before_event"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "event_id"
+            ],
+            "not": {
+              "required": [
+                "through_sequence"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "through_sequence"
+            ],
+            "not": {
+              "required": [
+                "event_id"
+              ]
+            }
+          }
+        }
+      ],
+      "description": "仅对检查“此前是否已经记得/记录”使用的历史证据上界。依据服务端观察序列或已持久化事件 ID，不依据用户自报时间。服务端解析并夹紧到查询前合法边界；普通上下文检索无需固定截止。"
+    },
+    "RetrievalSnapshot": {
+      "type": "object",
+      "properties": {
+        "snapshot_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "observed_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "query_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "historical_evidence_status": {
+          "type": "string",
+          "enum": [
+            "not_requested",
+            "enforced",
+            "unavailable"
+          ]
+        },
+        "evidence_cutoff": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/EvidenceCutoff"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_evidence_through_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "excluded_cue_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "exclude_cue_descendants": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "created_at",
+        "observed_through_sequence",
+        "dependency_generation",
+        "scope_generation",
+        "query_event_ids",
+        "historical_evidence_status",
+        "evidence_cutoff",
+        "resolved_evidence_through_sequence",
+        "excluded_cue_event_ids",
+        "exclude_cue_descendants"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "historical_evidence_status": {
+                "const": "enforced"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_cutoff": {
+                "$ref": "#/$defs/EvidenceCutoff"
+              },
+              "resolved_evidence_through_sequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "exclude_cue_descendants": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "historical_evidence_status": {
+                "const": "not_requested"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_cutoff": {
+                "type": "null"
+              },
+              "resolved_evidence_through_sequence": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "description": "服务器固定本次读取的观察序列、权限代际和依赖代际。历史回忆必须排除当前查询、同一误提示链及其派生物作为“以前已经记录”的独立证据；这些内容仍可用作检索线索。新的用户确认可成为当前报告，但不反向证明过去已记得。not_requested 不设历史证据上界；unavailable 须明确限制。"
+    },
+    "SupportPath": {
+      "type": "object",
+      "properties": {
+        "path_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1
+        },
+        "source_memory_versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "memory_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "memory_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "permitted_scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "current",
+            "invalidated"
+          ]
+        },
+        "independently_supports_complete_statement": {
+          "const": true
+        }
+      },
+      "required": [
+        "path_id",
+        "evidence_refs",
+        "source_memory_versions",
+        "permitted_scope",
+        "dependency_generation",
+        "state",
+        "independently_supports_complete_statement"
+      ],
+      "additionalProperties": false,
+      "description": "一条能够独立支持完整陈述的实际来源路径。permitted_scope 不能超过该路径全部必需来源权限的交集；引用和中间记忆同样计入。不同路径是否独立需追溯最终原始事件，模型重复与受限摘要不构成独立公开证据。"
+    },
+    "DisclosureBasis": {
+      "type": "object",
+      "properties": {
+        "dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "validation_state": {
+          "type": "string",
+          "enum": [
+            "current",
+            "invalidated",
+            "no_support"
+          ]
+        },
+        "support_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SupportPath"
+          },
+          "minItems": 0
+        },
+        "selected_path_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "release_mode": {
+          "type": "string",
+          "enum": [
+            "supported_scope",
+            "independent_shareable_version",
+            "no_evidence"
+          ]
+        }
+      },
+      "required": [
+        "dependency_generation",
+        "validation_state",
+        "support_paths",
+        "selected_path_ids",
+        "release_mode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "validation_state": {
+                "const": "current"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "support_paths": {
+                "minItems": 1
+              },
+              "selected_path_ids": {
+                "minItems": 1
+              },
+              "release_mode": {
+                "enum": [
+                  "supported_scope",
+                  "independent_shareable_version"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "release_mode": {
+                "const": "no_evidence"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "validation_state": {
+                "const": "no_support"
+              },
+              "support_paths": {
+                "maxItems": 0
+              },
+              "selected_path_ids": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ],
+      "description": "服务器验证每个待披露陈述的完整支持路径；输出 scope 不得宽于选中有效路径的 permitted_scope。独立合法公开证据可以生成单独共享版本，但不能夹带私有细节、受限来源 ID 或由私有来源推出的关系。来源删除或更正后同步使相关支持路径失效，再重算；其他真正独立路径仍可支持单独版本。"
+    },
+    "CorrectionCommit": {
+      "type": "object",
+      "properties": {
+        "correction_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "committed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "correction_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "durable_through_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "previous_dependency_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependency_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stale_projection_reads_blocked": {
+          "const": true
+        }
+      },
+      "required": [
+        "correction_id",
+        "committed_at",
+        "correction_event_ids",
+        "durable_through_sequence",
+        "previous_dependency_generation",
+        "dependency_generation",
+        "stale_projection_reads_blocked"
+      ],
+      "additionalProperties": false,
+      "description": "同一事务持久化纠正记录、更新当前陈述、推进依赖代际并使旧投影及缓存失效，事务完成后才返回成功。实际代际必须严格递增；完整重建可以异步，旧读不能等待 worker 才失效。原始用户纠正消息可预先 observe，本事务仍必须保存可审计的纠正事实及其来源。"
+    },
+    "RecallTrace": {
+      "type": "object",
+      "properties": {
+        "trace_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "recall_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "retrieval_snapshot_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "turn_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "memory_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "candidate_hit",
+            "context_selected",
+            "quoted",
+            "background_influence",
+            "user_reintroduced",
+            "user_confirmed",
+            "user_corrected",
+            "observed_outcome"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "server_instrumentation",
+            "model_estimate",
+            "user_message",
+            "tool_observation"
+          ]
+        },
+        "feedback_event_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "allowed_effect": {
+          "type": "string",
+          "enum": [
+            "none",
+            "activation_only",
+            "external_reassessment"
+          ]
+        }
+      },
+      "required": [
+        "trace_id",
+        "recall_id",
+        "retrieval_snapshot_id",
+        "scope",
+        "turn_id",
+        "memory_id",
+        "kind",
+        "source",
+        "feedback_event_id",
+        "evidence_refs",
+        "recorded_at",
+        "allowed_effect"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "candidate_hit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "server_instrumentation"
+              },
+              "allowed_effect": {
+                "const": "none"
+              },
+              "feedback_event_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "context_selected",
+                  "quoted"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "server_instrumentation"
+              },
+              "allowed_effect": {
+                "enum": [
+                  "none",
+                  "activation_only"
+                ]
+              },
+              "feedback_event_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "background_influence"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "model_estimate"
+              },
+              "allowed_effect": {
+                "enum": [
+                  "none",
+                  "activation_only"
+                ]
+              },
+              "feedback_event_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "user_reintroduced",
+                  "user_confirmed",
+                  "user_corrected"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "user_message"
+              },
+              "feedback_event_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "evidence_refs": {
+                "minItems": 1
+              },
+              "allowed_effect": {
+                "const": "external_reassessment"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "observed_outcome"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "tool_observation"
+              },
+              "feedback_event_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "evidence_refs": {
+                "minItems": 1
+              },
+              "allowed_effect": {
+                "const": "external_reassessment"
+              }
+            }
+          }
+        }
+      ],
+      "description": "区分召回、选择、引用、模型估计的背景影响与外部反馈。外部重新提起也必须结合 speech act 判断：问句预设不是确认。external_reassessment 仅允许重新检查证据和保留策略，不自动增加真实性或保留价值；模型估计与内部检索不构成外部确认。"
+    },
+    "RecallFeedbackInput": {
+      "type": "object",
+      "properties": {
+        "recall_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "memory_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "candidate_hit",
+            "context_selected",
+            "quoted",
+            "background_influence",
+            "user_reintroduced",
+            "user_confirmed",
+            "user_corrected",
+            "observed_outcome"
+          ]
+        },
+        "feedback_event_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "recall_id",
+        "memory_id",
+        "kind",
+        "feedback_event_id",
+        "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "description": "客户端提出的反馈，不是可信 RecallTrace。服务端从已认证来源、交付记录和 speech act 验证类型；模型只能报告 background_influence 估计，不能自报 user_confirmed 或 observed_outcome 后获得外部确认资格。"
+    }
+  },
+  "x-runtime-invariants": [
+    "历史已记录断言使用服务端证据截止与检索快照；当前提示链及其派生物不能独立证明以前已记录。普通上下文检索不强制固定历史截止。",
+    "询问、预设、直接报告、纠正、确认必须按实际内容区段解释；分类不确定不得自动升格为确认。",
+    "correct 事务同步持久化纠正、严格推进依赖代际并阻断旧投影，重建异步；请求受重建影响时使用 partial 和 coverage.rebuilding。",
+    "派生内容的可披露范围受完整支持路径限制；公开独立来源须生成不夹带私有内容的单独版本。删除和纠正同步使支持路径失效。",
+    "RecallTrace 区分内部检索、上下文选择、引用、模型估计、用户反馈和已观察结果；模型估计与后台重复召回不增加真实性或保留价值。",
+    "JSON Schema 不能验证引用存在、原始来源独立性、权限集合包含关系、代际单调性、实际读一致性或反馈来源；须由运行时和验收测试验证。"
+  ]
+}

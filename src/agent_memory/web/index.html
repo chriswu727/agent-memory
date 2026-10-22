@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Memory · 记忆工作台</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="/">Agent Memory<span>记忆工作台</span></a><span id="connection" class="badge">尚未连接</span></header>
+<main>
+  <section id="connect-panel" class="connection-panel">
+    <div><p class="eyebrow">属于你的长期记忆</p><h1>让经历有处保存，<br>让回忆有据可查。</h1><p class="intro">连接记忆服务，查看经历、寻找线索，并决定哪些值得留下。</p></div>
+    <form id="connect-form" class="card">
+      <h2>连接本地大脑</h2><label for="key">访问密钥</label><input id="key" type="password" autocomplete="off" required placeholder="am_…">
+      <p class="hint">本地初始化生成的密钥位于 .local/access-token。密钥仅保留在当前页面内存中。</p>
+      <button type="submit">连接工作台 <span>→</span></button>
+    </form>
+  </section>
+  <section id="workspace" hidden>
+    <div class="workspace-heading"><div><p class="eyebrow">MEMORY WORKSPACE</p><h1>记忆，随你延续。</h1></div><button id="disconnect" class="secondary">断开连接</button></div>
+    <div class="toolbar card"><label for="brain">当前大脑</label><select id="brain"></select><button id="refresh" class="secondary">刷新</button><form id="create-form"><input id="brain-name" maxlength="120" placeholder="给新的大脑起个名字" required><button type="submit">创建</button></form></div>
+    <div id="stats" class="stats"></div>
+    <p class="notice" id="mode-note">正在读取服务能力…</p>
+    <div class="columns">
+      <section class="card"><p class="eyebrow">记录经历</p><h2>把这一刻留下</h2><form id="observe-form"><label for="conversation">会话名称</label><input id="conversation" value="personal" required><label for="experience">发生了什么</label><textarea id="experience" rows="5" placeholder="写下真实发生的经历或明确表达的想法…" required></textarea><button type="submit">保存经历</button></form><p class="hint">记录保留原文与来源；它证明你表达过什么，不自动证明其中所有内容都客观成立。</p></section>
+      <section class="card"><p class="eyebrow">寻找线索</p><h2>此刻想起什么</h2><form id="recall-form"><label for="query">回忆线索</label><textarea id="query" rows="3" placeholder="那次备考时，我们约定了什么？" required></textarea><label class="check"><input id="prior" type="checkbox">仅查找提问前已有的经历</label><button type="submit">寻找记忆</button></form><div id="recall-results" aria-live="polite"></div></section>
+    </div>
+    <section class="card timeline"><div class="section-heading"><div><p class="eyebrow">可以查证的过去</p><h2>记忆时间线</h2></div><div><button id="process" class="secondary">整理待处理记录</button><button id="export" class="secondary">导出档案</button></div></div><div id="memories"></div></section>
+    <details class="card"><summary>连接能力与运行状态</summary><pre id="diagnostics"></pre></details>
+  </section>
+  <div id="message" role="status" aria-live="polite"></div>
+</main>
+<footer>Agent Memory · 原文、认识与当前情境，各有自己的位置。</footer>
+</body>
+</html>
