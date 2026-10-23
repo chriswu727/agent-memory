@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Memory · 人类记忆研究与架构推论 · 2026-10-23</title>
+<style>
+:root{color-scheme:light;--ink:#182b32;--muted:#53676d;--line:#d6e1de;--accent:#176e61;--wash:#eef5f1}*{box-sizing:border-box}body{margin:0;background:#fcfdfb;color:var(--ink);font:16px/1.85 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:#153e38;color:#f3faf5;padding:48px max(6vw,24px)}header p{max-width:900px;color:#d6e7de}h1{font-size:clamp(28px,4vw,42px);line-height:1.4}main{max-width:1040px;margin:auto;padding:32px 24px 80px}nav{display:flex;flex-wrap:wrap;gap:8px 24px;margin-bottom:32px}a{color:var(--accent)}section{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:30px;scroll-margin-top:20px}h2{font-size:24px;line-height:1.5}h3{font-size:19px;margin:24px 0 8px}p{margin:10px 0}li{margin:8px 0}.note{background:var(--wash);border-left:4px solid var(--accent);padding:16px 20px}.meta{font-size:14px;color:var(--muted)}.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}.flow span{background:var(--wash);border:1px solid var(--line);padding:8px 12px;border-radius:5px}.source{padding:16px 0;border-top:1px solid var(--line)}.source h3{margin:0 0 6px;font-size:17px}.source p{font-size:15px}code,pre{font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;background:#edf1ee}code{padding:2px 5px;overflow-wrap:anywhere}pre{padding:18px;white-space:pre-wrap;overflow-wrap:anywhere}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:10px}th{background:var(--wash)}footer{font-size:14px;color:var(--muted)}@media print{header{background:white;color:black;padding:0}header p{color:#333}main{padding:0}nav{display:none}a{color:inherit}.source,.note{break-inside:avoid}body{font-size:11pt}}
+</style>
+</head>
+<body>
+<header>
+<p>AGENT MEMORY · RESEARCH NOTE · 2026-10-23</p>
+<h1>从分层保存，走向情境化的记忆与学习</h1>
+<p>25 篇认知科学与 Agent 记忆论文的定向调研，以及对现有架构的具体修订建议。研究启发、工程选择和待验证效果分别陈述。</p>
+</header>
+<main>
+<nav aria-label="目录"><a href="#scope">范围与状态</a><a href="#mechanisms">认知机制</a><a href="#example">贯穿示例</a><a href="#architecture">工程落点</a><a href="#evaluation">验证设计</a><a href="#papers">论文与证据边界</a><a href="../architecture.html">完整架构</a></nav>
+
+<section id="scope">
+<h2>研究结论与适用范围</h2>
+<p>现有架构已经提出经历、语义认识、程序性记忆、工作区和分层遗忘。这次调研进一步明确：这些部分应围绕<strong>当前情境、经历之间的结构、带条件的规律、可恢复的具体依据</strong>协同运作。仅对每条记录计算重要性并随时间降权，还不足以实现这个目标。</p>
+<p>更接近人类记忆的功能表现包括：过去的经验自然影响当前回应；相同线索在不同情境下唤起不同经历；多年后仍知道某些事实，却未必能还原具体场面；新信息改变理解，但不把当初发生的事情改写成另一段历史。</p>
+<div class="note"><strong>状态：</strong>本报告是研究与设计建议，不是已实现能力。代码基线为 <code>84b4a74</code>。本次未修改运行时，未执行真实模型质量实验，未启用自动细节删除，也未运行云端 CI。</div>
+<p>方法是围绕项目问题进行定向文献检索，覆盖原始人类实验、理论综述、计算模型与近期 Agent 系统；不是预注册的系统综述，也没有做元分析。对可获得全文核对机制、实验设置和限制；只能取得摘要的条目在文末注明。不能把论文数量、脑科学术语或某个公开榜单成绩当成我们系统有效的证明。</p>
+<p>“模仿大脑”在这里是功能层面的工程借鉴。冻结的模型 API 可以通过外部记忆改变输入与行为，不能因此声称其权重已经学习，或获得了人类式主观体验。应保留来源监控和纠错能力，不故意复制虚构回忆、错误归因等人类缺陷。</p>
+</section>
+
+<section id="mechanisms">
+<h2>九项应具体化的机制</h2>
+
+<h3>1. 以情境和目标组织经历</h3>
+<p>自然叙事研究发现，事件分段具有多个时间尺度；2025 年的 VR 实验进一步显示，在该任务中，任务意义的转换会影响时间顺序记忆。工程上应把目标、参与者、问题状态的变化作为分段信号，并允许不同粒度与重叠边界。<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5558154/">Baldassano 等，2017</a>；<a href="https://www.nature.com/articles/s41539-025-00321-6">Li 等，2025</a>。</p>
+<p><strong>设计：</strong>原始消息先可靠保存；当前情境维护“正在做什么、谁参与、什么尚未解决”。话题或目标发生有意义的变化时，关闭或修订一个 Episode。Episode 是带来源的可修订投影，不是另一份不可更正的事实记录。时间窗口只能作为分段辅助与资源上限。</p>
+<p>同时建立项目阶段、关系阶段和某段生活时期等可重叠索引，让“备考那阵子”能找到一组经历。自传体记忆理论为这种组织提供启发，但用户讲述的童年仍属于“用户报告”，不能写成 Agent 亲历。<a href="https://pubmed.ncbi.nlm.nih.gov/10789197/">Conway 与 Pleydell-Pearce，2000</a>。</p>
+
+<h3>2. 具体经历与概括认识并存</h3>
+<p>人类研究支持旧有知识框架参与新记忆的组织，部分记忆随时间出现语义性的转变；这些结果不意味着所有细节都会按同一速度消失。我们的分层应允许概括、关系、片段和原文分别保留和检索。<a href="https://www.nature.com/articles/s41467-022-33517-0">Audrain 与 McAndrews，2022</a>；<a href="https://www.nature.com/articles/s41467-023-41648-1">Krenz 等，2023</a>。</p>
+<p><strong>设计：</strong>一个 Episode 可以生成语义认识，但不能被该认识替代。每项认识带适用条件、有效时间、支持来源、反例和解释版本。“我知道你就读过某小学”与“我能回忆你描述过的毕业那一天”具有不同的依据要求。上层概括是索引入口，不是深层检索必须经过的唯一入口。</p>
+
+<h3>3. 用共同模式与个体差异共同表达记忆</h3>
+<p>两项生成式记忆计算模型提出了可借鉴的压缩思路：共享的概括解释重复结构，个别经历保留不符合预期的细节。它们提供的是模型解释，不是已证实的完整人脑算法。<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10963272/">Spens 与 Burgess，2024</a>；<a href="https://www.nature.com/articles/s41467-026-74357-6">Spens 与 Burgess，2026</a>。</p>
+<p><strong>设计：</strong>紧凑视图可由“模式引用与版本 + 本次差异 + 必要的原文定位”组成。例如多次备考聊天共享“先放松再安排”的结构，某次却明确要求直接制定计划，这个例外单独留下。模式变化时，旧经历仍绑定当时的版本；需要精确回答时展开来源。没有依据的空白保持空白。</p>
+<p>2026 年模型包含学习得到的压缩表示及训练环节，不能直接给任意 Chat Completions API 输入一个向量就宣称恢复整段历史。我们的通用实现应先使用可读的结构化文本；压缩收益、遗漏率和展开成本需要一起测量。</p>
+
+<h3>4. 把情境差异、时间变化和例外分开</h3>
+<p>多模式学习实验提示，形成多个情境模型可能比把所有经验揉成一个模型更合适；选择性巩固的计算研究则强调，可预测的共同结构与不宜泛化的个例应分别处理。<a href="https://www.nature.com/articles/s44271-024-00079-4">Beukers 等，2024</a>；<a href="https://www.nature.com/articles/s41593-023-01382-9">Sun 等，2023</a>。</p>
+<p><strong>设计：</strong>“工作讨论时希望直接提建议”与“难过时希望先被倾听”可以同时有效；“以后都直接给方案”可能是明确更新；“今天先别安慰”可能只是一次例外。由证据决定新增情境、缩小适用范围、记录例外或发布替代版本。证据不足时保留歧义，不强行选一项覆盖。</p>
+<p>所谓“意外”只能触发核对。模型认为不符合预期，不等于用户说错，更不等于有资格替用户建立稳定人格标签。</p>
+
+<h3>5. 先恢复情境，再寻找具体内容</h3>
+<p>情境依赖研究与近期情境恢复实验支持一个有限结论：有些暂时取不出的内容会因合适线索而更易回忆，但恢复效果有条件，之后仍会继续遗忘。不能据此推断所有遗忘均可逆。<a href="https://bpspsychub.onlinelibrary.wiley.com/doi/10.1111/j.2044-8295.1975.tb01468.x">Godden 与 Baddeley，1975</a>；<a href="https://www.pnas.org/doi/10.1073/pnas.2505120122">Bäuml 等，2025</a>。</p>
+<p><strong>设计：</strong>“那次没考好之后”先匹配一个时期、目标或事件，再读取相关人物、前后过程和片段，随后用新获得的线索进行第二次检索。控制器可以跳过概括直接搜索原文，并在预算内决定是否继续、回答已知部分或请求能区分候选的提示。</p>
+<p>所有恢复均限制在原先可读取的历史证据范围内。当前问题中的“我们曾一起去海边”是线索，不能作为“旧记录里确实有此事”的证明。同名人物、相似事件和分支必须保留歧义，关联不能无限扩散。</p>
+
+<h3>6. 按未来用途调整可达性，保护弱但有用的记忆</h3>
+<p>环境统计与记忆的研究说明，出现频率、近期性及其模式可以帮助预测未来需要。检索练习研究也发现，对部分内容的强化可能伴随相关内容的提取困难；这提醒我们关注候选竞争。<a href="https://journals.sagepub.com/doi/abs/10.1111/j.1467-9280.1991.tb00174.x">Anderson 与 Schooler，1991</a>；<a href="https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Anderson_RBjork_EBjork_1994.pdf">Anderson 等，1994</a>。</p>
+<p><strong>设计：</strong>可达性受当前目标、情境匹配、独特性、外部使用历史和时间影响；未来约定、稀有但重要的例外应有保护路径。采用候选去重、事件多样性与直接回查，避免几条常被使用的概括垄断上下文。具体函数与参数由任务评估决定，不假设统一的人类遗忘常数。</p>
+<p>必须分开存储：当前检索优先级、保留价值、证据状态、事实有效期和细节可用性。后台自我检索与模型复述不能增长独立证据数；重复带来的熟悉感也不能被当成可靠知识。<a href="https://pubmed.ncbi.nlm.nih.gov/38593568/">Speckmann 与 Unkelbach，2024</a>。</p>
+
+<h3>7. 用选择性复查改进理解，保留历史</h3>
+<p>间隔学习与提取练习在人类学习中有广泛研究；预测误差与记忆更新的实验则显示，回忆在某些条件下会受到后续信息影响。这些现象适合启发复查触发器，不适合当成自动改写原始事件的理由。<a href="https://www.nature.com/articles/s44159-022-00089-1">Carpenter 等，2022</a>；<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6049395/">Sinclair 与 Barense，2018</a>。</p>
+<p><strong>设计：</strong>后台优先处理新增事件、相反证据、失败检索、未完任务和过期方法。任务读取真实来源，寻找反例，修订关联或概括，再验证版本与依赖后发布。没有语义变化的激活衰减无需调用模型；没有新证据的重复“反思”不能升级可信度。可间隔抽样检查高价值记忆的可找回性，不要求定期重读全库。</p>
+<p>对冻结 API，“复习”改善的是外部结构与下一次输入，不是基础模型权重。任务必须有队列去重、计算预算、重试边界与累计成本记录；所谓后台并不等于免费。</p>
+
+<h3>8. 让系统识别自己掌握的内容和缺口</h3>
+<p>来源监控研究与记忆报告控制研究分别强调知识来源和报告选择。工程上应将它们落实为可观测的证据状态及动作选择，而非让模型主观输出一个信心百分比。<a href="https://pubmed.ncbi.nlm.nih.gov/8346328/">Johnson 等，1993</a>；<a href="https://pubmed.ncbi.nlm.nih.gov/8759045/">Koriat 与 Goldsmith，1996</a>。</p>
+<p><strong>设计：</strong>回答前区分“有概括支持”“有具体来源”“多种候选”“存在冲突”“本次没有找到”“来源已不可用”。检索范围、索引进度、版本和预算作为依据。只找到校名时可以回答校名；没有毕业典礼的来源时不能把合理想象包装成记忆。允许继续找和澄清，也衡量不必要的拒答。</p>
+
+<h3>9. 让经验改变处理问题的方法</h3>
+<p>记忆应参与未来规划和实际行为。构造性记忆理论支持过去经验与未来想象之间的联系；近期程序性 Agent 记忆研究尝试从执行轨迹形成方法。两者不能混为“想象过就亲历过”。<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2429996/">Schacter 与 Addis，2007</a>；<a href="https://arxiv.org/html/2508.06433v4">Memp，2026 版本</a>。</p>
+<p><strong>设计：</strong>方法包含适用条件、步骤、失败条件、环境版本、实际尝试与结果。只有可观察反馈才能支持“这样做有效”；模型自评仅是待核对线索。未来模拟与真实执行分别记录，未来约定与行动权限分别管理。这样 Agent 才能从“保存过对话”走向“处理方式因经验而改变”。</p>
+</section>
+
+<section id="example">
+<h2>同一段经历如何逐渐成为可用的认识</h2>
+<p>用户在备考时说：“我今晚很难受，先陪我聊聊，十分钟后再安排复习。”系统可靠保存这次表达，在当前工作区留下未完成的安排，并把它归入这段备考经历。这里只能确认本次请求，不能直接断言用户永远讨厌建议。</p>
+<p>之后若有多次独立表达支持，形成一个有条件的认识：“备考受挫时，倾向先交流再安排任务。”另一次用户要求“今天请直接给计划”，可作为当次覆盖或例外；是否改变长期偏好取决于表达内容和后续证据。明确要求的适用范围不能被统计推断覆盖。</p>
+<p>一年后普通聊天可以不携带这些细节；当用户说“又是那种学不进去的晚上”，运行时结合当前情境唤起这个认识，影响回答方式。若用户问“当时我们说聊多久”，才继续展开仍然保留的具体来源。只有概括而没有原文时，不能补出“十分钟”。</p>
+<p>若用户问的是小学，记忆的性质仍是“用户曾讲述的经历”。我们可以长期保留校名、重要人物和几个特殊画面，允许普通细节难以自发唤起；深层原文是否仍然存在，由单独的保留政策决定。提示能恢复的范围不超过实际保留且有权限使用的依据。</p>
+</section>
+
+<section id="architecture">
+<h2>落在现有运行时中的位置</h2>
+<div class="flow" aria-label="目标认知循环"><span>输入与真实结果</span><b>→</b><span>当前情境</span><b>→</b><span>寻找与展开</span><b>→</b><span>有限工作区</span><b>→</b><span>回应或行动</span><b>→</b><span>新经历与局部巩固</span></div>
+<p>保持一个领域内核、一套 PostgreSQL 事实与版本存储、可重建检索投影及独立 worker。新增认知职责不意味着为每个概念单独部署服务。对任何派生输出，来源检查、权限、更正和删除语义仍由服务端保障。</p>
+<div class="table-wrap"><table><thead><tr><th>位置</th><th>基线已有基础</th><th>需要补齐的目标</th></tr></thead><tbody>
+<tr><td>宿主生命周期</td><td>同步文本捕获、prepare、交付确认、commit、恢复日志</td><td>情境模型；完整工具循环、流式和压缩接管适配</td></tr>
+<tr><td>记忆组织</td><td>原始事件、断言、来源、版本及范围</td><td>语义事件分段；事件、时期、片段、模式的多视图组织</td></tr>
+<tr><td>检索控制</td><td>有预算的查询改写和候选选择；词法候选；历史截止点</td><td>语义候选；情境恢复；有类型的关联展开；动态粒度分配</td></tr>
+<tr><td>持久处理</td><td>可恢复任务与版本检查基础</td><td>选择性巩固、反例处理、模式与个体差异、局部复查</td></tr>
+<tr><td>学习与遗忘</td><td>目标规范与来源约束</td><td>经评测的可达性策略、条件规律、基于结果的方法更新</td></tr>
+</tbody></table></div>
+<p>这些描述以代码基线为准。“语义回忆控制器”表示可让模型理解查询并选择候选，不代表底层已经具备语义向量检索，也不代表语义巩固和事件理解已完成。安全恢复运行状态与长期记忆质量是不同的验证问题。</p>
+<p>代码核对还发现三处必须先处理的接缝：当前 <code>work_once()</code> 在数据库事务内完成确定性处理，接入慢模型前要改为短事务领取、事务外计算、复核后发布，并补齐任务租约与认知成本计量；当前 <code>recent_event_refs</code> 只接受本会话和分支，跨经历展开需要独立的来源引用；普通事件的 <code>origin_verification</code> 仍为 <code>unknown</code>，程序性学习前必须打通可信工具结果的接入，不能仅凭契约中出现结果类型就宣称反馈闭环可用。</p>
+<p>建议的内部数据最小形状如下，属于设计草案，不是新增公开接口或现成数据库结构：</p>
+<pre>SituationState
+  当前目标、参与者、情境、未完事项、候选指代、依据与分支
+Episode / Fragment
+  来源片段、边界版本、情境、时间范围、粒度、细节可用性
+Schema / Assertion
+  带条件的认识、有效时间、独立支持、反例、解释版本
+EpisodeProjection
+  模式 ID 与固定版本、本次差异、来源依赖、覆盖与缺口
+RetrievalState
+  可达性、外部使用记录、候选覆盖、成本、停止原因
+Procedure
+  适用条件、步骤、失败条件、环境版本、尝试和结果来源</pre>
+<p>这些对象可以是现有表上的版本化投影，不必先发明一套巨大类层次。派生结构的置信程度与来源是否存在分别检查：合法引用的存在不保证新概括在语义上成立。</p>
+<p>近期 Agent 论文提供可比较的实现路线：ES-Mem 的事件分段，TiMem 的时间层级展开，LightMem 的离线批处理，FluxMem 的连接更新，Memp 的方法记忆和 MemRL 的用途反馈。它们解决不同问题，不能因名字包含 memory 就直接拼装；引入每项机制都要在相同预算下测增益。<a href="https://arxiv.org/html/2601.07582v2">ES-Mem</a>、<a href="https://arxiv.org/html/2601.02845v2">TiMem</a>、<a href="https://arxiv.org/html/2510.18866v4">LightMem</a>、<a href="https://arxiv.org/html/2605.28773v1">FluxMem</a>、<a href="https://arxiv.org/html/2508.06433v4">Memp</a>、<a href="https://arxiv.org/html/2601.03192v2">MemRL</a>。</p>
+<p>完整接入仍需宿主在推理前自动准备记忆、在接收真实结果后自动提交，并能恢复稳定身份和工作状态。MCP 可提供补充探索能力，只有工具入口时不能保证主 Agent 自发形成完整记忆循环。对于没有开放生命周期的封闭应用，应明确兼容范围。</p>
+<div class="note">有限上下文、无限细节、任意历史问题的完美回答和固定读取成本不能同时保证。默认的认知淡出可以不删除原文，但外部存储仍会增长。测量必须包含后台处理和深层展开成本，并分别提供保留政策与认知可达性策略。</div>
+</section>
+
+<section id="evaluation">
+<h2>如何证明这些机制值得存在</h2>
+<p>以下是实验设计，没有在本次调研中运行。模拟时间可以验证衰减和版本规则，不能替代真实模型测试，更不能证明几十年真实使用后的质量。</p>
+<ol>
+<li><strong>分段：</strong>在相同回答预算下比较固定窗口、会话边界、目标事件边界；测跨边界漏证据、分段成本及最终回答，不能只优化分段标签。</li>
+<li><strong>共同模式与个体差异：</strong>比较原文混合检索、单一摘要、多粒度表示、模式加差异；检验否定、角色、条件、例外和关键原话是否保留，统计保存与展开的总成本。</li>
+<li><strong>情境恢复：</strong>同一历史快照分别用直接、含蓄、模糊和错误前提的提示；测真实新增证据、歧义处理和无依据回忆。当前提示及其派生物不能进入历史证明集合。</li>
+<li><strong>认识变化：</strong>分别测试情境并存、时间上的明确改变、单次例外、用户更正和证据撤回；检查当前与历史查询，不允许用“最近一次出现”统一解决。</li>
+<li><strong>遗忘与竞争：</strong>推进 3、30、365 天等模拟时间，加入大量相似事件；观察高价值具体片段、低频例外与未完约定能否找到。比较强候选有无多样性约束时的覆盖。</li>
+<li><strong>自我强化：</strong>对同一无独立支持的说法内部复述 1、5、50 次，独立证据数和真实性不得增长；缓存命中和后台复查不算外部确认。</li>
+<li><strong>元记忆：</strong>混合证据完整、部分、冲突、缺失、索引积压和故障的情况；同时测错误率、回答覆盖率、澄清次数和额外读取，防止靠全部拒答制造高准确率。</li>
+<li><strong>方法学习：</strong>用独立实际结果评估方法是否在新任务上有效，加入环境改变与失败反例；模型自评不作为唯一成功标签。</li>
+<li><strong>系统约束：</strong>任何新投影都接受删除、更正、范围隔离、并发、重启恢复与预算耗尽检查。源数据删除后，“个体差异”、模式、索引和缓存不能成为绕过路径。</li>
+</ol>
+<p>固定回答模型、数据顺序和总预算做消融；按完整历史划分开发与测试集，避免同一段经历的改写泄漏。统一计量编码、嵌入、巩固、检索规划、重排、上下文、最终生成与存储。模型调用成本需要用户授权后再实测，本报告没有效果数字。</p>
+<p>预期值得优先打通的完整行为链是：<strong>事件形成 → 条件认识与例外 → 情境唤回 → 有依据的工作区 → 结果反馈与局部修订</strong>。这是因果依赖顺序，不是演示版本划分。没有证据表明必须先建设神经元模拟器、整套强化学习平台或独立图数据库。</p>
+</section>
+
+<section id="papers">
+<h2>25 篇论文：结论、证据类型与边界</h2>
+<p class="meta">年份按正式发表或所引用预印本版本注明。全文核对指针对本报告所用结论查看正文与限制，不表示逐句复现研究。论文中的效果未在本项目复现。</p>
+
+<article class="source" id="p01"><h3>01 · Conway &amp; Pleydell-Pearce · 2000</h3><p><a href="https://pubmed.ncbi.nlm.nih.gov/10789197/">The construction of autobiographical memories in the self-memory system</a></p><p><strong>理论综述；摘要及作者全文检索片段。</strong>人生时期、一般事件和具体事件知识，与当前目标一起组织自传体回忆。启发多尺度与重叠的经历索引；不是该数据库结构经人体实验验证的结论。</p></article>
+
+<article class="source" id="p02"><h3>02 · Baldassano et al. · 2017</h3><p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5558154/">Discovering event structure in continuous narrative perception and memory</a></p><p><strong>人类叙事实验与 fMRI；全文。</strong>不同时间尺度的事件结构及边界相关活动，与记忆再现有关。支持研究事件边界；不能从短时叙事实验直接推出多年自传体记忆的实现。</p></article>
+
+<article class="source" id="p03"><h3>03 · Li, Johansson &amp; Nikolaev · 2025</h3><p><a href="https://www.nature.com/articles/s41539-025-00321-6">Hierarchical event segmentation of episodic memory in virtual reality</a></p><p><strong>26 人 VR 实验；原始全文检索结果。</strong>该任务中任务概念边界对时间顺序准确性的影响强于空间边界。支持纳入目标变化，不代表任何场景下目标线索总优于空间线索。</p></article>
+
+<article class="source" id="p04"><h3>04 · Anderson &amp; Schooler · 1991</h3><p><a href="https://journals.sagepub.com/doi/abs/10.1111/j.1467-9280.1991.tb00174.x">Reflections of the Environment in Memory</a></p><p><strong>环境统计与理性分析；原刊摘要与论文检索内容。</strong>频率、近期性和出现模式与未来需要相联系。启发用途估计；不提供适用于所有用户与内容的统一衰减参数。</p></article>
+
+<article class="source" id="p05"><h3>05 · Johnson, Hashtroudi &amp; Lindsay · 1993</h3><p><a href="https://pubmed.ncbi.nlm.nih.gov/8346328/">Source monitoring</a></p><p><strong>框架综述；摘要。</strong>讨论人如何判断知识来源及其错误。启发明确保存报告、观察、推断与想象的来源类型；摘要不足以支撑更细的实验效果声明。</p></article>
+
+<article class="source" id="p06"><h3>06 · Sinclair &amp; Barense · 2018</h3><p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6049395/">Surprise and destabilize: prediction error influences episodic memory reconsolidation</a></p><p><strong>人类视频记忆实验；全文。</strong>令人意外的不完整提醒与后续干扰、记忆更新有关，并受时间条件影响。可借鉴局部核对触发；不能推导每次提取必然重写记忆。</p></article>
+
+<article class="source" id="p07"><h3>07 · Schacter &amp; Addis · 2007</h3><p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2429996/">The cognitive neuroscience of constructive memory: remembering the past and imagining the future</a></p><p><strong>理论综述；全文。</strong>过去细节的灵活组合与未来想象有联系。启发经验参与规划；历史陈述与模拟结果仍须有不同的证据身份。</p></article>
+
+<article class="source" id="p08"><h3>08 · Audrain &amp; McAndrews · 2022</h3><p><a href="https://www.nature.com/articles/s41467-022-33517-0">Schemas provide a scaffold for neocortical integration of new memories over time</a></p><p><strong>人类行为与 fMRI，10 分钟与 72 小时；全文。</strong>与既有模式一致的信息更易呈现有组织的整合，并伴随细节变化。不能要求所有新事件服从已有模式，也不能把影像关联当作因果转移证明。</p></article>
+
+<article class="source" id="p09"><h3>09 · Krenz et al. · 2023</h3><p><a href="https://www.nature.com/articles/s41467-023-41648-1">Time-dependent memory transformation in hippocampus and neocortex is semantic in nature</a></p><p><strong>人类行为与 fMRI，1 天或 28 天；全文。</strong>该实验的远期变化更符合语义转换，而非仅感知细节模糊。启发保留意义和关系的概括；不能外推为每段人生经历的统一演化规律。</p></article>
+
+<article class="source" id="p10"><h3>10 · Sun et al. · 2023</h3><p><a href="https://www.nature.com/articles/s41593-023-01382-9">Organizing memories for generalization in complementary learning systems</a></p><p><strong>Go-CLS 数学与神经网络模型；全文。</strong>按可预测结构选择性巩固可改善模型泛化，无差别转移可能过拟合。启发支持与反例管理；不是该策略在生物脑或本产品中的直接验证。</p></article>
+
+<article class="source" id="p11"><h3>11 · Beukers et al. · 2024</h3><p><a href="https://www.nature.com/articles/s44271-024-00079-4">Blocked training facilitates learning of multiple schemas</a></p><p><strong>人类叙事实验及计算模型；全文。</strong>在所研究任务中，分块训练有利于多个模式的学习；模型解释涉及较大预测误差后的表示拆分。不能概括为分块训练总优于交错训练。</p></article>
+
+<article class="source" id="p12"><h3>12 · Spens &amp; Burgess · 2024</h3><p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10963272/">A generative model of memory construction and consolidation</a></p><p><strong>计算模型；全文。</strong>快速关联存储与回放训练的生成网络，解释具体和概念记忆及部分偏差。支持把经历与概括分开研究；不证明人脑等同于该网络。</p></article>
+
+<article class="source" id="p13"><h3>13 · Spens &amp; Burgess · 2026</h3><p><a href="https://www.nature.com/articles/s41467-026-74357-6">Hippocampo-neocortical interaction as compressive retrieval-augmented generation</a></p><p><strong>计算模型；2026-06-25 发表；全文。</strong>压缩概括与意外细节、检索及生成相结合。事件分段和检索时机有预设，部分衰减未建模，压缩表示含训练要求；通用 API 可借鉴组织原则，不能直接继承模型的压缩能力。</p></article>
+
+<article class="source" id="p14"><h3>14 · Godden &amp; Baddeley · 1975</h3><p><a href="https://bpspsychub.onlinelibrary.wiley.com/doi/10.1111/j.2044-8295.1975.tb01468.x">Context-dependent memory in two natural environments: On land and underwater</a></p><p><strong>人类潜水员词表实验；原刊摘要与索引。</strong>学习和回忆情境的匹配可帮助提取。任务范围有限，不支持添加任意情绪或环境字段都会改善 AI 记忆。</p></article>
+
+<article class="source" id="p15"><h3>15 · Bäuml, Meixensperger &amp; Hirsch · 2025</h3><p><a href="https://www.pnas.org/doi/10.1073/pnas.2505120122">Reinstating memories’ temporal context at encoding causes Sisyphus-like memory rejuvenation</a></p><p><strong>两项人类实验，总计 1,216 人；全文。</strong>情境恢复或选择性提取在 4 小时和 24 小时改善回忆，7 天直接对比不显著，随后仍会遗忘。部分恢复比例来自模型估计；不能宣称所有细节一直完整存在。</p></article>
+
+<article class="source" id="p16"><h3>16 · Anderson, Bjork &amp; Bjork · 1994</h3><p><a href="https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Anderson_RBjork_EBjork_1994.pdf">Remembering Can Cause Forgetting: Retrieval Dynamics in Long-Term Memory</a></p><p><strong>三项人类实验；原始摘要与论文检索内容。</strong>练习提取一部分项目后，一些相关但未练习的项目更难提取。不是所有关联都会受损；工程应缓解竞争，不能据此主动删除未使用记忆。</p></article>
+
+<article class="source" id="p17"><h3>17 · Carpenter, Pan &amp; Butler · 2022</h3><p><a href="https://www.nature.com/articles/s44159-022-00089-1">The science of effective learning with spacing and retrieval practice</a></p><p><strong>人类学习综述；作者接受稿全文。</strong>讨论间隔与提取练习及其条件。可启发有限复查，但外部库重读不等于冻结模型学习；需要核对来源与反馈。</p></article>
+
+<article class="source" id="p18"><h3>18 · Koriat &amp; Goldsmith · 1996</h3><p><a href="https://pubmed.ncbi.nlm.nih.gov/8759045/">Monitoring and Control Processes in the Strategic Regulation of Memory Accuracy</a></p><p><strong>人类实验与理论模型；摘要。</strong>允许选择是否报告有助于调节准确性与数量，其作用依赖监控和条件。启发回答覆盖与错误率联合评估，不支持把模型自报信心当作校准概率。</p></article>
+
+<article class="source" id="p19"><h3>19 · Speckmann &amp; Unkelbach · 2024</h3><p><a href="https://pubmed.ncbi.nlm.nih.gov/38593568/">Illusions of knowledge due to mere repetition</a></p><p><strong>四项预注册人类实验，总计 773 人；摘要及作者全文。</strong>重复影响“以前已经知道”的判断及来源归因。该现象不等于重复总使假话变真；工程上应分开熟悉度与独立证据。</p></article>
+
+<article class="source" id="p20"><h3>20 · ES-Mem · 2026 · v2</h3><p><a href="https://arxiv.org/html/2601.07582v2">ES-Mem: Event Segmentation-Based Memory for Long-Term Dialogue Agents</a></p><p><strong>Agent 系统与基准实验；2026-01-13 版本全文。</strong>结合话题连续性与局部意图分段，保留边界、摘要与原文，检索后展开。在 LoCoMo、LongMemEval-S 等评测；本项目需验证中文口语、跨会话边界和资源成本。</p></article>
+
+<article class="source" id="p21"><h3>21 · TiMem · 2026 · v2</h3><p><a href="https://arxiv.org/html/2601.02845v2">TiMem: Temporal-Hierarchical Memory Consolidation for Long-Horizon Conversational Agents</a></p><p><strong>Agent 系统与基准实验；2026-04-30 版本全文。</strong>时间层级与按查询复杂度选择粒度，评测 LoCoMo 和 LongMemEval-S。可借鉴按需展开；固定日历层级不等于真实事件结构，也未解决全部存储遗忘问题。</p></article>
+
+<article class="source" id="p22"><h3>22 · FluxMem · 2026 · v1</h3><p><a href="https://arxiv.org/html/2605.28773v1">Rethinking Memory as Continuously Evolving Connectivity</a></p><p><strong>进行中的 Agent 研究预印本；2026-05-27 版本全文。</strong>异构连接、激活和反馈更新，报告 LoCoMo、Mind2Web、GAIA 实验。部分反馈依赖自验证；本系统不能把模型自评升级为独立结果证据。</p></article>
+
+<article class="source" id="p23"><h3>23 · Memp · 2025 / 2026 · v4</h3><p><a href="https://arxiv.org/html/2508.06433v4">Exploring Agent Procedural Memory</a></p><p><strong>Agent 方法记忆与基准实验；2026-04-15 版本全文。</strong>从执行轨迹与抽象脚本建立、检索、验证和更新方法，使用 TravelPlanner、ALFWorld。任务结果较明确，不能直接外推到开放陪伴关系中何为“成功”。</p></article>
+
+<article class="source" id="p24"><h3>24 · LightMem · 2025 / 2026 · v4</h3><p><a href="https://arxiv.org/html/2510.18866v4">LightMem: Lightweight and Efficient Memory-Augmented Generation</a></p><p><strong>Agent 记忆与效率实验；2026-02-28 版本全文。</strong>预处理、话题组织、阈值批量与离线更新，在长期记忆基准评测。可借鉴有预算的后台处理；论文计费边界不能直接等同整个产品端到端成本。</p></article>
+
+<article class="source" id="p25"><h3>25 · MemRL · 2026 · v2</h3><p><a href="https://arxiv.org/html/2601.03192v2">MemRL: Self-Evolving Agents via Runtime Reinforcement Learning on Episodic Memory</a></p><p><strong>固定模型下的记忆用途学习；2026-02-12 版本全文。</strong>先筛语义相关候选，再用反馈学习用途价值，在多项 Agent 基准评测。用途评分与事实可信度是不同对象，不要求本项目先引入完整强化学习平台。</p></article>
+</section>
+<footer>研究快照：2026-10-23。结论用于修订和验证设计，不构成已实现、已经优于基线或具有生物学等价性的声明。原始证据、用户授权、来源更正和删除始终约束所有派生记忆。</footer>
+</main>
+</body>
+</html>
