@@ -24,8 +24,16 @@ def _vector(text):
 
 
 class MemoryService:
-    def __init__(self, database):
+    def __init__(self, database, *, semantic_processor=None, embedding_provider=None):
         self.database = database
+        self.semantic_processor = semantic_processor
+        self.embedding_provider = embedding_provider
+
+    def orient_turn(self, principal, brain_id, turn_id, *, lease_token, expected_revision):
+        from .learning import LearningEngine
+
+        return LearningEngine(self).orient(principal, brain_id, turn_id,
+                                          lease_token=lease_token, expected_revision=expected_revision)
 
     def _params(self, principal, brain_id):
         return principal.tenant_id, principal.principal_id, brain_id
@@ -60,12 +68,15 @@ class MemoryService:
             "conversation_ref": old_scope.get("conversation_id"),
             "branch_ref": old_scope.get("branch_id"),
         })
+        scope["visibility"] = old_scope["visibility"]
         result["scope"] = scope
         if "disclosure_basis" in result:
             basis = result["disclosure_basis"]
             basis["dependency_generation"] = brain["dependency_generation"]
             for path in basis["support_paths"]:
-                path["permitted_scope"] = copy.deepcopy(scope)
+                previous = path["permitted_scope"]
+                path["permitted_scope"] = {**scope, **{key: previous[key] for key in (
+                    "visibility", "conversation_id", "branch_id")}}
                 path["dependency_generation"] = brain["dependency_generation"]
         return result
 
@@ -101,6 +112,9 @@ class MemoryService:
             validate("ActionRequest", request)
             if request["target"].get("collection_refs"):
                 raise DomainError("unsupported_capability", "Collection sharing is not configured.")
+            from .vector_jobs import query_embedding
+
+            vector, vector_snapshot, embedding_calls = query_embedding(self, principal, request)
             with self.database.transaction(principal) as conn:
                 deadline = min(request["payload"].get("budget", {}).get("max_wall_time_ms", 10000), 30000)
                 conn.execute("SELECT set_config('statement_timeout',%s,true)", (str(deadline),))
@@ -122,7 +136,17 @@ class MemoryService:
                     response = copy.deepcopy(existing["response"])
                     response["request_id"] = request["request_id"]
                     return response
-                result = getattr(self, "_" + action)(conn, principal, brain, request)
+                if vector_snapshot:
+                    from .learning import validate_snapshot
+
+                    validate_snapshot(conn, self, principal, brain, vector_snapshot)
+                if action in {"prepare", "recall"}:
+                    result = getattr(self, "_" + action)(conn, principal, brain, request, query_embedding=vector)
+                else:
+                    result = getattr(self, "_" + action)(conn, principal, brain, request)
+                if embedding_calls:
+                    result["usage"]["embedding_calls"] += embedding_calls
+                    result["usage"]["actual_cost_microunits"] = None
                 envelope.update(outcome="completed", server_scope=self._scope(principal, brain, request["target"]), result=result)
                 validate("ActionResponse", envelope)
                 conn.execute(
@@ -130,6 +154,12 @@ class MemoryService:
                     "VALUES(%s,%s,%s,%s,%s,%s,%s)",
                     (*params, action, key, fingerprint, Jsonb(envelope)),
                 )
+                if embedding_calls:
+                    conn.execute(
+                        "UPDATE memory_jobs SET result=NULL WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                        "AND id=%s AND kind='query_embedding'",
+                        (*params, "query:" + digest([key, action])),
+                    )
             return envelope
         except DomainError as error:
             envelope.pop("result", None)
@@ -177,7 +207,34 @@ class MemoryService:
             (*self._params(principal, brain["id"]), list(event_ids), list(memory_ids),
              *self._params(principal, brain["id"]), *self._params(principal, brain["id"])),
         ).fetchall()
-        return sorted({row["id"] for row in rows})
+        affected = sorted({row["id"] for row in rows})
+        params = self._params(principal, brain["id"])
+        conn.execute(
+            "UPDATE memory_jobs SET result=NULL,state='superseded',lease_token_digest=NULL,lease_expires_at=NULL "
+            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND "
+            "(source_event_ids && %s::text[] OR source_memory_ids && %s::text[])",
+            (*params, list(event_ids), affected),
+        )
+        conn.execute(
+            "UPDATE memory_episodes SET invalidated=true,state='invalidated',document=NULL "
+            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND event_ids && %s::text[]",
+            (*params, list(event_ids)),
+        )
+        conn.execute(
+            "UPDATE memory_associations SET invalidated=true WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND (event_ids && %s::text[] OR source_id=ANY(%s::text[]) OR target_id=ANY(%s::text[]))",
+            (*params, list(event_ids), affected, affected),
+        )
+        conn.execute("DELETE FROM memory_embeddings WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND memory_id=ANY(%s::text[])",
+                     (*params, affected))
+        conn.execute("DELETE FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND memory_id=ANY(%s::text[])",
+                     (*params, affected))
+        conn.execute(
+            "DELETE FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND memory_id IN "
+            "(SELECT document->>'memory_id' FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND document->>'feedback_event_id'=ANY(%s::text[]))", (*params, *params, list(event_ids)),
+        )
+        return affected
 
     def _dependent_events(self, conn, principal, brain, event_ids):
         params = self._params(principal, brain["id"])
@@ -254,6 +311,25 @@ class MemoryService:
             (brain["durable_sequence"], *params),
         )
         job = self._job(conn, principal, brain, "extract", {"event_id": document["event_id"], "revision": document["revision"]})
+        if (self.semantic_processor and target.get("conversation_ref") and target.get("branch_ref")
+                and incoming["delivery_state"] in ("received", "delivered", "partially_delivered")):
+            cognitive_payload = {
+                "event_id": document["event_id"], "revision": document["revision"],
+                "target": {key: target[key] for key in ("conversation_ref", "branch_ref")},
+                "through_sequence": document["sequence"],
+            }
+            queued = conn.execute(
+                "SELECT id FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND kind='consolidate' AND state='queued' AND attempts=0 "
+                "AND payload #>> '{target,conversation_ref}'=%s AND payload #>> '{target,branch_ref}'=%s "
+                "ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
+                (*params, target["conversation_ref"], target["branch_ref"]),
+            ).fetchone()
+            if queued:
+                conn.execute("UPDATE memory_jobs SET payload=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                             (Jsonb(cognitive_payload), *params, queued["id"]))
+            else:
+                self._job(conn, principal, brain, "consolidate", cognitive_payload)
         return document["event_id"], False, job["job_id"]
 
     def _observe(self, conn, principal, brain, request):
@@ -368,29 +444,20 @@ class MemoryService:
                 if not any(cognition.evidence_overlaps(reference, old)
                            for reference in memory["evidence_refs"] for old in superseded)]
 
-    def _retrieval(self, conn, principal, brain, target, query, recall_plan=None):
+    def _retrieval(self, conn, principal, brain, target, query, recall_plan=None, query_embedding=None, situation_context=None):
         params = self._params(principal, brain["id"])
-        candidate_limit = min(128, max(4, query["budget"]["max_context_tokens"] // 512))
+        from .candidates import collect_candidates
+
         total = conn.execute(
             "SELECT count(*) AS value FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
             "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed", params,
         ).fetchone()["value"]
-        if recall_plan is None:
-            rows = conn.execute(
-                "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
-                "AND embedding_model='lexical-feature-hash' AND embedding_version='v1-d256-blake2s' "
-                "ORDER BY embedding <=> %s::vector NULLS LAST,id LIMIT %s", (*params, _vector(query["query"]), candidate_limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
-                "AND id=ANY(%s::text[])", (*params, [v["memory_id"] for v in recall_plan["memory_versions"]]),
-            ).fetchall()
-        memories = [self._rebind(row["document"], principal, brain) for row in rows]
+        memories, candidate_state = collect_candidates(
+            conn, self, principal, brain, target, query, recall_plan, query_embedding,
+        )
         raw_working = self._working(conn, principal, brain, target, None)
         source_ids = {r["event_id"] for memory in memories for r in memory["evidence_refs"]}
+        source_ids.update(event_id for memory in memories for event_id in memory.get("root_event_ids", []))
         source_ids.update(r["event_id"] for field in ("items", "open_loops") for item in raw_working[field] for r in item["evidence_refs"])
         source_ids.update(query.get("query_event_ids", []))
         source_ids.update(query["cue_event_ids"])
@@ -404,6 +471,8 @@ class MemoryService:
         events = list({event["event_id"]: event for event in events + tail[:128]}.values())
         working = self._working(conn, principal, brain, target, events)
         state = self._state(conn, principal, brain, total)
+        state.update(candidate_state)
+        state["situation_context"] = situation_context or {}
         if recall_plan is not None:
             lookup = {(event["event_id"], event["revision"]): event for event in events}
             scope = self._scope(principal, brain, target)
@@ -417,7 +486,8 @@ class MemoryService:
                     if (memory["memory_id"], memory["revision"]) not in known:
                         memories.append(self._rebind(memory, principal, brain))
             state["selected_versions"] = recall_plan["memory_versions"]
-        state["source_truncated"] = truncated
+            state["candidate_versions"] = [(ref["memory_id"], ref["revision"]) for ref in recall_plan["memory_versions"]]
+        state["source_truncated"] = truncated or candidate_state["source_truncated"]
         state["superseded_evidence_refs"] = self._superseded_evidence(
             conn, principal, brain, [event["event_id"] for event in events]
         )
@@ -441,10 +511,10 @@ class MemoryService:
         self._save_traces(conn, principal, brain, result.get("recall_traces", []))
         return result, working, state
 
-    def _recall(self, conn, principal, brain, request):
-        return self._retrieval(conn, principal, brain, request["target"], request["payload"])[0]
+    def _recall(self, conn, principal, brain, request, query_embedding=None):
+        return self._retrieval(conn, principal, brain, request["target"], request["payload"], query_embedding=query_embedding)[0]
 
-    def _prepare(self, conn, principal, brain, request):
+    def _prepare(self, conn, principal, brain, request, query_embedding=None):
         payload = request["payload"]
         if ("expected_dependency_generation" in payload
                 and payload["expected_dependency_generation"] != brain["dependency_generation"]):
@@ -462,7 +532,28 @@ class MemoryService:
             if field in payload:
                 query[field] = payload[field]
         plan = payload.get("recall_plan")
-        result, working, state = self._retrieval(conn, principal, brain, request["target"], query, plan)
+        turn = conn.execute(
+            "SELECT * FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s",
+            (*self._params(principal, brain["id"]), payload["turn_id"]),
+        ).fetchone()
+        orientation = None
+        if turn and turn["orientation_job_id"]:
+            from .learning import orientation_result
+
+            if (turn["conversation_id"], turn["branch_id"]) != (
+                    request["target"].get("conversation_ref"), request["target"].get("branch_ref")):
+                raise DomainError("invalid_evidence", "Turn belongs to another context.")
+            if set(payload["latest_input_event_ids"]) != {ref["event_id"] for ref in turn["input_event_refs"]}:
+                raise DomainError("invalid_evidence", "Orientation belongs to different input.")
+            orientation = orientation_result(conn, self, principal, brain, turn)
+        contextual_values = {}
+        for item in orientation.get("situation_updates", []) if orientation else []:
+            if item["world"] == "real_world" and item["state"] == "active" and item["conditions"] == {"op": "always"}:
+                contextual_values.setdefault(item["key"], set()).add(item["value"])
+        context = {key: next(iter(values)) for key, values in contextual_values.items() if len(values) == 1}
+        result, working, state = self._retrieval(conn, principal, brain, request["target"], query, plan, query_embedding, context)
+        if orientation:
+            state["current_situation"] = orientation.get("situation_updates", [])
         state["recent_events"] = self._recent_context(conn, principal, brain, request["target"], payload)
         safe_payload = copy.deepcopy(payload)
         capabilities = safe_payload["capabilities"]
@@ -576,10 +667,20 @@ class MemoryService:
             "INSERT INTO memory_assertions(tenant_id,owner_id,brain_id,id,revision,document,event_ids,memory_ids,search_text,embedding) "
             "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::vector) ON CONFLICT(tenant_id,brain_id,id,revision) DO NOTHING",
             (*self._params(principal, brain["id"]), memory["memory_id"], memory["revision"], Jsonb(memory),
-             list({r["event_id"] for r in memory["evidence_refs"]}),
+             list({r["event_id"] for r in memory["evidence_refs"]} | set(memory.get("root_event_ids", []))),
              list({r["memory_id"] for r in memory["derivation"]["source_memory_versions"]}),
              memory["statement"], _vector(memory["statement"])),
         )
+        if self.embedding_provider:
+            job_id = "embed:" + digest([memory["memory_id"], memory["revision"], self.embedding_provider.space.descriptor()])
+            conn.execute(
+                "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,payload,state,source_event_ids,source_memory_ids) "
+                "VALUES(%s,%s,%s,%s,'embed',%s,'queued',%s,%s) ON CONFLICT DO NOTHING",
+                (*self._params(principal, brain["id"]), job_id,
+                 Jsonb({"memory_id": memory["memory_id"], "revision": memory["revision"]}),
+                 list({r["event_id"] for r in memory["evidence_refs"]} | set(memory.get("root_event_ids", []))),
+                 [memory["memory_id"]]),
+            )
         return memory
 
     def _proposal(self, proposal, events):
@@ -620,7 +721,7 @@ class MemoryService:
             if kind in ("candidate_hit", "context_selected", "quoted"):
                 raise DomainError("invalid_evidence", "Internal trace kinds can only be emitted by service instrumentation.")
             memory = conn.execute(
-                "SELECT id FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s "
+                "SELECT id,revision FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s "
                 "AND is_current AND NOT deleted AND NOT suppressed AND NOT invalidated",
                 (*self._params(principal, brain["id"]), proposal["memory_id"]),
             ).fetchone()
@@ -632,15 +733,24 @@ class MemoryService:
                 required_role = "tool" if kind == "observed_outcome" else "user"
                 if not event or event["observed"]["actor_role"] != required_role:
                     raise DomainError("invalid_evidence", "Feedback requires the actual external source.")
+                if (event["scope"]["conversation_id"] != target.get("conversation_ref")
+                        or event["scope"]["branch_id"] != target.get("branch_ref")
+                        or event["observed"]["delivery_state"] != "received"
+                        or event["observed"]["interpretation_hint"] != "real_world_report"
+                        or not event["utterance_segments"]
+                        or cognition._world(event["observed"], cognition._content_text(event["observed"]["content"])) != "real_world"
+                        or any(segment["act"] not in ({"direct_statement", "confirmation", "correction"}
+                            | ({"not_applicable"} if required_role == "tool" else set())) for segment in event["utterance_segments"])):
+                    raise DomainError("invalid_evidence", "Feedback must be an actual response in this context.")
                 if required_role == "tool" and event["origin_verification"] != "verified_producer":
                     raise DomainError("invalid_evidence", "Tool outcomes require a registered, verified producer.")
                 self._evidence(proposal["evidence_refs"], events)
                 if not any(r["event_id"] == event["event_id"] for r in proposal["evidence_refs"]):
                     raise DomainError("invalid_evidence", "Feedback evidence must refer to the external event.")
                 text = event["observed"]["content"].get("text", "")
-                if kind == "user_confirmed" and not re.search(r"^(yes|correct|confirmed|对|是的|没错|确认)", text, re.I):
+                if kind == "user_confirmed" and not re.fullmatch(r"\s*(yes|correct|confirmed|对|是的|没错|确认)[。.!！\s]*", text, re.I):
                     raise DomainError("invalid_evidence", "The source is not an explicit confirmation.")
-                if kind == "user_corrected" and not re.search(r"(不是|更正|改正|不对|actually|incorrect|correction|wrong)", text, re.I):
+                if kind == "user_corrected" and not re.fullmatch(r"\s*(不是|不对|错了|incorrect|wrong)[。.!！\s]*", text, re.I):
                     raise DomainError("invalid_evidence", "The source is not an explicit correction.")
                 source = "tool_observation" if required_role == "tool" else "user_message"
             trace = {"trace_id": uid(), "recall_id": proposal["recall_id"], "retrieval_snapshot_id": "feedback:" + proposal["recall_id"],
@@ -649,6 +759,53 @@ class MemoryService:
                      "evidence_refs": proposal["evidence_refs"], "recorded_at": now(),
                      "allowed_effect": "none" if source == "model_estimate" else "external_reassessment"}
             traces.append(trace)
+            if source != "model_estimate":
+                params = self._params(principal, brain["id"])
+                used = conn.execute(
+                    "SELECT id,document FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                    "AND document->>'recall_id'=%s AND document->>'memory_id'=%s "
+                    "AND document->>'kind' IN ('context_selected','quoted') "
+                    "AND document #>> '{scope,conversation_id}'=%s AND document #>> '{scope,branch_id}'=%s LIMIT 1",
+                    (*params, proposal["recall_id"], memory["id"], target.get("conversation_ref"), target.get("branch_ref")),
+                ).fetchone()
+                if used and cognition._stamp(event["system_time"]["recorded_at"]) <= cognition._stamp(used["document"]["recorded_at"]):
+                    raise DomainError("invalid_evidence", "Feedback must follow the recalled context.")
+                delivered = None
+                if used and used["document"].get("turn_id"):
+                    delivered = conn.execute(
+                        "SELECT output_event_refs FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                        "AND turn_id=%s AND conversation_id=%s AND branch_id=%s AND stage IN ('delivered','committed','completed')",
+                        (*params, used["document"]["turn_id"], target.get("conversation_ref"), target.get("branch_ref")),
+                    ).fetchone()
+                preceding = conn.execute(
+                    "SELECT id,revision FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                    "AND conversation_id=%s AND branch_id=%s AND sequence<%s AND is_current AND NOT retired AND NOT suppressed "
+                    "AND NOT deleted AND document #>> '{observed,actor_role}'='assistant' "
+                    "AND document #>> '{observed,delivery_state}' IN ('delivered','partially_delivered') ORDER BY sequence DESC LIMIT 1",
+                    (*params, target.get("conversation_ref"), target.get("branch_ref"), event["sequence"]),
+                ).fetchone()
+                follows_delivery = (delivered and preceding and
+                    {"event_id": preceding["id"], "revision": preceding["revision"]} in delivered["output_event_refs"])
+                applied = conn.execute(
+                    "SELECT id FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                    "AND document->>'memory_id'=%s AND document->>'feedback_event_id'=%s AND applied_at IS NOT NULL LIMIT 1",
+                    (*params, memory["id"], proposal["feedback_event_id"]),
+                ).fetchone()
+                if used and follows_delivery and not applied and kind in {"user_confirmed", "user_corrected", "observed_outcome"}:
+                    conn.execute(
+                        "INSERT INTO memory_access_state(tenant_id,owner_id,brain_id,memory_id,memory_revision,"
+                        "external_uses,successes,failures,last_external_use_at,last_feedback_event_id) "
+                        "VALUES(%s,%s,%s,%s,%s,1,%s,%s,now(),%s) "
+                        "ON CONFLICT(tenant_id,brain_id,memory_id,memory_revision) DO UPDATE SET "
+                        "revision=memory_access_state.revision+1,external_uses=memory_access_state.external_uses+1,"
+                        "successes=memory_access_state.successes+EXCLUDED.successes,failures=memory_access_state.failures+EXCLUDED.failures,"
+                        "last_external_use_at=now(),last_feedback_event_id=EXCLUDED.last_feedback_event_id",
+                        (*params, memory["id"], memory["revision"], int(kind == "user_confirmed"),
+                         int(kind == "user_corrected"), proposal["feedback_event_id"]),
+                    )
+                    self._save_traces(conn, principal, brain, [trace])
+                    conn.execute("UPDATE memory_traces SET applied_at=now() WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                                 (*params, trace["trace_id"]))
         self._save_traces(conn, principal, brain, traces)
         return traces
 
@@ -842,6 +999,10 @@ class MemoryService:
                 )
         erase = payload["mode"] == "erase_content"
         conn.execute(
+            "UPDATE memory_jobs SET result=NULL WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='query_embedding'",
+            params,
+        )
+        conn.execute(
             "UPDATE memory_events SET suppressed=true,deleted=deleted OR %s,document=CASE WHEN %s THEN NULL ELSE document END "
             "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=ANY(%s::text[])",
             (erase, erase, *params, list(event_ids)),
@@ -876,8 +1037,17 @@ class MemoryService:
         conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (key,))
 
     def _sanitize_archive(self, conn, principal, document):
+        from .archive_views import (
+            all_memories,
+            archive_identities,
+            memory_parents,
+            memory_sources,
+            sanitize_views,
+        )
+
         data = copy.deepcopy(document)
         identities = {e["event_id"] for e in data["events"]}
+        identities.update(archive_identities(data))
         identities.update(m["memory_id"] for m in data["memories"])
         identities.update(r["event_id"] for m in data["memories"] for r in m["evidence_refs"])
         identities.update(value for edge in data.get("event_dependencies", []) for value in edge.values())
@@ -903,21 +1073,21 @@ class MemoryService:
         removed_events = {e["event_id"] for e in data["events"] if e["event_id"] in erased_events}
         while True:
             invalidated = {
-                m["memory_id"] for m in data["memories"]
-                if any(r["event_id"] in erased_events for r in m["evidence_refs"])
-                or any(r["event_id"] in erased_events for path in m["disclosure_basis"]["support_paths"] for r in path["evidence_refs"])
-                or any(r["memory_id"] in erased_memories for r in m["derivation"]["source_memory_versions"])
+                m["memory_id"] for m in all_memories(data)
+                if memory_sources(m).intersection(erased_events)
+                or any(key[0] in erased_memories for key in memory_parents(m))
             }
             if invalidated.issubset(erased_memories):
                 break
             erased_memories.update(invalidated)
-        original_memory_count = len(data["memories"])
+        original_memory_count = len(all_memories(data))
         data["events"] = [e for e in data["events"] if e["event_id"] not in erased_events]
         data["memories"] = [m for m in data["memories"] if m["memory_id"] not in erased_memories]
+        sanitize_views(data, erased_events, erased_memories)
         working_affected = any(r["event_id"] in erased_events for state in data["working_states"]
                                for field in ("items", "open_loops") for item in state[field]
                                for r in item["evidence_refs"])
-        if removed_events or len(data["memories"]) != original_memory_count or working_affected:
+        if removed_events or len(all_memories(data)) != original_memory_count or working_affected:
             data["working_states"] = []
         data["excluded_deleted_event_ids"] = sorted(set(data.get("excluded_deleted_event_ids", [])) | removed_events)
         data["retired_event_ids"] = [i for i in data.get("retired_event_ids", []) if i not in erased_events]
@@ -948,6 +1118,8 @@ class MemoryService:
         return row
 
     def _export(self, conn, principal, brain, request):
+        from .archive_views import export_views
+
         self._archive_guard(conn, principal)
         payload = request["payload"]
         params = self._params(principal, brain["id"])
@@ -964,12 +1136,14 @@ class MemoryService:
         data = {"format": "agent-memory-jsonl-bundle", "format_version": CONTRACT_VERSION,
                 "events": self._events(conn, principal, brain, include_retired=True, limit=5001) if payload["include_events"] else [],
                 "memories": memories, "working_states": states, "tombstones": tombstones,
-                "source_brain_id": brain["id"], "created_at": now()}
+                "source_brain_id": brain["id"], "created_at": now(), "archive_origin": "local_export"}
         data["retired_event_ids"] = [r["id"] for r in conn.execute(
             "SELECT DISTINCT id FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND retired", params)]
         data["event_dependencies"] = [dict(row) for row in conn.execute(
             "SELECT input_event_id,output_event_id FROM memory_event_dependencies "
             "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s", params)]
+        export_views(conn, self, principal, brain, data,
+                     include_views=payload["include_assertions"] and payload["include_events"])
         self._validate_archive(data)
         data = self._sanitize_archive(conn, principal, data)
         archive_id, manifest = uid(), digest(data)
@@ -979,6 +1153,8 @@ class MemoryService:
         )
         job = self._job(conn, principal, brain, "export", {"archive_id": archive_id}, state="completed")
         includes = ["provenance", "tombstones", "model_versions"]
+        if any(data["cognitive_views"][field] for field in ("episodes", "members", "associations")):
+            includes.append("relations")
         includes += [name for name, flag in (("events", "include_events"), ("assertions", "include_assertions"), ("working_states", "include_working_states")) if payload[flag]]
         return {"archive_id": archive_id, "format": data["format"], "format_version": CONTRACT_VERSION,
                 "manifest_sha256": manifest, "status": "ready", "download_ref": archive_id,
@@ -992,7 +1168,11 @@ class MemoryService:
     def _validate_archive(self, document):
         if not isinstance(document, dict) or document.get("format") != "agent-memory-jsonl-bundle" or document.get("format_version") != CONTRACT_VERSION:
             raise DomainError("invalid_archive", "Unsupported archive format.")
-        if len(json.dumps(document, ensure_ascii=False).encode()) > 16_000_000:
+        try:
+            encoded_size = len(json.dumps(document, ensure_ascii=False, allow_nan=False).encode())
+        except (ValueError, TypeError, UnicodeEncodeError, RecursionError):
+            raise DomainError("invalid_archive", "Archive must contain bounded JSON values.") from None
+        if encoded_size > 16_000_000:
             raise DomainError("invalid_archive", "Archive exceeds the 16 MB import limit.")
         for field, definition in (("events", "Event"), ("memories", "MemoryAssertion"), ("working_states", "WorkingState")):
             if not isinstance(document.get(field), list) or len(document[field]) > 5000:
@@ -1020,22 +1200,17 @@ class MemoryService:
                     or any(not isinstance(value, str) or not 1 <= len(value) <= 256 for value in edge.values())
                     or edge["input_event_id"] == edge["output_event_id"]):
                 raise DomainError("invalid_archive", "Invalid event dependency manifest.")
-        by_id = {m["memory_id"]: m for m in document["memories"]}
-        visiting, visited = set(), set()
-        def visit(memory_id):
-            if memory_id in visiting:
-                raise DomainError("invalid_archive", "Archive contains circular memory dependencies.")
-            if memory_id in visited or memory_id not in by_id:
-                return
-            visiting.add(memory_id)
-            for dependency in by_id[memory_id]["derivation"]["source_memory_versions"]:
-                visit(dependency["memory_id"])
-            visiting.remove(memory_id)
-            visited.add(memory_id)
-        for memory_id in by_id:
-            visit(memory_id)
+        from .archive_views import validate_extensions
+
+        try:
+            validate_extensions(document)
+        except (TypeError, KeyError, ValueError, OverflowError, RecursionError):
+            raise DomainError("invalid_archive", "Cognitive archive structure or source manifest is invalid.") from None
 
     def upload_archive(self, principal, brain_id, document):
+        document = copy.deepcopy(document)
+        if isinstance(document, dict):
+            document["archive_origin"] = "untrusted_upload"
         self._validate_archive(document)
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
@@ -1049,6 +1224,8 @@ class MemoryService:
             return {"archive_id": archive_id, "manifest_sha256": manifest, "brain_id": brain["id"]}
 
     def _restore(self, conn, principal, brain, request):
+        from .archive_views import restore_memories, restore_views
+
         payload = request["payload"]
         if brain["scope_generation"] != payload["expected_scope_generation"]:
             raise DomainError("version_conflict", "Scope generation changed.", current_revision=brain["scope_generation"])
@@ -1111,25 +1288,12 @@ class MemoryService:
                  for edge in data["event_dependencies"]],
             )
         available = self._events(conn, principal, brain, event_ids=[e["event_id"] for e in data["events"]], limit=5000)
-        lookup = {e["event_id"]: e for e in available}
-        for memory in data["memories"]:
-            if memory["memory_id"] in blocked_memories or any(r["event_id"] in blocked_events for r in memory["evidence_refs"]):
-                continue
-            updated = copy.deepcopy(memory)
-            try:
-                all_refs = updated["evidence_refs"] + [r for path in updated["disclosure_basis"]["support_paths"] for r in path["evidence_refs"]]
-                for reference in all_refs:
-                    event = lookup.get(reference["event_id"])
-                    if not event or reference["source_content_sha256"] != event["content_sha256"]:
-                        raise DomainError("invalid_evidence", "Imported source is unavailable.")
-                    reference["event_revision"] = event["revision"]
-                self._evidence(updated["evidence_refs"], available)
-                updated["revision"] = 1
-                updated["system_time"] = {"recorded_at": now(), "superseded_at": None}
-                self._publish(conn, principal, brain, updated)
-            except DomainError:
-                quarantined += 1
-        for working in data["working_states"]:
+        restored_versions, rejected_memories, event_mapping = restore_memories(
+            conn, self, principal, brain, data, available, blocked_events, blocked_memories,
+        )
+        quarantined += rejected_memories
+        restored_views = restore_views(conn, self, principal, brain, data, restored_versions, event_mapping, blocked_events)
+        for working in data["working_states"] if data.get("archive_origin") == "local_export" else []:
             updated = self._rebind(working, principal, brain)
             for field in ("items", "open_loops"):
                 kept = []
@@ -1147,64 +1311,19 @@ class MemoryService:
                     updated.update(revision=1, through_sequence=brain["durable_sequence"], updated_at=now())
                     self._working_save(conn, principal, brain, target, updated)
         job = self._job(conn, principal, brain, "restore", {"archive_id": archive["id"]}, state="completed")
+        job["details"] = [
+            "Embeddings rebuild from retained assertions; access counters and execution leases are not restored.",
+            "Restored cognitive views: " + json.dumps(restored_views, sort_keys=True),
+            f"Quarantined memory versions requiring source rebuild or semantic reverification: {rejected_memories}.",
+            "Uploaded working state and inferred organization require rebuilding from imported sources.",
+        ]
         return {"job": job, "scope_generation": brain["scope_generation"], "imported_event_count": imported,
                 "quarantined_event_count": quarantined, "excluded_deleted_count": excluded, "read_enabled": True}
 
     def work_once(self, principal, brain_id):
-        job_id = None
-        try:
-            with self.database.transaction(principal) as conn:
-                brain = self._brain(conn, principal, brain_id)
-                params = self._params(principal, brain_id)
-                job = conn.execute(
-                    "SELECT * FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                    "AND state IN ('queued','failed') AND attempts<3 ORDER BY created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED", params,
-                ).fetchone()
-                if not job:
-                    return 0
-                job_id = job["id"]
-                if job["kind"] == "extract":
-                    row = conn.execute(
-                        "SELECT document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s "
-                        "AND revision=%s AND is_current AND NOT retired AND NOT deleted AND NOT suppressed AND document IS NOT NULL",
-                        (*params, job["payload"]["event_id"], job["payload"]["revision"]),
-                    ).fetchone()
-                    if row:
-                        event = self._rebind(row["document"], principal, brain)
-                        for memory in self._current_captures(conn, principal, brain, event):
-                            self._publish(conn, principal, brain, memory)
-                elif job["kind"] == "rebuild":
-                    event_ids = job["payload"].get("event_ids", [])
-                    if len(event_ids) > 128:
-                        self._job(conn, principal, brain, "rebuild", {"event_ids": event_ids[128:]})
-                    for event in self._events(conn, principal, brain, event_ids=event_ids[:128], limit=128):
-                        for memory in self._current_captures(conn, principal, brain, event):
-                            self._publish(conn, principal, brain, memory)
-                conn.execute(
-                    "UPDATE memory_jobs SET state='completed',attempts=attempts+1,last_error=NULL,completed_at=now() "
-                    "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s", (*params, job_id),
-                )
-                pending = conn.execute(
-                    "SELECT min(e.sequence) AS value FROM memory_events e JOIN memory_jobs j ON "
-                    "j.tenant_id=e.tenant_id AND j.brain_id=e.brain_id AND j.payload->>'event_id'=e.id "
-                    "AND (j.payload->>'revision')::bigint=e.revision "
-                    "WHERE e.tenant_id=%s AND e.owner_id=%s AND e.brain_id=%s AND j.kind='extract' AND j.state<>'completed'", params,
-                ).fetchone()["value"]
-                indexed = brain["durable_sequence"] if pending is None else pending - 1
-                conn.execute(
-                    "UPDATE memory_brains SET indexed_sequence=%s WHERE tenant_id=%s AND owner_id=%s AND id=%s",
-                    (indexed, *params),
-                )
-                return 1
-        except Exception as error:
-            if job_id:
-                with self.database.transaction(principal) as conn:
-                    conn.execute(
-                        "UPDATE memory_jobs SET state='failed',attempts=attempts+1,last_error=%s "
-                        "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                        (type(error).__name__, *self._params(principal, brain_id), job_id),
-                    )
-            raise
+        from .learning import LearningEngine
+
+        return LearningEngine(self).work_once(principal, brain_id)
 
     def dashboard(self, principal, brain_id):
         with self.database.transaction(principal) as conn:
@@ -1223,4 +1342,6 @@ class MemoryService:
             return {"brain": self._public_brain(brain), "events": events[-100:], "memories": memories, "jobs": jobs,
                     "status": {"pending_jobs": sum(j["state"] != "completed" for j in jobs),
                                "index_lag": brain["durable_sequence"] - brain["indexed_sequence"],
-                               "extraction": "deterministic_source_capture", "candidate_index": "lexical-feature-hash/v1-d256-blake2s"}}
+                               "extraction": "verified_semantic_proposals" if self.semantic_processor else "deterministic_source_capture",
+                               "candidate_index": "hybrid-semantic-and-lexical" if self.embedding_provider else "lexical-and-structural-cues",
+                               "access_policy": "contextual-access-v1"}}

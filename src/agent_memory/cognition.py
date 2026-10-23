@@ -9,6 +9,7 @@ from typing import Any
 
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
+from .retrieval import RANK_METHODS
 
 RULE_VERSION = "literal-episodes-v1"
 RETRIEVAL_VERSION = "unicode-lexical-v1"
@@ -336,10 +337,17 @@ def evidence_overlaps(first: dict, second: dict) -> bool:
     )
 
 
-def _eligible_source(event: dict, ref: dict, historical: bool, intent: str) -> bool:
+def _eligible_source(event: dict, ref: dict, historical: bool, intent: str,
+                     claim_kind: str | None = None) -> bool:
+    role = event["observed"]["actor_role"]
+    if role == "assistant" and claim_kind is not None:
+        return (claim_kind in {"agent_said", "proposal_offered", "commitment_expressed"}
+                and event["observed"]["delivery_state"] in {"delivered", "partially_delivered"})
+    if role == "system" and claim_kind is not None:
+        return False
     if not historical or intent == "exact_quote":
         return True
-    if event["observed"]["actor_role"] in {"assistant", "system"}:
+    if role in {"assistant", "system"}:
         return False
     span = ref.get("span")
     acts = []
@@ -356,15 +364,36 @@ def _eligible_source(event: dict, ref: dict, historical: bool, intent: str) -> b
 
 def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
                     generation: int, cutoff: int | None, excluded: set, historical: bool,
-                    intent: str, visiting: frozenset = frozenset()) -> bool:
+                    intent: str, visiting: frozenset = frozenset(),
+                    valid_dependency_versions: frozenset = frozenset(),
+                    superseded_evidence_refs: tuple = (), validation_cache: dict | None = None) -> bool:
+    validation_cache = {} if validation_cache is None else validation_cache
     key = (memory["memory_id"], memory["revision"])
     if key in visiting or not _scope_allows(memory["scope"], scope):
         return False
+    if key in validation_cache:
+        return validation_cache[key]
     basis = memory["disclosure_basis"]
     if basis["validation_state"] != "current" or basis["dependency_generation"] != generation:
         return False
     refs = memory["evidence_refs"]
     if not refs or not all(_valid_ref(ref, events, scope) for ref in refs):
+        return False
+    if any(evidence_overlaps(ref, old) for ref in refs for old in superseded_evidence_refs):
+        return False
+    for event_id in memory.get("root_event_ids", []):
+        source = events.get(event_id)
+        if source is None or not _scope_allows(source["scope"], scope):
+            return False
+        if any(ref["event_id"] == event_id for ref in superseded_evidence_refs):
+            return False
+        if historical and (cutoff is None or source["sequence"] > cutoff or event_id in excluded):
+            return False
+    claim_kind = memory.get("claim_kind")
+    if claim_kind is not None and any(
+        not _eligible_source(events[ref["event_id"]], ref, historical, intent, claim_kind)
+        for ref in refs
+    ):
         return False
     if historical:
         if cutoff is None:
@@ -373,7 +402,7 @@ def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
             event = events[ref["event_id"]]
             if event["sequence"] > cutoff or event["event_id"] in excluded:
                 return False
-            if not _eligible_source(event, ref, True, intent):
+            if not _eligible_source(event, ref, True, intent, claim_kind):
                 return False
     paths = [path for path in basis["support_paths"]
              if path["path_id"] in basis["selected_path_ids"]]
@@ -388,12 +417,19 @@ def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
             return False
         parents = memory["derivation"]["source_memory_versions"] + path["source_memory_versions"]
         for parent in parents:
-            source = all_memories.get((parent["memory_id"], parent["revision"]))
-            if not source or source["lifecycle"] in {"retracted", "superseded"}:
+            parent_key = (parent["memory_id"], parent["revision"])
+            source = all_memories.get(parent_key)
+            if not source or source["lifecycle"] == "retracted" or (
+                source["lifecycle"] == "superseded" and parent_key not in valid_dependency_versions
+            ):
                 return False
-            if not _evidence_valid(source, all_memories, events, scope, generation, cutoff,
-                                   excluded, historical, intent, visiting | {key}):
+            valid = _evidence_valid(source, all_memories, events, scope, generation, cutoff,
+                                    excluded, historical, intent, visiting | {key},
+                                    valid_dependency_versions, superseded_evidence_refs, validation_cache)
+            validation_cache[parent_key] = valid
+            if not valid:
                 return False
+    validation_cache[key] = True
     return True
 
 
@@ -430,6 +466,17 @@ def _coverage(state: dict, request: dict, candidate_count: int) -> dict:
     }
 
 
+def _candidate_signals(state: dict, key: tuple[str, int]) -> list[dict]:
+    signals = state.get("rank_signals", {}).get(key, [])
+    if not isinstance(signals, list):
+        raise DomainError("validation_failed", "Candidate rank signals must be a list.")
+    for signal in signals:
+        validate("RankSignal", signal)
+        if not math.isfinite(signal["score"]):
+            raise DomainError("validation_failed", "Candidate rank scores must be finite.")
+    return copy.deepcopy(signals)
+
+
 def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
            state: dict) -> dict:
     validate("BoundScope", scope)
@@ -445,7 +492,9 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         request, event_map, state["durable_sequence"]
     )
     excluded = _cue_descendants(excluded, event_map)
-    coverage = _coverage(state, request, len(memories))
+    candidate_versions = state.get("candidate_versions")
+    candidate_versions = set(candidate_versions) if candidate_versions is not None else None
+    coverage = _coverage(state, request, len(candidate_versions) if candidate_versions is not None else len(memories))
     if scope["scope_generation"] != state["scope_generation"]:
         raise DomainError("version_conflict", "Scope generation is no longer current")
     snapshot = {
@@ -466,6 +515,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     }
     known = {(memory["memory_id"], memory["revision"]) for memory in memories}
     candidates = list(memories)
+    tail_versions = set()
     if coverage["read_fence_satisfied"]:
         for event in sorted(event_map.values(), key=lambda item: item["sequence"]):
             if event["sequence"] <= state["indexed_sequence"]:
@@ -481,6 +531,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
                     path["dependency_generation"] = state["dependency_generation"]
                 candidates.append(memory)
                 known.add(key)
+                tail_versions.add(key)
             if not state.get("source_truncated", False):
                 coverage["tail_covered_through_sequence"] = event["sequence"]
     all_memories = {(memory["memory_id"], memory["revision"]): memory for memory in candidates}
@@ -492,6 +543,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
                       for index, item in enumerate(state.get("selected_versions", []))}
     selecting = "selected_versions" in state
     historical = history_status != "not_requested"
+    validation_cache = {}
     if not coverage["read_fence_satisfied"] or history_status == "unavailable":
         candidates = []
     for memory in candidates:
@@ -501,12 +553,28 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             break
         if memory["lifecycle"] not in {"active", "dormant"} or memory["world"] not in worlds:
             continue
-        if selecting and (memory["memory_id"], memory["revision"]) not in selected_order:
+        if memory.get("conditions"):
+            from .semantic import evaluate_condition
+
+            if evaluate_condition(memory["conditions"], state.get("situation_context", {})) == "false":
+                continue
+        if (memory.get("claim_kind") in {"agent_said", "proposal_offered", "commitment_expressed"}
+                and request["intent"] not in {"episode", "open_commitment", "exact_quote"}
+                and not historical
+                and not re.search(r"(你说|你答应|you said|you promised|your suggestion)", query, re.I)):
+            continue
+        key = (memory["memory_id"], memory["revision"])
+        if candidate_versions is not None and key not in candidate_versions and key not in tail_versions:
+            continue
+        if selecting and key not in selected_order:
             continue
         if any(evidence_overlaps(reference, old) for reference in memory["evidence_refs"]
                for old in state.get("superseded_evidence_refs", [])):
             continue
-        score = (1 / (1 + selected_order[(memory["memory_id"], memory["revision"])])) if selecting else _lexical_score(query, memory["statement"])
+        signals = [] if selecting else _candidate_signals(state, key)
+        ranked_score = sum(max(0.0, signal["score"]) for signal in signals if signal["method"] in RANK_METHODS)
+        lexical_score = _lexical_score(query, memory["statement"])
+        score = (1 / (1 + selected_order[key])) if selecting else ranked_score or lexical_score
         if score <= 0:
             continue
         if not _scope_allows(memory["scope"], scope):
@@ -524,7 +592,10 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
                 continue
         if not _evidence_valid(memory, all_memories, event_map, scope,
                                state["dependency_generation"], cutoff, excluded, historical,
-                               request["intent"]):
+                               request["intent"],
+                               valid_dependency_versions=frozenset(state.get("valid_dependency_versions", ())),
+                               superseded_evidence_refs=tuple(state.get("superseded_evidence_refs", ())),
+                               validation_cache=validation_cache):
             basis = memory["disclosure_basis"]
             if basis["dependency_generation"] != state["dependency_generation"] or (
                 basis["validation_state"] != "current"
@@ -540,23 +611,26 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         if last_used:
             days = max(0, (reference_time - _stamp(last_used)).total_seconds() / 86400)
             activation /= 1 + math.log1p(days)
-        scored.append((score + activation * 0.05, score, activation, memory))
+        if signals or selecting:
+            activation = 0.0
+        if not signals:
+            signals = [{"method": "reranker" if selecting else "keyword", "score": score,
+                        "meaning": "ranking_only_not_probability",
+                        "model_or_index_version": "evidence-recall-v1" if selecting else RETRIEVAL_VERSION}]
+        if not selecting and activation:
+            signals.append({"method": "recency", "score": activation,
+                            "meaning": "ranking_only_not_probability",
+                            "model_or_index_version": "external-activation-v1"})
+        scored.append((score + activation * 0.05, score, activation, memory, signals))
     scored.sort(key=lambda row: (-row[0], row[3]["memory_id"]))
     if selecting:
         scored.sort(key=lambda row: selected_order[(row[3]["memory_id"], row[3]["revision"])])
-    for _, lexical, activation, memory in scored:
+    for _, _, _, memory, signals in scored:
         tail = any(event_map[ref["event_id"]]["sequence"] > state["indexed_sequence"]
                    for ref in memory["evidence_refs"])
         item = {
             "memory": copy.deepcopy(memory),
-            "rank_signals": [
-                {"method": "reranker" if selecting else "keyword", "score": lexical,
-                 "meaning": "ranking_only_not_probability",
-                 "model_or_index_version": "evidence-recall-v1" if selecting else RETRIEVAL_VERSION},
-                *([] if selecting else [{"method": "recency", "score": activation,
-                 "meaning": "ranking_only_not_probability",
-                 "model_or_index_version": "external-activation-v1"}]),
-            ],
+            "rank_signals": signals,
             "retrieved_from": "unindexed_tail" if tail else "index",
             "display_mode": "explicit_recollection" if historical else "background_context",
         }
@@ -574,7 +648,8 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         result["next_step"] = "answer_with_limits"
         result["unknowns"].append(
             "Model-selected sources do not independently verify claims or exhaustive recall." if selecting else
-            "Lexical candidates retain source roles; semantic answer sufficiency is not assessed."
+            ("Candidate rank signals do not establish semantic answer sufficiency." if state.get("rank_signals") else
+             "Lexical candidates retain source roles; semantic answer sufficiency is not assessed.")
         )
         if request["intent"] == "exact_quote" and all(
             request["query"] in _content_text(event_map[ref["event_id"]]["observed"]["content"])
@@ -697,6 +772,11 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     limit = payload["budget"]["max_context_tokens"]
     blocks = []
     metadata = []
+    for item in state.get("current_situation", []):
+        blocks.append(("current_situation", _serialized({
+            key: item[key] for key in ("kind", "key", "value", "state", "world", "conditions", "verification")
+        } | {"use": "fallible_current_context_not_historical_evidence"}), item["evidence_refs"]))
+        metadata.append(None)
     for item in clean["items"]:
         blocks.append(("working_state", _serialized({
             "key": item["key"], "value": item["value"],
@@ -728,10 +808,19 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
         if item["display_mode"] == "do_not_surface":
             continue
         memory = item["memory"]
+        references = copy.deepcopy(memory["evidence_refs"])
+        cited = {ref["event_id"] for ref in references}
+        for event_id in memory.get("root_event_ids", []):
+            event = historical_events.get(event_id)
+            if event and event_id not in cited:
+                references.append({"event_id": event_id, "event_revision": event["revision"],
+                                   "source_content_sha256": event["content_sha256"], "relationship": "context_only"})
         blocks.append(("relevant_memory", _serialized({
             "statement": memory["statement"], "world": memory["world"],
             "epistemic_status": memory["epistemic_status"], "valid_time": memory["valid_time"],
-        }), memory["evidence_refs"]))
+            **{key: memory[key] for key in ("conditions", "claim_kind", "verification", "counterexamples", "procedure")
+               if key in memory},
+        }), references))
         metadata.append(memory)
     uncertainty = {
         "recall_status": recall_result["status"],

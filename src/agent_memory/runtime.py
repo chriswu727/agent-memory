@@ -148,6 +148,19 @@ class _Lease:
             )
             return self.row
 
+    def orient(self):
+        with self.lock:
+            self.check()
+            expected_revision = self.row["revision"]
+        fresh = self.journal.orient(
+            self.row["turn_id"], lease_token=self.token, expected_revision=expected_revision,
+        )
+        with self.lock:
+            if self.error is not None:
+                raise RuntimeBlocked("lease_lost", self.row["turn_id"]) from self.error
+            self.row = fresh
+            return self.row
+
     def __exit__(self, *exc):
         self.stopped.set()
         self.thread.join(timeout=5)
@@ -195,7 +208,7 @@ class BrainRuntime:
         result["limitations"] = [
             "This adapter manages synchronous text turns and host-confirmed delivery.",
             "It does not intercept arbitrary agents, tool loops, streaming, edits, or compaction.",
-            "Semantic consolidation and learned associative dynamics are not implemented.",
+            "Semantic processing depends on service configuration; long-term associative quality is not validated.",
             ("A bounded semantic recall controller is configured; its decisions remain fallible."
              if self.recall_controller else "Semantic recall planning is not configured; recall is lexical."),
             "External callbacks require idempotency or reconciliation after uncertain outcomes.",
@@ -249,6 +262,8 @@ class BrainRuntime:
                 event_ids = captured["accepted_event_ids"] + captured["duplicate_event_ids"]
                 lease.advance("captured", input_event_refs=[{"event_id": i, "revision": 1} for i in event_ids],
                               durable_sequence=captured["durable_through_sequence"])
+            if lease.row["stage"] == "captured":
+                lease.orient()
             if lease.row["stage"] in ("captured", "prepared", "generating"):
                 self._generate(lease, text, scope)
             if lease.row["stage"] in ("generated", "delivering"):
@@ -289,6 +304,7 @@ class BrainRuntime:
             (reference["event_id"], reference["event_revision"])
             for block in prepared["blocks"] for reference in block["evidence_refs"]
         }
+        refs.update((ref["event_id"], ref["revision"]) for ref in lease.row["context_event_refs"])
         if plan is not None:
             refs.update((ref["event_id"], ref["revision"]) for ref in plan["observed_event_refs"])
         fields = {

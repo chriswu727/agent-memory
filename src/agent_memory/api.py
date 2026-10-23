@@ -1,5 +1,6 @@
 import hashlib
 import json
+from contextlib import ExitStack, asynccontextmanager
 from importlib.resources import files
 from typing import Annotated, Literal
 
@@ -12,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
-from .config import Settings
+from .config import Settings, configured_service
 from .contracts import CONTRACT_VERSION, schema, validate
 from .helpers import DomainError, Principal
 
@@ -112,7 +113,7 @@ def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
     return result
 
 
-def capabilities() -> dict:
+def capabilities(*, semantic_enabled=False, embedding_enabled=False) -> dict:
     result = {
         "adapter_id": "agent-memory-rest",
         "adapter_version": __version__,
@@ -135,24 +136,34 @@ def capabilities() -> dict:
         "verified_at": None,
         "limitations": [
             "Host integration must explicitly observe messages and prepare each turn.",
-            "Current recall uses lexical and Chinese character cues, not semantic embeddings.",
-            "Consolidation preserves source-backed episodes; statistical memory quality is not validated.",
+            ("Semantic embedding recall is configured; index coverage may be partial."
+             if embedding_enabled else "Semantic embeddings are not configured; recall uses lexical and structural cues."),
+            ("Bounded semantic proposals and verification are configured; long-term memory quality is not validated."
+             if semantic_enabled else "Model-driven semantic processing is not configured."),
+            "Provider billing is unknown; call and input-byte limits are enforced, monetary ceilings are not certified.",
         ],
     }
     validate("IntegrationCapabilities", result)
     return result
 
 
-def create_app(settings: Settings | None = None, service=None, turns=None) -> FastAPI:
+def create_app(settings: Settings | None = None, service=None, turns=None, jobs=None) -> FastAPI:
     settings = settings or Settings.from_env()
+    resources = ExitStack()
     if service is None:
-        from .service import MemoryService
-        from .storage import Database
+        service = resources.enter_context(configured_service(settings))
 
-        service = MemoryService(Database(settings.database_url, settings.migration_database_url))
-    app = FastAPI(title="Agent Memory", version=__version__)
+    @asynccontextmanager
+    async def lifespan(app):
+        try:
+            yield
+        finally:
+            resources.close()
+
+    app = FastAPI(title="Agent Memory", version=__version__, lifespan=lifespan)
     app.state.service = service
     app.state.turns = turns
+    app.state.jobs = jobs
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     bearer = HTTPBearer(auto_error=False)
 
@@ -191,8 +202,24 @@ def create_app(settings: Settings | None = None, service=None, turns=None) -> Fa
 
             app.state.turns = TurnStore(Database(
                 settings.database_url, settings.migration_database_url,
-            ))
+            ), service=service)
         return app.state.turns
+
+    def job_store():
+        if app.state.jobs is None:
+            from .jobs import JobStore
+            from .storage import Database
+
+            app.state.jobs = JobStore(Database(settings.database_url, settings.migration_database_url))
+        return app.state.jobs
+
+    def job_metadata(record):
+        from .jobs import FAILURE_CODES, PUBLIC_FIELDS
+
+        result = {key: value for key, value in record.items() if key in {*PUBLIC_FIELDS, "lease_active"}}
+        if result.get("last_error") is not None and result["last_error"] not in FAILURE_CODES:
+            result["last_error"] = "internal_error"
+        return result
 
     async def runtime_body(request: Request, model: type[RuntimeBody]) -> dict:
         document = await read_document(request)
@@ -244,7 +271,8 @@ def create_app(settings: Settings | None = None, service=None, turns=None) -> Fa
 
     @app.get("/v1/capabilities")
     def get_capabilities(principal: Principal = Depends(authenticate)):
-        return capabilities()
+        return capabilities(semantic_enabled=getattr(service, "semantic_processor", None) is not None,
+                            embedding_enabled=getattr(service, "embedding_provider", None) is not None)
 
     @app.get("/v1/schema")
     def get_schema(principal: Principal = Depends(authenticate)):
@@ -288,6 +316,16 @@ def create_app(settings: Settings | None = None, service=None, turns=None) -> Fa
             "scope_generation", "turn_count", "active_lease_count", "stage_counts", "pending_job_count",
         }
         return {key: value for key, value in result.items() if key in fields}
+
+    @app.get("/v1/brains/{brain_id}/runtime/jobs")
+    def list_jobs(brain_id: str, request: Request, principal: Principal = Depends(authenticate)):
+        return {"jobs": [job_metadata(record) for record in job_store().list(
+            principal, brain_id, limit=runtime_limit(request),
+        )]}
+
+    @app.get("/v1/brains/{brain_id}/runtime/jobs/{job_id}")
+    def get_job(brain_id: str, job_id: str, principal: Principal = Depends(authenticate)):
+        return job_metadata(job_store().get(principal, brain_id, job_id))
 
     @app.post("/v1/brains/{brain_id}/runtime/turns", status_code=201)
     async def begin_turn(
@@ -375,6 +413,16 @@ def create_app(settings: Settings | None = None, service=None, turns=None) -> Fa
         from starlette.concurrency import run_in_threadpool
 
         result = await run_in_threadpool(turn_store().record_output, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/orient")
+    async def orient_turn(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeLeaseMutation)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(service.orient_turn, principal, brain_id, turn_id, **body)
         return runtime_metadata(result)
 
     @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/release")

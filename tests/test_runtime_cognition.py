@@ -1,0 +1,353 @@
+import copy
+import hashlib
+import json
+import threading
+from types import SimpleNamespace
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+from psycopg.types.json import Jsonb
+from test_turns import turns as turns
+
+from agent_memory.api import create_app
+from agent_memory.client import MemoryClient
+from agent_memory.config import Settings
+from agent_memory.helpers import DomainError, Principal, digest, now, uid
+from agent_memory.runtime import BrainRuntime, _Lease
+from agent_memory.runtime_client import RuntimeClient
+
+
+def test_runtime_client_orientation_is_a_leased_turn_operation():
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json={"stage": "captured", "orientation_job_id": "job"})
+
+    with MemoryClient("http://memory.test", "key", "brain", transport=httpx.MockTransport(handle)) as memory:
+        result = RuntimeClient(memory).orient("turn", lease_token="lease", expected_revision=3)
+    assert result["orientation_job_id"] == "job"
+    assert requests[0].url.path == "/v1/brains/brain/runtime/turns/turn/orient"
+    assert json.loads(requests[0].content) == {"lease_token": "lease", "expected_revision": 3}
+
+
+def test_orientation_and_job_monitor_require_authentication_and_redact_content():
+    calls = []
+    principal = Principal("tenant", "owner")
+
+    def orient(received_principal, brain_id, turn_id, **payload):
+        calls.append(("orient", received_principal, brain_id, turn_id, payload))
+        return {"turn_id": turn_id, "stage": "captured", "revision": 4, "orientation_job_id": "job",
+                "result": {"text": "private-result"}, "lease_token": "private-lease"}
+
+    def job(received_principal, brain_id, job_id):
+        calls.append(("get", received_principal, brain_id, job_id))
+        return {"id": job_id, "brain_id": brain_id, "kind": "orient", "state": "failed",
+                "last_error": "private-provider-error", "model_calls": 1, "input_bytes": 10,
+                "payload": {"text": "private-input"}, "result": {"text": "private-result"},
+                "lease_token": "private-lease", "hidden_reasoning": "private-reasoning"}
+
+    jobs = SimpleNamespace(get=job, list=lambda p, b, limit: [job(p, b, "job")])
+    settings = Settings(database_url="unused", api_keys={hashlib.sha256(b"key").hexdigest(): principal})
+    base = "/v1/brains/brain/runtime"
+    body = {"lease_token": "lease", "expected_revision": 3}
+    headers = {"Authorization": "Bearer key"}
+    with TestClient(create_app(settings, service=SimpleNamespace(orient_turn=orient), jobs=jobs)) as client:
+        assert client.post(base + "/turns/turn/orient", json=body).status_code == 401
+        assert client.get(base + "/jobs").status_code == 401
+        assert client.get(base + "/jobs/job").status_code == 401
+        assert calls == []
+        response = client.post(base + "/turns/turn/orient", json=body, headers=headers)
+        assert response.status_code == 200
+        assert response.json()["orientation_job_id"] == "job"
+        assert calls[-1] == ("orient", principal, "brain", "turn", body)
+        for path in ("/jobs?limit=1", "/jobs/job"):
+            response = client.get(base + path, headers=headers)
+            assert response.status_code == 200
+            assert "private-" not in response.text
+            assert "internal_error" in response.text
+        assert client.get(base + "/jobs?limit=0", headers=headers).status_code == 422
+        assert client.post(base + "/turns/turn/orient", json={**body, "job_id": "chosen-by-client"},
+                           headers=headers).status_code == 422
+
+
+class Journal:
+    def __init__(self, row):
+        self.row = copy.deepcopy(row)
+        self.calls = []
+
+    def claim(self, turn_id, **kwargs):
+        self.row.update(revision=self.row["revision"] + 1, lease_token="lease")
+        return copy.deepcopy(self.row)
+
+    def renew(self, turn_id, **kwargs):
+        self.calls.append("renew")
+        return copy.deepcopy(self.row)
+
+    def orient(self, turn_id, **kwargs):
+        assert kwargs["expected_revision"] == self.row["revision"]
+        self.calls.append("orient")
+        self.row.update(revision=self.row["revision"] + 1, orientation_job_id="job")
+        return copy.deepcopy(self.row)
+
+    def get(self, turn_id):
+        return copy.deepcopy(self.row)
+
+    def release(self, turn_id, **kwargs):
+        self.calls.append("release")
+        return copy.deepcopy(self.row)
+
+
+def captured(stage="captured"):
+    return {"turn_id": "turn", "stage": stage, "revision": 3, "sources_available": True,
+            "conversation_id": "chat", "branch_id": "main", "orientation_job_id": None,
+            "lease_token": "lease"}
+
+
+@pytest.mark.parametrize("stage,should_orient", [("captured", True), ("prepared", False), ("generating", False)])
+def test_orientation_precedes_generation_and_is_not_replanned_after_preparation(stage, should_orient):
+    row = captured(stage)
+    journal = Journal(row)
+    runtime = BrainRuntime(SimpleNamespace(brain_id="brain"), lambda _: pytest.fail("No model callback"))
+    runtime.journal = journal
+
+    def generate(lease, text, scope):
+        journal.calls.append("generate")
+        assert lease.row["orientation_job_id"] == ("job" if should_orient else None)
+        journal.row["stage"] = lease.row["stage"] = "generated"
+
+    runtime._generate = generate
+    runtime._output = lambda _: "Durable output"
+    result = runtime._run(row, "Current input")
+    assert result.stage == "generated"
+    assert journal.calls.count("orient") == int(should_orient)
+    if should_orient:
+        assert journal.calls.index("orient") < journal.calls.index("generate")
+
+
+def test_captured_orientation_retry_reconciles_the_existing_job():
+    row = captured()
+    row["orientation_job_id"] = "job"
+    journal = Journal(row)
+    with _Lease(journal, row, 30) as lease:
+        lease.orient()
+    assert journal.calls.count("orient") == 1
+    assert lease.row["orientation_job_id"] == "job"
+
+
+def test_generation_retains_sources_seen_by_orientation_but_not_selected_for_prompt():
+    runtime = BrainRuntime(SimpleNamespace(brain_id="brain"), lambda _: "Local callback output")
+    reference = {"event_id": "orientation-observation", "revision": 2}
+    row = {**captured(), "context_event_refs": [reference]}
+    prepared = {"blocks": [], "coverage": {"read_fence_satisfied": True, "dependency_generation": 0},
+                "working_state": {"revision": 0}}
+    runtime._recall = lambda *args: (prepared, None)
+    transitions = []
+
+    def advance(stage, **fields):
+        transitions.append((stage, fields))
+        row.update(stage=stage, **fields)
+
+    lease = SimpleNamespace(row=row, check=lambda: None, advance=advance,
+                            record_output=lambda text, status: None)
+    runtime._generate(lease, "Current input", {"conversation_id": "chat", "branch_id": "main"})
+    assert transitions[0][0] == "prepared"
+    assert transitions[0][1]["context_event_refs"] == [reference]
+
+
+def test_orientation_network_wait_does_not_prevent_lease_renewal():
+    row = captured()
+    journal = Journal(row)
+    renewed_during_call = threading.Event()
+    orient_started = threading.Event()
+    original_renew = journal.renew
+
+    def renew(*args, **kwargs):
+        if orient_started.is_set():
+            renewed_during_call.set()
+        return original_renew(*args, **kwargs)
+
+    def orient(*args, **kwargs):
+        orient_started.set()
+        assert renewed_during_call.wait(2), "Orientation blocked the heartbeat"
+        return {**row, "revision": 4, "orientation_job_id": "job"}
+
+    journal.renew, journal.orient = renew, orient
+    with _Lease(journal, row, 0.03) as lease:
+        assert lease.orient()["orientation_job_id"] == "job"
+
+
+def make_job(turns, *, kind="orient", turn_id=None, brain_id=None):
+    job_id = uid()
+    with turns.database.transaction(turns.principal) as conn:
+        conn.execute(
+            "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,payload,state) "
+            "VALUES(%s,%s,%s,%s,%s,%s,'queued')",
+            (turns.principal.tenant_id, turns.principal.principal_id, brain_id or turns.brain,
+             job_id, kind, Jsonb({"turn_id": turn_id or turns.turn_id})),
+        )
+    return job_id
+
+
+def capture_turn(turns):
+    turns.begin()
+    turns.claim()
+    turns.advance("captured", input_event_refs=[turns.observe()])
+
+
+def bind(turns, job_id, **changes):
+    arguments = {"lease_token": turns.token, "expected_revision": turns.row["revision"], "job_id": job_id}
+    arguments.update(changes)
+    return turns.call("bind_orientation", **arguments)
+
+
+@pytest.mark.integration
+def test_orientation_binding_is_durable_idempotent_and_cannot_switch_jobs(turns):
+    capture_turn(turns)
+    job = make_job(turns)
+    original_revision = turns.row["revision"]
+    turns.row = bind(turns, job)
+    assert turns.row["orientation_job_id"] == job
+    assert turns.row["revision"] == original_revision + 1
+    assert bind(turns, job, expected_revision=original_revision) == turns.row
+    assert bind(turns, job) == turns.row
+    assert turns.call("get")["orientation_job_id"] == job
+    with pytest.raises(DomainError) as error:
+        bind(turns, make_job(turns))
+    assert error.value.code == "idempotency_conflict"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("mismatch", ["kind", "turn", "brain", "lease", "revision"])
+def test_orientation_binding_rejects_wrong_scope_or_stale_owner(turns, mismatch):
+    capture_turn(turns)
+    values = {}
+    if mismatch == "kind":
+        values["kind"] = "extract"
+    elif mismatch == "turn":
+        values["turn_id"] = "different-turn"
+    elif mismatch == "brain":
+        values["brain_id"] = turns.service.create_brain(turns.principal, "Other brain")["id"]
+    job = make_job(turns, **values)
+    arguments = {}
+    if mismatch == "lease":
+        turns.expire()
+    elif mismatch == "revision":
+        arguments["expected_revision"] = turns.row["revision"] - 1
+    with pytest.raises(DomainError):
+        bind(turns, job, **arguments)
+    assert turns.call("get")["orientation_job_id"] is None
+
+
+@pytest.mark.integration
+def test_prepared_turn_cannot_bind_a_new_orientation(turns):
+    turns.prepare()
+    with pytest.raises(DomainError) as error:
+        bind(turns, make_job(turns))
+    assert error.value.code == "stage_conflict"
+
+
+@pytest.mark.integration
+def test_orientation_sources_are_durable_and_cannot_be_dropped_before_generation(turns):
+    capture_turn(turns)
+    job = make_job(turns)
+    turns.row = bind(turns, job)
+    source = turns.observe("Historical context seen only by orientation.", conversation="earlier")
+    with turns.database.transaction(turns.principal) as conn:
+        conn.execute("UPDATE memory_jobs SET state='completed' WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                     (turns.principal.tenant_id, turns.brain, job))
+    generation = turns.store.status(turns.principal, turns.brain)["dependency_generation"]
+    payload = {"lease_token": turns.token, "expected_revision": turns.row["revision"], "job_id": job,
+               "source_refs": [source], "context_generation": generation}
+    turns.row = turns.call("record_orientation_sources", **payload)
+    assert turns.row["context_event_refs"] == [source]
+    assert turns.call("record_orientation_sources", **payload) == turns.row
+    with pytest.raises(DomainError) as error:
+        turns.advance("prepared", context_event_refs=[], context_fingerprint=digest("context"),
+                      context_generation=generation, working_revision=0, context_tokens=50)
+    assert error.value.code == "invalid_evidence"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("invalid", ["incomplete", "generation", "source_revision"])
+def test_orientation_source_binding_rejects_incomplete_or_stale_plans(turns, invalid):
+    capture_turn(turns)
+    job = make_job(turns)
+    turns.row = bind(turns, job)
+    if invalid != "incomplete":
+        with turns.database.transaction(turns.principal) as conn:
+            conn.execute("UPDATE memory_jobs SET state='completed' WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                         (turns.principal.tenant_id, turns.brain, job))
+    source = turns.row["input_event_refs"][0]
+    generation = turns.store.status(turns.principal, turns.brain)["dependency_generation"]
+    with pytest.raises(DomainError):
+        turns.call("record_orientation_sources", lease_token=turns.token,
+                   expected_revision=turns.row["revision"], job_id=job,
+                   source_refs=[{**source, "revision": 999}] if invalid == "source_revision" else [source],
+                   context_generation=generation + 1 if invalid == "generation" else generation)
+    assert turns.call("get")["context_event_refs"] == []
+
+
+@pytest.mark.integration
+def test_finish_commits_verified_orientation_updates_without_a_model_call(turns, monkeypatch):
+    from agent_memory import learning
+
+    capture_turn(turns)
+    turns.row = bind(turns, make_job(turns))
+    source = turns.call("sources")["input_events"][0]
+    item = {
+        "key": "active-goal", "value": "Continue the current task", "knowledge_state": "inferred",
+        "evidence_refs": [{"event_id": source["event_id"], "event_revision": source["revision"],
+                           "source_content_sha256": source["content_sha256"], "relationship": "context_only"}],
+        "expires_at": None, "updated_at": now(),
+    }
+    calls = []
+
+    def updates(conn, service, principal, brain, row):
+        calls.append(row["orientation_job_id"])
+        return [item]
+
+    monkeypatch.setattr(learning, "orientation_updates", updates)
+    generation = turns.store.status(turns.principal, turns.brain)["dependency_generation"]
+    turns.advance("prepared", context_event_refs=[], context_fingerprint=digest("context"),
+                  context_generation=generation, working_revision=0, context_tokens=50)
+    turns.advance("generating")
+    turns.record_output("Delivered answer")
+    turns.advance("delivering")
+    turns.record_output("Delivered answer", "delivered")
+    result = turns.call("finish", lease_token=turns.token, expected_revision=turns.row["revision"])
+    assert result["stage"] == "completed"
+    assert calls == [turns.row["orientation_job_id"]]
+    with turns.database.transaction(turns.principal) as conn:
+        saved = conn.execute(
+            "SELECT document FROM memory_working_states WHERE tenant_id=%s AND brain_id=%s "
+            "AND conversation_id=%s AND branch_id=%s",
+            (turns.principal.tenant_id, turns.brain, turns.conversation, turns.branch),
+        ).fetchone()["document"]
+    assert saved["items"] == [item]
+    replay = turns.call("finish", lease_token=turns.token, expected_revision=turns.row["revision"])
+    assert replay["stage"] == "completed"
+    assert len(calls) == 1
+
+
+@pytest.mark.integration
+def test_failed_orientation_does_not_block_delivery_completion(turns, monkeypatch):
+    from agent_memory import learning
+
+    capture_turn(turns)
+    job = make_job(turns)
+    turns.row = bind(turns, job)
+    with turns.database.transaction(turns.principal) as conn:
+        conn.execute("UPDATE memory_jobs SET state='failed',last_error='provider_failed' "
+                     "WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                     (turns.principal.tenant_id, turns.brain, job))
+    monkeypatch.setattr(learning, "orientation_updates", lambda *args: [])
+    generation = turns.store.status(turns.principal, turns.brain)["dependency_generation"]
+    turns.advance("prepared", context_event_refs=[], context_fingerprint=digest("context"),
+                  context_generation=generation, working_revision=0, context_tokens=50)
+    turns.advance("generating")
+    turns.record_output("Delivered answer")
+    turns.advance("delivering")
+    turns.record_output("Delivered answer", "delivered")
+    assert turns.call("finish", lease_token=turns.token, expected_revision=turns.row["revision"])["stage"] == "completed"

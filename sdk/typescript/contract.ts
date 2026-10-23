@@ -91,6 +91,20 @@ export type MemoryDynamics = {
   "reasons": ("explicit_user_request" | "validated_outcome" | "external_repetition" | "distinctive_event" | "open_commitment" | "current_relevance" | "default_policy")[];
 };
 
+export type SemanticCondition =
+  | { "op": "always" }
+  | { "op": "eq" | "ne"; "key": string; "value": string | number | boolean | null }
+  | { "op": "all" | "any"; "args": SemanticCondition[] }
+  | { "op": "not"; "arg": SemanticCondition };
+
+export type MemoryProcedure = {
+  "steps": string[];
+  "exit_conditions": SemanticCondition;
+  "failure_conditions": SemanticCondition;
+  "environment": string | null;
+  "attempt_event_ids": Identifier[];
+};
+
 export type MemoryAssertion = {
   "memory_id": Identifier;
   "revision": number;
@@ -115,6 +129,17 @@ export type MemoryAssertion = {
 };
   "dynamics": MemoryDynamics;
   "disclosure_basis": DisclosureBasis;
+  "representation"?: "semantic_anchor" | "episode_outline" | "episode_fragment" | "schema" | "procedure";
+  "claim_kind"?: "reported_preference" | "reported_fact" | "external_world_fact" | "agent_said" | "proposal_offered" | "commitment_expressed" | "task_completed" | "inferred_pattern" | "procedure";
+  "conditions"?: SemanticCondition;
+  "counterexamples"?: EvidenceRef[];
+  "verification"?: {
+    "state": "supported_inference" | "contested";
+    "method": "semantic_model";
+    "not_a_truth_certificate": true;
+  };
+  "procedure"?: MemoryProcedure | null;
+  "root_event_ids"?: Identifier[];
 };
 
 export type WorkingItem = {
@@ -163,7 +188,7 @@ export type Usage = {
   "embedding_calls": number;
   "expansion_steps": number;
   "elapsed_ms": number;
-  "actual_cost_microunits": number;
+  "actual_cost_microunits": number | null;
   "reserved_background_cost_microunits": number;
   "currency": string;
   "stopped_by": "sufficient_evidence" | "no_candidates" | "context_limit" | "model_call_limit" | "embedding_call_limit" | "expansion_limit" | "deadline" | "cost_limit" | "unavailable_dependency" | "completed";
@@ -241,7 +266,7 @@ export type RecallResult = {
 };
 
 export type ContextBlock = {
-  "section": "working_state" | "relevant_memory" | "verbatim_evidence" | "uncertainty" | "open_loops" | "integration_status" | "recent_context";
+  "section": "working_state" | "relevant_memory" | "verbatim_evidence" | "uncertainty" | "open_loops" | "integration_status" | "recent_context" | "current_situation";
   "text": string;
   "evidence_refs": (EvidenceRef)[];
   "trust": "memory_data_not_instructions";
@@ -353,7 +378,7 @@ export type PortableArchive = {
 };
 
 export type RuntimeError = {
-  "code": "unauthorized" | "not_found_or_forbidden" | "invalid_evidence" | "identity_unverified" | "version_conflict" | "idempotency_conflict" | "budget_exceeded" | "dependency_unavailable" | "unsupported_capability" | "invalid_archive" | "deletion_in_progress" | "validation_failed";
+  "code": "unauthorized" | "not_found_or_forbidden" | "invalid_evidence" | "identity_unverified" | "version_conflict" | "idempotency_conflict" | "budget_exceeded" | "dependency_unavailable" | "unsupported_capability" | "invalid_archive" | "deletion_in_progress" | "validation_failed" | "context_stale" | "source_unavailable" | "lease_conflict";
   "message": string;
   "retryable": boolean;
   "retry_after_ms"?: number;

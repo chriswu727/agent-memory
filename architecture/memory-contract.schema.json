@@ -707,6 +707,120 @@
         },
         "disclosure_basis": {
           "$ref": "#/$defs/DisclosureBasis"
+        },
+        "representation": {
+          "enum": [
+            "semantic_anchor",
+            "episode_outline",
+            "episode_fragment",
+            "schema",
+            "procedure"
+          ]
+        },
+        "claim_kind": {
+          "enum": [
+            "reported_preference",
+            "reported_fact",
+            "external_world_fact",
+            "agent_said",
+            "proposal_offered",
+            "commitment_expressed",
+            "task_completed",
+            "inferred_pattern",
+            "procedure"
+          ]
+        },
+        "conditions": {
+          "$ref": "#/$defs/SemanticCondition"
+        },
+        "counterexamples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "maxItems": 16
+        },
+        "verification": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "enum": [
+                "supported_inference",
+                "contested"
+              ]
+            },
+            "method": {
+              "const": "semantic_model"
+            },
+            "not_a_truth_certificate": {
+              "const": true
+            }
+          },
+          "required": [
+            "state",
+            "method",
+            "not_a_truth_certificate"
+          ],
+          "additionalProperties": false
+        },
+        "procedure": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "minItems": 1,
+                  "maxItems": 16
+                },
+                "exit_conditions": {
+                  "$ref": "#/$defs/SemanticCondition"
+                },
+                "failure_conditions": {
+                  "$ref": "#/$defs/SemanticCondition"
+                },
+                "environment": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 512
+                },
+                "attempt_event_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "minItems": 1,
+                  "maxItems": 16
+                }
+              },
+              "required": [
+                "steps",
+                "exit_conditions",
+                "failure_conditions",
+                "environment",
+                "attempt_event_ids"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "root_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
         }
       },
       "required": [
@@ -1061,7 +1175,10 @@
           "minimum": 0
         },
         "actual_cost_microunits": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 0
         },
         "reserved_background_cost_microunits": {
@@ -1670,7 +1787,8 @@
             "uncertainty",
             "open_loops",
             "integration_status",
-            "recent_context"
+            "recent_context",
+            "current_situation"
           ]
         },
         "text": {
@@ -2385,7 +2503,10 @@
             "unsupported_capability",
             "invalid_archive",
             "deletion_in_progress",
-            "validation_failed"
+            "validation_failed",
+            "context_stale",
+            "source_unavailable",
+            "lease_conflict"
           ]
         },
         "message": {
@@ -4466,6 +4587,92 @@
         "trace"
       ],
       "additionalProperties": false
+    },
+    "SemanticCondition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "always"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "enum": [
+                "eq",
+                "ne"
+              ]
+            },
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+            },
+            "value": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "op",
+            "key",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "enum": [
+                "all",
+                "any"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SemanticCondition"
+              },
+              "minItems": 1,
+              "maxItems": 8
+            }
+          },
+          "required": [
+            "op",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "not"
+            },
+            "arg": {
+              "$ref": "#/$defs/SemanticCondition"
+            }
+          },
+          "required": [
+            "op",
+            "arg"
+          ],
+          "additionalProperties": false
+        }
+      ]
     }
   },
   "x-runtime-invariants": [
@@ -4475,5 +4682,6 @@
     "派生内容的可披露范围受完整支持路径限制；公开独立来源须生成不夹带私有内容的单独版本。删除和纠正同步使支持路径失效。",
     "RecallTrace 区分内部检索、上下文选择、引用、模型估计、用户反馈和已观察结果；模型估计与后台重复召回不增加真实性或保留价值。",
     "JSON Schema 不能验证引用存在、原始来源独立性、权限集合包含关系、代际单调性、实际读一致性或反馈来源；须由运行时和验收测试验证。"
-  ]
+  ],
+  "x-cognitive-revision": "cognitive-views-v1"
 }

@@ -22,7 +22,7 @@ PUBLIC_FIELDS = (
     "revision", "fence", "claim_count", "generation_count", "worker_id", "lease_expires_at",
     "recovery_required", "input_event_refs", "context_event_refs", "output_event_refs", "context_fingerprint",
     "context_generation", "working_revision", "durable_sequence", "context_tokens",
-    "recall_plan", "recall_model_calls", "recall_input_bytes",
+    "recall_plan", "recall_model_calls", "recall_input_bytes", "orientation_job_id",
     "failure_code", "created_at", "updated_at",
 )
 
@@ -63,8 +63,9 @@ def _refs(value):
 
 
 class TurnStore:
-    def __init__(self, database):
+    def __init__(self, database, service=None):
         self.database = database
+        self.service = service
 
     @contextmanager
     def _transaction(self, principal, brain_id):
@@ -315,6 +316,79 @@ class TurnStore:
             self._record(conn, row, "advance")
             return self._public(conn, principal, row)
 
+    def bind_orientation(self, principal, brain_id, turn_id, *, lease_token, expected_revision, job_id):
+        _integer(expected_revision, 1)
+        _identifier(job_id)
+        fingerprint = digest({"operation": "bind_orientation", "revision": expected_revision, "job_id": job_id})
+        with self._transaction(principal, brain_id) as (conn, _):
+            row = self._row(conn, principal, brain_id, turn_id)
+            self._lease(row, lease_token)
+            if row["stage"] != "captured":
+                raise DomainError("stage_conflict", "Orientation requires a captured turn.")
+            job = conn.execute(
+                "SELECT kind,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                (principal.tenant_id, principal.principal_id, brain_id, job_id),
+            ).fetchone()
+            if not job or job["kind"] != "orient" or job["payload"].get("turn_id") != turn_id:
+                raise DomainError("not_found_or_forbidden", "Orientation job is unavailable for this turn.")
+            if row["orientation_job_id"] not in (None, job_id):
+                raise DomainError("idempotency_conflict", "Turn already binds a different orientation job.")
+            if self._unavailable(conn, principal, row):
+                raise DomainError("source_unavailable", "A turn source changed before orientation.")
+            if row["revision"] == expected_revision + 1 and row["last_transition_hash"] == fingerprint:
+                return self._public(conn, principal, row)
+            self._lease(row, lease_token, expected_revision)
+            if row["orientation_job_id"] == job_id:
+                return self._public(conn, principal, row)
+            row = conn.execute(
+                "UPDATE memory_runtime_turns SET orientation_job_id=%s,revision=revision+1,"
+                "last_transition_hash=%s,updated_at=clock_timestamp() "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
+                "RETURNING *,clock_timestamp() AS db_now",
+                (job_id, fingerprint, *self._params(principal, brain_id, turn_id)),
+            ).fetchone()
+            self._record(conn, row, "advance")
+            return self._public(conn, principal, row)
+
+    def record_orientation_sources(self, principal, brain_id, turn_id, *, lease_token, expected_revision,
+                                   job_id, source_refs, context_generation):
+        _integer(expected_revision, 1)
+        _integer(context_generation)
+        _identifier(job_id)
+        references = _refs(source_refs)
+        fingerprint = digest({"operation": "orientation_sources", "revision": expected_revision,
+                              "job_id": job_id, "source_refs": references, "context_generation": context_generation})
+        with self._transaction(principal, brain_id) as (conn, brain):
+            row = self._row(conn, principal, brain_id, turn_id)
+            self._lease(row, lease_token)
+            if row["stage"] != "captured" or row["orientation_job_id"] != job_id:
+                raise DomainError("stage_conflict", "Orientation sources require the captured turn's bound job.")
+            job = conn.execute(
+                "SELECT kind,state,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                (principal.tenant_id, principal.principal_id, brain_id, job_id),
+            ).fetchone()
+            if not job or job["kind"] != "orient" or job["state"] != "completed" or job["payload"].get("turn_id") != turn_id:
+                raise DomainError("dependency_unavailable", "A completed orientation job is required.")
+            if brain["dependency_generation"] != context_generation or row["context_generation"] not in (None, context_generation):
+                raise DomainError("context_stale", "Orientation dependencies changed before binding.")
+            combined = _refs(row["context_event_refs"] + [ref for ref in references if ref not in row["context_event_refs"]])
+            if self._unavailable(conn, principal, {**row, "context_event_refs": combined}):
+                raise DomainError("source_unavailable", "An orientation source is no longer available.")
+            if row["revision"] == expected_revision + 1 and row["last_transition_hash"] == fingerprint:
+                return self._public(conn, principal, row)
+            self._lease(row, lease_token, expected_revision)
+            if combined == row["context_event_refs"] and row["context_generation"] == context_generation:
+                return self._public(conn, principal, row)
+            row = conn.execute(
+                "UPDATE memory_runtime_turns SET context_event_refs=%s,context_generation=%s,revision=revision+1,"
+                "last_transition_hash=%s,updated_at=clock_timestamp() "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
+                "RETURNING *,clock_timestamp() AS db_now",
+                (Jsonb(combined), context_generation, fingerprint, *self._params(principal, brain_id, turn_id)),
+            ).fetchone()
+            self._record(conn, row, "advance")
+            return self._public(conn, principal, row)
+
     def advance(self, principal, brain_id, turn_id, *, lease_token, expected_revision, stage,
                 input_event_refs=None, context_event_refs=None, output_event_refs=None, context_fingerprint=None,
                 context_generation=None, working_revision=None, durable_sequence=None, context_tokens=None,
@@ -487,7 +561,7 @@ class TurnStore:
             self._working_revision(conn, principal, row)
             if delivery_state != "draft" and len(row["output_event_refs"]) != 1:
                 raise DomainError("invalid_evidence", "Delivery requires one previously recorded assistant draft.")
-            service = MemoryService(self.database)
+            service = self.service if self.service is not None else MemoryService(self.database)
             target = {"brain_ref": brain_id, "conversation_ref": row["conversation_id"], "branch_ref": row["branch_id"]}
             event_id, _, _ = service._append_event(conn, principal, brain, target, incoming)
             output_refs = [{"event_id": event_id, "revision": source_revision}]
@@ -586,7 +660,7 @@ class TurnStore:
                 raise DomainError("stage_conflict", "Only an actually delivered turn can finish.")
             self._working_revision(conn, principal, row)
             self._delivered(conn, principal, row)
-            service = MemoryService(self.database)
+            service = self.service if self.service is not None else MemoryService(self.database)
             target = {"brain_ref": brain_id, "conversation_ref": row["conversation_id"], "branch_ref": row["branch_id"]}
             raw = service._working(conn, principal, brain, target, None)
             event_ids = {ref["event_id"] for field in ("items", "open_loops") for item in raw[field]
@@ -595,10 +669,17 @@ class TurnStore:
                 raise DomainError("budget_exceeded", "Working source validation exceeds the bounded commit budget.")
             state = service._working(conn, principal, brain, target,
                                      service._events(conn, principal, brain, event_ids=event_ids, limit=1024))
+            items = {item["key"]: item for item in state["items"]}
+            if row["orientation_job_id"] is not None:
+                from .learning import orientation_updates
+
+                items.update({item["key"]: item for item in orientation_updates(
+                    conn, service, principal, brain, row,
+                )})
             committed = service._commit(conn, principal, brain, {"target": target, "payload": {
                 "turn_id": turn_id, "expected_working_revision": row["working_revision"],
                 "delivered_event_ids": [ref["event_id"] for ref in row["output_event_refs"]],
-                "proposed_items": state["items"], "proposed_open_loops": state["open_loops"],
+                "proposed_items": list(items.values()), "proposed_open_loops": state["open_loops"],
                 "assertion_proposals": [],
             }})
             working_revision = committed["working_state"]["revision"]

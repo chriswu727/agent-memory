@@ -113,6 +113,11 @@ class RuntimeClient:
             request_fingerprint=request_fingerprint,
         )
 
+    def orient(self, turn_id: str, *, lease_token: str, expected_revision: int) -> JsonObject:
+        return self._post(
+            turn_id, "orient", lease_token=lease_token, expected_revision=expected_revision,
+        )
+
     def record_output(
         self, turn_id: str, *, lease_token: str, expected_revision: int,
         text: str, delivery_state: str,

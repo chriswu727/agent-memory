@@ -7,7 +7,7 @@ import signal
 import threading
 from pathlib import Path
 
-from .config import Settings
+from .config import Settings, configured_service
 from .helpers import uid
 
 
@@ -70,23 +70,20 @@ def bootstrap(settings: Settings) -> None:
 
 
 def run_worker(settings: Settings, once: bool = False) -> None:
-    from .service import MemoryService
-    from .storage import Database
-
-    service = MemoryService(Database(settings.database_url))
     stopped = threading.Event()
     for name in (signal.SIGTERM, signal.SIGINT):
         signal.signal(name, lambda signum, frame: stopped.set())
-    while not stopped.is_set():
-        for principal in set(settings.principals().values()):
-            for brain in service.list_brains(principal):
-                try:
-                    service.work_once(principal, brain.get("id", brain.get("brain_id")))
-                except Exception as error:
-                    print(f"Background processing failed ({type(error).__name__}); will retry")
-        if once:
-            return
-        stopped.wait(1)
+    with configured_service(settings) as service:
+        while not stopped.is_set():
+            for principal in set(settings.principals().values()):
+                for brain in service.list_brains(principal):
+                    try:
+                        service.work_once(principal, brain.get("id", brain.get("brain_id")))
+                    except Exception as error:
+                        print(f"Background processing failed ({type(error).__name__}); will retry")
+            if once:
+                return
+            stopped.wait(1)
 
 
 def main() -> None:

@@ -1,0 +1,332 @@
+from __future__ import annotations
+
+import copy
+
+from psycopg.types.json import Jsonb
+
+from . import cognition
+from .contracts import validate
+from .helpers import DomainError, digest, now
+from .semantic import PROPOSAL_SCHEMA, CognitiveBatch, SemanticProcessor, SemanticResult
+
+
+def _error():
+    raise DomainError("context_stale", "Cognitive source snapshot is unavailable or changed")
+
+
+def _refs(document):
+    return {(ref["event_id"], ref["event_revision"])
+            for ref in document.get("evidence_refs", []) + document.get("counterexamples", [])}
+
+
+def validate_batch(conn, service, principal, brain, batch: CognitiveBatch,
+                   result: SemanticResult | None = None):
+    current = service._brain(conn, principal, brain["id"])
+    brain.update(current)
+    scope = service._scope(principal, brain, {"conversation_ref": batch.scope["conversation_id"],
+                                             "branch_ref": batch.scope["branch_id"]})
+    if scope != batch.scope:
+        _error()
+    expected = {(event["event_id"], event["revision"]) for event in batch.sources}
+    for memory in batch.existing_assertions:
+        expected.update(_refs(memory))
+    for episode in batch.episodes:
+        expected.update((ref["event_id"], ref["revision"]) for ref in episode.get("member_refs", []))
+    for group in ("items", "open_loops"):
+        for item in batch.working_state.get(group, []):
+            expected.update(_refs(item))
+    if result is not None:
+        observed = {(ref["event_id"], ref["revision"]) for ref in result.observed_event_refs}
+        if not expected.issubset(observed):
+            _error()
+        expected.update(observed)
+    if len(expected) > 256:
+        raise DomainError("budget_exceeded", "Cognitive source closure exceeds its limit")
+    params = service._params(principal, brain["id"])
+    rows = conn.execute(
+        "SELECT document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND id=ANY(%s::text[]) AND is_current AND NOT retired AND NOT deleted AND NOT suppressed "
+        "AND document IS NOT NULL", (*params, sorted({key[0] for key in expected})),
+    ).fetchall()
+    events = {}
+    for row in rows:
+        source = service._rebind(row["document"], principal, brain)
+        key = (source["event_id"], source["revision"])
+        if key not in expected or not cognition._scope_allows(source["scope"], scope):
+            _error()
+        if digest(source["observed"]["content"]) != source["content_sha256"]:
+            _error()
+        events[key] = source
+    if set(events) != expected:
+        _error()
+    for previous in batch.sources:
+        source = events[(previous["event_id"], previous["revision"])]
+        if digest(source) != digest(service._rebind(previous, principal, brain)):
+            _error()
+    parents = {}
+    for previous in batch.existing_assertions:
+        row = conn.execute(
+            "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND id=%s AND revision=%s AND NOT invalidated AND NOT deleted AND NOT suppressed "
+            "AND document IS NOT NULL", (*params, previous["memory_id"], previous["revision"]),
+        ).fetchone()
+        if row is None:
+            _error()
+        memory = service._rebind(row["document"], principal, brain)
+        if (memory["lifecycle"] == "retracted" or not cognition._scope_allows(memory["scope"], scope)
+                or digest(memory) != digest(service._rebind(previous, principal, brain))):
+            _error()
+        parents[(memory["memory_id"], memory["revision"])] = memory
+    for previous in batch.episodes:
+        row = conn.execute(
+            "SELECT document FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND id=%s AND revision=%s AND is_current AND NOT invalidated AND NOT deleted "
+            "AND document IS NOT NULL", (*params, previous["episode_id"], previous["revision"]),
+        ).fetchone()
+        if (row is None or digest(service._rebind(row["document"], principal, brain))
+                != digest(service._rebind(previous, principal, brain))):
+            _error()
+    superseded = service._superseded_evidence(conn, principal, brain, sorted({key[0] for key in events}))
+    return {"events": events, "assertions": parents, "superseded_evidence": superseded,
+            "root_event_ids": sorted({key[0] for key in expected})}
+
+
+def _check_result(batch, result, snapshot):
+    if result.status not in {"completed", "partial"}:
+        if result.claims or result.situation_updates or result.episode_actions:
+            raise DomainError("invalid_evidence", "Unverified cognitive result cannot be published")
+        return
+    episodes = {episode["episode_id"]: episode for episode in batch.episodes}
+    ids, changed_episodes = set(), set()
+    for group in ("claims", "situation_updates", "episode_actions"):
+        schema_fields = set(PROPOSAL_SCHEMA["properties"][group]["items"]["properties"])
+        for final in getattr(result, group):
+            item = {key: copy.deepcopy(value) for key, value in final.items() if key in schema_fields}
+            expected_state = "contested" if item.get("counterexamples") else "supported_inference"
+            if (final.get("verification") != {"state": expected_state, "method": "semantic_model",
+                                               "not_a_truth_certificate": True}
+                    or final["proposal_id"] in ids):
+                raise DomainError("invalid_evidence", "Missing semantic verification")
+            ids.add(final["proposal_id"])
+            if group == "claims" and final.get("epistemic_status") != "derived_inference":
+                raise DomainError("invalid_evidence", "Semantic learning remains inferred")
+            if group == "situation_updates" and final.get("current_only") is not True:
+                raise DomainError("invalid_evidence", "Situation updates are current context only")
+            if group == "episode_actions" and item["episode_id"] is not None:
+                if item["episode_id"] in changed_episodes:
+                    raise DomainError("invalid_evidence", "An episode may have one action per batch")
+                changed_episodes.add(item["episode_id"])
+            try:
+                references = SemanticProcessor._validate_proposal(
+                    group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes,
+                )
+            except (ValueError, KeyError, TypeError) as error:
+                raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
+            if any(cognition.evidence_overlaps(ref, old) for ref in references
+                   for old in snapshot["superseded_evidence"]):
+                _error()
+
+
+def _meaning(document):
+    keys = ("statement", "memory_kind", "world", "representation", "claim_kind", "conditions",
+            "valid_time", "procedure", "verification")
+    value = {key: document[key] for key in keys}
+    value["evidence_refs"] = sorted(document["evidence_refs"], key=digest)
+    value["counterexamples"] = sorted(document["counterexamples"], key=digest)
+    return value
+
+
+def _assertion(item, batch, brain, snapshot):
+    identity = copy.deepcopy(item)
+    identity["evidence_refs"] += identity["counterexamples"]
+    identifier = "semantic-" + digest(["bounded-semantic-v1", _meaning(identity)])[:32]
+    timestamp = now()
+    support = copy.deepcopy(item["evidence_refs"])
+    counterexamples = copy.deepcopy(item["counterexamples"])
+    parents = copy.deepcopy(item["source_memory_versions"])
+    path_id = "path-" + identifier
+    result = {
+        "memory_id": identifier, "revision": 1, "scope": copy.deepcopy(batch.scope),
+        "memory_kind": item["memory_kind"], "statement": item["statement"],
+        "epistemic_status": "derived_inference", "world": item["world"],
+        "evidence_refs": support + counterexamples, "valid_time": copy.deepcopy(item["valid_time"]),
+        "system_time": {"recorded_at": timestamp, "superseded_at": None},
+        "lifecycle": "active", "supersedes_memory_ids": [],
+        "derivation": {"method": "aggregation", "rule_version": "bounded-semantic-v1",
+                       "model_version": None, "source_memory_versions": parents},
+        "dynamics": {"activation": 0.5, "retention_priority": 0.5, "detail_level": "gist",
+                     "last_external_reinforcement_at": None, "last_recalled_at": None,
+                     "decay_policy_version": "external-use-only-v1", "user_pinned": False,
+                     "reasons": ["default_policy"]},
+        "disclosure_basis": {
+            "dependency_generation": brain["dependency_generation"], "validation_state": "current",
+            "support_paths": [{"path_id": path_id, "evidence_refs": support,
+                               "source_memory_versions": parents, "permitted_scope": copy.deepcopy(batch.scope),
+                               "dependency_generation": brain["dependency_generation"], "state": "current",
+                               "independently_supports_complete_statement": True}],
+            "selected_path_ids": [path_id], "release_mode": "supported_scope",
+        },
+        "root_event_ids": snapshot["root_event_ids"],
+    }
+    for key in ("representation", "claim_kind", "conditions", "counterexamples", "verification", "procedure"):
+        result[key] = copy.deepcopy(item[key])
+    validate("MemoryAssertion", result)
+    return result
+
+
+def _publish_assertion(conn, service, principal, brain, memory):
+    params = service._params(principal, brain["id"])
+    prior = conn.execute(
+        "SELECT document,invalidated,deleted,suppressed FROM memory_assertions "
+        "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s AND revision=%s",
+        (*params, memory["memory_id"], memory["revision"]),
+    ).fetchone()
+    if prior is not None:
+        if prior["invalidated"] or prior["deleted"] or prior["suppressed"] or prior["document"] is None:
+            _error()
+        old = service._rebind(prior["document"], principal, brain)
+        if _meaning(old) != _meaning(memory):
+            raise DomainError("idempotency_conflict", "Cognitive identity has different semantic content")
+        return old
+    published = service._publish(conn, principal, brain, memory)
+    roots = sorted(set(memory.get("root_event_ids", [])) | {ref["event_id"] for ref in memory["evidence_refs"]})
+    conn.execute(
+        "UPDATE memory_assertions SET event_ids=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND id=%s AND revision=%s", (roots, *params, memory["memory_id"], memory["revision"]),
+    )
+    return published
+
+
+def _load_episode(conn, service, principal, brain, action):
+    if action["episode_id"] is None:
+        return None
+    row = conn.execute(
+        "SELECT document FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND id=%s AND revision=%s AND is_current AND NOT invalidated AND NOT deleted "
+        "AND document IS NOT NULL FOR UPDATE",
+        (*service._params(principal, brain["id"]), action["episode_id"], action["expected_revision"]),
+    ).fetchone()
+    if row is None:
+        _error()
+    return service._rebind(row["document"], principal, brain)
+
+
+def _save_episode(conn, service, principal, brain, batch, document, memories, root_ids):
+    params = service._params(principal, brain["id"])
+    old = conn.execute(
+        "SELECT document,invalidated,deleted FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s "
+        "AND brain_id=%s AND id=%s AND revision=%s", (*params, document["episode_id"], document["revision"]),
+    ).fetchone()
+    if old is not None:
+        if old["invalidated"] or old["deleted"] or old["document"] != document:
+            raise DomainError("idempotency_conflict", "Episode version changed within one job")
+        return
+    conn.execute(
+        "UPDATE memory_episodes SET is_current=false WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND id=%s AND is_current", (*params, document["episode_id"]),
+    )
+    conn.execute(
+        "INSERT INTO memory_episodes(tenant_id,owner_id,brain_id,id,revision,conversation_id,branch_id,state,document,event_ids) "
+        "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (*params, document["episode_id"], document["revision"], batch.scope["conversation_id"] or "",
+         batch.scope["branch_id"] or "", document["state"], Jsonb(document), sorted(root_ids)),
+    )
+    member_ids = {ref["event_id"] for ref in document["member_refs"]}
+    position = 0
+    for memory in memories:
+        if not {ref["event_id"] for ref in memory["evidence_refs"]}.issubset(member_ids):
+            continue
+        role = {"episode_outline": "outline", "semantic_anchor": "anchor", "schema": "schema"}.get(
+            memory.get("representation"), "fragment",
+        )
+        conn.execute(
+            "INSERT INTO memory_episode_members(tenant_id,owner_id,brain_id,episode_id,episode_revision,"
+            "memory_id,memory_revision,role,position) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
+            (*params, document["episode_id"], document["revision"], memory["memory_id"], memory["revision"], role, position),
+        )
+        position += 1
+
+
+def _publish_episode(conn, service, principal, brain, batch, action, snapshot, claims, job_id):
+    previous = _load_episode(conn, service, principal, brain, action)
+    if previous is not None:
+        if previous["scope"] != batch.scope:
+            _error()
+        if action["action"] == "reopen" and previous["state"] != "closed":
+            raise DomainError("version_conflict", "Only a closed episode can reopen")
+        if action["action"] in {"continue", "close"} and previous["state"] != "open":
+            raise DomainError("version_conflict", "Episode is no longer open")
+    members = {(ref["event_id"], ref["revision"]): ref
+               for ref in (previous["member_refs"] if previous else []) + action["member_refs"]}
+    if len(members) > 128:
+        raise DomainError("budget_exceeded", "Episode expansion exceeds its source limit")
+    current_sources = service._events(conn, principal, brain, event_ids=sorted({key[0] for key in members}), limit=128)
+    lookup = {(event["event_id"], event["revision"]): event for event in current_sources}
+    if set(lookup) != set(members):
+        _error()
+    for event in lookup.values():
+        if any(event["scope"][key] != batch.scope[key] for key in ("conversation_id", "branch_id")):
+            _error()
+    ordered = [members[key] for key in sorted(members, key=lambda key: lookup[key]["sequence"])]
+    if action["action"] == "close" and action["boundary_ref"] != ordered[-1]:
+        raise DomainError("invalid_evidence", "Closing boundary must be the final episode member")
+    root_ids = set(snapshot["root_event_ids"]) | {key[0] for key in members}
+    if previous:
+        root_ids.update(previous.get("root_event_ids", []))
+    fragments = []
+    for event in sorted(lookup.values(), key=lambda value: value["sequence"]):
+        fragments.extend(service._publish(conn, principal, brain, memory)
+                         for memory in service._current_captures(conn, principal, brain, event))
+    memories = {memory["memory_id"]: memory for memory in fragments + claims}
+
+    def document(identifier, revision, refs, state):
+        return {"episode_id": identifier, "revision": revision, "scope": copy.deepcopy(batch.scope),
+                "state": state, "member_refs": refs, "boundary_ref": copy.deepcopy(action["boundary_ref"]),
+                "organization_status": "inferred", "job_id": job_id,
+                "proposal_id": action["proposal_id"], "root_event_ids": sorted(root_ids)}
+
+    identifier = action["episode_id"] or "episode-" + digest([job_id, action["proposal_id"]])[:32]
+    revision = previous["revision"] + 1 if previous else 1
+    if action["action"] == "split":
+        boundary = ordered.index(action["boundary_ref"])
+        if boundary == 0:
+            raise DomainError("invalid_evidence", "A split must leave members in the original episode")
+        documents = [document(identifier, revision, ordered[:boundary], "closed"),
+                     document("episode-" + digest([job_id, action["proposal_id"], "split"])[:32],
+                              1, ordered[boundary:], "open")]
+        documents[0]["boundary_ref"] = copy.deepcopy(ordered[boundary - 1])
+    else:
+        documents = [document(identifier, revision, ordered, "closed" if action["action"] == "close" else "open")]
+    for value in documents:
+        _save_episode(conn, service, principal, brain, batch, value, list(memories.values()), root_ids)
+    return [{"episode_id": value["episode_id"], "revision": value["revision"]} for value in documents]
+
+
+def publish_semantic(conn, service, principal, brain, batch: CognitiveBatch,
+                     result: SemanticResult, *, job_id: str) -> dict:
+    snapshot = validate_batch(conn, service, principal, brain, batch, result)
+    _check_result(batch, result, snapshot)
+    memories = []
+    for item in result.claims:
+        memory = _assertion(item, batch, brain, snapshot)
+        memories.append(_publish_assertion(conn, service, principal, brain, memory))
+    episodes = []
+    for action in result.episode_actions:
+        episodes.extend(_publish_episode(conn, service, principal, brain, batch, action, snapshot, memories, job_id))
+    params = service._params(principal, brain["id"])
+    for memory in memories:
+        for parent in memory["derivation"]["source_memory_versions"]:
+            relation = "procedure" if memory["memory_kind"] == "procedural" else "schema"
+            identifier = "association-" + digest([memory["memory_id"], parent, relation])[:32]
+            conn.execute(
+                "INSERT INTO memory_associations(tenant_id,owner_id,brain_id,id,source_id,source_revision,"
+                "target_id,target_revision,relation,event_ids) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT DO NOTHING", (*params, identifier, memory["memory_id"], memory["revision"],
+                                            parent["memory_id"], parent["revision"], relation,
+                                            snapshot["root_event_ids"]),
+            )
+    return {"status": result.status, "published_count": len(memories),
+            "memory_versions": [{"memory_id": memory["memory_id"], "revision": memory["revision"]} for memory in memories],
+            "episode_versions": episodes, "source_event_ids": snapshot["root_event_ids"],
+            "source_memory_ids": sorted({memory["memory_id"] for memory in batch.existing_assertions}),
+            "rejected_count": len(result.rejected)}
