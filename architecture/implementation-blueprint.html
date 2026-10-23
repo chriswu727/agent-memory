@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Memory · 认知记忆实施蓝图</title>
+<style>
+:root{color-scheme:light;--ink:#182b32;--muted:#53676d;--line:#d6e1de;--accent:#176e61;--wash:#eef5f1}*{box-sizing:border-box}body{margin:0;background:#fcfdfb;color:var(--ink);font:16px/1.85 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:#153e38;color:#f3faf5;padding:48px max(6vw,24px)}header p{max-width:900px;color:#d6e7de}h1{font-size:clamp(28px,4vw,42px);line-height:1.4}main{max-width:1080px;margin:auto;padding:32px 24px 80px}nav{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:32px}a{color:var(--accent)}section{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:30px;scroll-margin-top:20px}h2{font-size:24px;line-height:1.5}h3{font-size:19px;margin:24px 0 8px}p{margin:10px 0}li{margin:8px 0}.note{background:var(--wash);border-left:4px solid var(--accent);padding:16px 20px}.meta{font-size:14px;color:var(--muted)}code,pre{font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;background:#edf1ee}code{padding:2px 5px;overflow-wrap:anywhere}pre{padding:18px;white-space:pre-wrap;overflow-wrap:anywhere}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:10px}th{background:var(--wash)}.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.flow span{padding:8px 12px;background:var(--wash);border:1px solid var(--line);border-radius:5px}footer{font-size:14px;color:var(--muted)}@media print{header{background:white;color:black;padding:0}header p{color:#333}main{padding:0}nav{display:none}a{color:inherit}.note{break-inside:avoid}body{font-size:11pt}}
+</style>
+</head>
+<body>
+<header><p>AGENT MEMORY · IMPLEMENTATION DESIGN · 2026-10-23</p><h1>把认知记忆接入每一次推理与结果反馈</h1><p>以现有源码为基础，确定数据复用、控制流程、算法边界、事务和恢复语义，以及实施依赖与验收。保留一个内核、PostgreSQL 与后台 worker。</p></header>
+<main>
+<nav aria-label="目录"><a href="#baseline">当前接缝</a><a href="#cycle">运行循环</a><a href="#data">数据模型</a><a href="#learning">理解与巩固</a><a href="#recall">回忆与上下文</a><a href="#dynamics">遗忘与用途</a><a href="#jobs">持久任务</a><a href="#integration">接入与观测</a><a href="#delivery">实施依赖与验收</a><a href="architecture.html">完整架构</a><a href="research/human-memory-2026-10-23.html">论文依据</a></nav>
+
+<section id="baseline">
+<h2>设计状态与代码接缝</h2>
+<div class="note"><strong>设计基线：</strong><code>b2f12bb</code>。本文件中的新增类型、字段、模块、表和动作均为拟实现方案；现有运行时没有因本文而获得这些能力。本次是源码审查与实施设计，没有运行真实模型质量实验或修改数据库。</div>
+<p>实现方向是将现有自动存取流程扩展成：持久的当前情境驱动回忆，回忆结果参与每次推理，真实结果更新情境，并触发局部长期学习。工作区管理、经历组织、条件认识、方法和遗忘共享同一条来源链，不另建一套与原始记录脱节的“大脑数据库”。</p>
+<div class="table-wrap"><table><thead><tr><th>已核对位置</th><th>当前行为</th><th>必须补齐的接缝</th></tr></thead><tbody>
+<tr><td><a href="../src/agent_memory/runtime.py">runtime.py</a>：<code>_recall / _prompt</code></td><td>同步文本轮次、检索计划、固定提示组装</td><td>持久情境计划、每次推理调用的上下文编排、工具循环适配</td></tr>
+<tr><td><a href="../src/agent_memory/turns.py">turns.py</a>：<code>finish</code></td><td>提交原有 items/open_loops；assertion_proposals 为空</td><td>验证本轮情境增量、真实结果和学习任务；无需等待长期整理完成</td></tr>
+<tr><td><a href="../src/agent_memory/service.py">service.py</a>：<code>work_once</code></td><td>持有 brain 锁，在事务内完成确定性提取与重建</td><td>领取、事务外计算、版本复核后发布；任务租约及认知预算</td></tr>
+<tr><td>service.py：<code>_retrieval</code>；<a href="../src/agent_memory/cognition.py">cognition.py</a>：<code>_evidence_valid / recall</code></td><td>候选与父证据共用集合；词面零分会被过滤</td><td>候选与验证依赖闭包分开；接受混合召回信号</td></tr>
+<tr><td>cognition.py：<code>_eligible_source</code></td><td>历史检索通常排除助手来源，exact_quote 有例外</td><td>按待证命题区分“说过什么”和“世界事实／任务完成”</td></tr>
+<tr><td>service.py：<code>_proposal / _commit / _feedback</code></td><td>字面发布保护；未完事项仅接受 unknown；反馈仅记 trace</td><td>有来源的语义提议与验证；可信结果接入；消费反馈更新用途</td></tr>
+<tr><td>service.py：<code>_checkpoint</code></td><td>compaction_safe 主要检查记录已持久化</td><td>另验证工作状态、工具配对与未完成事项可重建</td></tr>
+</tbody></table></div>
+<p>这些保护不能直接删除来“打开智能”。需要增加能够承担其职责的语义处理与验证路径，并保留直接原文捕获作为可靠后备。</p>
+</section>
+
+<section id="cycle">
+<h2>一个认知循环，两个计算时机</h2>
+<div class="flow"><span>真实输入持久化</span><b>→</b><span>当前情境提议</span><b>→</b><span>回忆与展开</span><b>→</b><span>有限上下文</span><b>→</b><span>模型／工具／交付</span><b>→</b><span>结果核对与学习入队</span></div>
+<p>前台只做本轮必要的理解与检索。后台负责跨经历概括、事件边界修订、关联与方法更新。后台失败不撤销已接收输入或已确认交付，也不把它们误标为未发生；相关记忆保持原文可查，并暴露整理进度。</p>
+<h3>前台流程</h3>
+<ol>
+<li><strong>捕获。</strong>沿用 <code>observe</code> 的来源键、版本和事务入队。用户输入收到即持久化，取消回复不能取消这次真实输入。</li>
+<li><strong>定向。</strong>读取本分支 SituationState，形成本次 OrientationPlan：当前目标、指代候选、未完事项、回忆需求和边界提示。程序处理明确标识和顺序；有歧义时模型才参与。可以与首轮回忆规划合并一次模型请求，不强制每个模块各调用一次模型。</li>
+<li><strong>回忆。</strong>多路取得候选，按需要展开事件、片段或来源。程序控制范围、预算和证据；模型只提出检索、选择或停止动作。</li>
+<li><strong>编排。</strong>保存可重建的 ContextPlan，交给宿主本次模型调用。原始消息、工作区推断与历史依据分别标识。</li>
+<li><strong>收集结果。</strong>保存模型草稿、工具请求、真实工具结果、实际交付或取消。若需要继续工具循环，创建下一次 invocation，重新使用最新情境。</li>
+<li><strong>提交。</strong>用真实结果核对本轮提议，在短事务中 CAS 更新工作状态、记录反馈、幂等入队相关学习任务，再结束轮次。</li>
+</ol>
+<p>本次情境推断先存于调用计划，不能在生成前直接覆盖已提交的“完成状态”。交付后不再强制等待一次语义模型核对：能由真实回执确定的状态立即提交，无法确定的语义变化保持待核对并入队。后续推理仍能看到实际事件尾部。</p>
+<h3>turn 与 invocation 的关系</h3>
+<p>现有 turn 阶段严格线性，不能把 generated 状态倒退到 prepared 来运行工具。增加 turn 内的调用日志：一个 turn 包含多个 invocation，每个 invocation 有自己的输入、定向、回忆计划、上下文、模型请求和结果。工具请求与结果通过稳定 call ID 连接。同步 <code>BrainRuntime.respond()</code> 是只包含一次最终文本调用的便捷适配，继续可用。</p>
+<p>同一 conversation/branch 使用持久顺序号与带租约的活动槽，避免两个轮次同时基于相同工作修订向用户发出矛盾结果。中断或抢占必须显式记录；不同分支可并行。状态 CAS 仍作为最终防线，不能仅靠客户端进程锁。</p>
+</section>
+
+<section id="data">
+<h2>复用现有事实存储，增加组织与运行状态</h2>
+<p><code>memory_events</code> 继续保存真实来源内容。所有有语义的片段、轮廓、锚点、条件认识与方法，复用 <code>memory_assertions</code> 的版本、来源、世界类型、支持路径和派生关系。一个概念对应一种表示，不需要一个概念对应一套数据库。</p>
+<div class="table-wrap"><table><thead><tr><th>对象／存储</th><th>处理方式</th><th>关键字段</th></tr></thead><tbody>
+<tr><td>memory_events</td><td>保留；完善可信生产者</td><td>来源身份、修订、时间、交付、表达性质、真实／模拟归属</td></tr>
+<tr><td>memory_assertions</td><td>扩展契约，复用语义正文</td><td>representation、claim_kind、conditions、counterexamples、schema_ref、固定来源版本、验证状态</td></tr>
+<tr><td>memory_episodes</td><td>新增版本化组织记录</td><td>范围、状态、边界、成员修订、outline_ref；不复制摘要正文</td></tr>
+<tr><td>memory_episode_members</td><td>新增有序成员关系</td><td>episode 版本、assertion 版本、角色、顺序；允许受范围约束的重叠归属</td></tr>
+<tr><td>memory_associations</td><td>新增导航索引</td><td>两端对象与版本、关联类型、依据、状态、导航权重</td></tr>
+<tr><td>memory_working_states</td><td>扩展现有状态</td><td>目标、指代候选、当前 episode、限制、待确认动作、未完事项、来源及 through_sequence</td></tr>
+<tr><td>memory_access_state</td><td>新增小型调度状态</td><td>对象版本、调度修订、外部使用历史、用途反馈、保护策略、下次检查时间</td></tr>
+<tr><td>memory_jobs</td><td>扩展现有任务</td><td>去重键、租约、fence、输入快照、策略版本、可重试时间、预算与结果引用</td></tr>
+<tr><td>memory_runtime_invocations</td><td>新增调用日志</td><td>turn、父调用、阶段、三种计划、来源集合、request ID、工具关联、恢复状态</td></tr>
+<tr><td>memory_cognitive_operations</td><td>新增持久预算账</td><td>逻辑操作 ID、目的、请求指纹、预留、实际 usage、未知结果、结算状态</td></tr>
+<tr><td>memory_embeddings</td><td>语义向量投影，独立于正文</td><td>对象版本、内容 hash、提供方、模型／空间版本、维度、向量、状态</td></tr>
+</tbody></table></div>
+<p>新增的表包括可重建组织索引和运行保障，不是新的事实真值。模式与反例引用纳入 <code>event_ids / memory_ids</code> 的派生失效范围，文档中保存精确版本；无需先建设通用图数据库或任意对象框架。导航边与支持边必须分开：一起出现过只帮助查找，不能证明对方为真。</p>
+<p>语义版本与检索调度修订分开。调用次数或可达性变化不改写断言语义，不持续推进全脑 dependency_generation。明确更正、删除和权限收回保持立即失效；普通新增视图不应被当作来源更正。初期可保留现有保守的全脑失效屏障，后续按依赖细化需有独立并发验证。</p>
+<p>所有新表继承 tenant、owner、brain 及强制行级隔离；对象还需遵守会话、分支和现实／模拟范围。导入、导出、更正、删除、恢复和脱敏必须覆盖新增组织、计划、向量与任务结果，不能只更新核心表。逻辑删除立即阻止查询；待完成的计算也不得重新发布已删除来源。</p>
+<h3>一项条件认识的目标形状</h3>
+<pre>memory_kind: semantic
+representation: schema
+claim_kind: inferred_preference
+statement: 备考受挫时，用户倾向先交流再安排复习
+conditions: task = exam_preparation AND situation = setback
+epistemic_status: inferred
+valid_time: 有依据的时间范围；未知部分保持未知
+supports: [事件片段及其固定版本]
+counterexamples: [本次明确要求直接安排的片段]
+derivation: 模型／规则版本、依赖断言版本、根来源
+review_state: supported_inference / contested / pending</pre>
+<p>这是内部结构示意，不是当前可提交的 API。条件采用有限、无副作用的表达结构，值为 true／false／unknown；unknown 不能当成匹配。模型推测的情绪只能作为有来源和不确定性的当时情境，不能自动成为长期标签。</p>
+</section>
+
+<section id="learning">
+<h2>理解与巩固怎样执行</h2>
+<h3>经历形成</h3>
+<p>保留 <code>classify_segments / extract_event</code> 的字面捕获路径。在其上新增 EpisodeEncoder，读取当前开放经历、有限新增来源和定向提示，产生 continue／close／split／reopen 提案。以目标、参与者、任务状态和明显间隔为边界信号，使用迟滞避免话题轻微变化就反复切段。单个大事件可有多个片段，边界和成员均可修订。</p>
+<p>事件形成按会话分支运行；跨会话的同一项目或关系通过带类型的关联组织，不把所有记录合成一个无限增长的上下文。用户讲述的童年是用户报告的经历，不能转成 Agent 自己的童年。所有片段保留角色、否定、条件、时间和表达世界。</p>
+<h3>概括与反例</h3>
+<p>Consolidator 只处理新增或受影响的经历：先查附近已有认识及其反例，再提出新增条件认识、情境拆分、单次例外、明确替代或保持不确定。提案经过来源与版本检查、语义支持核验、发布策略三层处理。</p>
+<p>程序检查 ID、原文位置、范围、世界、版本、依赖环、来源去重及结构完整。语义核验检查原文究竟支持、反驳还是无法判断最小陈述；模型核验仍会出错，因此只能降低错误，不能叫作事实证明。发布时保留 inferred／reported／contested 等身份。有合法的 evidence ID 不足以允许任意概括进入工作区。</p>
+<p>明确更正不能等待慢巩固才能影响回答。显式 correct 请求立即走现有失效路径；自然语言疑似更正先影响当前情境，对定位到的旧认识标为待核对，后台只修订受影响范围。无法定位时保留冲突并澄清，不能因一句含糊否定清空人物认识。</p>
+<p>一个来源经多次摘要或经助手复述，仍属于同一根来源。按派生根去重只能防止机械重复，不证明不同来源在统计上独立。明确用户确认也要绑定具体命题；一句“对”不能确认上一段包含的所有说法。</p>
+<p>反例被删除或更正后，依赖它限定范围的概括也需要失效并核对。不能因为反例消失，就自动把“某些情况下”强化成“始终如此”。</p>
+<h3>共同模式与本次差异</h3>
+<p>先把模式共享实现成有来源的视图引用：模式包含共同 claim 及其限定条件，经历保存固定模式版本、本次成员与例外。只有本次来源确实支持的字段才能复用；模式中的常见细节不能补成本次观察。没有依据表明聊了十分钟，就算许多其他经历都聊十分钟，这次也不能自动出现十分钟。</p>
+<p>展开器组合实际保存的 claim，不让模型生成“缺失的历史”。检查压缩前后 claim 集合、否定、时间、条件、角色与来源等价；无法安全共享的部分原样保留。这个检查不能证明从自然语言提取 claim 完全正确，提取质量还需模型评测。旧经历固定引用模式 v1，发布 v2 不静默改变旧经历。</p>
+<p>因此需要分开 latest/current 指针与版本有效性。精确依赖展开可以读取仍有效、未被更正或删除的历史模式版本，不能沿用现有 current-only 查询和一律拒绝 superseded 父断言的规则。若 v1 因事实更正或来源失效被撤销，依赖它的旧经历视图也必须失效，并从合法原始片段重建；固定版本不能成为绕过更正的理由。旧模式用于解释旧表示，不自动成为当前有效的认识。</p>
+<h3>方法与未来事项</h3>
+<p>程序性认识沿用 assertion，但支持证据必须绑定真实尝试：任务、环境版本、实际步骤、所用方法版本、工具调用、结果及失败。尝试可由 episode 和 invocation 的引用表达，不另造一份执行历史。先打通服务端认证的工具生产者；<code>verified_producer</code> 不能由模型或普通请求自称。</p>
+<p>方法保存适用条件、步骤、退出条件和失败条件。一次成功只支持该次结果，不能直接升级成通用规律。约定与未完事项由真实表达或结果更新；提醒检索与执行调度分开。记忆系统不因记住一项计划就取得行动授权。</p>
+</section>
+
+<section id="recall">
+<h2>从混合检索到有依据的有限上下文</h2>
+<h3>先解决候选，再验证完整支持路径</h3>
+<p>CandidateRetriever 并行取得受预算约束的关键词、语义、情境、时间／精确引用候选。尽量在取 top-k 前下推权限、分支、世界与历史范围过滤，避免不可用候选占满名额。按排名融合、事件去重和覆盖选择合并，保留各通路信号；不能继续用词面零分一票否决语义候选。</p>
+<p>语义 embedding 使用独立版本空间，异步批量构建和按内容 hash 去重。对象被编辑后旧向量退出召回，新向量未完成期间仍有关键词与原文路径。模型空间、维度或内容版本不同的向量不能混算；同一数据库内按实际配置建立投影与索引即可。外部向量调用在事务外，查询失败返回明确降级。</p>
+<p>对选中候选，单独批量加载有界的来源依赖闭包，包括父断言、模式、反例和根事件。验证依赖不必全部放进模型上下文，也不能要求父断言先进入 top-k。记录节点数、深度与读取字节上限；超限时报告未完成验证，选择较小的合法来源表示，不能跳过证据检查。</p>
+<h3>受控的进一步回忆</h3>
+<p>保留 RecallController，增加 search、expand_episode、inspect_fragment、follow_association、finish 等类型化动作。展开只能访问服务端已返回或验证过的对象；关联深度、扇出和累计读取有上限。问“多久”优先具体片段，问“那段时间总体怎样”优先轮廓，明确线索可以直接查深层原文。</p>
+<p>当前观察与历史证据分两条通道。当前消息与新工具结果可以帮助本轮理解，但原历史问题的截止点不会因为改写查询或新建 invocation 而移动。提示及其派生物不能反过来证明它描述的历史。来源更正、删除与权限收回仍按当前状态生效，历史截止点不能绕过这些约束。</p>
+<p>补充 claim_kind 对来源的约束：已送达助手话语可以支持 agent_said、proposal_offered、commitment_expressed；不能单独支持 external_world_fact 或 task_completed。草稿和未知交付不能证明用户听到了承诺。这一规则应覆盖搜索、语义概括、工作状态及反馈，避免只在一个入口修补。</p>
+<h3>工作区编排与恢复</h3>
+<p>ContextComposer 先保留宿主系统规则、当前输入、工具协议和必须成对保留的调用／结果，再分配活跃目标、未完事项、近期消息与相关记忆。按本轮需求选择粒度，不给每类记忆永久预留一大段文本；例外、否定和限定条件不能为省 token 被删掉。预算不足且必需内容放不下时明确阻止或请求宿主收缩，不能悄悄删工具结构。</p>
+<p>ContextPlan 固定引用的表示版本、来源集合、展开范围、块顺序、格式／策略／tokenizer 版本、历史截止点和指纹。恢复同一调用重用计划，不因时间衰减、后台新增或策略变化重新排名。删除、更正使来源失效时，阻止旧计划重放，创建有新 attempt 标识的计划，并继续累计已花额度。</p>
+<p>凡进入定向或回忆模型的内容都可能影响结论，应纳入影响依赖，而不只登记最终选中的来源。计划中包含的语义文本属于受保护记忆数据，进入删除和导出范围；监控日志只记录标识、状态和计量，不记录正文或隐藏推理。</p>
+<p>宿主提供 tokenizer 时计量实际请求；否则保留明确标注的保守估算。当前代码的 token 估算实际基于 UTF-8 字节，不能当成提供方实际 token 或金额。before_compaction 只有在来源已持久化、工作状态与未完工具结构可恢复、必要尾部有补读路径时，才能返回可被替换的历史范围。</p>
+</section>
+
+<section id="dynamics">
+<h2>遗忘采用独立的检索调度策略</h2>
+<p>AccessPolicy 分别管理可达性、用途价值、保留价值、证据状态和内容可用性。按查询时间惰性计算近期性与使用间隔影响，不每小时扫描全库，也不因普通下沉调用模型。具体权重和阈值是策略参数，需通过相同任务与预算校准，不预设一条通用人类遗忘公式。</p>
+<p>检索命中、进入上下文、已交付回答引用、用户明确确认、用户更正和真实任务结果是不同反馈。普通访问只更新调度信息；已使用不等于有帮助；背景自评不增加证据。真实结果触发用途重估，不能把高用途当高真实性。对同一轮次、来源和反馈事件幂等去重。</p>
+<p>普通表示逐渐退出日常候选池，仍可由有效线索进入展开或深层回查。重要具体片段、罕见例外和未完约定有保护路径；候选选择保留事件多样性，避免热门概括垄断上下文。表示粒度与可达性独立，细节可以比某条概括更容易唤起。</p>
+<p>默认仍不启用自动物理擦除。认知淡出不代表删除。真正删除沿用授权请求与保留政策，并传播所有依赖；已经删除的细节不能由模式、差异或后台任务恢复。若将来允许清理原文但保留部分低分辨率认识，必须先明确保留范围及证据状态，不能混同于完整删除。</p>
+</section>
+
+<section id="jobs">
+<h2>有预算的持久任务与发布协议</h2>
+<pre>短事务：领取任务
+  检查身份范围、去重键和可执行时间
+  设置 lease_token / lease_until / fence / attempt
+  固定源版本、目标版本、输入指纹及策略版本
+  预留本次模型／embedding／检索额度
+事务外：读取已授权输入并计算
+  超时、输出大小与结构校验
+  保存待发布结果；来源依赖随结果记录
+短事务：尝试发布
+  验证租约 fence、来源版本、权限与删除状态
+  验证目标 expected_revision 及支持路径
+  幂等发布断言／成员／关联，更新任务和实际 usage
+  源已变化：结果作废或基于新版本重新排队</pre>
+<p>任务状态使用 queued → leased → completed，并区分 retry_wait、superseded、cancelled、failed。lease 超时可重新领取，旧 worker 即使稍后返回也不能越过 fence 发布。模型调用结束但响应丢失时标为 unknown；预算保持已占用或待结算，不能自动退款后无限重试。支持提供方请求对账时优先恢复，否则新尝试也消耗同一预算上限。</p>
+<p>按逻辑操作 ID 和请求指纹记录定向、回忆、语义验证、巩固、embedding 与方法学习的预留和实际用量。前台按 invocation／turn 控制，后台按 brain 和配置窗口控制；工具与主回答的费用由宿主上报并标注覆盖范围。没有提供方实际 usage 或价格时显示未知，不写成零成本。</p>
+<p>认知任务输入只含新增片段和有限相关知识，使用去重与合并减少重复整理。优先级应支持更正／删除相关工作优先处理，并为普通任务保留进度，避免长期饥饿。积压超过预算时减少整理频率或返回覆盖限制，不能把全量历史塞进下一轮回答。</p>
+<p>保留 <code>indexed_sequence</code> 对字面提取进度的现有含义。事件分段、语义认识、向量投影分别有任务进度及覆盖状态；慢概括不能让已经持久化、可从原文读取的内容全部变成不可用。输入无须等所有认知索引完成才能被回答。</p>
+</section>
+
+<section id="integration">
+<h2>模块接入、宿主能力与监控</h2>
+<p>内部新增职责可分别落在 <code>cognitive_control.py</code>（定向与编排）、<code>episodes.py</code>（经历组织）、<code>consolidation.py</code>（认识／方法提议与核验）、<code>retrieval.py</code>（候选与展开）、<code>dynamics.py</code>（调度）、<code>workers.py</code>（任务协议）。现有 <code>cognition.py</code> 保留确定性证据规则与兼容入口，<code>service.py</code> 负责认证后的应用操作与事务。避免把所有新逻辑继续塞进同一个大文件，也不要求每个模块部署成独立服务。</p>
+<p>定义可替换的语义处理与 embedding 端口，沿用现有提供方适配思路。主模型继续由宿主配置；记忆理解模型可以独立配置或复用同一提供方。一个调用可以批量提出多个相互关联的结果，不要求一次分段、一次摘要、一次反思逐层固定收费。模型生成的对象一律作为提案进入服务端发布路径。</p>
+<p>用户接入时只需绑定稳定 brain_id、宿主适配器和模型配置，之后消息捕获、推理前上下文、真实结果和恢复由适配器自动处理。HTTP 与 SDK 暴露同一内核，MCP 提供补充检索、更正和诊断。没有宿主生命周期控制权时，只能报告实际具备的能力。</p>
+<p>完整宿主适配覆盖输入、消息修订／删除、每次模型调用前后、工具调用与结果、实际交付、取消、压缩前后、恢复、分支和外部反馈。能力声明与验证结果分开保存。工具动作仍由宿主授权和执行，记忆不能通过旧话语扩大权限。</p>
+<p>仅增加开发所需的鉴权观测：调用／任务阶段、队列覆盖、降级原因、使用的对象版本、来源展开入口、前后台额度、实际 usage、重试与未知结果。复用现有监控接口，不增加管理页面作为产品依赖。</p>
+</section>
+
+<section id="delivery">
+<h2>按工程依赖推进完整实现</h2>
+<p>这里按依赖组织工作，不按演示版本切产品。每条链都要最终进入同一自动运行时，不交付彼此孤立、需要用户手动调用的记忆功能。</p>
+<ol>
+<li><strong>先完善执行与证据底座。</strong>新增迁移及契约；短事务任务、租约、统一预算；候选与依赖闭包分离；按命题类型校验证据。新对象同步覆盖更正、删除、导出和恢复。</li>
+<li><strong>打通当前理解与经历形成。</strong>WorkingState 扩展、持久定向计划、EpisodeEncoder；用户输入能自动影响当前工作区，事件整理可滞后且有补读路径。</li>
+<li><strong>打通条件认识与回忆。</strong>带反例的语义提议与核验、语义及关键词混合候选、事件展开、按需选择表示。验证它们实际影响下一次回答。</li>
+<li><strong>加入长期变化。</strong>版本化模式与个体差异、可达性策略、用途反馈、局部复查；保证细节、例外及来源不被概括吞掉。</li>
+<li><strong>完成行动循环和宿主接管。</strong>invocation 工具循环、可信结果、方法学习、前瞻事项、流式交付与压缩恢复。相关运行日志和迁移能力同步完成。</li>
+</ol>
+<p>这些工作中，语义存储／worker 与宿主 invocation 可以并行；条件概括依赖前者，程序性学习依赖可信结果，完整压缩接管依赖可重建工作状态。迁移采用增量方式，保留旧字面表示与单文本调用的读取能力；新格式改变契约时同步 Python、TypeScript、MCP 和打包资源。旧数据后台回填不阻塞正常读取，并记录处理器版本。</p>
+<h3>确定性验收，不消耗模型额度</h3>
+<p>扩展现有 <a href="../tests/test_cognition.py">认知测试</a>、<a href="../tests/test_evidence_boundary.py">证据边界测试</a>、<a href="../tests/test_semantic_runtime.py">语义运行时测试</a>、<a href="../tests/test_storage.py">存储测试</a>、<a href="../tests/test_adversarial.py">对抗测试</a>和轮次恢复测试，用可控 provider 验证以下不变量：</p>
+<ul>
+<li>零词面重合的语义候选不被误删；未进入候选的父断言仍可完成有界验证。</li>
+<li>条件 unknown 不作为符合；不同情境可并存；已交付承诺与任务完成使用不同依据。</li>
+<li>模式与差异展开前后已提取的 claim、限定条件及来源一致；缺失字段不由模式补出。</li>
+<li>内部复述 50 次不增加根来源数；用途和可达性更新不修改真实性。</li>
+<li>worker 模型计算期间发生更正、删除、权限变化或租约过期，旧结果不能发布；重试不双提交或逃逸预算。</li>
+<li>恢复固定 invocation 的上下文；同分支并发不互相覆盖；实际交付之后学习失败不重复发送回复。</li>
+<li>草稿、模拟执行、未经认证的工具结果不能升级成真实完成；重复结果按 attempt 幂等绑定。</li>
+<li>导出恢复、语义模型或向量空间迁移后，来源、更正、删除和未完事项仍有效。</li>
+</ul>
+<h3>真实模型效果单独验证</h3>
+<p>固定回答模型、数据顺序与总预算，比较字面基线、混合检索、事件情境、条件概括和模式压缩的增益。指标覆盖隐含线索、错误前提、同名人物、长期偏好变化、例外保留、回答错误与覆盖、方法迁移、上下文和总费用。按完整历史划分数据，防止测试问题参与编码。</p>
+<p>可控 provider 测试证明执行与边界，不能证明真实语义理解和长期记忆质量。付费模型或订阅额度实验须另获用户明确同意。本次只完成设计文档检查，没有执行上述功能测试、认知实验或云端 CI。</p>
+</section>
+<footer>本蓝图把已有研究目标落实为源码接缝与可验证行为。具体参数、模型选择和效果数字待实测；文档中拟新增的代码与数据库对象均未在本次设计工作中实现。</footer>
+</main>
+</body>
+</html>
