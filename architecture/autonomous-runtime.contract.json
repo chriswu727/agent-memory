@@ -152,6 +152,7 @@
       "更完整的情境理解、关联搜索与真实模型质量评测",
       "完整上下文生命周期管理",
       "语义巩固",
+      "同一经历的多层表示、片段独立衰减与分层回查",
       "关联与活跃度调度",
       "方法与未完事项学习",
       "完整决策、成本与延迟观测"
@@ -170,5 +171,54 @@
       ],
       "actual_provider_billing_recorded": false
     }
+  },
+  "memory_stratification": {
+    "status": "target_not_implemented",
+    "specification": "architecture.html#stratified-memory",
+    "unit": "meaning_preserving_claim_or_episode_fragment",
+    "representations": [
+      "semantic_anchor",
+      "episode_outline",
+      "episode_fragment",
+      "verbatim_source"
+    ],
+    "retrieval_tiers": [
+      "everyday_candidate",
+      "cue_expansion",
+      "deep_lookup"
+    ],
+    "orthogonal_dimensions": [
+      "representation_granularity",
+      "retrieval_accessibility",
+      "retention_value",
+      "evidence_state",
+      "detail_availability"
+    ],
+    "semantic_invariants": [
+      "关键词仅作线索；最小语义单元保留人物关系、否定、条件、时间与来源性质。",
+      "同一经历中不同片段独立衰减；重要具体片段可长期保留，过时概括也可淡出。",
+      "通用认识从有支持的经历增量形成，保留反例与有效范围；抽象程度不等于真实性。",
+      "日常可达不等于每轮注入；先读锚点与轮廓，按需展开，并允许明确线索直接回查深层。",
+      "新证据、外部使用与用户重要性指示可调整保留；模型自我复述不构成独立强化证据。",
+      "活跃度衰减、索引降级与内容擦除分别记录；真删除沿所有派生表示传播。",
+      "缺失细节不能由概括补写；保留下来的内容必须具有仍有效的来源支持。"
+    ],
+    "maintenance": {
+      "decay": "timestamp_based_lazy_evaluation",
+      "updates": "bounded_local_jobs_for_due_or_affected_objects",
+      "full_history_resummarization_per_turn": false,
+      "model_required_for_accessibility_decay": false,
+      "time_constants": "to_be_calibrated_by_evaluation"
+    },
+    "acceptance_targets": [
+      "旧经历保留稳定锚点与少数重要片段，普通细节不挤占当前工作区。",
+      "淡出内容可凭线索恢复仍存在的细节；上层遗漏不阻断直接深层检索。",
+      "分层或概括不改变否定、条件、来源角色与有效时间。",
+      "模型自我复述不刷高保留优先级或事实可信度。",
+      "新反例更新通用认识；真删除不从关键词、概括、向量或缓存泄露。",
+      "持续维护不反复扫描与模型总结全部历史；前后台预算均有界。"
+    ],
+    "acceptance_executed": false,
+    "automatic_content_erasure_enabled": false
   }
 }
