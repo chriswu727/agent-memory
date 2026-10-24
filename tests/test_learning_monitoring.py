@@ -172,6 +172,19 @@ def test_consolidation_monitoring_distinguishes_attempts_no_change_and_verified_
     assert cleaned["reason_counts"] == {}
 
 
+def test_source_candidate_and_instance_verdict_diagnostics_are_bounded_and_redacted():
+    result = {"status": "partial", "rejected": [
+        {"proposal_id": "private-claim", "reason": "instance_support_unconfirmed"}],
+        "sampling": {"source_candidate_count": 3, "source_candidates": ["private-memory"],
+                     "limitations": ["source_candidate_limit", "private-reason"]}}
+    summary = summarize_learning(result)
+    assert summary["rejection_reason_counts"] == {"instance_support_unconfirmed": 1}
+    assert summary["sampling"] == {"source_candidate_count": 3, "limitations": ["source_candidate_limit"]}
+    assert "private-" not in json.dumps(summary)
+    summary["sampling"]["source_candidate_count"] = True
+    assert "source_candidate_count" not in sanitize_learning_summary(summary)["sampling"]
+
+
 @pytest.mark.parametrize("views,expected", [
     (["private-pattern-a", "private-pattern-b"], 2), ([], 0), (None, 0),
     ("private-pattern-id", 0), ({"private-pattern-id": "private-text"}, 0),

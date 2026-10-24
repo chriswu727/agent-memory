@@ -7,7 +7,12 @@ from test_belief_semantic import abstraction, link_verifier, version
 from test_cognition import event
 from test_semantic import claim, encoded, proposals, run, verifier
 
-from agent_memory.consolidation_planning import MAX_OBJECTIVES, plan_consolidation
+from agent_memory.consolidation_planning import (
+    MAX_OBJECTIVES,
+    plan_consolidation,
+    validate_consolidation_plan,
+)
+from agent_memory.helpers import digest
 from agent_memory.semantic import SemanticPolicy, SemanticProcessor
 
 
@@ -112,7 +117,7 @@ def test_actual_proposal_receives_objectives_and_verified_link_is_required_for_c
     assert result.consolidation["unresolved_count"] == 0
     assert result.consolidation["objectives"][0]["reason_basis"] == "verified_relationship"
     rejected = run(data, response, verify=verifier)
-    assert rejected.claims and not rejected.belief_links
+    assert rejected.claims == rejected.belief_links == ()
     assert rejected.consolidation["satisfied_count"] == 0
     assert rejected.consolidation["unresolved_count"] == 1
 
@@ -260,7 +265,7 @@ def text_instances(texts):
 def test_long_instances_with_small_substantive_overlap_get_one_exploration_slot(texts):
     data = text_instances(texts)
     planned = plan(data)
-    assert planned["planner_version"] == "independent-instance-comparison-v2"
+    assert planned["planner_version"] == "independent-instance-comparison-v3"
     assert planned["candidate_count"] == 1
     assert len(planned["objectives"]) == 1
     assert planned["objectives"][0]["selection_basis"] == "weak_lexical_exploration"
@@ -322,15 +327,57 @@ def test_weak_exploration_does_not_include_completely_unrelated_long_instances()
     assert planned["candidate_count"] == 0 and planned["objectives"] == []
 
 
-def test_frozen_legacy_plan_retains_its_identity_and_is_still_validated():
+@pytest.mark.parametrize("planner_version", ["independent-instance-comparison-v1", "independent-instance-comparison-v2"])
+def test_frozen_legacy_plan_retains_its_identity_and_is_still_validated(planner_version):
     data, response = instances()
     legacy = plan_consolidation(data.sources, data.existing_assertions,
-                               planner_version="independent-instance-comparison-v1")
-    assert "selection_basis" not in legacy["objectives"][0]
+                               planner_version=planner_version)
+    assert ("selection_basis" in legacy["objectives"][0]) == planner_version.endswith("v2")
+    assert "comparison_policy" not in legacy["objectives"][0]
     response["consolidation_decisions"][0]["objective_id"] = legacy["objectives"][0]["objective_id"]
     result = run(replace(data, consolidation_plan=legacy), response, verify=link_verifier)
     assert result.status == "completed" and result.consolidation["satisfied_count"] == 1
-    assert result.consolidation["planner_version"] == "independent-instance-comparison-v1"
+    assert result.consolidation["planner_version"] == planner_version
+
+
+@pytest.mark.parametrize(("planner_version", "fingerprint"), [
+    ("independent-instance-comparison-v1", "2778d8f87d28490aa4f6bbfef0d9e3d59c5d76286d3d203605d9874304fcd9ed"),
+    ("independent-instance-comparison-v2", "fa6806f4382f2bd3788befc7a4b40ec7b89573a257491aa5d1e0f4712bde2cbe"),
+])
+def test_frozen_legacy_planners_keep_exact_candidate_identity_and_selection(planner_version, fingerprint):
+    strong = ("A cedar grows near the garden fence.", "A cedar grows beside the garden fence.",
+              "A cedar grows alongside the garden fence.")
+    data = text_instances((*strong, *LONG_INSTANCE_TEXTS))
+    frozen = plan_consolidation(data.sources, data.existing_assertions, planner_version=planner_version)
+    assert digest(frozen) == fingerprint
+    validate_consolidation_plan(frozen, data.sources, data.existing_assertions, data.belief_relations, data.sampling)
+
+
+def test_new_comparison_policy_reopens_a_declined_legacy_goal_only_once():
+    data, _ = instances()
+    previous = plan_consolidation(data.sources, data.existing_assertions,
+                                 planner_version="independent-instance-comparison-v2")
+    attempted = [previous["objectives"][0]["objective_id"]]
+    revised = plan_consolidation(data.sources, data.existing_assertions, attempted_ids=attempted)
+    assert revised["suppressed_count"] == 0 and len(revised["objectives"]) == 1
+    objective = revised["objectives"][0]
+    assert objective["comparison_policy"] == "minimal-shared-meaning-v1"
+    assert objective["objective_id"] not in attempted
+    repeated = plan_consolidation(data.sources, data.existing_assertions,
+                                   attempted_ids=[*attempted, objective["objective_id"]])
+    assert repeated["objectives"] == [] and repeated["suppressed_count"] == 1
+
+
+@pytest.mark.parametrize("policy", [None, "invented-policy"])
+def test_new_frozen_plan_rejects_missing_or_changed_comparison_policy(policy):
+    data, _ = instances()
+    forged = plan(data)
+    if policy is None:
+        del forged["objectives"][0]["comparison_policy"]
+    else:
+        forged["objectives"][0]["comparison_policy"] = policy
+    with pytest.raises(ValueError, match="Invalid consolidation objective"):
+        validate_consolidation_plan(forged, data.sources, data.existing_assertions, data.belief_relations, data.sampling)
 
 
 def test_supplied_plan_cannot_expand_the_weak_exploration_budget():

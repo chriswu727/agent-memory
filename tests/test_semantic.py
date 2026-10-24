@@ -74,6 +74,12 @@ def verifier(request):
         "relations": [{"evidence_index": evidence["evidence_index"],
                        "verdict": evidence["reference"]["relationship"]}
                       for evidence in candidate["evidence"]],
+        **({"instance_verdicts": [{"memory_version": item["memory_version"], "verdict": "supports"}
+                                  for item in candidate["instance_support"]]}
+           if "instance_support" in candidate else {}),
+        **({"supporting_evidence_indices": [item["evidence_index"] for item in candidate["evidence"]
+                                            if item["reference"]["relationship"] == "supports"]}
+           if candidate.get("evidence_selection") == "minimal_shared_support" else {}),
     } for candidate in data["proposals"]]})
 
 

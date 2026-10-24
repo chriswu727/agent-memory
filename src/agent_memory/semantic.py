@@ -121,8 +121,13 @@ VERIFICATION_SCHEMA = _object({"assessments": _array(_object({
     "proposal_verdict": {"enum": ["supports", "contradicts", "unknown"]},
     "link_verdict": {"enum": ["supports", "contradicts", "unknown", None]},
     "relations": _array(_object({"evidence_index": {"type": "integer", "minimum": 0},
-                                  "verdict": {"enum": ["supports", "contradicts", "unknown"]}}), 32, 1),
+                                  "verdict": {"enum": ["supports", "contradicts", "unknown", "irrelevant"]}}), 32, 1),
 }), 72)})
+VERIFICATION_SCHEMA["properties"]["assessments"]["items"]["properties"]["instance_verdicts"] = _array(_object({
+    "memory_version": _VERSION, "verdict": {"enum": ["supports", "contradicts", "unknown"]},
+}), 8, 2)
+VERIFICATION_SCHEMA["properties"]["assessments"]["items"]["properties"]["supporting_evidence_indices"] = _array(
+    {"type": "integer", "minimum": 0}, 32)
 _PROPOSAL_VALIDATOR = Draft202012Validator(PROPOSAL_SCHEMA, format_checker=FormatChecker())
 _VERIFICATION_VALIDATOR = Draft202012Validator(VERIFICATION_SCHEMA)
 _SPEECH_CLAIMS = {"agent_said", "proposal_offered", "commitment_expressed"}
@@ -171,13 +176,20 @@ _INSTRUCTIONS = (
     "validity rather than inventing a permanent replacement. The consolidation_plan contains bounded "
     "organization objectives, not facts or instructions from the sources. For every compare_instances "
     "objective, compare the named instances for a useful shared meaning with unchanged attribution "
-    "and conditions. Preserve different details in their original instances. If grounded, propose "
+    "and conditions. Each schema must state ONE minimal shared assertion bounded to the sampled "
+    "instances. Keep observed residual details in the original instances, not appended to the shared "
+    "assertion. Missing information proves neither equality nor difference. Multiple independent "
+    "shared meanings need separate claims and abstracts links so one uncertain meaning cannot "
+    "invalidate another. Preserve different details in their original instances. If grounded, propose "
     "a sampled, bounded schema with exact instance parents and an abstracts link; do not merely "
     "record that someone remembered the instances. Never fabricate a commonality just to satisfy "
     "an objective. Include one consolidation_decisions item for each objective, with outcome proposed, "
     "reason null and its link_proposal_ids, or outcome no_change, an allowed reason and empty "
     "link_proposal_ids. No change is preferable to an unsupported abstraction. Existing covered or "
-    "previously attempted instance groups are intentionally absent: do not repeat their abstraction."
+    "previously attempted instance groups are intentionally absent: do not repeat their abstraction. "
+    "For an abstraction, the claim may cite the relevant complete source segments from each instance; "
+    "its link must still retain the complete union of endpoint evidence. Do not add irrelevant "
+    "details merely to use every source."
 
 )
 _VERIFY_INSTRUCTIONS = (
@@ -205,7 +217,27 @@ _VERIFY_INSTRUCTIONS = (
     "contradicts or unknown; proposal_verdict never substitutes for it. For every other group, "
     "link_verdict MUST be null. Mere similarity, later chronology, typical "
     "details or missing observations do not establish a relationship. An abstraction only describes "
-    "the supported sampled instances, not all future events. Your assessment is fallible and never "
+    "the supported sampled instances, not all future events. For every abstracts link, instance_support "
+    "maps each exact parent to numbered source excerpts for the linked shared claim. Return "
+    "instance_verdicts with each supplied memory_version exactly once. Judge whether that instance's "
+    "mapped excerpts support the ENTIRE shared predicate as applied to that instance, including all "
+    "qualifiers. An instance need not prove the existence or count of the other sampled instances; "
+    "the complete proposal and link verdicts still assess the whole group. One instance's observation "
+    "cannot fill a missing value in another. Missing values "
+    "establish neither equality nor difference. The map establishes provenance, not semantic support. "
+    "Do not return instance_verdicts for other proposal kinds. Do not rewrite, trim or repair a "
+    "proposal during verification; assess each independently as written. For entries marked "
+    "evidence_selection=minimal_shared_support, classify each citation as supports, contradicts, "
+    "unknown, or irrelevant. Irrelevant means it neither supports nor contradicts ANY material "
+    "part, negation, qualifier, condition or exception of the shared assertion; uncertainty is unknown, "
+    "never irrelevant. Return supporting_evidence_indices exactly equal to the indices classified "
+    "supports. Assess joint claim/link support using ONLY those supporting excerpts, while checking "
+    "all other supplied evidence for conflict. Assess every instance using only its mapped excerpts "
+    "classified supports. Retained endpoint context preserves parent provenance, but need not "
+    "support the shared predicate; explicitly classify unrelated details as irrelevant. Do not mark "
+    "counterevidence irrelevant. Ordinary entries must omit supporting_evidence_indices and cannot "
+    "use irrelevant. The runtime may remove only explicitly irrelevant shared-claim citations; it "
+    "will not change the assertion text or its qualifiers. Your assessment is fallible and never "
     "a truth certificate."
 )
 
@@ -350,6 +382,8 @@ class SemanticResult:
     learning_outcome: str = "not_evaluated"
     belief_links: tuple[dict, ...] = field(default=(), repr=False)
     consolidation: dict = field(default_factory=dict, repr=False)
+    verification_assessments: tuple[dict, ...] = field(default=(), repr=False)
+    evidence_selections: tuple[dict, ...] = field(default=(), repr=False)
 
 
 def _unique_pairs(pairs):
@@ -450,6 +484,43 @@ def _evidence_identity(reference):
     return digest({key: value for key, value in reference.items() if key != "relationship"})
 
 
+def _instance_support(link, linked, assertions):
+    claim_refs = {_evidence_identity(ref) for ref in linked["evidence_refs"] if ref["relationship"] == "supports"}
+    result = []
+    for version in link["target_memory_versions"]:
+        parent = assertions[(version["memory_id"], version["revision"])]
+        indices = []
+        for index, ref in enumerate(link["evidence_refs"]):
+            if _evidence_identity(ref) not in claim_refs:
+                continue
+            for support in parent["evidence_refs"]:
+                if support["relationship"] != "supports" or any(ref[key] != support[key] for key in (
+                        "event_id", "event_revision", "source_content_sha256")):
+                    continue
+                span = support.get("span")
+                if span is None or span["start"] <= ref["span"]["start"] < ref["span"]["end"] <= span["end"]:
+                    indices.append(index)
+                    break
+        if not indices:
+            raise ValueError("Abstraction lacks shared-claim evidence for an instance")
+        result.append({"memory_version": copy.deepcopy(version), "evidence_indices": indices})
+    return result
+
+
+def _complete_instance_verdicts(assessment, expected):
+    verdicts = assessment.get("instance_verdicts", [])
+    keys = [(item["memory_version"]["memory_id"], item["memory_version"]["revision"]) for item in verdicts]
+    wanted = {(item["memory_version"]["memory_id"], item["memory_version"]["revision"]) for item in expected}
+    return len(keys) == len(set(keys)) and set(keys) == wanted
+
+
+def _complete_support_basis(assessment):
+    indices = assessment.get("supporting_evidence_indices")
+    return (isinstance(indices, list) and len(indices) == len(set(indices))
+            and set(indices) == {item["evidence_index"] for item in assessment["relations"]
+                                 if item["verdict"] == "supports"})
+
+
 def _validate_belief_link(item, scope, events, assertions, episodes, claims):
     validator = Draft202012Validator({"$defs": PROPOSAL_SCHEMA["$defs"], **_BELIEF_LINK},
                                      format_checker=FormatChecker())
@@ -458,7 +529,6 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
     linked = claims.get(item["claim_proposal_id"])
     if linked is None:
         raise ValueError("Unknown linked claim")
-    SemanticProcessor._validate_proposal("claims", linked, scope, events, assertions, episodes)
     validate_new_condition(item["conditions"])
     validate_valid_during(item["valid_during"])
     _validate_time_anchor(item["valid_during"])
@@ -475,6 +545,8 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
                 or not cognition._scope_allows(target["scope"], scope)):
             raise ValueError("Unavailable relationship target")
         targets.append(target)
+    SemanticProcessor._validate_proposal("claims", linked, scope, events, assertions, episodes,
+                                         abstraction_parents=keys if item["kind"] == "abstracts" else ())
     if linked.get("counterexamples") and item["kind"] != "contradicts":
         raise ValueError("Contested claim cannot establish an overriding relationship")
     premise = {"world": item["world"], "claim_kind": linked["claim_kind"],
@@ -486,11 +558,15 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
         if not required.issubset(offered):
             raise ValueError("Relationship omits endpoint evidence")
     if item["kind"] == "abstracts":
+        if any(target.get("counterexamples") or any(ref["relationship"] == "contradicts"
+               for ref in target["evidence_refs"]) for target in targets):
+            raise ValueError("Abstraction cannot discard contested instance evidence")
         if linked["representation"] != "schema" or linked["claim_kind"] != "inferred_pattern" or len(targets) < 2:
             raise ValueError("Abstraction requires a schema and multiple instances")
         parents = {(ref["memory_id"], ref["revision"]) for ref in linked["source_memory_versions"]}
         if not set(keys).issubset(parents):
             raise ValueError("Abstraction must retain exact instance parents")
+        _instance_support(item, linked, assertions)
         actor = source_actor(targets[0], events)
         if (actor is None or linked["conditions"] != item["conditions"]
                 or any(target["conditions"] != item["conditions"] or source_actor(target, events) != actor
@@ -623,6 +699,7 @@ class SemanticProcessor:
         except (ValueError, TypeError, KeyError):
             raise DomainError("validation_failed", "Invalid consolidation plan") from None
         decisions, proposal_attempted, verified_objective_ids = [], False, set()
+        verification_assessments, evidence_selections = [], []
 
         def result(status, **accepted):
             count = sum(len(items) for items in accepted.values())
@@ -631,6 +708,8 @@ class SemanticProcessor:
             return SemanticResult(status, rejected=tuple(rejected), observed_event_refs=observed,
                                   model_calls=model_calls, input_bytes=input_bytes,
                                   learning_outcome=outcome,
+                                  verification_assessments=tuple(copy.deepcopy(verification_assessments)),
+                                  evidence_selections=tuple(copy.deepcopy(evidence_selections)),
                                   consolidation=consolidation_coverage(
                                       plan, decisions, accepted.get("belief_links", ()), attempted=proposal_attempted,
                                       verified_objective_ids=verified_objective_ids),
@@ -707,6 +786,12 @@ class SemanticProcessor:
             )):
                 decisions = []
                 return result("invalid_response")
+            matching = {identifier for identifier, link in proposed_links.items() if link["kind"] == "abstracts"
+                        and targets <= {(item["memory_id"], item["revision"])
+                                        for item in link["target_memory_versions"]}}
+            if matching != set(identifiers):
+                decisions = []
+                return result("invalid_response")
         groups = ("claims", "situation_updates", "episode_actions", "belief_links")
         items = [(group, item) for group in groups for item in proposed.get(group, [])]
         proposed_claims = {item["proposal_id"]: item for item in proposed["claims"]}
@@ -714,6 +799,16 @@ class SemanticProcessor:
         if len(ids) != len(set(ids)) or len(items) > policy.max_proposals:
             return result("invalid_response")
         proposal_attempted = True
+        abstraction_parents = {}
+        for link in proposed_links.values():
+            if link["kind"] != "abstracts":
+                continue
+            try:
+                _validate_belief_link(link, batch.scope, events, assertions, episodes, proposed_claims)
+            except (ValueError, DomainError, KeyError, TypeError):
+                continue
+            abstraction_parents.setdefault(link["claim_proposal_id"], set()).update(
+                (ref["memory_id"], ref["revision"]) for ref in link["target_memory_versions"])
         eligible = []
         for group, item in items:
             if batch.sampling.get("publication_restricted") and group != "situation_updates":
@@ -721,7 +816,8 @@ class SemanticProcessor:
                 continue
             try:
                 references = self._validate_proposal(group, item, batch.scope, events, assertions, episodes,
-                                                     proposed_claims)
+                                                     proposed_claims,
+                                                     abstraction_parents=abstraction_parents.get(item["proposal_id"], ()))
             except (ValueError, DomainError, KeyError, TypeError):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "invalid_proposal"})
                 continue
@@ -741,10 +837,21 @@ class SemanticProcessor:
                                  "source": source, "excerpt": cognition._content_text(
                                      source["observed"]["content"])[ref["span"]["start"]:ref["span"]["end"]]})
             entry = {"group": group, "proposal": item, "evidence": numbered}
+            if item["proposal_id"] in abstraction_parents:
+                entry["evidence_selection"] = "minimal_shared_support"
+                for excerpt in numbered:
+                    excerpt["role"] = "shared_claim_candidate"
             if group == "belief_links":
                 entry["linked_claim"] = proposed_claims[item["claim_proposal_id"]]
                 entry["target_assertions"] = [assertions[(ref["memory_id"], ref["revision"])]
                                                for ref in item["target_memory_versions"]]
+                if item["kind"] == "abstracts":
+                    entry["instance_support"] = _instance_support(item, entry["linked_claim"], assertions)
+                    entry["evidence_selection"] = "minimal_shared_support"
+                    shared = {_evidence_identity(ref) for ref in entry["linked_claim"]["evidence_refs"]}
+                    for excerpt in numbered:
+                        excerpt["role"] = ("shared_claim_candidate" if _evidence_identity(excerpt["reference"]) in shared
+                                           else "retained_endpoint_context")
             evidence.append(entry)
         verified, error = invoke("verification", {"proposals": evidence}, VERIFICATION_SCHEMA, self.verify)
         if error:
@@ -754,6 +861,20 @@ class SemanticProcessor:
                 or {a["proposal_id"] for a in assessments} != {item["proposal_id"] for _, item, _ in eligible}):
             return result("invalid_response")
         lookup = {a["proposal_id"]: a for a in assessments}
+        verification_assessments = assessments
+        instance_maps = {entry["proposal"]["proposal_id"]: entry["instance_support"]
+                         for entry in evidence if "instance_support" in entry}
+        claim_maps = {}
+        for entry in evidence:
+            if "instance_support" in entry:
+                claim_maps.setdefault(entry["proposal"]["claim_proposal_id"], []).append(entry["proposal"]["proposal_id"])
+        abstract_ids = instance_maps.keys() | claim_maps.keys()
+        if any("supporting_evidence_indices" in assessment and assessment["proposal_id"] not in abstract_ids
+               for assessment in assessments):
+            return result("invalid_response")
+        if any("instance_verdicts" in assessment and assessment["proposal_id"] not in instance_maps
+               for assessment in assessments):
+            return result("invalid_response")
         if any(group != "belief_links" and lookup[item["proposal_id"]]["link_verdict"] is not None
                for group, item, _ in eligible):
             return result("invalid_response")
@@ -763,6 +884,9 @@ class SemanticProcessor:
             and {relation["evidence_index"] for relation in lookup[item["proposal_id"]]["relations"]}
             == set(range(len(references)))
             and (group != "belief_links" or lookup[item["proposal_id"]]["link_verdict"] is not None)
+            and (item["proposal_id"] not in instance_maps or _complete_instance_verdicts(
+                lookup[item["proposal_id"]], instance_maps[item["proposal_id"]]))
+            and (item["proposal_id"] not in abstract_ids or _complete_support_basis(lookup[item["proposal_id"]]))
         }
         for decision in decisions:
             identifiers = decision["link_proposal_ids"]
@@ -773,12 +897,50 @@ class SemanticProcessor:
         accepted = {group: [] for group in groups}
         for group, item, references in eligible:
             assessment = lookup[item["proposal_id"]]
+            abstract = item["proposal_id"] in abstract_ids
+            if abstract and not _complete_support_basis(assessment):
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "evidence_selection_unconfirmed"})
+                continue
+            mapped_links = claim_maps.get(item["proposal_id"], [])
+            if item["proposal_id"] in instance_maps:
+                mapped_links = [*mapped_links, item["proposal_id"]]
+            if any(not _complete_instance_verdicts(lookup[identifier], instance_maps[identifier])
+                   or any(value["verdict"] != "supports" for value in lookup[identifier]["instance_verdicts"])
+                   for identifier in mapped_links):
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "instance_support_unconfirmed"})
+                continue
+            supported_instances = True
+            for identifier in mapped_links:
+                link, link_assessment = proposed_links[identifier], lookup[identifier]
+                claim_assessment = lookup[link["claim_proposal_id"]]
+                if not _complete_support_basis(link_assessment) or not _complete_support_basis(claim_assessment):
+                    supported_instances = False
+                    break
+                selected = {_evidence_identity(ref) for index, ref in enumerate(
+                    proposed_claims[link["claim_proposal_id"]]["evidence_refs"])
+                    if index in claim_assessment["supporting_evidence_indices"]}
+                if any(not any(index in link_assessment["supporting_evidence_indices"]
+                               and _evidence_identity(link["evidence_refs"][index]) in selected
+                               for index in instance["evidence_indices"])
+                       for instance in instance_maps[identifier]):
+                    supported_instances = False
+                    break
+            if not supported_instances:
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "instance_support_unconfirmed"})
+                continue
             relations = assessment["relations"]
             verdicts = {v["evidence_index"]: v["verdict"] for v in relations}
             if (len(verdicts) != len(relations) or set(verdicts) != set(range(len(references)))
-                    or any(verdicts[index] != ref["relationship"] for index, ref in enumerate(references))
+                    or any(verdicts[index] != ref["relationship"]
+                           and not (abstract and ref["relationship"] == "supports" and verdicts[index] == "irrelevant")
+                           for index, ref in enumerate(references))
                     or assessment["proposal_verdict"] != "supports"):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "semantic_support_unconfirmed"})
+                continue
+            if group == "claims" and any(lookup[identifier]["proposal_verdict"] != "supports"
+                                         or lookup[identifier]["link_verdict"] != "supports"
+                                         for identifier in mapped_links):
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "relation_support_unconfirmed"})
                 continue
             if group == "belief_links":
                 if assessment.get("link_verdict") != "supports":
@@ -788,6 +950,22 @@ class SemanticProcessor:
                     rejected.append({"proposal_id": item["proposal_id"], "reason": "linked_claim_unconfirmed"})
                     continue
             final = copy.deepcopy(item)
+            if abstract:
+                if group == "claims":
+                    final["evidence_refs"] = [ref for index, ref in enumerate(final["evidence_refs"])
+                                              if index in assessment["supporting_evidence_indices"]]
+                try:
+                    self._validate_proposal(
+                        group, final, batch.scope, events, assertions, episodes,
+                        {claim["proposal_id"]: claim for claim in accepted["claims"]},
+                        abstraction_parents=abstraction_parents.get(item["proposal_id"], ()))
+                except (ValueError, DomainError, KeyError, TypeError):
+                    rejected.append({"proposal_id": item["proposal_id"], "reason": "evidence_selection_unconfirmed"})
+                    continue
+                if group == "claims":
+                    evidence_selections.append({"proposal_id": item["proposal_id"],
+                                                "original_evidence_refs": copy.deepcopy(item["evidence_refs"]),
+                                                "supporting_evidence_indices": assessment["supporting_evidence_indices"]})
             final["verification"] = {"state": "contested" if item.get("counterexamples") else "supported_inference",
                                      "method": "semantic_model", "not_a_truth_certificate": True}
             if group == "claims":
@@ -802,7 +980,7 @@ class SemanticProcessor:
         return result("partial" if rejected else "completed", **{k: tuple(v) for k, v in accepted.items()})
 
     @staticmethod
-    def _validate_proposal(group, item, scope, events, assertions, episodes, claims=None):
+    def _validate_proposal(group, item, scope, events, assertions, episodes, claims=None, *, abstraction_parents=()):
         if group == "belief_links":
             return _validate_belief_link(item, scope, events, assertions, episodes, claims or {})
         if group == "episode_actions":
@@ -858,7 +1036,8 @@ class SemanticProcessor:
                 if parent["world"] != item["world"]:
                     raise ValueError("Parent world mismatch")
                 for ref in parent["evidence_refs"]:
-                    if (ref["event_id"], ref["event_revision"]) not in source_keys:
+                    if ((parent["memory_id"], parent["revision"]) not in abstraction_parents
+                            and (ref["event_id"], ref["event_revision"]) not in source_keys):
                         raise ValueError("Parent has unobserved evidence")
                     if not cognition._valid_ref(ref, {event["event_id"]: event for event in events.values()}, scope):
                         raise ValueError("Parent evidence unavailable")

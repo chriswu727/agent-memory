@@ -7,8 +7,10 @@ from itertools import combinations
 from . import cognition
 from .helpers import digest
 
-PLANNER_VERSION = "independent-instance-comparison-v2"
+PLANNER_VERSION = "independent-instance-comparison-v3"
 _LEGACY_PLANNER_VERSION = "independent-instance-comparison-v1"
+_WEAK_PLANNER_VERSION = "independent-instance-comparison-v2"
+COMPARISON_POLICY = "minimal-shared-meaning-v1"
 MAX_OBJECTIVES = 3
 NO_CHANGE_REASONS = (
     "insufficient_shared_meaning", "uncertain_attribution", "incompatible_qualifiers",
@@ -46,7 +48,7 @@ def _terms(memory):
 
 def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, *,
                        attempted_ids=(), include_all=False, planner_version=PLANNER_VERSION):
-    if planner_version not in {PLANNER_VERSION, _LEGACY_PLANNER_VERSION}:
+    if planner_version not in {PLANNER_VERSION, _LEGACY_PLANNER_VERSION, _WEAK_PLANNER_VERSION}:
         raise ValueError("Unknown consolidation planner version")
     events = {(source["event_id"], source["revision"]): source for source in sources}
     eligible = []
@@ -96,9 +98,11 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
                                   "operation": "compare_instances", "instance_memory_versions": versions,
                                   "world": a["world"], "conditions": copy.deepcopy(a["conditions"]),
                                   "evidence_policy": "sampled_instances_only_preserve_attribution_and_differences"}))
-        if planner_version == PLANNER_VERSION:
+        if planner_version != _LEGACY_PLANNER_VERSION:
             candidates[-1][1]["selection_basis"] = ("strong_lexical_lead" if score >= 0.2
                                                     else "weak_lexical_exploration")
+        if planner_version == PLANNER_VERSION:
+            candidates[-1][1]["comparison_policy"] = COMPARISON_POLICY
     candidates.sort(key=lambda value: (-value[0], value[1]["objective_id"]))
     attempted_ids = set(attempted_ids)
     available = [item for _, item in candidates if item["objective_id"] not in attempted_ids]

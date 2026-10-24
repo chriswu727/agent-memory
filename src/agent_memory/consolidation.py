@@ -115,6 +115,19 @@ def _check_result(batch, result, snapshot):
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
     claims = {item["proposal_id"]: {key: copy.deepcopy(value) for key, value in item.items() if key in claim_fields}
               for item in result.claims}
+    abstraction_parents = {}
+    link_fields = set(PROPOSAL_SCHEMA["properties"]["belief_links"]["items"]["properties"])
+    for final in result.belief_links:
+        if final["kind"] != "abstracts":
+            continue
+        item = {key: copy.deepcopy(value) for key, value in final.items() if key in link_fields}
+        try:
+            SemanticProcessor._validate_proposal(
+                "belief_links", item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims)
+        except (ValueError, KeyError, TypeError) as error:
+            raise DomainError("invalid_evidence", "Cognitive abstraction is unsupported") from error
+        abstraction_parents.setdefault(item["claim_proposal_id"], set()).update(
+            (ref["memory_id"], ref["revision"]) for ref in item["target_memory_versions"])
     for group in ("claims", "situation_updates", "episode_actions", "belief_links"):
         if batch.sampling.get("publication_restricted") and group != "situation_updates" and getattr(result, group):
             raise DomainError("invalid_evidence", "Incomplete history cannot support consolidation")
@@ -138,6 +151,7 @@ def _check_result(batch, result, snapshot):
             try:
                 references = SemanticProcessor._validate_proposal(
                     group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims,
+                    abstraction_parents=abstraction_parents.get(item["proposal_id"], ()),
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error

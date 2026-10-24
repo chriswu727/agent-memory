@@ -29,10 +29,12 @@ LEARNING_LIMITATIONS = frozenset({
     "unsupported_assertion", "assertion_retracted", "candidate_scan_limit", "candidate_limit",
     "episode_limit", "episode_source_changed", "episode_scope", "recent_window_limit",
     "cue_limit", "recent_assertion_limit", "belief_relation_incomplete", "belief_relation_budget", "request_bytes_budget",
+    "source_candidate_limit",
 })
 REJECTION_REASONS = frozenset({
     "incomplete_history_package", "invalid_proposal", "verification_unavailable",
     "semantic_support_unconfirmed", "relation_support_unconfirmed", "linked_claim_unconfirmed",
+    "instance_support_unconfirmed", "evidence_selection_unconfirmed",
 })
 CONSOLIDATION_REASONS = frozenset({
     "verified_abstraction", "no_verified_abstraction", "not_attempted", "insufficient_shared_meaning",
@@ -41,7 +43,7 @@ CONSOLIDATION_REASONS = frozenset({
 CONSOLIDATION_STATUSES = frozenset({"satisfied", "no_change", "unresolved"})
 _SAMPLING_COUNTS = (
     "recent_window_limit", "candidate_scan_limit", "candidate_limit", "association_depth",
-    "dependency_depth", "candidate_count", "omitted_packages", "source_count",
+    "dependency_depth", "candidate_count", "source_candidate_count", "omitted_packages", "source_count",
     "assertion_count", "episode_count", "redundant_literal_assertions",
 )
 _SAMPLING_SEQUENCES = (

@@ -144,6 +144,9 @@ def test_independent_instances_require_each_premise_and_joint_support(
         assessments = json.loads(link_verifier(request))
         assessments["assessments"][0]["relations"][1]["verdict"] = premise_verdict
         assessments["assessments"][0]["proposal_verdict"] = joint_verdict
+        assessments["assessments"][0]["supporting_evidence_indices"] = [
+            item["evidence_index"] for item in assessments["assessments"][0]["relations"]
+            if item["verdict"] == "supports"]
         return encoded(assessments)
 
     result = run(data, response, verify=verify)
@@ -152,9 +155,9 @@ def test_independent_instances_require_each_premise_and_joint_support(
         assert result.claims[0]["statement"] == "In the two recorded instances, conversation preceded study."
     else:
         assert result.claims == result.belief_links == ()
-        assert {item["reason"] for item in result.rejected} == {
-            "semantic_support_unconfirmed", "linked_claim_unconfirmed",
-        }
+        expected = ({"semantic_support_unconfirmed", "linked_claim_unconfirmed"}
+                    if premise_verdict == "supports" else {"instance_support_unconfirmed"})
+        assert {item["reason"] for item in result.rejected} == expected
 
 
 def test_matching_reference_verdicts_cannot_substitute_for_missing_joint_verdict():

@@ -54,7 +54,7 @@ class _Selector:
             "recent_window_limit": min(24, policy.max_sources),
             "candidate_scan_limit": min(256, policy.max_assertions * 4),
             "candidate_limit": policy.max_assertions, "association_depth": 1,
-            "dependency_depth": 8, "candidate_count": 0, "omitted_packages": 0,
+            "dependency_depth": 8, "candidate_count": 0, "source_candidate_count": 0, "omitted_packages": 0,
             "limits": {"sources": policy.max_sources, "assertions": policy.max_assertions,
                        "episodes": policy.max_episodes},
         }
@@ -261,6 +261,7 @@ class _Selector:
 
     def candidates(self, cue):
         from .service import _vector
+        from .source_candidates import source_candidates
 
         if not cue.strip():
             return []
@@ -282,6 +283,22 @@ class _Selector:
         ranked = [(score, row) for score, row in ranked if score > 0]
         ranked.sort(key=lambda item: (-item[0], -bool(item[1]["document"].get("counterexamples")),
                                       *_key(item[1]["document"])))
+        bridged, truncated = source_candidates(
+            self.conn, self.service, self.principal, self.brain, self.target, cue,
+            [self.bind(row["document"]) for _, row in ranked[:self.policy.max_assertions]],
+            source_limit=min(64, self.policy.max_sources), scan_limit=self.sampling["candidate_scan_limit"],
+            through_sequence=self.through,
+        )
+        if truncated:
+            self.reasons.add("source_candidate_limit")
+        ranked.extend(bridged)
+        ranked.sort(key=lambda item: (-item[0], -bool(item[1]["document"].get("counterexamples")),
+                                      *_key(item[1]["document"])))
+        unique = {}
+        for score, row in ranked:
+            unique.setdefault(_key(row["document"]), (score, row))
+        ranked = list(unique.values())
+        self.sampling["source_candidate_count"] = len(bridged)
         if len(ranked) > self.policy.max_assertions:
             self.reasons.add("candidate_limit")
         rows = [row for _, row in ranked[:self.policy.max_assertions]]

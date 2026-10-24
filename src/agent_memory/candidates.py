@@ -82,6 +82,8 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
         roots = [key for key in requested if key in documents]
         signals = {}
     else:
+        from .source_candidates import SOURCE_ROUTE_VERSION, source_candidates
+
         lexical_rows = conn.execute(
             "SELECT a.document FROM memory_assertions a WHERE " + _eligible() + scope_sql
             + "AND a.embedding_model='lexical-feature-hash' AND a.embedding_version='v1-d256-blake2s' "
@@ -93,8 +95,17 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                    for row in lexical_rows[:scan_limit]]
         lexical = [(score, row) for score, row in lexical if score > 0]
         lexical.sort(key=lambda value: (-value[0], value[1]["document"]["memory_id"]))
+        bridged, source_truncated = source_candidates(
+            conn, service, principal, brain, target, text,
+            [service._rebind(row["document"], principal, brain) for _, row in lexical[:candidate_limit]],
+            source_limit=min(64, candidate_limit), scan_limit=scan_limit,
+            through_sequence=brain["durable_sequence"],
+        )
+        truncated = truncated or source_truncated
+        lexical.extend(bridged)
+        lexical.sort(key=lambda value: (-value[0], value[1]["document"]["memory_id"]))
         rankings["keyword"] = remember([row for _, row in lexical])
-        versions["keyword"] = "lexical-feature-hash-v1-with-overlap"
+        versions["keyword"] = SOURCE_ROUTE_VERSION
         if query_embedding is not None:
             if (not isinstance(query_embedding, EmbeddingResult) or len(query_embedding.vectors) != 1
                     or len(query_embedding.vectors[0]) != query_embedding.space.dimensions

@@ -1,0 +1,1890 @@
+{
+  "report_version": 1,
+  "generated_at": "2026-10-24T19:24:32.947655Z",
+  "synthetic_only": true,
+  "model": "deepseek-v4-pro",
+  "source_texts": [
+    "2026年10月20日，我在开始复习前绕公园走了十分钟，然后打开教材。那次穿的是蓝色外套。",
+    "2026年10月22日，我先在河边散步，回来以后才开始看复习资料。那次我没有穿外套。"
+  ],
+  "source_versions": [
+    {
+      "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+      "revision": 1,
+      "content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e"
+    },
+    {
+      "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+      "revision": 1,
+      "content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf"
+    }
+  ],
+  "comparison_plan": {
+    "planner_version": "independent-instance-comparison-v3",
+    "candidate_count": 1,
+    "search_exhaustive": false,
+    "limit": 3,
+    "excluded_counts": {},
+    "suppressed_count": 0,
+    "objectives": [
+      {
+        "objective_id": "compare-17bb7cf9f8a1a2062d11328fa6c7b657",
+        "operation": "compare_instances",
+        "instance_memory_versions": [
+          {
+            "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+            "revision": 1
+          },
+          {
+            "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+            "revision": 1
+          }
+        ],
+        "world": "real_world",
+        "conditions": {
+          "op": "always"
+        },
+        "evidence_policy": "sampled_instances_only_preserve_attribution_and_differences",
+        "selection_basis": "weak_lexical_exploration",
+        "comparison_policy": "minimal-shared-meaning-v1"
+      }
+    ]
+  },
+  "free_source_replay": {
+    "model_calls": 0,
+    "query": "备考 同时 互相冲突 更正",
+    "checks": {
+      "english_assertion_has_no_direct_chinese_lexical_match": true,
+      "exact_english_assertion_recalled": true,
+      "exact_english_assertion_prepared": true,
+      "source_bridge_ranking_used": true,
+      "recalled_assertion_unchanged": true,
+      "recall_within_budget": true,
+      "prepare_within_budget": true
+    },
+    "target_version": {
+      "memory_id": "semantic-bbf9846a01223cb5a96005b6d21d6527",
+      "revision": 1
+    },
+    "target_statement": "user user (direct_statement): On 2026-10-24T12:00:00Z, two simultaneous self-reports about the user's exam preparation status were 'I am preparing for an exam' and 'I am not preparing for an exam'; the two reports conflict, neither is confirmed accurate, and the later statement is not a correction.",
+    "context_usage": {
+      "recall": 9918,
+      "prepare": 12364
+    },
+    "coverage": {
+      "durable_through_sequence": 4,
+      "indexed_through_sequence": 4,
+      "tail_covered_through_sequence": 4,
+      "snapshot_revision": 4,
+      "read_fence_satisfied": true,
+      "search_exhaustive": false,
+      "limitations": [
+        "partial_scope"
+      ],
+      "dependency_generation": 1,
+      "projection_generation": 1,
+      "rebuilding": false
+    },
+    "code_fingerprints": {
+      "examples/evaluate_deepseek.py": "ec87064f3e27f48a5bbe10433d52ec7aa1466a9cc19a0ec9b229a8c14db1d9e2",
+      "examples/evaluation_support.py": "0728123505dbc5687eb3fcfbf895510cef1ce0530016f89fdf2f71cfd2d49cfc",
+      "src/agent_memory/semantic.py": "6e3b58072fe80f89847c8b67f67533831a77910f35325f3665c98c1f720ebf58",
+      "src/agent_memory/semantic_provider.py": "07708cdba5e07d4cdf62cba38e195cc249cb60cb6547547f30745f56f0c62b10",
+      "src/agent_memory/recall_provider.py": "97f6f33d22e9895359aa6fd1f1e1b01e94a00f8cdf64e08a5933ae761bc73a9e",
+      "src/agent_memory/learning.py": "bfef2579b5feb43e525ea68e3ce99196e6dbc7d2f45c1ebb9e1923fd50f9d79b",
+      "src/agent_memory/consolidation_planning.py": "09526a52aae1e98ad69ea89b68ec3909b9d5f5dea196670f9f7fda314a7a270d",
+      "src/agent_memory/context_views.py": "78f5816ac1093b979b62a601bc69a2739cea5d019e9383172fa2cc0d5e78fcff",
+      "src/agent_memory/cognition.py": "7c58e3d2997222109d18889f1cbd197d844d14e413bc3a4814f920ebb9df8920",
+      "src/agent_memory/applicability.py": "458495035760a8663debe06c08f4ac2cbdfd37e0badd97aca4d3ae7d45e5c1ff",
+      "examples/evaluate_memory_repairs.py": "542f365a3ca71d81a379c13a768ccd8a46b7a6ca2e42adae64aadbc0a8ff2cdc",
+      "src/agent_memory/candidates.py": "e62bd71bef192053d495213e6178bb02463f64834168b4d73e0ba4064cbcf1c6",
+      "src/agent_memory/source_candidates.py": "9eaa44abef8140cdda70f650ef7faf8c07b0dbafc228a87eb83a1ffd28cfeaba"
+    },
+    "limitations": [
+      "Recall/prepare only; no new semantic processing or publication.",
+      "This source-language bridge does not demonstrate arbitrary multilingual retrieval."
+    ]
+  },
+  "three_time_replay": {
+    "source_report": ".local/deepseek-evaluation-compact-planning/report.json",
+    "kind": "read_only_replay_of_previous_real_outputs",
+    "model_calls": 0,
+    "embedding_calls": 0,
+    "checks_before": {
+      "job_completed": false,
+      "semantic_claim_published": true,
+      "new_input_supports_semantic_claim": true,
+      "input_processed": true,
+      "recall_observed_at_all_fixture_times": true,
+      "published_memories_recalled_and_prepared": false,
+      "prior_semantics_preserved": true,
+      "unfamiliar_condition_not_coerced": true,
+      "conflicting_state_not_settled": true
+    },
+    "checks_after": {
+      "job_completed": false,
+      "semantic_claim_published": true,
+      "new_input_supports_semantic_claim": true,
+      "input_processed": true,
+      "recall_observed_at_all_fixture_times": true,
+      "published_memories_recalled_and_prepared": true,
+      "prior_semantics_preserved": true,
+      "unfamiliar_condition_not_coerced": true,
+      "conflicting_state_not_settled": true
+    },
+    "observations": [
+      {
+        "at": "2026-10-24T12:00:00Z",
+        "recovered_semantic_statements": [
+          "user user (direct_statement): On 2026-10-24T12:00:00Z, two simultaneous self-reports about the user's exam preparation status were 'I am preparing for an exam' and 'I am not preparing for an exam'; the two reports conflict, neither is confirmed accurate, and the later statement is not a correction."
+        ],
+        "context_usage": {
+          "recall": 11012,
+          "prepare": 12364
+        },
+        "coverage": {
+          "durable_through_sequence": 4,
+          "indexed_through_sequence": 4,
+          "tail_covered_through_sequence": 4,
+          "snapshot_revision": 4,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "partial_scope"
+          ],
+          "dependency_generation": 1,
+          "projection_generation": 1,
+          "rebuilding": false
+        }
+      },
+      {
+        "at": "2026-10-25T12:00:00Z",
+        "recovered_semantic_statements": [
+          "user user (direct_statement): On 2026-10-24T12:00:00Z, two simultaneous self-reports about the user's exam preparation status were 'I am preparing for an exam' and 'I am not preparing for an exam'; the two reports conflict, neither is confirmed accurate, and the later statement is not a correction."
+        ],
+        "context_usage": {
+          "recall": 11012,
+          "prepare": 12364
+        },
+        "coverage": {
+          "durable_through_sequence": 4,
+          "indexed_through_sequence": 4,
+          "tail_covered_through_sequence": 4,
+          "snapshot_revision": 4,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "partial_scope"
+          ],
+          "dependency_generation": 1,
+          "projection_generation": 1,
+          "rebuilding": false
+        }
+      },
+      {
+        "at": "2026-10-27T12:00:00Z",
+        "recovered_semantic_statements": [
+          "user user (direct_statement): On 2026-10-24T12:00:00Z, two simultaneous self-reports about the user's exam preparation status were 'I am preparing for an exam' and 'I am not preparing for an exam'; the two reports conflict, neither is confirmed accurate, and the later statement is not a correction."
+        ],
+        "context_usage": {
+          "recall": 11012,
+          "prepare": 12364
+        },
+        "coverage": {
+          "durable_through_sequence": 4,
+          "indexed_through_sequence": 4,
+          "tail_covered_through_sequence": 4,
+          "snapshot_revision": 4,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "partial_scope"
+          ],
+          "dependency_generation": 1,
+          "projection_generation": 1,
+          "rebuilding": false
+        }
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "kind": "standalone_semantic_processor_without_publication",
+      "state": "finished",
+      "synthetic_only": true,
+      "model": "deepseek-v4-pro",
+      "thinking": "enabled",
+      "policy": {
+        "max_sources": 32,
+        "max_assertions": 32,
+        "max_episodes": 16,
+        "max_proposals": 24,
+        "max_model_calls": 2,
+        "max_input_bytes": 196608,
+        "max_request_bytes": 98304,
+        "max_response_bytes": 65536,
+        "max_output_tokens": 16384,
+        "max_wall_time_ms": 240000
+      },
+      "code_fingerprints": {
+        "examples/evaluate_deepseek.py": "ec87064f3e27f48a5bbe10433d52ec7aa1466a9cc19a0ec9b229a8c14db1d9e2",
+        "examples/evaluation_support.py": "0728123505dbc5687eb3fcfbf895510cef1ce0530016f89fdf2f71cfd2d49cfc",
+        "src/agent_memory/semantic.py": "c9669d3537045fd5fc38a724e570fedbcec95195beeb4e5a338994f64ff16807",
+        "src/agent_memory/semantic_provider.py": "07708cdba5e07d4cdf62cba38e195cc249cb60cb6547547f30745f56f0c62b10",
+        "src/agent_memory/recall_provider.py": "97f6f33d22e9895359aa6fd1f1e1b01e94a00f8cdf64e08a5933ae761bc73a9e",
+        "src/agent_memory/learning.py": "bfef2579b5feb43e525ea68e3ce99196e6dbc7d2f45c1ebb9e1923fd50f9d79b",
+        "src/agent_memory/consolidation_planning.py": "09526a52aae1e98ad69ea89b68ec3909b9d5f5dea196670f9f7fda314a7a270d",
+        "src/agent_memory/context_views.py": "78f5816ac1093b979b62a601bc69a2739cea5d019e9383172fa2cc0d5e78fcff",
+        "src/agent_memory/cognition.py": "7c58e3d2997222109d18889f1cbd197d844d14e413bc3a4814f920ebb9df8920",
+        "src/agent_memory/applicability.py": "458495035760a8663debe06c08f4ac2cbdfd37e0badd97aca4d3ae7d45e5c1ff",
+        "examples/evaluate_memory_repairs.py": "7cb3ffd7a195cb5ff9c74809b28781cace696849a8af43b22653af6d73957e1a",
+        "src/agent_memory/candidates.py": "e62bd71bef192053d495213e6178bb02463f64834168b4d73e0ba4064cbcf1c6",
+        "src/agent_memory/source_candidates.py": "9eaa44abef8140cdda70f650ef7faf8c07b0dbafc228a87eb83a1ffd28cfeaba"
+      },
+      "responses": {
+        "proposal": {
+          "claims": [
+            {
+              "proposal_id": "claim-schema-walk-before-study-v1",
+              "statement": "这两次记录都显示用户在开始复习前先散步。",
+              "memory_kind": "semantic",
+              "representation": "schema",
+              "claim_kind": "inferred_pattern",
+              "world": "real_world",
+              "conditions": {
+                "op": "always"
+              },
+              "evidence_refs": [
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 0,
+                    "end": 33,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 33,
+                    "end": 42,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 0,
+                    "end": 35,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 35,
+                    "end": 45,
+                    "unit": "unicode_code_point"
+                  }
+                }
+              ],
+              "counterexamples": [],
+              "source_memory_versions": [
+                {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              ],
+              "valid_time": {
+                "basis": "inferred",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "procedure": null
+            }
+          ],
+          "situation_updates": [],
+          "episode_actions": [],
+          "belief_links": [
+            {
+              "proposal_id": "link-abstract-walk-before-study-v1",
+              "kind": "abstracts",
+              "claim_proposal_id": "claim-schema-walk-before-study-v1",
+              "target_memory_versions": [
+                {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              ],
+              "evidence_refs": [
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 0,
+                    "end": 33,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 33,
+                    "end": 42,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 0,
+                    "end": 35,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 35,
+                    "end": 45,
+                    "unit": "unicode_code_point"
+                  }
+                }
+              ],
+              "world": "real_world",
+              "conditions": {
+                "op": "always"
+              },
+              "valid_during": {
+                "kind": "unknown"
+              }
+            }
+          ],
+          "consolidation_decisions": [
+            {
+              "objective_id": "compare-17bb7cf9f8a1a2062d11328fa6c7b657",
+              "outcome": "proposed",
+              "reason": null,
+              "link_proposal_ids": [
+                "link-abstract-walk-before-study-v1"
+              ]
+            }
+          ]
+        },
+        "verification": {
+          "assessments": [
+            {
+              "proposal_id": "claim-schema-walk-before-study-v1",
+              "proposal_verdict": "supports",
+              "link_verdict": null,
+              "relations": [
+                {
+                  "evidence_index": 0,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 1,
+                  "verdict": "unknown"
+                },
+                {
+                  "evidence_index": 2,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 3,
+                  "verdict": "unknown"
+                }
+              ]
+            },
+            {
+              "proposal_id": "link-abstract-walk-before-study-v1",
+              "proposal_verdict": "supports",
+              "link_verdict": "supports",
+              "relations": [
+                {
+                  "evidence_index": 0,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 1,
+                  "verdict": "unknown"
+                },
+                {
+                  "evidence_index": 2,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 3,
+                  "verdict": "unknown"
+                }
+              ],
+              "instance_verdicts": [
+                {
+                  "memory_version": {
+                    "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                    "revision": 1
+                  },
+                  "verdict": "supports"
+                },
+                {
+                  "memory_version": {
+                    "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                    "revision": 1
+                  },
+                  "verdict": "supports"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "verification_instance_support": {
+        "link-abstract-walk-before-study-v1": [
+          {
+            "evidence_indices": [
+              0,
+              1
+            ],
+            "memory_version": {
+              "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+              "revision": 1
+            }
+          },
+          {
+            "evidence_indices": [
+              2,
+              3
+            ],
+            "memory_version": {
+              "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+              "revision": 1
+            }
+          }
+        ]
+      },
+      "usage_before": {
+        "reserved_calls": 0,
+        "completed_calls": 0,
+        "reserved_output_tokens": 0,
+        "usage_confirmed_calls": 0,
+        "usage_unknown_calls": 0,
+        "usage_totals": {}
+      },
+      "limitations": [
+        "Exact old instances, new standalone processing; no database publication.",
+        "Structural checks and model assessments do not establish semantic correctness.",
+        "No keyword oracle or expected conclusion is supplied to the model."
+      ],
+      "result": {
+        "status": "partial",
+        "claims": [],
+        "situation_updates": [],
+        "episode_actions": [],
+        "rejected": [
+          {
+            "proposal_id": "claim-schema-walk-before-study-v1",
+            "reason": "semantic_support_unconfirmed"
+          },
+          {
+            "proposal_id": "link-abstract-walk-before-study-v1",
+            "reason": "semantic_support_unconfirmed"
+          }
+        ],
+        "observed_event_refs": [
+          {
+            "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+            "revision": 1
+          },
+          {
+            "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+            "revision": 1
+          }
+        ],
+        "model_calls": 2,
+        "input_bytes": 81843,
+        "learning_outcome": "no_accepted_proposals",
+        "belief_links": [],
+        "consolidation": {
+          "planner_version": "independent-instance-comparison-v3",
+          "candidate_count": 1,
+          "objective_count": 1,
+          "suppressed_count": 0,
+          "satisfied_count": 0,
+          "no_change_count": 0,
+          "unresolved_count": 1,
+          "objectives": [
+            {
+              "objective_id": "compare-17bb7cf9f8a1a2062d11328fa6c7b657",
+              "status": "unresolved",
+              "reason": "no_verified_abstraction",
+              "attempted": true,
+              "dedup_eligible": true,
+              "reason_basis": "runtime_observed",
+              "verified_link_ids": []
+            }
+          ]
+        }
+      },
+      "review": {
+        "checks": {
+          "exact_instance_comparison_planned": true,
+          "verified_abstraction_accepted": false,
+          "rejected_schemas_not_accepted": true,
+          "model_calls_within_fixed_cap": true
+        },
+        "accepted_abstractions": [],
+        "rejected_schemas": [
+          {
+            "proposal_id": "claim-schema-walk-before-study-v1",
+            "statement": "这两次记录都显示用户在开始复习前先散步。",
+            "memory_kind": "semantic",
+            "representation": "schema",
+            "claim_kind": "inferred_pattern",
+            "world": "real_world",
+            "conditions": {
+              "op": "always"
+            },
+            "evidence_refs": [
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 0,
+                  "end": 33,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 33,
+                  "end": 42,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 0,
+                  "end": 35,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 35,
+                  "end": 45,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "counterexamples": [],
+            "source_memory_versions": [
+              {
+                "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                "revision": 1
+              },
+              {
+                "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                "revision": 1
+              }
+            ],
+            "valid_time": {
+              "basis": "inferred",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "valid_during": {
+              "kind": "unknown"
+            },
+            "procedure": null
+          }
+        ],
+        "proposed_abstractions": [
+          {
+            "proposal_id": "claim-schema-walk-before-study-v1",
+            "statement": "这两次记录都显示用户在开始复习前先散步。",
+            "memory_kind": "semantic",
+            "representation": "schema",
+            "claim_kind": "inferred_pattern",
+            "world": "real_world",
+            "conditions": {
+              "op": "always"
+            },
+            "evidence_refs": [
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 0,
+                  "end": 33,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 33,
+                  "end": 42,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 0,
+                  "end": 35,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 35,
+                  "end": 45,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "counterexamples": [],
+            "source_memory_versions": [
+              {
+                "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                "revision": 1
+              },
+              {
+                "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                "revision": 1
+              }
+            ],
+            "valid_time": {
+              "basis": "inferred",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "valid_during": {
+              "kind": "unknown"
+            },
+            "procedure": null
+          }
+        ],
+        "semantic_quality": "requires_human_review_of_whole_claim_and_evidence",
+        "review_questions": [
+          "Is each accepted schema one supported commonality, without invented details?",
+          "Is its scope limited to the observed instances rather than a universal habit?"
+        ],
+        "source_texts": [
+          "2026年10月20日，我在开始复习前绕公园走了十分钟，然后打开教材。那次穿的是蓝色外套。",
+          "2026年10月22日，我先在河边散步，回来以后才开始看复习资料。那次我没有穿外套。"
+        ]
+      },
+      "usage_after": {
+        "reserved_calls": 2,
+        "completed_calls": 2,
+        "reserved_output_tokens": 32768,
+        "usage_confirmed_calls": 2,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 19011,
+          "completion_tokens": 6066,
+          "total_tokens": 25077,
+          "prompt_cache_hit_tokens": 384,
+          "prompt_cache_miss_tokens": 18627
+        }
+      }
+    },
+    {
+      "kind": "standalone_semantic_processor_without_publication",
+      "state": "finished",
+      "synthetic_only": true,
+      "model": "deepseek-v4-pro",
+      "thinking": "enabled",
+      "policy": {
+        "max_sources": 32,
+        "max_assertions": 32,
+        "max_episodes": 16,
+        "max_proposals": 24,
+        "max_model_calls": 2,
+        "max_input_bytes": 196608,
+        "max_request_bytes": 98304,
+        "max_response_bytes": 65536,
+        "max_output_tokens": 16384,
+        "max_wall_time_ms": 240000
+      },
+      "code_fingerprints": {
+        "examples/evaluate_deepseek.py": "ec87064f3e27f48a5bbe10433d52ec7aa1466a9cc19a0ec9b229a8c14db1d9e2",
+        "examples/evaluation_support.py": "0728123505dbc5687eb3fcfbf895510cef1ce0530016f89fdf2f71cfd2d49cfc",
+        "src/agent_memory/semantic.py": "6e3b58072fe80f89847c8b67f67533831a77910f35325f3665c98c1f720ebf58",
+        "src/agent_memory/semantic_provider.py": "07708cdba5e07d4cdf62cba38e195cc249cb60cb6547547f30745f56f0c62b10",
+        "src/agent_memory/recall_provider.py": "97f6f33d22e9895359aa6fd1f1e1b01e94a00f8cdf64e08a5933ae761bc73a9e",
+        "src/agent_memory/learning.py": "bfef2579b5feb43e525ea68e3ce99196e6dbc7d2f45c1ebb9e1923fd50f9d79b",
+        "src/agent_memory/consolidation_planning.py": "09526a52aae1e98ad69ea89b68ec3909b9d5f5dea196670f9f7fda314a7a270d",
+        "src/agent_memory/context_views.py": "78f5816ac1093b979b62a601bc69a2739cea5d019e9383172fa2cc0d5e78fcff",
+        "src/agent_memory/cognition.py": "7c58e3d2997222109d18889f1cbd197d844d14e413bc3a4814f920ebb9df8920",
+        "src/agent_memory/applicability.py": "458495035760a8663debe06c08f4ac2cbdfd37e0badd97aca4d3ae7d45e5c1ff",
+        "examples/evaluate_memory_repairs.py": "542f365a3ca71d81a379c13a768ccd8a46b7a6ca2e42adae64aadbc0a8ff2cdc",
+        "src/agent_memory/candidates.py": "e62bd71bef192053d495213e6178bb02463f64834168b4d73e0ba4064cbcf1c6",
+        "src/agent_memory/source_candidates.py": "9eaa44abef8140cdda70f650ef7faf8c07b0dbafc228a87eb83a1ffd28cfeaba"
+      },
+      "responses": {
+        "proposal": {
+          "claims": [
+            {
+              "proposal_id": "proposal-schema-walk-before-study-1",
+              "statement": "在两个已比较的实例中，用户在开始复习前先散步，随后开始查看复习材料。",
+              "memory_kind": "semantic",
+              "representation": "schema",
+              "claim_kind": "inferred_pattern",
+              "world": "real_world",
+              "conditions": {
+                "op": "always"
+              },
+              "evidence_refs": [
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 0,
+                    "end": 35,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 35,
+                    "end": 45,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 0,
+                    "end": 33,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 33,
+                    "end": 42,
+                    "unit": "unicode_code_point"
+                  }
+                }
+              ],
+              "counterexamples": [],
+              "source_memory_versions": [
+                {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              ],
+              "valid_time": {
+                "start": null,
+                "end": null,
+                "precision": "unknown",
+                "basis": "inferred"
+              },
+              "procedure": null
+            }
+          ],
+          "belief_links": [
+            {
+              "proposal_id": "link-abstracts-walk-before-study-1",
+              "kind": "abstracts",
+              "claim_proposal_id": "proposal-schema-walk-before-study-1",
+              "target_memory_versions": [
+                {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              ],
+              "evidence_refs": [
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 0,
+                    "end": 35,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 35,
+                    "end": 45,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 0,
+                    "end": 33,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 33,
+                    "end": 42,
+                    "unit": "unicode_code_point"
+                  }
+                }
+              ],
+              "world": "real_world",
+              "conditions": {
+                "op": "always"
+              },
+              "valid_during": {
+                "kind": "unknown"
+              }
+            }
+          ],
+          "consolidation_decisions": [
+            {
+              "objective_id": "compare-17bb7cf9f8a1a2062d11328fa6c7b657",
+              "outcome": "proposed",
+              "reason": null,
+              "link_proposal_ids": [
+                "link-abstracts-walk-before-study-1"
+              ]
+            }
+          ],
+          "situation_updates": [],
+          "episode_actions": []
+        },
+        "verification": {
+          "assessments": [
+            {
+              "proposal_id": "proposal-schema-walk-before-study-1",
+              "proposal_verdict": "supports",
+              "link_verdict": null,
+              "relations": [
+                {
+                  "evidence_index": 0,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 1,
+                  "verdict": "irrelevant"
+                },
+                {
+                  "evidence_index": 2,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 3,
+                  "verdict": "irrelevant"
+                }
+              ],
+              "supporting_evidence_indices": [
+                0,
+                2
+              ]
+            },
+            {
+              "proposal_id": "link-abstracts-walk-before-study-1",
+              "proposal_verdict": "supports",
+              "link_verdict": "supports",
+              "relations": [
+                {
+                  "evidence_index": 0,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 1,
+                  "verdict": "irrelevant"
+                },
+                {
+                  "evidence_index": 2,
+                  "verdict": "supports"
+                },
+                {
+                  "evidence_index": 3,
+                  "verdict": "irrelevant"
+                }
+              ],
+              "supporting_evidence_indices": [
+                0,
+                2
+              ],
+              "instance_verdicts": [
+                {
+                  "memory_version": {
+                    "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                    "revision": 1
+                  },
+                  "verdict": "supports"
+                },
+                {
+                  "memory_version": {
+                    "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                    "revision": 1
+                  },
+                  "verdict": "supports"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "verification_instance_support": {
+        "link-abstracts-walk-before-study-1": [
+          {
+            "evidence_indices": [
+              2,
+              3
+            ],
+            "memory_version": {
+              "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+              "revision": 1
+            }
+          },
+          {
+            "evidence_indices": [
+              0,
+              1
+            ],
+            "memory_version": {
+              "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+              "revision": 1
+            }
+          }
+        ]
+      },
+      "verification_evidence_selection": {
+        "proposal-schema-walk-before-study-1": "minimal_shared_support",
+        "link-abstracts-walk-before-study-1": "minimal_shared_support"
+      },
+      "usage_before": {
+        "reserved_calls": 2,
+        "completed_calls": 2,
+        "reserved_output_tokens": 32768,
+        "usage_confirmed_calls": 2,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 19011,
+          "completion_tokens": 6066,
+          "total_tokens": 25077,
+          "prompt_cache_hit_tokens": 384,
+          "prompt_cache_miss_tokens": 18627
+        }
+      },
+      "limitations": [
+        "Exact old instances, new standalone processing; no database publication.",
+        "Structural checks and model assessments do not establish semantic correctness.",
+        "No keyword oracle or expected conclusion is supplied to the model."
+      ],
+      "followup": {
+        "reason": "The first attempt produced a minimal shared assertion but copied unrelated endpoint citations. Verify the explicit supporting-evidence basis and irrelevant-versus-unknown protocol without changing the source instances or the original failed report.",
+        "prior_report": ".local/deepseek-memory-repairs/live.json",
+        "prior_report_sha256": "e72fbb112b071234a3b9df7ac6ed28c0ff95df6444415d007d497ec900d6a617",
+        "attempt": 2,
+        "maximum_attempts": 2
+      },
+      "result": {
+        "status": "completed",
+        "claims": [
+          {
+            "proposal_id": "proposal-schema-walk-before-study-1",
+            "statement": "在两个已比较的实例中，用户在开始复习前先散步，随后开始查看复习材料。",
+            "memory_kind": "semantic",
+            "representation": "schema",
+            "claim_kind": "inferred_pattern",
+            "world": "real_world",
+            "conditions": {
+              "op": "always"
+            },
+            "evidence_refs": [
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 0,
+                  "end": 35,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 0,
+                  "end": 33,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "counterexamples": [],
+            "source_memory_versions": [
+              {
+                "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                "revision": 1
+              },
+              {
+                "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                "revision": 1
+              }
+            ],
+            "valid_time": {
+              "start": null,
+              "end": null,
+              "precision": "unknown",
+              "basis": "inferred"
+            },
+            "procedure": null,
+            "verification": {
+              "state": "supported_inference",
+              "method": "semantic_model",
+              "not_a_truth_certificate": true
+            },
+            "epistemic_status": "derived_inference",
+            "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b",
+            "valid_during": {
+              "kind": "unknown"
+            }
+          }
+        ],
+        "situation_updates": [],
+        "episode_actions": [],
+        "rejected": [],
+        "observed_event_refs": [
+          {
+            "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+            "revision": 1
+          },
+          {
+            "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+            "revision": 1
+          }
+        ],
+        "model_calls": 2,
+        "input_bytes": 83521,
+        "learning_outcome": "accepted_proposals",
+        "belief_links": [
+          {
+            "proposal_id": "link-abstracts-walk-before-study-1",
+            "kind": "abstracts",
+            "claim_proposal_id": "proposal-schema-walk-before-study-1",
+            "target_memory_versions": [
+              {
+                "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                "revision": 1
+              },
+              {
+                "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                "revision": 1
+              }
+            ],
+            "evidence_refs": [
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 0,
+                  "end": 35,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 35,
+                  "end": 45,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 0,
+                  "end": 33,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 33,
+                  "end": 42,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "world": "real_world",
+            "conditions": {
+              "op": "always"
+            },
+            "valid_during": {
+              "kind": "unknown"
+            },
+            "verification": {
+              "state": "supported_inference",
+              "method": "semantic_model",
+              "not_a_truth_certificate": true
+            },
+            "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b"
+          }
+        ],
+        "consolidation": {
+          "planner_version": "independent-instance-comparison-v3",
+          "candidate_count": 1,
+          "objective_count": 1,
+          "suppressed_count": 0,
+          "satisfied_count": 1,
+          "no_change_count": 0,
+          "unresolved_count": 0,
+          "objectives": [
+            {
+              "objective_id": "compare-17bb7cf9f8a1a2062d11328fa6c7b657",
+              "status": "satisfied",
+              "reason": "verified_abstraction",
+              "attempted": true,
+              "dedup_eligible": true,
+              "reason_basis": "verified_relationship",
+              "verified_link_ids": [
+                "link-abstracts-walk-before-study-1"
+              ]
+            }
+          ]
+        },
+        "verification_assessments": [
+          {
+            "proposal_id": "proposal-schema-walk-before-study-1",
+            "proposal_verdict": "supports",
+            "link_verdict": null,
+            "relations": [
+              {
+                "evidence_index": 0,
+                "verdict": "supports"
+              },
+              {
+                "evidence_index": 1,
+                "verdict": "irrelevant"
+              },
+              {
+                "evidence_index": 2,
+                "verdict": "supports"
+              },
+              {
+                "evidence_index": 3,
+                "verdict": "irrelevant"
+              }
+            ],
+            "supporting_evidence_indices": [
+              0,
+              2
+            ]
+          },
+          {
+            "proposal_id": "link-abstracts-walk-before-study-1",
+            "proposal_verdict": "supports",
+            "link_verdict": "supports",
+            "relations": [
+              {
+                "evidence_index": 0,
+                "verdict": "supports"
+              },
+              {
+                "evidence_index": 1,
+                "verdict": "irrelevant"
+              },
+              {
+                "evidence_index": 2,
+                "verdict": "supports"
+              },
+              {
+                "evidence_index": 3,
+                "verdict": "irrelevant"
+              }
+            ],
+            "supporting_evidence_indices": [
+              0,
+              2
+            ],
+            "instance_verdicts": [
+              {
+                "memory_version": {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                "verdict": "supports"
+              },
+              {
+                "memory_version": {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                },
+                "verdict": "supports"
+              }
+            ]
+          }
+        ],
+        "evidence_selections": [
+          {
+            "proposal_id": "proposal-schema-walk-before-study-1",
+            "original_evidence_refs": [
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 0,
+                  "end": 35,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 35,
+                  "end": 45,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 0,
+                  "end": 33,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 33,
+                  "end": 42,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "supporting_evidence_indices": [
+              0,
+              2
+            ]
+          }
+        ]
+      },
+      "review": {
+        "checks": {
+          "exact_instance_comparison_planned": true,
+          "verified_abstraction_accepted": true,
+          "rejected_schemas_not_accepted": true,
+          "model_calls_within_fixed_cap": true
+        },
+        "accepted_abstractions": [
+          {
+            "claim": {
+              "proposal_id": "proposal-schema-walk-before-study-1",
+              "statement": "在两个已比较的实例中，用户在开始复习前先散步，随后开始查看复习材料。",
+              "memory_kind": "semantic",
+              "representation": "schema",
+              "claim_kind": "inferred_pattern",
+              "world": "real_world",
+              "conditions": {
+                "op": "always"
+              },
+              "evidence_refs": [
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 0,
+                    "end": 35,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 0,
+                    "end": 33,
+                    "unit": "unicode_code_point"
+                  }
+                }
+              ],
+              "counterexamples": [],
+              "source_memory_versions": [
+                {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              ],
+              "valid_time": {
+                "start": null,
+                "end": null,
+                "precision": "unknown",
+                "basis": "inferred"
+              },
+              "procedure": null,
+              "verification": {
+                "state": "supported_inference",
+                "method": "semantic_model",
+                "not_a_truth_certificate": true
+              },
+              "epistemic_status": "derived_inference",
+              "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b",
+              "valid_during": {
+                "kind": "unknown"
+              }
+            },
+            "link": {
+              "proposal_id": "link-abstracts-walk-before-study-1",
+              "kind": "abstracts",
+              "claim_proposal_id": "proposal-schema-walk-before-study-1",
+              "target_memory_versions": [
+                {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              ],
+              "evidence_refs": [
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 0,
+                    "end": 35,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                  "span": {
+                    "start": 35,
+                    "end": 45,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 0,
+                    "end": 33,
+                    "unit": "unicode_code_point"
+                  }
+                },
+                {
+                  "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                  "event_revision": 1,
+                  "relationship": "supports",
+                  "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                  "span": {
+                    "start": 33,
+                    "end": 42,
+                    "unit": "unicode_code_point"
+                  }
+                }
+              ],
+              "world": "real_world",
+              "conditions": {
+                "op": "always"
+              },
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "verification": {
+                "state": "supported_inference",
+                "method": "semantic_model",
+                "not_a_truth_certificate": true
+              },
+              "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b"
+            },
+            "checks": {
+              "claim_supporting_basis_exact": true,
+              "link_supporting_basis_exact": true,
+              "claim_keeps_exactly_supported_citations": true,
+              "whole_claim_text_unchanged": true,
+              "complete_supported_instance_verdicts": true,
+              "complete_instance_support_map": true,
+              "all_original_parents": true,
+              "all_original_endpoints": true,
+              "exact_endpoint_evidence_union": true,
+              "schema_inferred_pattern": true,
+              "world_preserved": true,
+              "conditions_preserved": true,
+              "joint_claim_supported": true,
+              "joint_link_supported": true,
+              "independent_supporting_sources": true
+            },
+            "instance_support": [
+              {
+                "evidence_indices": [
+                  2,
+                  3
+                ],
+                "memory_version": {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                }
+              },
+              {
+                "evidence_indices": [
+                  0,
+                  1
+                ],
+                "memory_version": {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                }
+              }
+            ],
+            "instance_verdicts": [
+              {
+                "memory_version": {
+                  "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                  "revision": 1
+                },
+                "verdict": "supports"
+              },
+              {
+                "memory_version": {
+                  "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                  "revision": 1
+                },
+                "verdict": "supports"
+              }
+            ],
+            "supporting_evidence_indices": {
+              "claim": [
+                0,
+                2
+              ],
+              "link": [
+                0,
+                2
+              ]
+            }
+          }
+        ],
+        "rejected_schemas": [],
+        "proposed_abstractions": [
+          {
+            "proposal_id": "proposal-schema-walk-before-study-1",
+            "statement": "在两个已比较的实例中，用户在开始复习前先散步，随后开始查看复习材料。",
+            "memory_kind": "semantic",
+            "representation": "schema",
+            "claim_kind": "inferred_pattern",
+            "world": "real_world",
+            "conditions": {
+              "op": "always"
+            },
+            "evidence_refs": [
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 0,
+                  "end": 35,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "c49d0f0d-27f4-49e3-b985-9d5d28b4921d",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "dd38c5d58d6ce0ed7107e2aff091e7e77a7861746cce0b42f0ebfa307933cb2e",
+                "span": {
+                  "start": 35,
+                  "end": 45,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 0,
+                  "end": 33,
+                  "unit": "unicode_code_point"
+                }
+              },
+              {
+                "event_id": "b9a08641-a73d-438f-b9b9-26f68afb4eab",
+                "event_revision": 1,
+                "relationship": "supports",
+                "source_content_sha256": "ebcfe1ba093e14ba9a0158a879a768591cdf5808806a2529aea0b4304fdf05cf",
+                "span": {
+                  "start": 33,
+                  "end": 42,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "counterexamples": [],
+            "source_memory_versions": [
+              {
+                "memory_id": "semantic-86371f5d495df86ec34e74b491a6a78c",
+                "revision": 1
+              },
+              {
+                "memory_id": "semantic-9b1f96723df6192b31c5d5e98f8cef60",
+                "revision": 1
+              }
+            ],
+            "valid_time": {
+              "start": null,
+              "end": null,
+              "precision": "unknown",
+              "basis": "inferred"
+            },
+            "procedure": null
+          }
+        ],
+        "semantic_quality": "requires_human_review_of_whole_claim_and_evidence",
+        "review_questions": [
+          "Is each accepted schema one supported commonality, without invented details?",
+          "Is its scope limited to the observed instances rather than a universal habit?"
+        ],
+        "source_texts": [
+          "2026年10月20日，我在开始复习前绕公园走了十分钟，然后打开教材。那次穿的是蓝色外套。",
+          "2026年10月22日，我先在河边散步，回来以后才开始看复习资料。那次我没有穿外套。"
+        ]
+      },
+      "usage_after": {
+        "reserved_calls": 4,
+        "completed_calls": 4,
+        "reserved_output_tokens": 65536,
+        "usage_confirmed_calls": 4,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 38319,
+          "completion_tokens": 14819,
+          "total_tokens": 53138,
+          "prompt_cache_hit_tokens": 9600,
+          "prompt_cache_miss_tokens": 28719
+        }
+      }
+    }
+  ],
+  "usage": {
+    "reserved_calls": 4,
+    "completed_calls": 4,
+    "reserved_output_tokens": 65536,
+    "usage_confirmed_calls": 4,
+    "usage_unknown_calls": 0,
+    "usage_totals": {
+      "prompt_tokens": 38319,
+      "completion_tokens": 14819,
+      "total_tokens": 53138,
+      "prompt_cache_hit_tokens": 9600,
+      "prompt_cache_miss_tokens": 28719
+    }
+  },
+  "calls": [
+    {
+      "event": "reserved",
+      "request_id": "42cfb833d3494f6fb582cf96a4edac4f",
+      "reserved_output_tokens": 16384,
+      "request_sha256": "5caddfa73f855f736e2560c19af9b89b8f21c55bee031edab4f7b9f58f1edb69",
+      "request_bytes": 34505
+    },
+    {
+      "event": "completed",
+      "request_id": "42cfb833d3494f6fb582cf96a4edac4f",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "elapsed_seconds": 24.865209,
+      "response_bytes_observed": 14092,
+      "usage_confirmed": true,
+      "raw_response_bytes_observed": 5088,
+      "model": "deepseek-v4-pro",
+      "usage": {
+        "prompt_tokens": 8917,
+        "completion_tokens": 3340,
+        "total_tokens": 12257,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 8917,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1726
+        }
+      },
+      "finish_reason": "stop"
+    },
+    {
+      "event": "reserved",
+      "request_id": "77f4a1bf567d4440a1909ce53bb623fa",
+      "reserved_output_tokens": 16384,
+      "request_sha256": "c4f57038e710f779da9028363c51baaddd6ccd984e75b3aed950f99015e40f1d",
+      "request_bytes": 33000
+    },
+    {
+      "event": "completed",
+      "request_id": "77f4a1bf567d4440a1909ce53bb623fa",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "elapsed_seconds": 22.011591,
+      "response_bytes_observed": 13024,
+      "usage_confirmed": true,
+      "raw_response_bytes_observed": 5046,
+      "model": "deepseek-v4-pro",
+      "usage": {
+        "prompt_tokens": 10094,
+        "completion_tokens": 2726,
+        "total_tokens": 12820,
+        "prompt_cache_hit_tokens": 384,
+        "prompt_cache_miss_tokens": 9710,
+        "prompt_tokens_details": {
+          "cached_tokens": 384
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2318
+        }
+      },
+      "finish_reason": "stop"
+    },
+    {
+      "event": "reserved",
+      "request_id": "1ccb2c9a9bb0431b8bfc2465448d023a",
+      "reserved_output_tokens": 16384,
+      "request_sha256": "5caddfa73f855f736e2560c19af9b89b8f21c55bee031edab4f7b9f58f1edb69",
+      "request_bytes": 34505
+    },
+    {
+      "event": "completed",
+      "request_id": "1ccb2c9a9bb0431b8bfc2465448d023a",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "elapsed_seconds": 27.569395,
+      "response_bytes_observed": 16242,
+      "usage_confirmed": true,
+      "raw_response_bytes_observed": 5953,
+      "model": "deepseek-v4-pro",
+      "usage": {
+        "prompt_tokens": 8917,
+        "completion_tokens": 3848,
+        "total_tokens": 12765,
+        "prompt_cache_hit_tokens": 8832,
+        "prompt_cache_miss_tokens": 85,
+        "prompt_tokens_details": {
+          "cached_tokens": 8832
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2238
+        }
+      },
+      "finish_reason": "stop"
+    },
+    {
+      "event": "reserved",
+      "request_id": "c1a88b659a2f4df19aeee5e1c19f1596",
+      "reserved_output_tokens": 16384,
+      "request_sha256": "7fb6dea247c3029fd6bec9e1bbf7ff1c6f8773ea2439c09c0c86fc10c031b8b0",
+      "request_bytes": 34552
+    },
+    {
+      "event": "completed",
+      "request_id": "c1a88b659a2f4df19aeee5e1c19f1596",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "elapsed_seconds": 37.86986,
+      "response_bytes_observed": 23247,
+      "usage_confirmed": true,
+      "raw_response_bytes_observed": 8773,
+      "model": "deepseek-v4-pro",
+      "usage": {
+        "prompt_tokens": 10391,
+        "completion_tokens": 4905,
+        "total_tokens": 15296,
+        "prompt_cache_hit_tokens": 384,
+        "prompt_cache_miss_tokens": 10007,
+        "prompt_tokens_details": {
+          "cached_tokens": 384
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 4455
+        }
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "development_review": {
+    "accepted_common_statement": "在两个已比较的实例中，用户在开始复习前先散步，随后开始查看复习材料。",
+    "finding": "Bounded to the two compared reports. Both sources describe walking before beginning review. No new location, duration, clothing, causal benefit or universal habit is inferred. The statement is unchanged after verification; explicitly irrelevant clothing citations are removed only from the shared claim, retained in the full parent relation and audit.",
+    "claim_support_reference_count": 2,
+    "relation_reference_count": 4,
+    "limitations": [
+      "Development review is not an independent human benchmark.",
+      "Real provider diagnostics used the standalone processor; no real proposal was published to the database.",
+      "Database publication and correction behavior are covered separately by deterministic integration tests."
+    ]
+  },
+  "final_code_fingerprints": {
+    "examples/evaluate_deepseek.py": "ec87064f3e27f48a5bbe10433d52ec7aa1466a9cc19a0ec9b229a8c14db1d9e2",
+    "examples/evaluation_support.py": "0728123505dbc5687eb3fcfbf895510cef1ce0530016f89fdf2f71cfd2d49cfc",
+    "src/agent_memory/semantic.py": "6e3b58072fe80f89847c8b67f67533831a77910f35325f3665c98c1f720ebf58",
+    "src/agent_memory/semantic_provider.py": "07708cdba5e07d4cdf62cba38e195cc249cb60cb6547547f30745f56f0c62b10",
+    "src/agent_memory/recall_provider.py": "97f6f33d22e9895359aa6fd1f1e1b01e94a00f8cdf64e08a5933ae761bc73a9e",
+    "src/agent_memory/learning.py": "bfef2579b5feb43e525ea68e3ce99196e6dbc7d2f45c1ebb9e1923fd50f9d79b",
+    "src/agent_memory/consolidation_planning.py": "09526a52aae1e98ad69ea89b68ec3909b9d5f5dea196670f9f7fda314a7a270d",
+    "src/agent_memory/context_views.py": "78f5816ac1093b979b62a601bc69a2739cea5d019e9383172fa2cc0d5e78fcff",
+    "src/agent_memory/cognition.py": "7c58e3d2997222109d18889f1cbd197d844d14e413bc3a4814f920ebb9df8920",
+    "src/agent_memory/applicability.py": "458495035760a8663debe06c08f4ac2cbdfd37e0badd97aca4d3ae7d45e5c1ff",
+    "examples/evaluate_memory_repairs.py": "542f365a3ca71d81a379c13a768ccd8a46b7a6ca2e42adae64aadbc0a8ff2cdc",
+    "src/agent_memory/candidates.py": "e62bd71bef192053d495213e6178bb02463f64834168b4d73e0ba4064cbcf1c6",
+    "src/agent_memory/source_candidates.py": "9eaa44abef8140cdda70f650ef7faf8c07b0dbafc228a87eb83a1ffd28cfeaba"
+  },
+  "local_validation": {
+    "python": {
+      "command": "uv run pytest -q",
+      "passed": 1562,
+      "failed": 0
+    },
+    "ruff": "passed",
+    "build": "passed",
+    "diff_check": "passed",
+    "new_database_publication_regression": "passed",
+    "cloud_ci_triggered": false,
+    "codex_or_claude_subscription_tests": false,
+    "typescript_tests": "not_rerun_no_TypeScript_changes"
+  }
+}
