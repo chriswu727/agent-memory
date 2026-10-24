@@ -39,6 +39,9 @@ _INSTRUCTIONS = (
     "truth. No match does not prove something never happened. Use ambiguous when multiple "
     "interpretations remain, insufficient when evidence is lacking, and not_needed when history "
     "is unnecessary. sufficient is your relevance judgment, not a verification certificate. "
+    "A schema or shared pattern does not prove unobserved details of any instance. "
+    "Never combine details from distinct episodes into one event. Preserve each source's "
+    "representation, conditions, time, and evidence independently. "
     "For finish, queries must be empty. For search, queries must be nonempty. For not_needed, "
     "selected_memory_ids must be empty. Do not supply explanations or hidden reasoning."
 )
@@ -190,14 +193,15 @@ class RecallController:
                 refs = _union(refs, block_refs)
                 recent_refs = next_recent
             for candidate in candidates.values():
-                candidate_refs = _references(candidate["evidence_refs"])
+                candidate_refs = _references(candidate["evidence_refs"] + candidate.get("counterexamples", []))
                 if len(_union(observed, refs, candidate_refs)) > 64:
                     truncated = True
                     continue
                 offered.append({key: copy.deepcopy(candidate[key]) for key in (
                     "memory_id", "revision", "statement", "world", "epistemic_status",
-                    "valid_time", "evidence_refs",
-                )})
+                    "valid_time", "evidence_refs", "representation", "claim_kind", "conditions",
+                    "valid_during", "counterexamples", "verification",
+                ) if key in candidate})
                 refs = _union(refs, candidate_refs)
 
             def make_request():
@@ -227,7 +231,8 @@ class RecallController:
                 request, size, fingerprint = make_request()
             if size > remaining or request.timeout_seconds <= 0:
                 return finish("budget_exhausted")
-            refs = _union(*(_references(value["evidence_refs"]) for value in context + offered))
+            refs = _union(*(_references(value["evidence_refs"] + value.get("counterexamples", []))
+                            for value in context + offered))
             next_recent = _union(*(_references(value["evidence_refs"]) for value in context
                                    if value["section"] == "recent_context"))
             check()

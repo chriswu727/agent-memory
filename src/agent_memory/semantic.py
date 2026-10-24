@@ -672,4 +672,4 @@ def expand_schema_residual(schema: dict, instance: dict) -> tuple[dict, ...]:
             raise ValueError("Observed support required")
         for ref in claim["evidence_refs"]:
             validate("EvidenceRef", ref)
-    return tuple(copy.deepcopy(observed[key]) for key in selected)
+    return tuple(copy.deepcopy(claim) for claim in instance["observed_claims"])

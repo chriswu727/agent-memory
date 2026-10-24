@@ -209,6 +209,10 @@ class MemoryService:
         ).fetchall()
         affected = sorted({row["id"] for row in rows})
         params = self._params(principal, brain["id"])
+        from .pattern_store import invalidate_patterns
+
+        invalidate_patterns(conn, self, principal, brain, event_ids=event_ids,
+                            memory_ids=set(affected) | set(memory_ids))
         conn.execute(
             "UPDATE memory_jobs SET result=NULL,state='superseded',lease_token_digest=NULL,lease_expires_at=NULL "
             "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND "
@@ -548,6 +552,23 @@ class MemoryService:
         }
         state["verified_working_evidence_refs"] = [r for field in ("items", "open_loops") for item in working[field] for r in item["evidence_refs"]]
         result = cognition.recall(self._scope(principal, brain, target), query, memories, events, state)
+        if recall_plan is None and result["items"]:
+            from .pattern_store import load_patterns
+
+            state["pattern_views"] = load_patterns(
+                conn, self, principal, brain, scope=self._scope(principal, brain, target),
+                memory_versions=[(item["memory"]["memory_id"], item["memory"]["revision"])
+                                 for item in result["items"] if item["display_mode"] != "do_not_surface"],
+            )
+            missing = sorted({identifier for view in state["pattern_views"] for identifier in view["root_event_ids"]}
+                             - state["working_event_metadata"].keys())
+            capacity = max(0, 1024 - len(state["working_event_metadata"]))
+            if missing and capacity:
+                extra = self._events(conn, principal, brain, event_ids=missing[:capacity], limit=capacity)
+                state["working_event_metadata"].update({
+                    event["event_id"]: event for event in extra
+                    if cognition._scope_allows(event["scope"], self._scope(principal, brain, target))
+                })
         if recall_plan is not None:
             expected = {(v["memory_id"], v["revision"]) for v in recall_plan["memory_versions"]}
             found = {(item["memory"]["memory_id"], item["memory"]["revision"]) for item in result["items"]}
@@ -1044,6 +1065,11 @@ class MemoryService:
                     (*params, object_kind, object_id, payload["mode"]),
                 )
         erase = payload["mode"] == "erase_content"
+        if erase:
+            from .pattern_store import invalidate_patterns
+
+            invalidate_patterns(conn, self, principal, brain, event_ids=event_ids,
+                                memory_ids=memory_ids, deleted=True)
         conn.execute(
             "UPDATE memory_jobs SET result=NULL WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='query_embedding'",
             params,
@@ -1339,6 +1365,10 @@ class MemoryService:
         )
         quarantined += rejected_memories
         restored_views = restore_views(conn, self, principal, brain, data, restored_versions, event_mapping, blocked_events)
+        from .pattern_store import rebuild_restored_patterns
+
+        pattern_ids = rebuild_restored_patterns(conn, self, principal, brain, data, restored_versions)
+        restored_views["patterns_rebuilt"] = len(pattern_ids)
         for working in data["working_states"] if data.get("archive_origin") == "local_export" else []:
             updated = self._rebind(working, principal, brain)
             for field in ("items", "open_loops"):

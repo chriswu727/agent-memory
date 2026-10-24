@@ -228,6 +228,9 @@ def _save_episode(conn, service, principal, brain, batch, document, memories, ro
         if old["invalidated"] or old["deleted"] or old["document"] != document:
             raise DomainError("idempotency_conflict", "Episode version changed within one job")
         return
+    from .pattern_store import invalidate_patterns
+
+    invalidate_patterns(conn, service, principal, brain, episode_ids=[document["episode_id"]])
     conn.execute(
         "UPDATE memory_episodes SET is_current=false WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND id=%s AND is_current", (*params, document["episode_id"]),
@@ -332,7 +335,10 @@ def publish_semantic(conn, service, principal, brain, batch: CognitiveBatch,
                                             parent["memory_id"], parent["revision"], relation,
                                             snapshot["root_event_ids"]),
             )
-    return {"status": result.status, "published_count": len(memories),
+    from .pattern_store import refresh_patterns
+
+    pattern_ids = refresh_patterns(conn, service, principal, brain, batch, memories, episodes)
+    return {"status": result.status, "published_count": len(memories), "pattern_view_ids": pattern_ids,
             "memory_versions": [{"memory_id": memory["memory_id"], "revision": memory["revision"]} for memory in memories],
             "episode_versions": episodes, "source_event_ids": snapshot["root_event_ids"],
             "source_memory_ids": sorted({memory["memory_id"] for memory in batch.existing_assertions}),

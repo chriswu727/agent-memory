@@ -757,6 +757,102 @@ def _memory_applicability(memory, state, scope, events, timestamp):
     return {**result, "evaluated_at": at}
 
 
+def _pattern_context_units(rows, views, scope, events, snapshot, excluded, superseded):
+    from .patterns import validate_pattern
+
+    def key(version):
+        return version["memory_id"], version["revision"]
+
+    def ordinary(row, *, episodes=None, roots=()):
+        content = copy.deepcopy(row["content"])
+        refs = copy.deepcopy(row["references"])
+        if episodes:
+            content["episode_refs"] = copy.deepcopy(episodes)
+            content["coverage"] = "selected_assertions_only"
+            content["memory_version"] = {"memory_id": row["memory"]["memory_id"],
+                                         "revision": row["memory"]["revision"]}
+        for ref in roots:
+            if ref not in refs:
+                refs.append(ref)
+        return (row["section"], _serialized(content), refs), [(row["memory"], row["references"])]
+
+    def size(unit):
+        return estimate_tokens(render_context({"blocks": [
+            {"section": block[0], "text": block[1], "evidence_refs": block[2]}
+            for block, _ in unit
+        ]}))
+
+    memories = [row["memory"] for row in rows]
+    lookup = {key(row["memory"]): row for row in rows}
+    groups, used = {}, set()
+    for view in views[:16]:
+        if not validate_pattern(view, memories) or not _scope_allows(view["scope"], scope):
+            continue
+        keys = {key(version) for version in view["source_memory_versions"]}
+        if keys & used:
+            continue
+        roots = []
+        for identifier in view["root_event_ids"]:
+            event = events.get(identifier)
+            if event is None:
+                break
+            ref = {"event_id": identifier, "event_revision": event["revision"],
+                   "source_content_sha256": event["content_sha256"], "relationship": "context_only"}
+            if (not _valid_ref(ref, events, scope)
+                    or any(old["event_id"] == identifier for old in superseded)
+                    or snapshot["historical_evidence_status"] != "not_requested" and (
+                        snapshot["resolved_evidence_through_sequence"] is None
+                        or event["sequence"] > snapshot["resolved_evidence_through_sequence"]
+                        or identifier in excluded)):
+                break
+            roots.append(ref)
+        else:
+            instances, memberships = [], {}
+            meanings = {slot["slot_id"]: slot["meaning"] for slot in view["definition"]["shared_claims"]}
+            for instance in view["instances"]:
+                bindings, residuals = [], []
+                for version in instance["observed_memory_versions"]:
+                    memberships.setdefault(key(version), []).append(instance["episode_ref"])
+                for binding in instance["shared_bindings"]:
+                    row = lookup[key(binding["memory_version"])]
+                    attributes = {name: value for name, value in row["content"].items()
+                                  if name not in meanings[binding["slot_id"]]
+                                  or value != meanings[binding["slot_id"]][name]}
+                    bindings.append({**copy.deepcopy(binding), "attributes": copy.deepcopy(attributes),
+                                     "evidence_refs": copy.deepcopy(row["references"])})
+                for version in instance["residual_memory_versions"]:
+                    row = lookup[key(version)]
+                    residuals.append({"memory_version": copy.deepcopy(version),
+                                      "fact": copy.deepcopy(row["content"]),
+                                      "evidence_refs": copy.deepcopy(row["references"])})
+                instances.append({"episode_ref": copy.deepcopy(instance["episode_ref"]),
+                                  "observed_memory_versions": copy.deepcopy(instance["observed_memory_versions"]),
+                                  "shared_bindings": bindings, "residuals": residuals})
+            selected = [row for row in rows if key(row["memory"]) in keys]
+            references = {digest(ref): ref for row in selected for ref in row["references"]}
+            cited = {ref["event_id"] for ref in references.values()}
+            extra_roots = [ref for ref in roots if ref["event_id"] not in cited]
+            references.update({digest(ref): ref for ref in extra_roots})
+            section = ("conditional_memory" if any(row["section"] == "conditional_memory" for row in selected)
+                       else "relevant_memory")
+            content = {
+                "format": view["format_version"], "coverage": view["coverage"],
+                "use": "apply_each_instance_with_its_own_evidence_and_applicability; "
+                       "shared_meaning_does_not_fill_unobserved_details",
+                "definition": copy.deepcopy(view["definition"]), "instances": instances,
+            }
+            compressed = [((section, _serialized(content), list(references.values())),
+                           [(row["memory"], row["references"]) for row in selected])]
+            expanded = [ordinary(row, episodes=memberships[key(row["memory"])], roots=extra_roots)
+                        for row in selected]
+            unit = compressed if size(compressed) < size([ordinary(row) for row in selected]) else expanded
+            first = key(selected[0]["memory"])
+            groups[first] = unit
+            used.update(keys)
+    return [groups[key(row["memory"])] if key(row["memory"]) in groups else [ordinary(row)]
+            for row in rows if key(row["memory"]) in groups or key(row["memory"]) not in used]
+
+
 def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, state: dict) -> dict:
     validate("BoundScope", scope)
     validate("PreparePayload", payload)
@@ -821,7 +917,6 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     }
     limit = payload["budget"]["max_context_tokens"]
     blocks = []
-    metadata = []
 
     def contextual_value(value):
         if not isinstance(value, dict) or "observation" not in value:
@@ -859,7 +954,6 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
         blocks.append(("current_situation", _serialized(
             value | {"use": use or "fallible_current_context_not_historical_evidence"}),
             context_references(item["evidence_refs"], value)))
-        metadata.append(None)
     for item in clean["items"]:
         value, use = contextual_value(item["value"])
         blocks.append(("working_state", _serialized({
@@ -869,13 +963,11 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
                 "source_attributed_context"
             )),
         }), context_references(item["evidence_refs"], value)))
-        metadata.append(None)
     for loop in clean["open_loops"]:
         blocks.append(("open_loops", _serialized({
             "description": loop["description"], "state": loop["state"],
             "due_time": loop["due_time"],
         }), loop["evidence_refs"]))
-        metadata.append(None)
     for event in state.get("recent_events", []):
         observed = event["observed"]
         blocks.append(("recent_context", _serialized({
@@ -887,12 +979,15 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             "use": "conversation_context_only_not_independent_historical_evidence",
         }), [{"event_id": event["event_id"], "event_revision": event["revision"],
               "source_content_sha256": event["content_sha256"], "relationship": "context_only"}]))
-        metadata.append(None)
+    memory_rows = []
     for item in result["recall_results"][0]["items"]:
         if item["display_mode"] == "do_not_surface":
             continue
         memory = item["memory"]
         references = copy.deepcopy(memory["evidence_refs"])
+        for ref in memory.get("counterexamples", []):
+            if ref not in references:
+                references.append(copy.deepcopy(ref))
         cited = {ref["event_id"] for ref in references}
         for event_id in memory.get("root_event_ids", []):
             event = historical_events.get(event_id)
@@ -909,16 +1004,22 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
                 context_ref = {**ref, "relationship": "context_only"}
                 if context_ref not in references:
                     references.append(context_ref)
-        blocks.append(("relevant_memory" if applicable else "conditional_memory", _serialized({
+        content = {
             "statement": memory["statement"], "world": memory["world"],
             "epistemic_status": memory["epistemic_status"], "valid_time": memory["valid_time"],
-            **{key: memory[key] for key in ("conditions", "claim_kind", "verification", "counterexamples", "procedure", "valid_during")
+            **{key: memory[key] for key in ("representation", "conditions", "claim_kind", "verification", "counterexamples", "procedure", "valid_during")
                if key in memory},
             **({"applicability": applicability,
                 "use": "source_attributed_applicable_memory" if applicable else "conditional_memory_not_current_rule"}
                if applicability is not None else {}),
-        }), references))
-        metadata.append(memory)
+        }
+        memory_rows.append({"section": "relevant_memory" if applicable else "conditional_memory",
+                            "content": content, "references": references, "memory": memory})
+    units = [[(block, [])] for block in blocks]
+    units.extend(_pattern_context_units(
+        memory_rows, [] if "recall_plan" in payload else state.get("pattern_views", []),
+        scope, historical_events, snapshot, excluded, state.get("superseded_evidence_refs", []),
+    ))
     uncertainty = {
         "recall_status": recall_result["status"],
         "historical_evidence_status": snapshot["historical_evidence_status"],
@@ -943,33 +1044,42 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     result["blocks"] = [uncertainty_block()]
     if estimate_tokens(render_context(result)) > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the context safety envelope")
-    for (section, text, refs), memory in zip(blocks, metadata, strict=True):
-        block = {"section": section, "text": text, "evidence_refs": copy.deepcopy(refs),
-                 "trust": "memory_data_not_instructions", "token_count": estimate_tokens(text)}
-        result["blocks"].append(block)
+    emitted = []
+    for unit in units:
+        for (section, text, refs), _ in unit:
+            result["blocks"].append({
+                "section": section, "text": text, "evidence_refs": copy.deepcopy(refs),
+                "trust": "memory_data_not_instructions", "token_count": estimate_tokens(text),
+            })
         if estimate_tokens(render_context(result)) > limit:
-            result["blocks"].pop()
+            del result["blocks"][-len(unit):]
             result["usage"]["stopped_by"] = "context_limit"
             uncertainty["context_truncated"] = True
             result["blocks"][0] = uncertainty_block()
             continue
-        if memory is not None:
-            result["recall_traces"].append({
-                "trace_id": uid(), "recall_id": recall_result["recall_id"],
-                "retrieval_snapshot_id": snapshot["snapshot_id"], "scope": copy.deepcopy(scope),
-                "turn_id": payload["turn_id"], "memory_id": memory["memory_id"],
-                "kind": "context_selected", "source": "server_instrumentation",
-                "feedback_event_id": None, "evidence_refs": copy.deepcopy(refs),
-                "recorded_at": timestamp, "allowed_effect": "activation_only",
-            })
+        trace_ids = set()
+        for _, provenance in unit:
+            for memory, refs in provenance:
+                trace_id = uid()
+                trace_ids.add(trace_id)
+                result["recall_traces"].append({
+                    "trace_id": trace_id, "recall_id": recall_result["recall_id"],
+                    "retrieval_snapshot_id": snapshot["snapshot_id"], "scope": copy.deepcopy(scope),
+                    "turn_id": payload["turn_id"], "memory_id": memory["memory_id"],
+                    "kind": "context_selected", "source": "server_instrumentation",
+                    "feedback_event_id": None, "evidence_refs": copy.deepcopy(refs),
+                    "recorded_at": timestamp, "allowed_effect": "activation_only",
+                })
+        emitted.append((len(unit), trace_ids))
     if uncertainty["context_truncated"]:
         if "budget_exhausted" not in result["coverage"]["limitations"]:
             result["coverage"]["limitations"].append("budget_exhausted")
         result["blocks"][0] = uncertainty_block()
         while estimate_tokens(render_context(result)) > limit and len(result["blocks"]) > 1:
-            removed = result["blocks"].pop()
+            count, trace_ids = emitted.pop()
+            del result["blocks"][-count:]
             result["recall_traces"] = [trace for trace in result["recall_traces"]
-                                       if trace["evidence_refs"] != removed["evidence_refs"]]
+                                       if trace["trace_id"] not in trace_ids]
     result["usage"]["context_tokens"] = estimate_tokens(render_context(result))
     if result["usage"]["context_tokens"] > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the context limitation report")

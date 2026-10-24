@@ -64,6 +64,8 @@ def sanitize_learning_summary(summary):
         values = summary.get(group)
         values = values if isinstance(values, dict) else {}
         result[group] = {key: _monitor_count(values.get(key)) or 0 for key in fields}
+        if group == "published_counts" and "pattern_views" in values:
+            result[group]["pattern_views"] = _monitor_count(values["pattern_views"]) or 0
     sampling = summary.get("sampling")
     safe_sampling = {}
     if isinstance(sampling, dict):
@@ -118,7 +120,9 @@ def summarize_learning(result):
         "accepted_counts": {key: count(result.get(key)) if evaluated else 0
                             for key in ("claims", "situation_updates", "episode_actions")},
         "published_counts": {"claims": count(publication.get("memory_versions")),
-                             "episode_versions": count(publication.get("episode_versions"))},
+                             "episode_versions": count(publication.get("episode_versions")),
+                             **({"pattern_views": count(publication["pattern_view_ids"])}
+                                if "pattern_view_ids" in publication else {})},
         "sampling": result.get("sampling"), "rejection_reason_counts": reasons,
     })
 

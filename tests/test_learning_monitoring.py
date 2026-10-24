@@ -89,6 +89,38 @@ def test_snapshot_before_processing_is_not_reported_as_successful_learning():
     assert "private-" not in json.dumps(public)
 
 
+@pytest.mark.parametrize("views,expected", [
+    (["private-pattern-a", "private-pattern-b"], 2), ([], 0), (None, 0),
+    ("private-pattern-id", 0), ({"private-pattern-id": "private-text"}, 0),
+])
+def test_pattern_publication_exposes_only_an_optional_count(views, expected):
+    result = {
+        "status": "completed", "learning_outcome": "accepted_proposals",
+        "publication": {"pattern_view_ids": views, "pattern_views": 999, "text": "private-summary"},
+    }
+    public = JobStore(None)._public(job_row(result))
+    assert public["learning_summary"]["published_counts"] == {
+        "claims": 0, "episode_versions": 0, "pattern_views": expected,
+    }
+    assert "private-" not in json.dumps(public)
+    del result["publication"]["pattern_view_ids"]
+    summary = summarize_learning(result)
+    assert summary["published_counts"] == {"claims": 0, "episode_versions": 0}
+
+
+@pytest.mark.parametrize("value,expected", [
+    (0, 0), (12, 12), (1_000_000, 1_000_000), (1_000_001, 0), (-1, 0), (True, 0),
+    (float("inf"), 0), (float("nan"), 0), ("private-count", 0),
+    (["private-pattern-id"], 0), ({"text": "private-meaning"}, 0), (None, 0),
+])
+def test_pattern_publication_count_is_an_allowlisted_bounded_integer(value, expected):
+    summary = sanitize_learning_summary({"published_counts": {
+        "pattern_views": value, "pattern_view_ids": ["private-id"], "text": "private-summary",
+    }})
+    assert summary["published_counts"] == {"claims": 0, "episode_versions": 0, "pattern_views": expected}
+    assert "private-" not in json.dumps(summary)
+
+
 @pytest.mark.parametrize("kind,state,result", [
     ("orient", "queued", None),
     ("consolidate", "completed", None),
@@ -176,7 +208,8 @@ def test_api_refilters_injected_job_summaries_on_list_and_detail(kind, has_summa
         "processing_status": "partial", "learning_outcome": "accepted_proposals",
         "accepted_counts": {"claims": 1, "situation_updates": 2, "episode_actions": 0,
                             "private-claim": "private-statement"},
-        "published_counts": {"claims": 1, "episode_versions": 0, "ids": ["private-id"]},
+        "published_counts": {"claims": 1, "episode_versions": 0, "pattern_views": 2,
+                             "ids": ["private-id"], "pattern_view_ids": ["private-pattern"]},
         "sampling": {"source_count": 3, "search_exhaustive": False,
                      "limitations": ["index_lag", "private-limit"], "query": "private-query"},
         "rejection_reason_counts": {"invalid_proposal": 1, "private-exception": 1},
