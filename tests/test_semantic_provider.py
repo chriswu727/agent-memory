@@ -15,15 +15,15 @@ REQUEST = CognitiveRequest("semantic-1", "proposal", (
 CONTENT = '{"claims":[],"situation_updates":[],"episode_actions":[]}'
 
 
-def completion(**fields):
-    return {"choices": [{"finish_reason": "stop", "message": {
-        "role": "assistant", "content": CONTENT, **fields,
+def completion(content=CONTENT, finish_reason="stop", **fields):
+    return {"choices": [{"finish_reason": finish_reason, "message": {
+        "role": "assistant", "content": content, **fields,
     }}]}
 
 
-def provider(handle):
+def provider(handle, **kwargs):
     return ChatCompletionsSemanticProvider("https://example.test/v1", "secret-token", "explicit-model",
-                                          transport=httpx.MockTransport(handle))
+                                          transport=httpx.MockTransport(handle), **kwargs)
 
 
 def test_semantic_adapter_uses_json_chat_api_and_discards_hidden_reasoning():
@@ -43,6 +43,52 @@ def test_semantic_adapter_uses_json_chat_api_and_discards_hidden_reasoning():
         assert reason(REQUEST) == CONTENT
         assert reason(replace(REQUEST, phase="verification")) == CONTENT
     assert len(calls) == 2 and reason._http.is_closed
+
+
+@pytest.mark.parametrize("thinking", [None, "enabled", "disabled"])
+def test_semantic_adapter_inherits_thinking_for_both_phases(thinking):
+    calls = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        if thinking is None:
+            assert "thinking" not in body
+        else:
+            assert body["thinking"] == {"type": thinking}
+        return httpx.Response(200, json=completion())
+
+    with provider(handle, thinking=thinking) as reason:
+        assert reason(REQUEST) == CONTENT
+        assert reason(replace(REQUEST, phase="verification")) == CONTENT
+    assert len(calls) == 2
+
+
+def test_semantic_adapter_inherits_safe_thinking_validation():
+    invalid_thinking = "private-provider-configuration"
+    with pytest.raises(ValueError, match="thinking") as error:
+        provider(lambda _: pytest.fail("No request expected"), thinking=invalid_thinking)
+    assert invalid_thinking not in "".join(traceback.format_exception(error.value))
+
+
+@pytest.mark.parametrize("content", [None, "", '{"claims":[', CONTENT])
+@pytest.mark.parametrize("phase", ["proposal", "verification"])
+def test_truncation_is_rejected_without_retry_or_exposing_reasoning(content, phase):
+    calls = []
+    private_reasoning = "secret-token private hidden reasoning"
+
+    def handle(request):
+        calls.append(request)
+        return httpx.Response(200, json=completion(
+            content=content, finish_reason="length", reasoning_content=private_reasoning,
+        ))
+
+    with provider(handle, thinking="enabled") as reason:
+        with pytest.raises(SemanticProviderError) as error:
+            reason(replace(REQUEST, phase=phase))
+    assert error.value.code == "incomplete_response"
+    assert len(calls) == 1
+    assert private_reasoning not in "".join(traceback.format_exception(error.value))
 
 
 @pytest.mark.parametrize("response,code", [

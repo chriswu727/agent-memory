@@ -1,4 +1,5 @@
 import hashlib
+import traceback
 from contextlib import contextmanager
 from types import SimpleNamespace
 
@@ -14,7 +15,7 @@ from agent_memory.helpers import Principal
 def cognitive_env(monkeypatch):
     monkeypatch.setattr(config, "load_dotenv", lambda: None)
     for prefix in ("MEMORY_COGNITION", "MEMORY_EMBEDDING"):
-        for key in ("BASE_URL", "API_KEY", "MODEL", "MODEL_VERSION", "DIMENSIONS"):
+        for key in ("BASE_URL", "API_KEY", "MODEL", "MODEL_VERSION", "DIMENSIONS", "THINKING"):
             monkeypatch.delenv(prefix + "_" + key, raising=False)
     monkeypatch.setenv("MEMORY_DATABASE_URL", "postgresql://unused")
     return monkeypatch
@@ -23,6 +24,7 @@ def cognitive_env(monkeypatch):
 def test_model_backends_are_disabled_without_explicit_configuration(cognitive_env):
     settings = Settings.from_env()
     assert settings.cognition_base_url is None
+    assert settings.cognition_thinking is None
     assert settings.embedding_base_url is None
 
 
@@ -31,6 +33,7 @@ def test_complete_environment_preserves_model_identity_and_hides_keys(cognitive_
         "MEMORY_COGNITION_BASE_URL": "https://cognition.example/v1",
         "MEMORY_COGNITION_API_KEY": "private-cognition-token",
         "MEMORY_COGNITION_MODEL": "configured-model",
+        "MEMORY_COGNITION_THINKING": "disabled",
         "MEMORY_EMBEDDING_BASE_URL": "https://embedding.example/v1",
         "MEMORY_EMBEDDING_API_KEY": "private-embedding-token",
         "MEMORY_EMBEDDING_MODEL": "configured-embedding",
@@ -40,6 +43,7 @@ def test_complete_environment_preserves_model_identity_and_hides_keys(cognitive_
         cognitive_env.setenv(key, value)
     settings = Settings.from_env()
     assert settings.cognition_model == "configured-model"
+    assert settings.cognition_thinking == "disabled"
     assert settings.embedding_model_version == "release-7"
     assert settings.embedding_dimensions == 1536
     assert "private-cognition-token" not in repr(settings)
@@ -48,6 +52,8 @@ def test_complete_environment_preserves_model_identity_and_hides_keys(cognitive_
 
 @pytest.mark.parametrize("key,value", [
     ("MEMORY_COGNITION_MODEL", "configured-model"),
+    ("MEMORY_COGNITION_THINKING", "enabled"),
+    ("MEMORY_COGNITION_THINKING", "disabled"),
     ("MEMORY_EMBEDDING_MODEL", "configured-embedding"),
     ("MEMORY_EMBEDDING_DIMENSIONS", "not-a-number"),
 ])
@@ -55,6 +61,50 @@ def test_partial_or_malformed_configuration_does_not_silently_activate_defaults(
     cognitive_env.setenv(key, value)
     with pytest.raises(ValueError):
         Settings.from_env()
+
+
+@pytest.mark.parametrize("thinking", ["enabled", "disabled"])
+def test_thinking_environment_is_preserved_with_complete_provider(cognitive_env, thinking):
+    for key, value in {
+        "BASE_URL": "https://cognition.example/v1", "API_KEY": "private-token",
+        "MODEL": "configured-model", "THINKING": thinking,
+    }.items():
+        cognitive_env.setenv("MEMORY_COGNITION_" + key, value)
+    assert Settings.from_env().cognition_thinking == thinking
+
+
+@pytest.mark.parametrize("thinking", ["", "ENABLED", " disabled", "none", "private-invalid-value"])
+def test_invalid_thinking_environment_is_rejected_without_echoing_configuration(cognitive_env, thinking):
+    for key, value in {
+        "BASE_URL": "https://cognition.example/v1", "API_KEY": "private-token",
+        "MODEL": "configured-model", "THINKING": thinking,
+    }.items():
+        cognitive_env.setenv("MEMORY_COGNITION_" + key, value)
+    with pytest.raises(ValueError, match="MEMORY_COGNITION_THINKING") as error:
+        Settings.from_env()
+    rendered = "".join(traceback.format_exception(error.value))
+    assert "private-token" not in rendered
+    assert "private-invalid-value" not in rendered
+
+
+@pytest.mark.parametrize("thinking", [True, 1, [], {}])
+def test_direct_settings_reject_nonstring_thinking(thinking):
+    with pytest.raises(ValueError, match="MEMORY_COGNITION_THINKING"):
+        Settings(database_url="unused", cognition_base_url="https://cognition.example/v1",
+                 cognition_api_key="token", cognition_model="model", cognition_thinking=thinking)
+
+
+@pytest.mark.parametrize("missing", ["cognition_base_url", "cognition_api_key", "cognition_model"])
+@pytest.mark.parametrize("empty", [None, "", "   "])
+def test_thinking_cannot_enable_an_incomplete_provider(missing, empty):
+    values = {
+        "cognition_base_url": "https://cognition.example/v1",
+        "cognition_api_key": "private-token", "cognition_model": "configured-model",
+        "cognition_thinking": "disabled",
+    }
+    values[missing] = empty
+    with pytest.raises(ValueError, match="MEMORY_COGNITION requires all of"):
+        Settings(database_url="unused", **values)
 
 
 @pytest.mark.parametrize("dimensions", [0, 8193, True, 1.2])
@@ -65,7 +115,8 @@ def test_embedding_dimensions_must_fit_the_persistent_index(dimensions):
                  embedding_dimensions=dimensions)
 
 
-def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_closes_it(monkeypatch):
+@pytest.mark.parametrize("thinking", [None, "enabled", "disabled"])
+def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_closes_it(monkeypatch, thinking):
     opened, closed = [], []
 
     class Provider:
@@ -87,6 +138,7 @@ def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_cl
     settings = Settings(
         database_url="unused", cognition_base_url="https://cognition.example/v1",
         cognition_api_key="cognition-token", cognition_model="cognition-model",
+        cognition_thinking=thinking,
         embedding_base_url="https://embedding.example/v1", embedding_api_key="embedding-token",
         embedding_model="embedding-model", embedding_model_version="revision-2", embedding_dimensions=3,
     )
@@ -94,6 +146,7 @@ def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_cl
         assert configured.semantic_processor.propose is configured.semantic_processor.verify is opened[0][2]
         assert configured.embedding_provider is opened[1][2]
         assert opened[0][0] == (settings.cognition_base_url, "cognition-token", "cognition-model")
+        assert opened[0][1] == {"thinking": thinking}
         assert opened[1][1] == {"model_version": "revision-2", "dimensions": 3}
         assert closed == []
     assert closed == [opened[1][2], opened[0][2]]

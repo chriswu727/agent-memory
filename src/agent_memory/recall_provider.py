@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import time
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -22,6 +22,7 @@ class RecallProviderError(RuntimeError):
 class ChatCompletionsRecallReasoner:
     def __init__(
         self, base_url: str, api_key: str, model: str, *,
+        thinking: Literal["enabled", "disabled"] | None = None,
         transport: httpx.BaseTransport | None = None,
     ):
         try:
@@ -37,7 +38,12 @@ class ChatCompletionsRecallReasoner:
             raise ValueError("api_key must be a nonempty ASCII token")
         if not isinstance(model, str) or not model.strip():
             raise ValueError("model must be explicitly configured")
+        if thinking is not None and (
+            not isinstance(thinking, str) or thinking not in ("enabled", "disabled")
+        ):
+            raise ValueError("thinking must be None, 'enabled', or 'disabled'")
         self._model = model
+        self._thinking = thinking
         self._http = httpx.Client(
             base_url=str(url).rstrip("/") + "/",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -65,6 +71,8 @@ class ChatCompletionsRecallReasoner:
             "response_format": {"type": "json_object"},
             "max_tokens": request.max_output_tokens, "stream": False,
         }
+        if self._thinking is not None:
+            body["thinking"] = {"type": self._thinking}
         deadline = time.monotonic() + timeout
         try:
             with self._http.stream(

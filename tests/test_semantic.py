@@ -156,6 +156,32 @@ def test_missing_verifier_never_publishes_claims_state_or_event_boundaries():
     assert {row["reason"] for row in result.rejected} == {"verification_unavailable"}
 
 
+def test_completed_empty_processing_does_not_report_learning():
+    source = event("工作时我希望直接获得建议。")
+    result = run(batch(source), proposals())
+    assert result.status == "completed" and result.learning_outcome == "no_proposals"
+    result = run(batch(source), proposals(claim(source)))
+    assert result.learning_outcome == "accepted_proposals"
+    result = run(batch(source), proposals(claim(source)), verify=None)
+    assert result.learning_outcome == "not_evaluated"
+
+
+def test_model_token_budget_is_independent_of_response_byte_budget():
+    requests = []
+
+    def propose(request):
+        requests.append(request)
+        return encoded(proposals())
+
+    policy = SemanticPolicy(max_response_bytes=1024, max_output_tokens=333)
+    result = SemanticProcessor(propose, verifier, policy).process(
+        batch(event("今天继续复习。")), reserve=lambda **_: None,
+    )
+    assert result.status == "completed" and requests[0].max_output_tokens == 333
+    with pytest.raises(ValueError):
+        SemanticPolicy(max_output_tokens=True)
+
+
 @pytest.mark.parametrize("field,value", [
     ("event_id", "unknown"), ("event_revision", 9), ("source_content_sha256", "0" * 64),
     ("relationship", "contradicts"),

@@ -444,7 +444,46 @@ class MemoryService:
                 if not any(cognition.evidence_overlaps(reference, old)
                            for reference in memory["evidence_refs"] for old in superseded)]
 
-    def _retrieval(self, conn, principal, brain, target, query, recall_plan=None, query_embedding=None, situation_context=None):
+    def _context_observations(self, conn, principal, brain, target, working):
+        from .learning import validate_snapshot
+
+        candidates = []
+        timestamp = cognition._stamp(now())
+        for item in working["items"]:
+            value = item["value"]
+            if (not isinstance(value, dict) or "observation" not in value
+                    or not isinstance(value.get("orientation_job_id"), str)
+                    or item["expires_at"] is None or cognition._stamp(item["expires_at"]) <= timestamp):
+                continue
+            candidates.append((value["orientation_job_id"], value["observation"]))
+        job_ids = sorted({key for key, _ in candidates})
+        complete = len(job_ids) <= 32
+        if not job_ids:
+            return [], complete
+        rows = conn.execute(
+            "SELECT id,result FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND id=ANY(%s::text[]) AND kind='orient' AND state='completed' AND result IS NOT NULL "
+            "AND completed_at > clock_timestamp() - interval '24 hours'",
+            (*self._params(principal, brain["id"]), job_ids[:32]),
+        ).fetchall()
+        observations = []
+        for row in rows:
+            result = row["result"]
+            scope = result.get("scope", {})
+            if (scope.get("conversation_id"), scope.get("branch_id")) != (
+                    target.get("conversation_ref"), target.get("branch_ref")):
+                continue
+            try:
+                validate_snapshot(conn, self, principal, brain, result)
+            except DomainError:
+                continue
+            for item in result.get("situation_updates", []):
+                observation = item.get("observation")
+                if observation and (row["id"], observation) in candidates:
+                    observations.append(observation)
+        return observations, complete
+
+    def _retrieval(self, conn, principal, brain, target, query, recall_plan=None, query_embedding=None, context_observations=None):
         params = self._params(principal, brain["id"])
         from .candidates import collect_candidates
 
@@ -461,6 +500,8 @@ class MemoryService:
         source_ids.update(r["event_id"] for field in ("items", "open_loops") for item in raw_working[field] for r in item["evidence_refs"])
         source_ids.update(query.get("query_event_ids", []))
         source_ids.update(query["cue_event_ids"])
+        source_ids.update(ref["event_id"] for observation in context_observations or []
+                          for ref in observation["evidence_refs"])
         if recall_plan is not None:
             source_ids.update(ref["event_id"] for ref in recall_plan["observed_event_refs"])
         if query.get("evidence_cutoff", {}).get("event_id"):
@@ -472,7 +513,15 @@ class MemoryService:
         working = self._working(conn, principal, brain, target, events)
         state = self._state(conn, principal, brain, total)
         state.update(candidate_state)
-        state["situation_context"] = situation_context or {}
+        stored_observations, context_complete = self._context_observations(conn, principal, brain, target, working)
+        observations = {}
+        for observation in [*(context_observations or []), *stored_observations]:
+            canonical = {key: value for key, value in observation.items() if key != "observation_id"}
+            canonical["evidence_refs"] = sorted(observation["evidence_refs"], key=digest)
+            fingerprint = digest(canonical)
+            observations.setdefault(fingerprint, {**canonical, "observation_id": "observation-" + fingerprint})
+        state["context_observations_complete"] = context_complete and len(observations) <= 128 and len(source_ids) <= 1024
+        state["context_observations"] = list(observations.values())[:128]
         if recall_plan is not None:
             lookup = {(event["event_id"], event["revision"]): event for event in events}
             scope = self._scope(principal, brain, target)
@@ -546,12 +595,9 @@ class MemoryService:
             if set(payload["latest_input_event_ids"]) != {ref["event_id"] for ref in turn["input_event_refs"]}:
                 raise DomainError("invalid_evidence", "Orientation belongs to different input.")
             orientation = orientation_result(conn, self, principal, brain, turn)
-        contextual_values = {}
-        for item in orientation.get("situation_updates", []) if orientation else []:
-            if item["world"] == "real_world" and item["state"] == "active" and item["conditions"] == {"op": "always"}:
-                contextual_values.setdefault(item["key"], set()).add(item["value"])
-        context = {key: next(iter(values)) for key, values in contextual_values.items() if len(values) == 1}
-        result, working, state = self._retrieval(conn, principal, brain, request["target"], query, plan, query_embedding, context)
+        observations = [item["observation"] for item in orientation.get("situation_updates", [])
+                        if "observation" in item] if orientation else []
+        result, working, state = self._retrieval(conn, principal, brain, request["target"], query, plan, query_embedding, observations)
         if orientation:
             state["current_situation"] = orientation.get("situation_updates", [])
         state["recent_events"] = self._recent_context(conn, principal, brain, request["target"], payload)

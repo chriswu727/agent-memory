@@ -74,7 +74,9 @@ def orientation_updates(conn, service, principal, brain, row):
         return []
     expires = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
     return [{"key": "situation:" + item["key"],
-             "value": {key: item[key] for key in ("kind", "value", "state", "world", "conditions", "verification")},
+             "value": {"orientation_job_id": row["orientation_job_id"],
+                       **{key: item[key] for key in ("kind", "value", "state", "world", "conditions", "verification", "observation")
+                          if key in item}},
              "knowledge_state": "inferred", "evidence_refs": item["evidence_refs"], "expires_at": expires,
              "updated_at": now()}
             for item in result.get("situation_updates", [])]
@@ -97,34 +99,30 @@ class LearningEngine:
                     raise DomainError("source_unavailable", "Consolidation trigger changed.")
             target = payload.get("target", {})
             scope = service._scope(principal, brain, target)
-            rows = conn.execute(
-                "SELECT document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND is_current AND NOT retired AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
-                "AND conversation_id=%s AND branch_id=%s AND sequence<=%s "
-                "AND document #>> '{observed,delivery_state}' IN ('received','delivered','partially_delivered') "
-                "ORDER BY sequence DESC LIMIT 24",
-                (*params, target.get("conversation_ref"), target.get("branch_ref"), payload["through_sequence"]),
-            ).fetchall()
-            blocked = {ref["event_id"] for ref in service._superseded_evidence(
-                conn, principal, brain, [r["document"]["event_id"] for r in rows])}
-            sources = tuple(service._rebind(r["document"], principal, brain) for r in reversed(rows)
-                            if r["document"]["event_id"] not in blocked)
-            source_ids = [e["event_id"] for e in sources]
-            assertion_documents = tuple(r["document"] for r in conn.execute(
-                "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed AND document IS NOT NULL "
-                "AND event_ids <@ %s::text[] AND cardinality(event_ids)>0 ORDER BY created_at DESC,id LIMIT 24",
-                (*params, source_ids),
-            ) if r["document"]["lifecycle"] != "retracted" and cognition._scope_allows(
-                service._rebind(r["document"], principal, brain)["scope"], scope))
+            from .neighborhood import select_neighborhood
+
+            required = []
+            if "event_id" in payload:
+                required = [{"event_id": payload["event_id"], "revision": payload["revision"]}]
+            elif "turn_id" in payload:
+                turn = conn.execute(
+                    "SELECT input_event_refs FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s "
+                    "AND brain_id=%s AND turn_id=%s AND conversation_id=%s AND branch_id=%s",
+                    (*params, payload["turn_id"], target.get("conversation_ref"), target.get("branch_ref")),
+                ).fetchone()
+                if turn is None:
+                    raise DomainError("source_unavailable", "Orientation input turn is unavailable.")
+                required = turn["input_event_refs"]
+            neighborhood = select_neighborhood(
+                conn, service, principal, brain, target, through_sequence=payload["through_sequence"],
+                required_event_refs=required, policy=service.semantic_processor.policy,
+            )
+            sources, assertion_documents, episode_documents = (
+                neighborhood.sources, neighborhood.assertions, neighborhood.episodes,
+            )
+            source_ids = [event["event_id"] for event in sources]
             assertions = tuple(service._rebind(document, principal, brain) for document in assertion_documents)
             working = service._working(conn, principal, brain, target, sources)
-            episode_documents = tuple(r["document"] for r in conn.execute(
-                "SELECT document FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND conversation_id=%s AND branch_id=%s AND is_current AND NOT invalidated AND NOT deleted "
-                "AND document IS NOT NULL AND event_ids <@ %s::text[] ORDER BY created_at DESC LIMIT 16",
-                (*params, target.get("conversation_ref"), target.get("branch_ref"), source_ids),
-            ))
             episodes = tuple(service._rebind(document, principal, brain) for document in episode_documents)
             snapshot = {"scope": scope, "source_snapshot": [
                 {"event_id": e["event_id"], "revision": e["revision"], "content_sha256": e["content_sha256"]}
@@ -133,7 +131,8 @@ class LearningEngine:
                     for m in assertion_documents],
                 "episode_snapshot": [
                     {"episode_id": e["episode_id"], "revision": e["revision"], "content_sha256": digest(e)}
-                    for e in episode_documents], "working_revision": working["revision"]}
+                    for e in episode_documents], "working_revision": working["revision"],
+                        "sampling": neighborhood.sampling}
             prior = conn.execute("SELECT result FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                                  (*params, job["id"])).fetchone()["result"]
             if prior and prior.get("source_snapshot") != snapshot["source_snapshot"]:
@@ -142,12 +141,22 @@ class LearningEngine:
                 raise DomainError("context_stale", "Cognitive retry episodes changed.")
             if prior and prior.get("memory_snapshot", []) != snapshot["memory_snapshot"]:
                 raise DomainError("context_stale", "Cognitive retry parents changed.")
+            if prior and prior.get("sampling"):
+                def sampling_identity(value):
+                    return {**{key: item for key, item in value.items()
+                               if key not in {"indexed_through_sequence", "limitations"}},
+                            "limitations": [reason for reason in value.get("limitations", []) if reason != "index_lag"]}
+
+                if sampling_identity(prior["sampling"]) != sampling_identity(snapshot["sampling"]):
+                    raise DomainError("context_stale", "Cognitive retry sampling changed.")
+                snapshot["sampling"] = prior["sampling"]
             conn.execute(
                 "UPDATE memory_jobs SET result=%s,source_event_ids=%s,source_memory_ids=%s "
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s AND fence=%s AND state='running'",
                 (Jsonb(snapshot), source_ids, [m["memory_id"] for m in assertions], *params, job["id"], job["fence"]),
             )
-            batch = CognitiveBatch(job["id"], scope, sources, assertions, working, episodes)
+            batch = CognitiveBatch(job["id"], scope, sources, assertions, working, episodes,
+                                   sampling=snapshot["sampling"])
             return batch, snapshot
 
     def semantic(self, principal, brain_id, job):

@@ -3,6 +3,7 @@ import os
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 
@@ -20,6 +21,7 @@ class Settings:
     cognition_base_url: str | None = None
     cognition_api_key: str | None = field(default=None, repr=False)
     cognition_model: str | None = None
+    cognition_thinking: Literal["enabled", "disabled"] | None = None
     embedding_base_url: str | None = None
     embedding_api_key: str | None = field(default=None, repr=False)
     embedding_model: str | None = None
@@ -32,10 +34,18 @@ class Settings:
             ("MEMORY_EMBEDDING", ("base_url", "api_key", "model", "model_version", "dimensions")),
         ):
             values = [getattr(self, prefix.removeprefix("MEMORY_").lower() + "_" + name) for name in names]
-            if any(value is not None for value in values) and any(
+            configured = any(value is not None for value in values) or (
+                prefix == "MEMORY_COGNITION" and self.cognition_thinking is not None
+            )
+            if configured and any(
                 value is None or (isinstance(value, str) and not value.strip()) for value in values
             ):
                 raise ValueError(f"{prefix} requires all of: {', '.join(name.upper() for name in names)}")
+        if self.cognition_thinking is not None and (
+            not isinstance(self.cognition_thinking, str)
+            or self.cognition_thinking not in ("enabled", "disabled")
+        ):
+            raise ValueError("MEMORY_COGNITION_THINKING must be 'enabled' or 'disabled' when set")
         if self.embedding_dimensions is not None and (
             type(self.embedding_dimensions) is not int or not 1 <= self.embedding_dimensions <= 8192
         ):
@@ -61,6 +71,7 @@ class Settings:
             cognition_base_url=os.environ.get("MEMORY_COGNITION_BASE_URL"),
             cognition_api_key=os.environ.get("MEMORY_COGNITION_API_KEY"),
             cognition_model=os.environ.get("MEMORY_COGNITION_MODEL"),
+            cognition_thinking=os.environ.get("MEMORY_COGNITION_THINKING"),
             embedding_base_url=os.environ.get("MEMORY_EMBEDDING_BASE_URL"),
             embedding_api_key=os.environ.get("MEMORY_EMBEDDING_API_KEY"),
             embedding_model=os.environ.get("MEMORY_EMBEDDING_MODEL"),
@@ -88,6 +99,7 @@ def configured_service(settings: Settings):
         if settings.cognition_base_url is not None:
             provider = resources.enter_context(ChatCompletionsSemanticProvider(
                 settings.cognition_base_url, settings.cognition_api_key, settings.cognition_model,
+                thinking=settings.cognition_thinking,
             ))
             processor = SemanticProcessor(provider, verify=provider)
         if settings.embedding_base_url is not None:

@@ -140,6 +140,7 @@ def capabilities(*, semantic_enabled=False, embedding_enabled=False) -> dict:
              if embedding_enabled else "Semantic embeddings are not configured; recall uses lexical and structural cues."),
             ("Bounded semantic proposals and verification are configured; long-term memory quality is not validated."
              if semantic_enabled else "Model-driven semantic processing is not configured."),
+            "Typed conditions use a fixed versioned registry; unresolved or expired context does not activate a rule.",
             "Provider billing is unknown; call and input-byte limits are enforced, monetary ceilings are not certified.",
         ],
     }
@@ -214,11 +215,15 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         return app.state.jobs
 
     def job_metadata(record):
-        from .jobs import FAILURE_CODES, PUBLIC_FIELDS
+        from .jobs import FAILURE_CODES, PUBLIC_FIELDS, sanitize_learning_summary
 
         result = {key: value for key, value in record.items() if key in {*PUBLIC_FIELDS, "lease_active"}}
         if result.get("last_error") is not None and result["last_error"] not in FAILURE_CODES:
             result["last_error"] = "internal_error"
+        if result.get("kind") in {"orient", "consolidate"}:
+            summary = sanitize_learning_summary(record.get("learning_summary"))
+            if summary is not None:
+                result["learning_summary"] = summary
         return result
 
     async def runtime_body(request: Request, model: type[RuntimeBody]) -> dict:

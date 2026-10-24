@@ -91,8 +91,47 @@ export type MemoryDynamics = {
   "reasons": ("explicit_user_request" | "validated_outcome" | "external_repetition" | "distinctive_event" | "open_commitment" | "current_relevance" | "default_policy")[];
 };
 
+export type TypedValue =
+  | { type: "concept"; id: string }
+  | { type: "string"; value: string }
+  | { type: "number"; value: number }
+  | { type: "boolean"; value: boolean };
+
+export type TypedPredicateRef = { id: string; version: number };
+export type TimeBound = { kind: "instant"; at: string } | { kind: "unknown" | "unbounded" };
+export type ValidDuring = { kind: "unknown" } | {
+  kind: "interval"; start: TimeBound; end: TimeBound;
+  anchor?: { event_id: string; revision: number; timestamp: string; timezone: string; expression: "today" };
+};
+export type ContextObservation = {
+  observation_id: string;
+  subject_ref: string;
+  predicate_ref: TypedPredicateRef;
+  value: TypedValue;
+  polarity: "positive" | "negative";
+  valid_during: ValidDuring;
+  evidence_refs: (EvidenceRef & {
+    relationship: "supports";
+    span: { start: number; end: number; unit: "unicode_code_point" };
+  })[];
+};
+
+export type MemoryApplicability = {
+  value: "true" | "false" | "unknown";
+  status: "true" | "false" | "unknown" | "conflict";
+  conflict: boolean;
+  supporting_observation_ids: string[];
+  opposing_observation_ids: string[];
+  unresolved_observation_ids?: string[];
+  evidence_refs: EvidenceRef[];
+  reasons: string[];
+  registry_fingerprint: string;
+  evaluated_at: string;
+};
+
 export type SemanticCondition =
   | { "op": "always" }
+  | { "op": "holds"; subject_ref: string; predicate_ref: TypedPredicateRef; value: TypedValue; polarity?: "positive" | "negative" }
   | { "op": "eq" | "ne"; "key": string; "value": string | number | boolean | null }
   | { "op": "all" | "any"; "args": SemanticCondition[] }
   | { "op": "not"; "arg": SemanticCondition };
@@ -132,6 +171,8 @@ export type MemoryAssertion = {
   "representation"?: "semantic_anchor" | "episode_outline" | "episode_fragment" | "schema" | "procedure";
   "claim_kind"?: "reported_preference" | "reported_fact" | "external_world_fact" | "agent_said" | "proposal_offered" | "commitment_expressed" | "task_completed" | "inferred_pattern" | "procedure";
   "conditions"?: SemanticCondition;
+  "valid_during"?: ValidDuring;
+  "condition_registry_fingerprint"?: string;
   "counterexamples"?: EvidenceRef[];
   "verification"?: {
     "state": "supported_inference" | "contested";
@@ -239,6 +280,7 @@ export type RankSignal = {
 
 export type RecallItem = {
   "memory": MemoryAssertion;
+  "applicability"?: MemoryApplicability;
   "rank_signals": (RankSignal)[];
   "retrieved_from": "index" | "unindexed_tail" | "archive_scan";
   "display_mode": "explicit_recollection" | "background_context" | "do_not_surface";
@@ -266,7 +308,7 @@ export type RecallResult = {
 };
 
 export type ContextBlock = {
-  "section": "working_state" | "relevant_memory" | "verbatim_evidence" | "uncertainty" | "open_loops" | "integration_status" | "recent_context" | "current_situation";
+  "section": "working_state" | "relevant_memory" | "conditional_memory" | "verbatim_evidence" | "uncertainty" | "open_loops" | "integration_status" | "recent_context" | "current_situation";
   "text": string;
   "evidence_refs": (EvidenceRef)[];
   "trust": "memory_data_not_instructions";

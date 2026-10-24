@@ -821,6 +821,13 @@
           },
           "maxItems": 256,
           "uniqueItems": true
+        },
+        "valid_during": {
+          "$ref": "#/$defs/ValidDuring"
+        },
+        "condition_registry_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -1486,6 +1493,9 @@
             "background_context",
             "do_not_surface"
           ]
+        },
+        "applicability": {
+          "$ref": "#/$defs/MemoryApplicability"
         }
       },
       "required": [
@@ -1788,7 +1798,8 @@
             "open_loops",
             "integration_status",
             "recent_context",
-            "current_situation"
+            "current_situation",
+            "conditional_memory"
           ]
         },
         "text": {
@@ -4589,6 +4600,9 @@
       "additionalProperties": false
     },
     "SemanticCondition": {
+      "$ref": "#/$defs/TypedCondition"
+    },
+    "TypedCondition": {
       "oneOf": [
         {
           "type": "object",
@@ -4599,6 +4613,78 @@
           },
           "required": [
             "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "holds"
+            },
+            "subject_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "predicate_ref": {
+              "$ref": "#/$defs/TypedPredicateRef"
+            },
+            "value": {
+              "$ref": "#/$defs/TypedValue"
+            },
+            "polarity": {
+              "enum": [
+                "positive",
+                "negative"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "subject_ref",
+            "predicate_ref",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "enum": [
+                "all",
+                "any"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/TypedCondition"
+              },
+              "minItems": 1,
+              "maxItems": 8
+            }
+          },
+          "required": [
+            "op",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "not"
+            },
+            "arg": {
+              "$ref": "#/$defs/TypedCondition"
+            }
+          },
+          "required": [
+            "op",
+            "arg"
           ],
           "additionalProperties": false
         },
@@ -4631,48 +4717,410 @@
             "value"
           ],
           "additionalProperties": false
-        },
+        }
+      ]
+    },
+    "TypedValue": {
+      "oneOf": [
         {
           "type": "object",
           "properties": {
-            "op": {
-              "enum": [
-                "all",
-                "any"
-              ]
+            "type": {
+              "const": "concept"
             },
-            "args": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/SemanticCondition"
-              },
-              "minItems": 1,
-              "maxItems": 8
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+              "maxLength": 128
             }
           },
           "required": [
-            "op",
-            "args"
+            "type",
+            "id"
           ],
           "additionalProperties": false
         },
         {
           "type": "object",
           "properties": {
-            "op": {
-              "const": "not"
+            "type": {
+              "const": "string"
             },
-            "arg": {
-              "$ref": "#/$defs/SemanticCondition"
+            "value": {
+              "type": "string",
+              "maxLength": 512
             }
           },
           "required": [
-            "op",
-            "arg"
+            "type",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "number"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "boolean"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "value"
           ],
           "additionalProperties": false
         }
       ]
+    },
+    "TypedPredicateRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "maxLength": 128
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "ValidDuring": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "unknown"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "interval"
+            },
+            "start": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "instant"
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "at"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "unknown",
+                        "unbounded"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "end": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "instant"
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "at"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "unknown",
+                        "unbounded"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "anchor": {
+              "type": "object",
+              "properties": {
+                "event_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time",
+                  "maxLength": 64
+                },
+                "timezone": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "expression": {
+                  "const": "today"
+                }
+              },
+              "required": [
+                "event_id",
+                "revision",
+                "timestamp",
+                "timezone",
+                "expression"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind",
+            "start",
+            "end"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ObservationEvidenceRef": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "event_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "relationship": {
+          "const": "supports"
+        },
+        "span": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "end": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "unit": {
+              "const": "unicode_code_point"
+            }
+          },
+          "required": [
+            "start",
+            "end",
+            "unit"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "event_id",
+        "event_revision",
+        "source_content_sha256",
+        "relationship",
+        "span"
+      ],
+      "additionalProperties": false
+    },
+    "ContextObservation": {
+      "type": "object",
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "subject_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "predicate_ref": {
+          "$ref": "#/$defs/TypedPredicateRef"
+        },
+        "value": {
+          "$ref": "#/$defs/TypedValue"
+        },
+        "polarity": {
+          "enum": [
+            "positive",
+            "negative"
+          ]
+        },
+        "valid_during": {
+          "$ref": "#/$defs/ValidDuring"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObservationEvidenceRef"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "observation_id",
+        "subject_ref",
+        "predicate_ref",
+        "value",
+        "polarity",
+        "valid_during",
+        "evidence_refs"
+      ],
+      "additionalProperties": false
+    },
+    "MemoryApplicability": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "enum": [
+            "true",
+            "false",
+            "unknown"
+          ]
+        },
+        "status": {
+          "enum": [
+            "true",
+            "false",
+            "unknown",
+            "conflict"
+          ]
+        },
+        "conflict": {
+          "type": "boolean"
+        },
+        "supporting_observation_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "opposing_observation_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "unresolved_observation_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "registry_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "value",
+        "status",
+        "conflict",
+        "supporting_observation_ids",
+        "opposing_observation_ids",
+        "evidence_refs",
+        "reasons",
+        "registry_fingerprint",
+        "evaluated_at"
+      ],
+      "additionalProperties": false
     }
   },
   "x-runtime-invariants": [

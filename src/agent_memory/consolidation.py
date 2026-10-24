@@ -99,6 +99,8 @@ def _check_result(batch, result, snapshot):
     episodes = {episode["episode_id"]: episode for episode in batch.episodes}
     ids, changed_episodes = set(), set()
     for group in ("claims", "situation_updates", "episode_actions"):
+        if batch.sampling.get("publication_restricted") and group != "situation_updates" and getattr(result, group):
+            raise DomainError("invalid_evidence", "Incomplete history cannot support consolidation")
         schema_fields = set(PROPOSAL_SCHEMA["properties"][group]["items"]["properties"])
         for final in getattr(result, group):
             item = {key: copy.deepcopy(value) for key, value in final.items() if key in schema_fields}
@@ -131,6 +133,8 @@ def _meaning(document):
     keys = ("statement", "memory_kind", "world", "representation", "claim_kind", "conditions",
             "valid_time", "procedure", "verification")
     value = {key: document[key] for key in keys}
+    value.update({key: document[key] for key in ("valid_during", "condition_registry_fingerprint")
+                  if key in document})
     value["evidence_refs"] = sorted(document["evidence_refs"], key=digest)
     value["counterexamples"] = sorted(document["counterexamples"], key=digest)
     return value
@@ -170,6 +174,9 @@ def _assertion(item, batch, brain, snapshot):
     }
     for key in ("representation", "claim_kind", "conditions", "counterexamples", "verification", "procedure"):
         result[key] = copy.deepcopy(item[key])
+    for key in ("valid_during", "condition_registry_fingerprint"):
+        if key in item:
+            result[key] = copy.deepcopy(item[key])
     validate("MemoryAssertion", result)
     return result
 

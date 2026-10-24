@@ -7,9 +7,12 @@ import unicodedata
 from datetime import UTC, datetime
 from typing import Any
 
+from .applicability import ApplicabilityResult, evaluate_applicability, validate_observation
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
+from .ontology import CORE_REGISTRY
 from .retrieval import RANK_METHODS
+from .temporal import evaluate_valid_during
 
 RULE_VERSION = "literal-episodes-v1"
 RETRIEVAL_VERSION = "unicode-lexical-v1"
@@ -553,11 +556,6 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             break
         if memory["lifecycle"] not in {"active", "dormant"} or memory["world"] not in worlds:
             continue
-        if memory.get("conditions"):
-            from .semantic import evaluate_condition
-
-            if evaluate_condition(memory["conditions"], state.get("situation_context", {})) == "false":
-                continue
         if (memory.get("claim_kind") in {"agent_said", "proposal_offered", "commitment_expressed"}
                 and request["intent"] not in {"episode", "open_commitment", "exact_quote"}
                 and not historical
@@ -634,6 +632,8 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             "retrieved_from": "unindexed_tail" if tail else "index",
             "display_mode": "explicit_recollection" if historical else "background_context",
         }
+        if "conditions" in memory or "valid_during" in memory:
+            item["applicability"] = _memory_applicability(memory, state, scope, event_map, timestamp)
         result["items"].append(item)
         result["recall_traces"].append({
             "trace_id": uid(), "recall_id": result["recall_id"],
@@ -707,6 +707,56 @@ def render_context(packet: dict) -> str:
     })
 
 
+def _memory_applicability(memory, state, scope, events, timestamp):
+    observations = {}
+    complete = state.get("context_observations_complete", True) is True
+    supplied = state.get("context_observations", [])
+    if not isinstance(supplied, (list, tuple)):
+        supplied, complete = [], False
+    for observation in supplied:
+        try:
+            validate_observation(observation)
+        except (ValueError, TypeError):
+            continue
+        if all(_valid_ref(ref, events, scope)
+               and events[ref["event_id"]]["observed"]["actor_role"] in {"user", "operator", "tool"}
+               and not any(evidence_overlaps(ref, old) for old in state.get("superseded_evidence_refs", []))
+               for ref in observation["evidence_refs"]):
+            canonical = {key: value for key, value in observation.items() if key != "observation_id"}
+            canonical["evidence_refs"] = sorted(observation["evidence_refs"], key=digest)
+            observations.setdefault(digest(canonical), observation)
+    complete = complete and len(observations) <= 128
+    at = state.get("applicability_at", timestamp)
+    try:
+        if memory.get("condition_registry_fingerprint", CORE_REGISTRY.fingerprint) != CORE_REGISTRY.fingerprint:
+            raise ValueError("Unknown registry definition")
+        condition = memory.get("conditions", {"op": "always"})
+        assessment = evaluate_applicability(condition, list(observations.values())[:128], at=at)
+        result = assessment.to_dict()
+        if (memory.get("memory_id") and memory.get("conditions") == {"op": "always"}
+                and "condition_registry_fingerprint" not in memory):
+            result.update(value="unknown", status="unknown")
+            result["reasons"] = sorted(set(result["reasons"] + ["legacy_unqualified_rule"]))
+        if not complete and condition != {"op": "always"}:
+            result.update(value="unknown", status="conflict" if result["conflict"] else "unknown")
+            result["reasons"] = sorted(set(result["reasons"] + ["context_incomplete"]))
+        if "valid_during" in memory:
+            temporal = evaluate_valid_during(memory["valid_during"], at=at)
+            result["reasons"] = sorted(set(result["reasons"] + list(temporal.reasons)))
+            if temporal.value == "false":
+                result.update(value="false", status="false", conflict=False)
+            elif temporal.value == "unknown" and result["value"] == "true":
+                result.update(value="unknown", status="unknown")
+        elif memory.get("memory_id") and "conditions" in memory:
+            result["reasons"] = sorted(set(result["reasons"] + ["validity_unstated"]))
+            if result["value"] == "true":
+                result.update(value="unknown", status="unknown")
+    except (ValueError, TypeError):
+        result = ApplicabilityResult("unknown", reasons=("invalid_or_unresolved_context",),
+                                     registry_fingerprint=CORE_REGISTRY.fingerprint).to_dict()
+    return {**result, "evaluated_at": at}
+
+
 def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, state: dict) -> dict:
     validate("BoundScope", scope)
     validate("PreparePayload", payload)
@@ -772,19 +822,53 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     limit = payload["budget"]["max_context_tokens"]
     blocks = []
     metadata = []
+
+    def contextual_value(value):
+        if not isinstance(value, dict) or "observation" not in value:
+            return value, None
+        observation = value["observation"]
+        try:
+            validate_observation(observation)
+        except (ValueError, TypeError):
+            return value, "unresolved_or_expired_context_not_current_state"
+        condition = {"op": "holds", **{key: observation[key] for key in (
+            "subject_ref", "predicate_ref", "value", "polarity") if key in observation}}
+        applicability = _memory_applicability(
+            {"conditions": condition, "valid_during": observation.get("valid_during", {"kind": "unknown"})},
+            state, scope, historical_events, timestamp,
+        )
+        return {**value, "applicability": applicability}, (
+            "fallible_current_context_not_historical_evidence"
+            if applicability["value"] == "true" and not applicability["conflict"]
+            else "unresolved_or_expired_context_not_current_state"
+        )
+
+    def context_references(references, value):
+        result = copy.deepcopy(references)
+        if isinstance(value, dict):
+            for ref in value.get("applicability", {}).get("evidence_refs", []):
+                context_ref = {**ref, "relationship": "context_only"}
+                if context_ref not in result:
+                    result.append(context_ref)
+        return result
+
     for item in state.get("current_situation", []):
-        blocks.append(("current_situation", _serialized({
+        value, use = contextual_value({
             key: item[key] for key in ("kind", "key", "value", "state", "world", "conditions", "verification")
-        } | {"use": "fallible_current_context_not_historical_evidence"}), item["evidence_refs"]))
+        } | ({"observation": item["observation"]} if "observation" in item else {}))
+        blocks.append(("current_situation", _serialized(
+            value | {"use": use or "fallible_current_context_not_historical_evidence"}),
+            context_references(item["evidence_refs"], value)))
         metadata.append(None)
     for item in clean["items"]:
+        value, use = contextual_value(item["value"])
         blocks.append(("working_state", _serialized({
-            "key": item["key"], "value": item["value"],
+            "key": item["key"], "value": value,
             "knowledge_state": item["knowledge_state"], "expires_at": item["expires_at"],
-            "use": "query_context_only" if item["knowledge_state"] != "grounded" else (
+            "use": use or ("query_context_only" if item["knowledge_state"] != "grounded" else (
                 "source_attributed_context"
-            ),
-        }), item["evidence_refs"]))
+            )),
+        }), context_references(item["evidence_refs"], value)))
         metadata.append(None)
     for loop in clean["open_loops"]:
         blocks.append(("open_loops", _serialized({
@@ -804,7 +888,7 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
         }), [{"event_id": event["event_id"], "event_revision": event["revision"],
               "source_content_sha256": event["content_sha256"], "relationship": "context_only"}]))
         metadata.append(None)
-    for item in recall_result["items"]:
+    for item in result["recall_results"][0]["items"]:
         if item["display_mode"] == "do_not_surface":
             continue
         memory = item["memory"]
@@ -815,11 +899,24 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             if event and event_id not in cited:
                 references.append({"event_id": event_id, "event_revision": event["revision"],
                                    "source_content_sha256": event["content_sha256"], "relationship": "context_only"})
-        blocks.append(("relevant_memory", _serialized({
+        applicability = (_memory_applicability(memory, state, scope, historical_events, timestamp)
+                         if "conditions" in memory or "valid_during" in memory else None)
+        if applicability is not None:
+            item["applicability"] = applicability
+        applicable = applicability is None or applicability["value"] == "true" and not applicability["conflict"]
+        if applicability is not None:
+            for ref in applicability["evidence_refs"]:
+                context_ref = {**ref, "relationship": "context_only"}
+                if context_ref not in references:
+                    references.append(context_ref)
+        blocks.append(("relevant_memory" if applicable else "conditional_memory", _serialized({
             "statement": memory["statement"], "world": memory["world"],
             "epistemic_status": memory["epistemic_status"], "valid_time": memory["valid_time"],
-            **{key: memory[key] for key in ("conditions", "claim_kind", "verification", "counterexamples", "procedure")
+            **{key: memory[key] for key in ("conditions", "claim_kind", "verification", "counterexamples", "procedure", "valid_during")
                if key in memory},
+            **({"applicability": applicability,
+                "use": "source_attributed_applicable_memory" if applicable else "conditional_memory_not_current_rule"}
+               if applicability is not None else {}),
         }), references))
         metadata.append(memory)
     uncertainty = {

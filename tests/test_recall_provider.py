@@ -26,10 +26,10 @@ def completion(content=DECISION, finish_reason="stop", **message_fields):
     }}]}
 
 
-def provider(handler):
+def provider(handler, **kwargs):
     return ChatCompletionsRecallReasoner(
         "https://provider.example/v1", "secret-token", "configured-model",
-        transport=httpx.MockTransport(handler),
+        transport=httpx.MockTransport(handler), **kwargs,
     )
 
 
@@ -54,6 +54,36 @@ def test_request_uses_explicit_configuration_json_mode_and_network_timeout():
         assert "secret-token" not in repr(reason)
     assert len(seen) == 1
     assert reason._http.is_closed
+
+
+@pytest.mark.parametrize("thinking", [None, "enabled", "disabled"])
+def test_thinking_is_sent_only_when_explicitly_configured(thinking):
+    calls = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        if thinking is None:
+            assert "thinking" not in body
+        else:
+            assert body["thinking"] == {"type": thinking}
+        assert body["model"] == "configured-model"
+        assert body["max_tokens"] == REQUEST.max_output_tokens
+        return httpx.Response(200, json=completion())
+
+    with provider(handle, thinking=thinking) as reason:
+        assert reason(REQUEST) == DECISION
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("thinking", ["", "ENABLED", " disabled", "none", True, 1, [], {}, API_KEY])
+def test_invalid_thinking_is_rejected_before_client_creation_and_redacted(monkeypatch, thinking):
+    monkeypatch.setattr(httpx, "Client", lambda **kwargs: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="thinking") as error:
+        ChatCompletionsRecallReasoner(
+            "https://provider.example/v1", API_KEY, "configured-model", thinking=thinking,
+        )
+    assert API_KEY not in "".join(traceback.format_exception(error.value))
 
 
 @pytest.mark.parametrize("value", [
