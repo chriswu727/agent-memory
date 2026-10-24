@@ -116,7 +116,7 @@ def test_automatic_orientation_enters_current_context_and_commits_inferred_state
     packet = json.loads(prompts[0].memory_context)
     current = [block for block in packet["blocks"] if block["section"] == "current_situation"]
     assert len(current) == 1
-    assert json.loads(current[0]["text"])["use"] == "fallible_current_context_not_historical_evidence"
+    assert current[0]["content"]["use"] == "fallible_current_context_not_historical_evidence"
     state = learning.working()
     assert len(state["items"]) == 1
     item = state["items"][0]

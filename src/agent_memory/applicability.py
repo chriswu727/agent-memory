@@ -23,6 +23,8 @@ def _object(properties, required=None):
 _CONDITION_REF = {"$ref": "#/$defs/TypedCondition"}
 _CONDITION = {"oneOf": [
     _object({"op": {"const": "always"}}),
+    _object({"op": {"const": "unresolved"},
+             "label": {"type": "string", "minLength": 1, "maxLength": 512}}),
     _object({"op": {"const": "holds"}, "subject_ref": _ID,
              "predicate_ref": {"$ref": "#/$defs/TypedPredicateRef"},
              "value": {"$ref": "#/$defs/TypedValue"}, "polarity": _POLARITY},
@@ -56,8 +58,15 @@ SCHEMA_DEFINITIONS = {
     "ContextObservation": _OBSERVATION,
 }
 CONDITION_SCHEMA = {"$defs": SCHEMA_DEFINITIONS, "$ref": "#/$defs/TypedCondition"}
+NEW_SCHEMA_DEFINITIONS = copy.deepcopy(SCHEMA_DEFINITIONS)
+NEW_SCHEMA_DEFINITIONS["TypedCondition"]["oneOf"] = [
+    branch for branch in NEW_SCHEMA_DEFINITIONS["TypedCondition"]["oneOf"]
+    if branch["properties"]["op"] != {"enum": ["eq", "ne"]}
+]
+NEW_CONDITION_SCHEMA = {"$defs": NEW_SCHEMA_DEFINITIONS, "$ref": "#/$defs/TypedCondition"}
 OBSERVATION_SCHEMA = {"$defs": SCHEMA_DEFINITIONS, "$ref": "#/$defs/ContextObservation"}
 _CONDITION_VALIDATOR = Draft202012Validator(CONDITION_SCHEMA, format_checker=FormatChecker())
+_NEW_CONDITION_VALIDATOR = Draft202012Validator(NEW_CONDITION_SCHEMA, format_checker=FormatChecker())
 _OBSERVATION_VALIDATOR = Draft202012Validator(OBSERVATION_SCHEMA, format_checker=FormatChecker())
 
 
@@ -88,10 +97,18 @@ def _bounded(value):
 
 
 def validate_condition(expression, registry=CORE_REGISTRY):
+    _validate_condition(expression, registry, _CONDITION_VALIDATOR)
+
+
+def validate_new_condition(expression, registry=CORE_REGISTRY):
+    _validate_condition(expression, registry, _NEW_CONDITION_VALIDATOR)
+
+
+def _validate_condition(expression, registry, validator):
     if not isinstance(registry, Registry):
         raise ValueError("A typed registry is required")
     _bounded(expression)
-    if not _CONDITION_VALIDATOR.is_valid(expression):
+    if not validator.is_valid(expression):
         raise ValueError("Invalid condition expression")
     pending, count = [(expression, 0)], 0
     while pending:
@@ -255,6 +272,8 @@ def evaluate_applicability(expression, observations, *, at, registry=CORE_REGIST
     def visit(node):
         if node["op"] == "always":
             return result("true")
+        if node["op"] == "unresolved":
+            return result("unknown", reasons=("unresolved_condition",))
         if node["op"] in {"eq", "ne"}:
             return result("unknown", reasons=("legacy_condition",))
         if node["op"] == "holds":

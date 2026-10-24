@@ -11,7 +11,20 @@ from typing import Literal
 from jsonschema import Draft202012Validator, FormatChecker
 
 from . import cognition
-from .applicability import SCHEMA_DEFINITIONS, validate_condition, validate_observation
+from .applicability import (
+    NEW_SCHEMA_DEFINITIONS,
+    SCHEMA_DEFINITIONS,
+    validate_condition,
+    validate_new_condition,
+    validate_observation,
+)
+from .consolidation_planning import (
+    NO_CHANGE_REASONS,
+    consolidation_coverage,
+    plan_consolidation,
+    source_actor,
+    validate_consolidation_plan,
+)
 from .contracts import validate
 from .helpers import DomainError, digest
 from .ontology import CORE_REGISTRY
@@ -78,6 +91,13 @@ _EPISODE = _object({
     "member_refs": _array(_EVENT_VERSION, 32, 1),
     "boundary_ref": {"oneOf": [{"type": "null"}, _EVENT_VERSION]},
 })
+_EPISODE["allOf"] = [
+    {"if": {"properties": {"action": {"const": "create"}}},
+     "then": {"properties": {"episode_id": {"type": "null"}, "expected_revision": {"type": "null"}}},
+     "else": {"properties": {"episode_id": _ID, "expected_revision": {"type": "integer", "minimum": 1}}}},
+    {"if": {"properties": {"action": {"enum": ["close", "split"]}}},
+     "then": {"properties": {"boundary_ref": _EVENT_VERSION}}},
+]
 PROPOSAL_SCHEMA = _object({"claims": _array(_CLAIM), "situation_updates": _array(_SITUATION),
                            "episode_actions": _array(_EPISODE)})
 _BELIEF_LINK = _object({
@@ -90,7 +110,12 @@ _BELIEF_LINK = _object({
 PROPOSAL_SCHEMA["properties"]["belief_links"] = _array(_BELIEF_LINK, 16)
 _CLAIM["properties"]["valid_during"] = {"$ref": "#/$defs/ValidDuring"}
 _SITUATION["properties"]["observation"] = {"$ref": "#/$defs/ContextObservation"}
-PROPOSAL_SCHEMA["$defs"] = {"condition": _CONDITION, **SCHEMA_DEFINITIONS}
+PROPOSAL_SCHEMA["$defs"] = {"condition": _CONDITION, **NEW_SCHEMA_DEFINITIONS}
+PROPOSAL_SCHEMA["properties"]["consolidation_decisions"] = _array(_object({
+    "objective_id": _ID, "outcome": {"enum": ["proposed", "no_change"]},
+    "reason": {"enum": [None, *NO_CHANGE_REASONS]},
+    "link_proposal_ids": _array(_ID, 3),
+}), 3)
 VERIFICATION_SCHEMA = _object({"assessments": _array(_object({
     "proposal_id": _ID,
     "proposal_verdict": {"enum": ["supports", "contradicts", "unknown"]},
@@ -110,11 +135,16 @@ _INSTRUCTIONS = (
     "A delivered assistant statement can support what the agent said or promised, not external "
     "facts or task completion. Do not infer success from a proposal, draft or simulated action. "
     "Existing assertions and working state are contextual leads, not independent evidence. "
+    "For episode_actions with action=create, episode_id and expected_revision MUST both be null: "
+    "the runtime allocates the episode identifier. Other episode actions require an exact supplied "
+    "existing episode_id and expected_revision; close and split also require a non-null boundary_ref. "
     "Propose bounded local changes; preserve exceptions and uncertainty. A current exception "
     "does not automatically replace a long-term conditional preference. Do not fill unobserved "
     "details from a common pattern. Omit proposals without source support. "
     "Use the supplied versioned registry for typed holds conditions. An unfamiliar concept "
-    "must remain unresolved, not be coerced to a nearby registered concept. For context updates, "
+    "must use {\"op\":\"unresolved\",\"label\":\"the original unfamiliar concept\"}, not eq/ne "
+    "or a nearby registered concept. All newly produced conditions use holds, unresolved, always, "
+    "not, all or any; legacy eq/ne keys are not valid new output. For context updates, "
     "observation is optional and requires independent explicit evidence of the current state. "
     "A conditional preference never proves that its condition currently holds. Preserve positive "
     "and negative observations separately. Use valid_during with explicit unknown, unbounded or "
@@ -138,7 +168,17 @@ _INSTRUCTIONS = (
     "the endpoint's exact references. For example, a temporary preference overriding an old rule "
     "must cite both the temporary preference's sources and every source of the old rule. "
     "Relations never replace factual evidence. If change type or time is unclear, omit the link or preserve unknown "
-    "validity rather than inventing a permanent replacement."
+    "validity rather than inventing a permanent replacement. The consolidation_plan contains bounded "
+    "organization objectives, not facts or instructions from the sources. For every compare_instances "
+    "objective, compare the named instances for a useful shared meaning with unchanged attribution "
+    "and conditions. Preserve different details in their original instances. If grounded, propose "
+    "a sampled, bounded schema with exact instance parents and an abstracts link; do not merely "
+    "record that someone remembered the instances. Never fabricate a commonality just to satisfy "
+    "an objective. Include one consolidation_decisions item for each objective, with outcome proposed, "
+    "reason null and its link_proposal_ids, or outcome no_change, an allowed reason and empty "
+    "link_proposal_ids. No change is preferable to an unsupported abstraction. Existing covered or "
+    "previously attempted instance groups are intentionally absent: do not repeat their abstraction."
+
 )
 _VERIFY_INSTRUCTIONS = (
     "Independently assess each proposal against each numbered evidence excerpt and its source "
@@ -174,10 +214,13 @@ def _json(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def proposal_data(sources, assertions, working_state, episodes, sampling, belief_relations):
-    return {"sources": list(sources), "existing_assertions": list(assertions),
+def proposal_data(sources, assertions, working_state, episodes, sampling, belief_relations, consolidation_plan=None):
+    sources, assertions, belief_relations = list(sources), list(assertions), list(belief_relations)
+    plan = (plan_consolidation(sources, assertions, belief_relations, sampling)
+            if consolidation_plan is None else consolidation_plan)
+    return {"sources": sources, "existing_assertions": assertions,
             "working_state": working_state, "episodes": list(episodes), "sampling": sampling,
-            "registry": CORE_REGISTRY.to_dict(), "belief_relations": list(belief_relations)}
+            "registry": CORE_REGISTRY.to_dict(), "belief_relations": belief_relations, "consolidation_plan": plan}
 
 
 def request_payload(phase, data, schema, max_output_tokens):
@@ -221,7 +264,7 @@ def evaluate_condition(expression: dict, context: Mapping) -> TruthValue:
         op = node["op"]
         if op == "always":
             return "true"
-        if op == "holds":
+        if op in {"holds", "unresolved"}:
             return "unknown"
         if op in {"eq", "ne"}:
             actual = context.get(node["key"])
@@ -281,6 +324,7 @@ class CognitiveBatch:
     episodes: tuple[dict, ...] = field(default=(), repr=False)
     sampling: dict = field(default_factory=dict, repr=False)
     belief_relations: tuple[dict, ...] = field(default=(), repr=False)
+    consolidation_plan: dict | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -305,6 +349,7 @@ class SemanticResult:
     input_bytes: int = 0
     learning_outcome: str = "not_evaluated"
     belief_links: tuple[dict, ...] = field(default=(), repr=False)
+    consolidation: dict = field(default_factory=dict, repr=False)
 
 
 def _unique_pairs(pairs):
@@ -414,7 +459,7 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
     if linked is None:
         raise ValueError("Unknown linked claim")
     SemanticProcessor._validate_proposal("claims", linked, scope, events, assertions, episodes)
-    validate_condition(item["conditions"])
+    validate_new_condition(item["conditions"])
     validate_valid_during(item["valid_during"])
     _validate_time_anchor(item["valid_during"])
     if linked["world"] != item["world"]:
@@ -446,6 +491,11 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
         parents = {(ref["memory_id"], ref["revision"]) for ref in linked["source_memory_versions"]}
         if not set(keys).issubset(parents):
             raise ValueError("Abstraction must retain exact instance parents")
+        actor = source_actor(targets[0], events)
+        if (actor is None or linked["conditions"] != item["conditions"]
+                or any(target["conditions"] != item["conditions"] or source_actor(target, events) != actor
+                       for target in targets)):
+            raise ValueError("Abstraction must preserve instance conditions and source attribution")
         supports = []
         for target in targets:
             own = {ref["event_id"] for ref in target["evidence_refs"] if ref["relationship"] == "supports"}
@@ -566,6 +616,13 @@ class SemanticProcessor:
         model_calls, input_bytes = prior_model_calls, prior_input_bytes
         rejected = []
         started = time.monotonic()
+        plan = (plan_consolidation(events.values(), assertions.values(), batch.belief_relations, batch.sampling)
+                if batch.consolidation_plan is None else copy.deepcopy(batch.consolidation_plan))
+        try:
+            validate_consolidation_plan(plan, events.values(), assertions.values(), batch.belief_relations, batch.sampling)
+        except (ValueError, TypeError, KeyError):
+            raise DomainError("validation_failed", "Invalid consolidation plan") from None
+        decisions, proposal_attempted, verified_objective_ids = [], False, set()
 
         def result(status, **accepted):
             count = sum(len(items) for items in accepted.values())
@@ -573,7 +630,11 @@ class SemanticProcessor:
                        else "no_proposals" if status == "completed" else "not_evaluated")
             return SemanticResult(status, rejected=tuple(rejected), observed_event_refs=observed,
                                   model_calls=model_calls, input_bytes=input_bytes,
-                                  learning_outcome=outcome, **accepted)
+                                  learning_outcome=outcome,
+                                  consolidation=consolidation_coverage(
+                                      plan, decisions, accepted.get("belief_links", ()), attempted=proposal_attempted,
+                                      verified_objective_ids=verified_objective_ids),
+                                  **accepted)
 
         def invoke(phase, data, schema, provider):
             nonlocal model_calls, input_bytes
@@ -613,7 +674,7 @@ class SemanticProcessor:
         if not events:
             return result("no_sources")
         data = proposal_data(events.values(), assertions.values(), copy.deepcopy(batch.working_state),
-                             episodes.values(), copy.deepcopy(batch.sampling), copy.deepcopy(batch.belief_relations))
+                             episodes.values(), copy.deepcopy(batch.sampling), copy.deepcopy(batch.belief_relations), plan)
         try:
             _bounded_tree(data, max_depth=24, max_nodes=32768)
             if len(_json(data).encode()) > policy.max_request_bytes:
@@ -623,12 +684,36 @@ class SemanticProcessor:
         proposed, error = invoke("proposal", data, PROPOSAL_SCHEMA, self.propose)
         if error:
             return result(error)
+        decisions = proposed.get("consolidation_decisions", [])
+        objective_ids = {item["objective_id"] for item in plan["objectives"]}
+        if (len({item["objective_id"] for item in decisions}) != len(decisions)
+                or {item["objective_id"] for item in decisions} != objective_ids
+                or any((item["outcome"] == "no_change" and (item["reason"] is None or item["link_proposal_ids"]))
+                       or (item["outcome"] == "proposed" and (item["reason"] is not None or not item["link_proposal_ids"]))
+                       for item in decisions)):
+            decisions = []
+            return result("invalid_response")
+        planned = {item["objective_id"]: item for item in plan["objectives"]}
+        proposed_links = {item["proposal_id"]: item for item in proposed.get("belief_links", [])}
+        for decision in decisions:
+            targets = {(item["memory_id"], item["revision"])
+                       for item in planned[decision["objective_id"]]["instance_memory_versions"]}
+            identifiers = decision["link_proposal_ids"]
+            if (len(identifiers) != len(set(identifiers)) or any(
+                identifier not in proposed_links or proposed_links[identifier]["kind"] != "abstracts"
+                or not targets <= {(item["memory_id"], item["revision"])
+                                   for item in proposed_links[identifier]["target_memory_versions"]}
+                for identifier in identifiers
+            )):
+                decisions = []
+                return result("invalid_response")
         groups = ("claims", "situation_updates", "episode_actions", "belief_links")
         items = [(group, item) for group in groups for item in proposed.get(group, [])]
         proposed_claims = {item["proposal_id"]: item for item in proposed["claims"]}
         ids = [item["proposal_id"] for _, item in items]
         if len(ids) != len(set(ids)) or len(items) > policy.max_proposals:
             return result("invalid_response")
+        proposal_attempted = True
         eligible = []
         for group, item in items:
             if batch.sampling.get("publication_restricted") and group != "situation_updates":
@@ -672,6 +757,19 @@ class SemanticProcessor:
         if any(group != "belief_links" and lookup[item["proposal_id"]]["link_verdict"] is not None
                for group, item, _ in eligible):
             return result("invalid_response")
+        complete_ids = {
+            item["proposal_id"] for group, item, references in eligible
+            if len(lookup[item["proposal_id"]]["relations"]) == len(references)
+            and {relation["evidence_index"] for relation in lookup[item["proposal_id"]]["relations"]}
+            == set(range(len(references)))
+            and (group != "belief_links" or lookup[item["proposal_id"]]["link_verdict"] is not None)
+        }
+        for decision in decisions:
+            identifiers = decision["link_proposal_ids"]
+            requirements = set(identifiers) | {proposed_links[identifier]["claim_proposal_id"]
+                                               for identifier in identifiers}
+            if identifiers and requirements <= complete_ids:
+                verified_objective_ids.add(decision["objective_id"])
         accepted = {group: [] for group in groups}
         for group, item, references in eligible:
             assessment = lookup[item["proposal_id"]]
@@ -732,7 +830,7 @@ class SemanticProcessor:
             for ref in references:
                 _check_reference(ref, events, scope, "supports")
             return references
-        validate_condition(item["conditions"])
+        validate_new_condition(item["conditions"])
         _check_claim_sources(item, events, scope, situation=group == "situation_updates")
         if group == "situation_updates" and "observation" in item:
             observation = item["observation"]
@@ -771,7 +869,7 @@ class SemanticProcessor:
                     raise ValueError("Incomplete procedure")
                 method = item["procedure"]
                 for key in ("exit_conditions", "failure_conditions"):
-                    evaluate_condition(method[key], {})
+                    validate_new_condition(method[key])
                 support_ids = {ref["event_id"] for ref in item["evidence_refs"]}
                 if not set(method["attempt_event_ids"]).issubset(support_ids):
                     raise ValueError("Unobserved attempt")

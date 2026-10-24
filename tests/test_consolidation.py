@@ -151,7 +151,7 @@ def test_changed_conditions_do_not_collide_with_prior_semantic_identity(memory):
     source = memory.observe("工作时我希望直接获得建议。")
     batch = memory.batch(source)
     first = memory.publish(batch, run(batch, proposals(claim(source))))
-    different = claim(source, conditions={"op": "eq", "key": "situation", "value": "home"})
+    different = claim(source, conditions={"op": "unresolved", "label": "在家"})
     second = memory.publish(batch, run(batch, proposals(different)))
     assert first["memory_versions"] != second["memory_versions"]
     assert len(memory.rows("memory_assertions")) == 2

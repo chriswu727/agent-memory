@@ -10,9 +10,32 @@ def version(value):
     return value["memory_id"], value["revision"]
 
 
+def relation_assessments(resolution, table=()):
+    references = {(value["relation_id"], value["revision"]) for value in resolution.get("relation_refs", [])}
+    return list(resolution.get("relations", [])) + [value for value in table
+        if (value["relation"]["relation_id"], value["relation"]["revision"]) in references]
+
+
+def factor_relations(result):
+    assessments = {}
+    for item in result["items"]:
+        resolution = item.get("belief_resolution")
+        if resolution is None:
+            continue
+        values = relation_assessments(resolution, result.get("belief_relations", []))
+        resolution["relation_refs"] = [relation_ref(value["relation"]) for value in values]
+        resolution["evidence_refs"] = resolution_evidence(resolution)
+        resolution.pop("relations", None)
+        for value in values:
+            assessments[(value["relation"]["relation_id"], value["relation"]["revision"])] = value
+    result["belief_relations"] = [assessments[key] for key in sorted(assessments)]
+
+
 def frozen_relations(items):
     references = {}
     for item in items:
+        for reference in item.get("belief_resolution", {}).get("relation_refs", []):
+            references[(reference["relation_id"], reference["revision"])] = copy.deepcopy(reference)
         for assessment in item.get("belief_resolution", {}).get("relations", []):
             reference = relation_ref(assessment["relation"])
             references[(reference["relation_id"], reference["revision"])] = reference
@@ -20,7 +43,7 @@ def frozen_relations(items):
 
 
 def resolution_evidence(resolution):
-    references = {}
+    references = {digest(ref): ref for ref in resolution.get("evidence_refs", [])}
     for assessment in resolution.get("relations", []):
         for ref in assessment["relation"]["evidence_refs"] + assessment["applicability"]["evidence_refs"]:
             references[digest(ref)] = ref
@@ -198,7 +221,7 @@ def resolve(items, memories, events, scope, state, snapshot, timestamp):
                            if relation_versions(assessment["relation"]) & connected]
             required = set().union(*(relation_versions(value["relation"]) for value in assessments
                                     if value["applicability"]["value"] != "false")) if assessments else set()
-            complete = not connected & incomplete and required <= available
+            complete = not connected & incomplete and required <= available and connected <= available
             if not assessments and complete:
                 item.pop("belief_resolution", None)
                 continue
@@ -230,3 +253,28 @@ def atomic_units(units, membership):
             groups[first][0].extend(other)
             groups[first][1].update(identifiers)
     return [unit for unit, _ in groups]
+
+
+def connected_item_groups(items):
+    groups = []
+    for item in items:
+        memory = item["memory"]
+        keys = {version(memory)}
+        keys.update(version(parent) for parent in memory["derivation"]["source_memory_versions"])
+        keys.update(version(parent) for path in memory["disclosure_basis"]["support_paths"]
+                    if path["path_id"] in memory["disclosure_basis"]["selected_path_ids"]
+                    for parent in path["source_memory_versions"])
+        for assessment in item.get("belief_resolution", {}).get("relations", []):
+            keys.update(relation_versions(assessment["relation"]))
+        overlaps = [index for index, (_, members) in enumerate(groups) if members & keys]
+        if not overlaps:
+            groups.append(([item], keys))
+            continue
+        first = overlaps[0]
+        groups[first][0].append(item)
+        groups[first][1].update(keys)
+        for index in reversed(overlaps[1:]):
+            other, members = groups.pop(index)
+            groups[first][0].extend(other)
+            groups[first][1].update(members)
+    return [group for group, _ in groups]

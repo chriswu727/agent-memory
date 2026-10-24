@@ -110,9 +110,13 @@ def recalled_rule(learning, rule):
 
 
 def rendered_rule(packet, rule):
-    matches = [(block, json.loads(block["text"])) for block in packet["blocks"]
-               if block["section"] in {"conditional_memory", "relevant_memory"}
-               and json.loads(block["text"])["statement"] == rule["statement"]]
+    matches = []
+    for block in packet["blocks"]:
+        if block["section"] not in {"conditional_memory", "relevant_memory"}:
+            continue
+        content = block["content"] if "content" in block else json.loads(block["text"])
+        if content["statement"] == rule["statement"]:
+            matches.append((block, content))
     assert len(matches) == 1
     return matches[0]
 
@@ -126,6 +130,9 @@ def test_verified_orientation_applies_before_delivery_and_survives_in_authentica
     block, content = rendered_rule(packet, rule)
     assert block["section"] == "relevant_memory"
     assert content["applicability"]["value"] == "true"
+    assert {packet["sources"][identifier]["event_id"] for identifier in content["applicability"]["evidence_refs"]} == {
+        reference["event_id"] for reference in row["input_event_refs"]
+    }
     committed = learning.working()["items"][0]
     assert committed["value"]["orientation_job_id"] == row["orientation_job_id"]
     assert committed["knowledge_state"] == "inferred"

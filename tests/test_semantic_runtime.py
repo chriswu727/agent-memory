@@ -107,7 +107,7 @@ def test_recent_dialogue_is_chronological_and_scoped(memory):
 
     def reason(request):
         context = json.loads(request.messages[-1]["content"])["context"]
-        recent = [json.loads(block["text"]) for block in context if block["section"] == "recent_context"]
+        recent = [block["content"] for block in context if block["section"] == "recent_context"]
         assert [event["actor_role"] for event in recent] == ["user", "assistant"]
         return decision(outcome="not_needed")
 
@@ -115,7 +115,7 @@ def test_recent_dialogue_is_chronological_and_scoped(memory):
                            recall_controller=RecallController(reason))
     runtime.respond("继续", message_id="new", conversation_id="now")
     blocks = json.loads(prompts[0].memory_context)["blocks"]
-    recent = [json.loads(block["text"]) for block in blocks if block["section"] == "recent_context"]
+    recent = [block["content"] for block in blocks if block["section"] == "recent_context"]
     assert [event["sequence"] for event in recent] == sorted(event["sequence"] for event in recent)
     assert [event["actor_role"] for event in recent] == ["user", "assistant"]
     assert "另一会话秘密" not in prompts[0].memory_context

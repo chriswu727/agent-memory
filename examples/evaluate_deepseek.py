@@ -10,7 +10,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from agent_memory.client import default_budget, default_read_fence, integration_capabilities
+from agent_memory.cognition import render_context
 from agent_memory.config import Settings
+from agent_memory.context_views import render_recall
 from agent_memory.contracts import CONTRACT_VERSION
 from agent_memory.helpers import Principal, digest, uid
 from agent_memory.jobs import JobStore
@@ -118,19 +120,26 @@ class Trial:
                 "AND NOT invalidated AND NOT deleted AND document IS NOT NULL", params)]
         return {"memories": memories, "relations": relations}
 
-    def inspect_time(self, at, query, input_event_ids):
+    def inspect_time(self, at, query, input_event_ids, context_budget=48000):
         with patch("agent_memory.cognition.now", return_value=at):
             recall = self.action("recall", {"query": query, "intent": "explore", "cue_event_ids": [],
                                             "additional_cues": [], "read_fence": default_read_fence(),
-                                            "budget": default_budget(48000)})
+                                            "budget": default_budget(context_budget)})
             packet = self.action("prepare", {"turn_id": "evaluation-" + uid(), "latest_input_event_ids": input_event_ids,
-                                              "read_fence": default_read_fence(), "budget": default_budget(48000),
+                                              "read_fence": default_read_fence(), "budget": default_budget(context_budget),
                                               "capabilities": integration_capabilities()})
         return {"at": at, "clock": "injected_domain_clock_not_host_time_metadata",
-                "items": recall["items"], "blocks": packet["blocks"], "coverage": recall["coverage"]}
+                "items": recall["items"], "blocks": packet["blocks"], "coverage": recall["coverage"],
+                "belief_relations": recall.get("belief_relations", []),
+                "context_budget": context_budget,
+                "model_context": {"recall": json.loads(render_recall(recall)),
+                                  "prepare": json.loads(render_context(packet))},
+                "context_usage": {"recall": recall["usage"]["context_tokens"],
+                                  "prepare": packet["usage"]["context_tokens"]}}
 
 
 EVALUATION_TIMES = ("2026-10-24T12:00:00Z", "2026-10-25T12:00:00Z", "2026-10-27T12:00:00Z")
+EVALUATION_QUERY = "回复偏好 简短 详细解释 建议 备考 复习 散步 公园 河边 外套 衣着 提醒 回忆 诗歌 银色 状态"
 
 
 def _version(value):
@@ -331,7 +340,7 @@ def stage_checks(name, index, stage, previous):
             unfamiliar = set(stage.get("input_event_ids", [])[1:])
             poetry = [memory for memory in published if _support_events(memory) & unfamiliar
                       and memory.get("claim_kind") == "reported_preference"]
-            checks["unfamiliar_condition_not_coerced"] = all(
+            checks["unfamiliar_condition_not_coerced"] = bool(poetry) and all(
                 any(node.get("op") == "unresolved" for node in _condition_nodes(memory.get("conditions")))
                 and not any(node.get("op") in {"holds", "always"} for node in _condition_nodes(memory.get("conditions")))
                 for memory in poetry)
@@ -364,13 +373,21 @@ def stage_checks(name, index, stage, previous):
                 and not any(word in memories[_version(link["source_memory_version"])]["statement"].lower()
                             for word in ("总是", "每次", "永远", "必定", "always", "every time"))
                 for link in valid_links)
+            checks["abstraction_shared_walking_and_study_content_present"] = any(
+                any(word in memories[_version(link["source_memory_version"])]["statement"].lower()
+                    for word in ("复习", "学习", "study", "studying", "revision"))
+                and any(word in memories[_version(link["source_memory_version"])]["statement"].lower()
+                        for word in ("散步", "走", "步行", "walk"))
+                for link in valid_links)
     return checks
 
 
 def code_fingerprints():
     paths = ["examples/evaluate_deepseek.py", "examples/evaluation_support.py",
              "src/agent_memory/semantic.py", "src/agent_memory/semantic_provider.py",
-             "src/agent_memory/recall_provider.py", "src/agent_memory/learning.py"]
+             "src/agent_memory/recall_provider.py", "src/agent_memory/learning.py",
+             "src/agent_memory/consolidation_planning.py", "src/agent_memory/context_views.py",
+             "src/agent_memory/cognition.py", "src/agent_memory/applicability.py"]
     root = Path(__file__).resolve().parents[1]
     return {path: digest((root / path).read_text()) for path in paths}
 
@@ -379,12 +396,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true", help="Explicitly permit billable DeepSeek calls")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--continue-after-failure", metavar="REASON",
+                        help="Diagnosed continuation of a failed scenario; preserves all earlier failures")
     parser.add_argument("--recheck", action="store_true", help="Recheck saved evidence without API or database calls")
     parser.add_argument("--scenario", choices=SCENARIOS, default="temporal")
     parser.add_argument("--stage-limit", type=int, default=1)
     parser.add_argument("--max-calls", type=int, default=16)
+    parser.add_argument("--max-wall-time-ms", type=int, default=120000,
+                        help="Total time for one proposal/verification stage, at most 300000 ms")
     parser.add_argument("--output", type=Path, default=Path(".local/deepseek-evaluation"))
     args = parser.parse_args()
+    if args.continue_after_failure and (not args.live or not args.resume or args.recheck):
+        parser.error("A diagnosed continuation requires --live and --resume, without --recheck")
+    if args.continue_after_failure and not 1 <= len(args.continue_after_failure.strip()) <= 1000:
+        parser.error("Continuation reason must contain 1–1000 characters")
+    if not 1 <= args.max_wall_time_ms <= 300000:
+        parser.error("Stage time limit must be within 1–300000 ms")
     path = args.output / "report.json"
     if args.recheck:
         if args.live or args.resume or not path.is_file():
@@ -436,7 +463,8 @@ def main():
             parser.error("Pending stage does not match saved progress")
     principal = Principal(**report["principal"])
     meter = MeteredTransport(args.output / "calls.jsonl", max_calls=args.max_calls, max_output_tokens=262144)
-    policy = SemanticPolicy(max_output_tokens=16384, max_response_bytes=65536, max_wall_time_ms=120000)
+    policy = SemanticPolicy(max_output_tokens=16384, max_response_bytes=65536,
+                            max_wall_time_ms=args.max_wall_time_ms)
     with ChatCompletionsSemanticProvider("https://api.deepseek.com", key, report["model"],
                                          thinking="enabled", transport=meter) as provider:
         service = MemoryService(Database(settings.database_url, settings.migration_database_url),
@@ -447,12 +475,20 @@ def main():
                             stages=[], fixture=SCENARIOS[args.scenario])
         trial = Trial(service, principal, scenario["brain_id"])
         save(path, report)
-        if any(not all(stage["checks"].values()) for stage in scenario["stages"]):
-            parser.error("An earlier stage failed; diagnose from the saved report before spending more")
+        failed = [stage["index"] for stage in scenario["stages"] if not all(stage["checks"].values())]
+        if failed:
+            if not args.continue_after_failure:
+                parser.error("An earlier stage failed; diagnose from the saved report before spending more")
+            scenario.setdefault("diagnosed_continuations", []).append({
+                "after_stages": failed, "reason": args.continue_after_failure,
+                "next_stage": len(scenario["stages"]), "code_fingerprints": code_fingerprints(),
+            })
+            save(path, report)
         for index in range(len(scenario["stages"]), args.stage_limit):
             print(json.dumps({"scenario": args.scenario, "stage": index, "status": "started"}), flush=True)
             pending = scenario.setdefault("pending", {"index": index})
             pending.setdefault("code_fingerprints", code_fingerprints())
+            pending.setdefault("execution_policy", asdict(policy))
             if "input_event_ids" not in pending:
                 receipts = [trial.observe(text, f"{args.scenario}:{index}:{item}")
                             for item, text in enumerate(SCENARIOS[args.scenario][index])]
@@ -468,12 +504,13 @@ def main():
             stage = {"index": index, "input_event_ids": pending["input_event_ids"],
                      "job": job, "documents": trial.documents()}
             stage["code_fingerprints"] = pending["code_fingerprints"]
+            stage["execution_policy"] = pending["execution_policy"]
             pending["result"] = stage
             report["usage"] = meter.summary()
             save(path, report)
             if job["state"] == "completed":
                 try:
-                    stage["recall"] = [trial.inspect_time(at, "回复偏好 简短 详细解释 建议 备考 复习 散步", stage["input_event_ids"]) for at in (
+                    stage["recall"] = [trial.inspect_time(at, EVALUATION_QUERY, stage["input_event_ids"]) for at in (
                         "2026-10-24T12:00:00Z", "2026-10-25T12:00:00Z", "2026-10-27T12:00:00Z")]
                 except Exception as exc:
                     stage["inspection_error"] = {"type": type(exc).__name__, "code": getattr(exc, "code", None)}

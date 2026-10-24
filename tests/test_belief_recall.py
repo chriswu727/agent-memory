@@ -124,12 +124,12 @@ def test_source_condition_observation_roles_survive_relation_assessment():
     current["belief_relations"] = [relation(memories[1], memories[:1])]
     current["context_observations"] = [observation(sources[1])]
     result = recall(sources, memories, current)
-    applicability = result["items"][0]["belief_resolution"]["relations"][0]["applicability"]
+    applicability = result["belief_relations"][0]["applicability"]
     assert applicability["supporting_observation_ids"]
     assert applicability["opposing_observation_ids"] == []
     current["context_observations"].append(observation(sources[0], polarity="negative"))
     result = recall(sources, memories, current)
-    applicability = result["items"][0]["belief_resolution"]["relations"][0]["applicability"]
+    applicability = result["belief_relations"][0]["applicability"]
     assert applicability["supporting_observation_ids"] and applicability["opposing_observation_ids"]
     assert set(applicability["supporting_observation_ids"]).isdisjoint(applicability["opposing_observation_ids"])
     assert states(result)[version(memories[0])] == "conflicted"
@@ -251,8 +251,9 @@ def test_recall_budget_recomputes_completeness_and_prepare_budget_is_atomic():
     limited_request = request("routine")
     limited_request["budget"]["max_context_tokens"] = full["usage"]["context_tokens"] - 1
     limited = cognition.recall(scope(), limited_request, memories, sources, current)
-    assert len(limited["items"]) == 1
-    assert limited["items"][0]["belief_resolution"]["state"] == "uncertain"
+    assert limited["items"] == []
+    assert limited["belief_relations"] == []
+    assert limited["recall_traces"] == []
     packet = cognition.prepare(scope(), prepare_payload(), working(), full, current)
     assert len(blocks(packet)) == 2
     trimmed = cognition.prepare(scope(), prepare_payload(tokens=packet["usage"]["context_tokens"] - 1), working(), full, current)
@@ -285,6 +286,7 @@ def test_controller_freezes_only_shown_relation_versions_and_all_observed_roots(
     recalled = recall(sources, memories, current)
     initial = control_packet(*memories)
     initial["recall_results"][0]["items"] = recalled["items"]
+    initial["recall_results"][0]["belief_relations"] = recalled["belief_relations"]
     seen, reserved = [], []
 
     def reason(request):
@@ -299,24 +301,24 @@ def test_controller_freezes_only_shown_relation_versions_and_all_observed_roots(
     assert plan["observed_event_refs"] == reserved[0]["source_refs"]
 
 
-def test_controller_trimming_an_endpoint_cannot_present_the_old_rule_as_settled():
+def test_controller_trims_a_connected_belief_group_atomically():
     sources, memories, current = scenario()
-    memories[1]["statement"] *= 100
+    memories[1]["statement"] *= 1000
     current["belief_relations"] = [relation(memories[1], memories[:1])]
     recalled = recall(sources, memories, current)
     initial = control_packet(*memories)
     initial["recall_results"][0]["items"] = recalled["items"]
+    initial["recall_results"][0]["belief_relations"] = recalled["belief_relations"]
 
     def reason(request):
         offered = json.loads(request.messages[1]["content"])["candidates"]
-        assert [candidate["memory_id"] for candidate in offered] == [memories[0]["memory_id"]]
-        assert offered[0]["belief_resolution"]["complete"] is False
-        assert offered[0]["belief_resolution"]["state"] == "uncertain"
-        return decision(selected=[memories[0]["memory_id"]], outcome="ambiguous")
+        assert offered == []
+        assert json.loads(request.messages[1]["content"])["relations"] == {}
+        return decision(outcome="insufficient")
 
     plan = run(reason, initial=initial, policy=RecallPolicy(max_request_bytes=10000))
-    assert plan["belief_relation_refs"] == [relation_ref(current["belief_relations"][0])]
-    assert plan["outcome"] == "ambiguous"
+    assert plan["belief_relation_refs"] == []
+    assert plan["outcome"] == "insufficient"
 
 
 def test_equivalent_and_abstracted_views_do_not_transfer_instance_details_or_confidence():

@@ -77,7 +77,7 @@ def test_semantic_rewrite_retains_original_boundary_and_selects_only_seen_eviden
         requests.append(request)
         data = json.loads(request.messages[1]["content"])
         if len(requests) == 1:
-            assert "备考" in data["context"][0]["text"]
+            assert "备考" in data["context"][0]["content"]
             return decision("search", queries=["备考约定", "晚上聊天"], outcome="insufficient")
         assert {item["memory_id"] for item in data["candidates"]} == {"promise", "second"}
         assert data["candidates"][0]["statement"].startswith("user person (direct_statement)")

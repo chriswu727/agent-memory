@@ -337,16 +337,16 @@ def test_unsatisfied_read_fence_never_returns_stale_success():
     assert result["coverage"]["read_fence_satisfied"] is False
 
 
-def test_recall_budget_includes_full_serialized_tool_output():
+def test_recall_budget_includes_exact_compact_model_view_and_excludes_control_metadata():
     source = event("书店" + "门口有只橘猫" * 500)
     memories = cognition.extract_event(source)
     full = cognition.recall(scope(), request(), memories, [source], state())
     full_count = full["usage"]["context_tokens"]
-    assert full_count == cognition.estimate_tokens(full)
+    assert full_count == cognition.estimate_tokens(cognition.render_recall(full))
     result = cognition.recall(scope(), request(budget=budget(4000)), memories, [source], state())
     assert not result["items"]
     assert not result["recall_traces"]
-    assert result["usage"]["context_tokens"] == cognition.estimate_tokens(result) <= 4000
+    assert result["usage"]["context_tokens"] == cognition.estimate_tokens(cognition.render_recall(result)) <= 4000
     assert result["usage"]["stopped_by"] == "context_limit"
     with pytest.raises(DomainError) as error:
         cognition.recall(scope(), request(budget=budget(0)), memories, [source], state())

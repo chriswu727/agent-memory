@@ -12,6 +12,7 @@ from agent_memory.client import (
     default_budget,
     integration_capabilities,
     prepared_context,
+    recalled_context,
 )
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
@@ -56,11 +57,14 @@ def create_server(client: MemoryClient) -> FastMCP:
         retrieval: dict[str, Any] = {"evidence_mode": evidence_mode}
         if prior_to_event_id is not None:
             retrieval["evidence_cutoff"] = {"mode": "before_event", "event_id": prior_to_event_id}
-        return await asyncio.to_thread(
+        response = await asyncio.to_thread(
             client.recall, query, conversation_id=conversation_id, branch_id=branch_id,
             intent=intent, additional_cues=additional_cues or (), cue_event_ids=cue_event_ids or (),
             budget=default_budget(max_context_tokens), **retrieval,
         )
+        return {"action": "recall", "outcome": response["outcome"],
+                "context": recalled_context(response),
+                "context_tokens": response["result"]["usage"]["context_tokens"]}
 
     @server.tool(annotations=READ_ONLY)
     async def memory_inspect(

@@ -27,7 +27,9 @@ def claim(source, **changes):
     value = {"proposal_id": "claim-1", "statement": "用户报告在工作时希望直接获得建议。",
              "memory_kind": "interaction_preference", "representation": "semantic_anchor",
              "claim_kind": "reported_preference", "world": "real_world",
-             "conditions": {"op": "eq", "key": "situation", "value": "work"},
+             "conditions": {"op": "holds", "subject_ref": "user",
+                            "predicate_ref": {"id": "core.activity", "version": 1},
+                            "value": {"type": "concept", "id": "activity:work"}},
              "evidence_refs": [reference(source)], "counterexamples": [],
              "source_memory_versions": [], "valid_time": copy.deepcopy(UNKNOWN_TIME), "procedure": None}
     value.update(changes)
@@ -392,8 +394,11 @@ def test_episode_members_are_ordered_scoped_and_versioned():
 
 def test_procedure_requires_verified_actual_outcome_and_attempt_reference():
     source = event("执行步骤后，任务检查成功。", role="tool")
-    method = {"steps": ["执行步骤"], "exit_conditions": {"op": "eq", "key": "result", "value": "success"},
-              "failure_conditions": {"op": "eq", "key": "result", "value": "failure"},
+    method = {"steps": ["执行步骤"],
+              "exit_conditions": {"op": "holds", "subject_ref": "agent",
+                                  "predicate_ref": {"id": "core.task_state", "version": 1},
+                                  "value": {"type": "string", "value": "completed"}},
+              "failure_conditions": {"op": "unresolved", "label": "任务检查失败"},
               "environment": "test-env-v1", "attempt_event_ids": [source["event_id"]]}
     proposed = claim(source, memory_kind="procedural", representation="procedure",
                      claim_kind="procedure", procedure=method)

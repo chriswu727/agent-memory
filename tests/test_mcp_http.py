@@ -79,10 +79,10 @@ def test_stdio_tools_recall_persistent_events_through_real_http(tmp_path):
                     assert not response.isError, response
                     result = response.structuredContent
                     assert result["outcome"] == "completed"
-                    assert any("周五去看海" in item["memory"]["statement"]
-                               for item in result["result"]["items"])
-                    assert all(item["memory"]["evidence_refs"]
-                               for item in result["result"]["items"])
+                    view = json.loads(result["context"])
+                    assert any("周五去看海" in item["statement"] for item in view["memories"])
+                    assert all(item["sources"] for item in view["memories"])
+                    assert all(ref in view["sources"] for item in view["memories"] for ref in item["sources"])
         asyncio.run(recall())
     finally:
         server.terminate()

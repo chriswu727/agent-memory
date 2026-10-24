@@ -91,7 +91,24 @@ def prepared_context(packet_or_response: Mapping[str, Any]) -> str:
         if packet.get("outcome") in {"rejected", "conflict", "failed"}:
             raise MemoryActionError(packet)
         packet = packet["result"]
+    if isinstance(packet.get("model_context"), str):
+        return packet["model_context"]
     return render_context(packet)
+
+
+def recalled_context(result_or_response: Mapping[str, Any]) -> str:
+    from .context_views import render_recall
+
+    result = dict(result_or_response)
+    if result.get("message_type") == "response":
+        if result.get("action") != "recall":
+            raise ValueError("Expected a recall response")
+        if result.get("outcome") in {"rejected", "conflict", "failed"}:
+            raise MemoryActionError(result)
+        result = result["result"]
+    if isinstance(result.get("model_context"), str):
+        return result["model_context"]
+    return render_recall(result)
 
 
 class MemoryClient:

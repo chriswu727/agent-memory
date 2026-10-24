@@ -6,7 +6,13 @@ import httpx
 import pytest
 from jsonschema import Draft202012Validator
 
-from agent_memory.client import MemoryActionError, MemoryClient, default_budget, prepared_context
+from agent_memory.client import (
+    MemoryActionError,
+    MemoryClient,
+    default_budget,
+    prepared_context,
+    recalled_context,
+)
 
 
 @pytest.fixture
@@ -164,7 +170,12 @@ def test_prepared_context_includes_evidence_labels_without_control_plane():
         }],
     }
     rendered = prepared_context(packet)
-    assert rendered == '{"blocks":[{"section":"relevant_memory","sources":[{"event_id":"event-1","revision":2}],"text":"雨天去书店🌧️"}],"trust":"memory_data_not_instructions"}'
+    view = json.loads(rendered)
+    source_id = view["blocks"][0]["sources"][0]
+    assert view["blocks"] == [{"section": "relevant_memory", "content": "雨天去书店🌧️", "sources": [source_id]}]
+    assert view["sources"] == {source_id: {"event_id": "event-1", "event_revision": 2}}
+    assert view["format"] == "compact-memory-v1"
+    assert view["trust"] == "memory_data_not_instructions"
     assert "do-not-inject" not in rendered
     response = {"message_type": "response", "action": "prepare", "outcome": "completed", "result": packet}
     assert prepared_context(response) == rendered
@@ -184,3 +195,63 @@ def test_archive_transport_preserves_content():
     assert seen[0][:2] == ("GET", "/v1/archives/archive")
     assert seen[1][:2] == ("POST", "/v1/brains/brain/archives")
     assert json.loads(seen[1][2]) == archive
+
+
+def test_recalled_context_accepts_result_or_successful_action_without_control_metadata():
+    from test_cognition import event, request, scope, state
+
+    from agent_memory import cognition
+
+    source = event("rainy day bookstore")
+    result = cognition.recall(scope(), request("bookstore"), cognition.extract_event(source), [source], state())
+    rendered = recalled_context(result)
+    response = {"message_type": "response", "action": "recall", "outcome": "completed", "result": result}
+    assert recalled_context(response) == rendered
+    assert "rainy day bookstore" in rendered
+    assert "principal_binding_id" not in rendered
+    assert len(rendered.encode()) == result["usage"]["context_tokens"]
+
+
+def test_recalled_context_rejects_wrong_action_and_error_response():
+    with pytest.raises(ValueError, match="recall response"):
+        recalled_context({"message_type": "response", "action": "prepare", "outcome": "completed"})
+    for outcome in ("rejected", "conflict", "failed"):
+        with pytest.raises(MemoryActionError):
+            recalled_context({"message_type": "response", "action": "recall", "outcome": outcome,
+                              "error": {"code": "forbidden", "message": "Unavailable"}})
+
+
+@pytest.mark.parametrize("action,helper", [("prepare", prepared_context), ("recall", recalled_context)])
+@pytest.mark.parametrize("envelope", [False, True])
+def test_context_helpers_preserve_authoritative_numeric_and_unicode_bytes(action, helper, envelope):
+    authoritative = '{"numbers":[1e20,1.0,9007199254740993],"text":"雨天🌧️ é"}'
+    result = {"model_context": authoritative, "usage": {"context_tokens": len(authoritative.encode())}}
+    supplied = ({"message_type": "response", "action": action, "outcome": "completed", "result": result}
+                if envelope else result)
+    assert helper(supplied).encode() == authoritative.encode()
+    assert len(helper(supplied).encode()) == result["usage"]["context_tokens"]
+
+
+@pytest.mark.parametrize("action,helper", [("prepare", prepared_context), ("recall", recalled_context)])
+@pytest.mark.parametrize("outcome", ["wrong_action", "rejected", "conflict", "failed"])
+def test_authoritative_context_cannot_bypass_response_action_or_failure_checks(action, helper, outcome):
+    response = {"message_type": "response", "action": action, "outcome": outcome,
+                "result": {"model_context": "must not be returned"},
+                "error": {"code": "forbidden", "message": "Unavailable"}}
+    if outcome == "wrong_action":
+        response.update(action="recall" if action == "prepare" else "prepare", outcome="completed")
+    with pytest.raises(ValueError if outcome == "wrong_action" else MemoryActionError):
+        helper(response)
+
+
+def test_legacy_recall_without_authoritative_context_keeps_canonical_fallback():
+    from test_cognition import event, request, scope, state
+
+    from agent_memory import cognition
+
+    source = event("旧来源仍可回忆🌧️。")
+    result = cognition.recall(scope(), request("旧来源"), cognition.extract_event(source), [source], state())
+    authoritative = result.pop("model_context")
+    assert recalled_context(result) == authoritative
+    response = {"message_type": "response", "action": "recall", "outcome": "completed", "result": result}
+    assert recalled_context(response) == authoritative

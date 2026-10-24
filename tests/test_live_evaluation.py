@@ -4,12 +4,14 @@ from unittest.mock import patch
 
 import pytest
 from test_belief_recall import relation
+from test_belief_semantic import link_verifier
 from test_cognition import event, prepare_payload, request, scope, state, working
 from test_contextual_recall import CONDITION
 from test_semantic import batch, claim, proposals, reference, run
 
 from agent_memory import cognition
 from agent_memory.consolidation import _assertion
+from agent_memory.consolidation_planning import plan_consolidation
 
 with pytest.MonkeyPatch.context() as imports:
     imports.syspath_prepend(str(Path(__file__).parents[1]))
@@ -74,6 +76,11 @@ def stages():
 def test_fixture_oracle_accepts_actual_recall_and_prepare_document_shapes(stages, index):
     checks = stage_checks("temporal", index, stages[index], stages[index - 1] if index else None)
     assert checks and all(checks.values()), checks
+
+
+def test_unfamiliar_condition_requires_an_actual_published_preference(stages):
+    checks = stage_checks("conditional", 2, stages[2], stages[1])
+    assert checks["unfamiliar_condition_not_coerced"] is False
 
 
 @pytest.mark.parametrize("damage", ["no_job_result", "no_publication", "missing_document", "capture_only",
@@ -226,7 +233,15 @@ def abstraction_stages():
                      representation="schema", claim_kind="inferred_pattern", conditions={"op": "always"},
                      valid_during={"kind": "unknown"}, evidence_refs=sum([copy.deepcopy(memory["evidence_refs"]) for memory in old], []),
                      source_memory_versions=[version(memory) for memory in old])
-    result = run(data, proposals(proposed))
+    planned = plan_consolidation(data.sources, data.existing_assertions)
+    belief_link = {"proposal_id": "link-abstract", "kind": "abstracts",
+                   "claim_proposal_id": proposed["proposal_id"], "target_memory_versions": [version(item) for item in old],
+                   "evidence_refs": copy.deepcopy(proposed["evidence_refs"]), "conditions": {"op": "always"},
+                   "valid_during": {"kind": "unknown"}, "world": "real_world"}
+    result = run(data, {**proposals(proposed), "belief_links": [belief_link], "consolidation_decisions": [
+        {"objective_id": objective["objective_id"], "outcome": "proposed", "reason": None,
+         "link_proposal_ids": [belief_link["proposal_id"]]} for objective in planned["objectives"]
+    ]}, verify=link_verifier)
     new = _assertion(result.claims[0], data, {"dependency_generation": 0},
                      {"root_event_ids": [source["event_id"] for source in [*sources, cue]]})
     link = relation(new, old, kind="abstracts", valid_during={"kind": "unknown"},

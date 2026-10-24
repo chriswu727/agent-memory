@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from jsonschema import Draft202012Validator
 
 from .belief_resolution import frozen_relations, resolution_evidence
-from .belief_store import relation_versions
+from .belief_store import relation_ref, relation_versions
 from .client import default_budget, default_read_fence
+from .context_views import reasoning_context_view
 from .helpers import DomainError, digest
 
 OUTCOMES = ("sufficient", "ambiguous", "insufficient", "not_needed")
@@ -170,6 +171,17 @@ class RecallController:
                          "ambiguities": result.get("ambiguities", []),
                          "conflicts": result.get("conflicts", [])})
             limitations.update(result["coverage"]["limitations"])
+            certificates = {}
+
+            def register(assessment):
+                relation = assessment["relation"]
+                key = relation["relation_id"], relation["revision"]
+                if key in certificates and certificates[key] != assessment:
+                    raise DomainError("context_stale", "A recall relationship has conflicting certificates.")
+                certificates[key] = assessment
+                return key
+
+            table = {register(assessment): assessment for assessment in result.get("belief_relations", [])}
             for item in result["items"]:
                 if item["display_mode"] == "do_not_surface":
                     continue
@@ -179,6 +191,18 @@ class RecallController:
                     raise DomainError("context_stale", "A recall candidate changed within this plan.")
                 candidates[key] = candidate
                 resolutions[key] = copy.deepcopy(item.get("belief_resolution", {}))
+                if resolutions[key]:
+                    assessments = {register(value): value for value in resolutions[key].get("relations", [])}
+                    for reference in resolutions[key].get("relation_refs", []):
+                        identity = reference["relation_id"], reference["revision"]
+                        assessment = table.get(identity)
+                        if assessment is None:
+                            raise DomainError("dependency_unavailable", "Context relation certificate is unavailable.")
+                        if relation_ref(assessment["relation"]) != reference:
+                            raise DomainError("context_stale", "A recall relationship changed within this plan.")
+                        assessments[identity] = assessment
+                    resolutions[key]["relations"] = copy.deepcopy(list(assessments.values()))
+                    resolutions[key].pop("relation_refs", None)
 
         add_warning({"coverage": initial_packet["coverage"],
                      "historical_evidence_status": snapshot["historical_evidence_status"]})
@@ -214,7 +238,7 @@ class RecallController:
                 offered.append({key: copy.deepcopy(candidate[key]) for key in (
                     "memory_id", "revision", "statement", "world", "epistemic_status",
                     "valid_time", "evidence_refs", "representation", "claim_kind", "conditions",
-                    "valid_during", "counterexamples", "verification",
+                    "valid_during", "counterexamples", "verification", "memory_kind",
                 ) if key in candidate})
                 if resolution:
                     offered[-1]["belief_resolution"] = copy.deepcopy(resolution)
@@ -233,7 +257,7 @@ class RecallController:
                     if not required <= available:
                         candidate["belief_resolution"].update(state="uncertain", complete=False)
                 data = {
-                    "current_input": input_text, "context": context, "candidates": offered,
+                    **reasoning_context_view(context, offered), "current_input": input_text,
                     "warnings": warnings, "evidence_cutoff": boundary,
                     "context_truncated": truncated,
                 }
@@ -251,10 +275,24 @@ class RecallController:
             remaining = min(policy.max_request_bytes, policy.max_input_bytes - input_bytes)
             while size > remaining and (offered or context):
                 truncated = True
-                groups = [(len(_json(value).encode()), group, index)
-                          for group in (context, offered) for index, value in enumerate(group)]
-                _, group, index = max(groups, key=lambda value: value[0])
-                group.pop(index)
+                groups = [{index} for index in range(len(offered))]
+                for candidate in offered:
+                    resolution = candidate.get("belief_resolution", {})
+                    for assessment in resolution.get("relations", []):
+                        endpoints = relation_versions(assessment["relation"])
+                        linked = {index for index, item in enumerate(offered)
+                                  if (item["memory_id"], item["revision"]) in endpoints}
+                        connected = [group for group in groups if group & linked]
+                        if connected:
+                            groups = [group for group in groups if not group & linked]
+                            groups.append(set().union(*connected))
+                choices = [(len(_json(value).encode()), context, {index})
+                           for index, value in enumerate(context)]
+                choices.extend((sum(len(_json(offered[index]).encode()) for index in group), offered, group)
+                               for group in groups)
+                _, group, indices = max(choices, key=lambda value: value[0])
+                for index in sorted(indices, reverse=True):
+                    group.pop(index)
                 request, size, fingerprint = make_request()
             if size > remaining or request.timeout_seconds <= 0:
                 return finish("budget_exhausted")

@@ -35,6 +35,7 @@ def observation(source, *, polarity="positive", validity=None):
 def case(kind="positive"):
     original = event("备考期间，我希望回答简短。")
     memory = cognition.extract_event(original)[0]
+    memory["memory_kind"] = "semantic"
     memory["conditions"] = copy.deepcopy(CONDITION)
     memory["valid_during"] = copy.deepcopy(UNBOUNDED)
     sources, observations = [original], []
@@ -109,7 +110,7 @@ def test_recall_reports_contextual_applicability_without_erasing_the_memory(kind
     if reason:
         assert reason in item["applicability"]["reasons"]
     assert (memory, current) == before
-    assert recalled["usage"]["context_tokens"] == cognition.estimate_tokens(recalled)
+    assert recalled["usage"]["context_tokens"] == cognition.estimate_tokens(cognition.render_recall(recalled))
     validate("RecallResult", recalled)
 
 

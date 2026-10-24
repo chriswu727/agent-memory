@@ -1621,6 +1621,21 @@
             "$ref": "#/$defs/RecallTrace"
           },
           "minItems": 0
+        },
+        "belief_relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BeliefRelationAssessment"
+          },
+          "maxItems": 32
+        },
+        "context_format": {
+          "const": "compact-memory-v1"
+        },
+        "model_context": {
+          "type": "string",
+          "minLength": 1,
+          "description": "服务端完成来源校验及预算选择后生成的权威模型输入，精确等于 render_recall 的完整序列化文本。usage.context_tokens 保守计量该字符串 UTF-8 字节数。宿主必须原样注入，不能解析后重新序列化以免不同语言数字编码改变预算；其他字段仅为控制及检查用途。"
         }
       },
       "required": [
@@ -1638,7 +1653,7 @@
         "recall_traces"
       ],
       "additionalProperties": false,
-      "description": "grounded 表示有来源支撑，不是来源内容已被客观证实。deleted 仅向有权知道删除状态的主体返回；无权访问的对象按统一不可见策略处理。no_match 不证明从未发生。",
+      "description": "完整控制平面召回结果。context_format=compact-memory-v1 时 usage.context_tokens 和 max_context_tokens 计量 render_recall(result) 的完整保守 UTF-8 字节估算，而非此 HTTP 响应；模型应只接收该紧凑视图。完整 MemoryAssertion 保留可检查的来源、依赖和权限数据。关系证书在 belief_relations 中只出现一次，项内通过 relation_refs 引用；接收旧版 inline relations 兼容历史数据。",
       "allOf": [
         {
           "if": {
@@ -1888,6 +1903,11 @@
             "$ref": "#/$defs/RecallTrace"
           },
           "minItems": 0
+        },
+        "model_context": {
+          "type": "string",
+          "minLength": 1,
+          "description": "服务端完成来源校验及预算选择后生成的权威模型输入，精确等于 render_context 的完整序列化文本。usage.context_tokens 保守计量该字符串 UTF-8 字节数。宿主必须原样注入，不能解析后重新序列化以免不同语言数字编码改变预算；其他字段仅为控制及检查用途。"
         }
       },
       "required": [
@@ -1906,7 +1926,7 @@
         "recall_traces"
       ],
       "additionalProperties": false,
-      "description": "回答前上下文包。宿主通过确定性的 render_context 将 blocks 转成实际模型输入，max_context_tokens 覆盖全部注入块、来源标签与序列化开销；控制平面中的 scope、trace、usage 等元数据不自动注入。预算是宿主扣除系统指令、当前输入和输出预留后分配给记忆的额度。HTTP 响应体另有字节上限。生成器须继续遵守权限及未知边界。"
+      "description": "回答前上下文包。宿主通过确定性的 render_context 将 blocks 转成实际模型输入，max_context_tokens 覆盖全部注入块、来源标签与序列化开销；控制平面中的 scope、trace、usage 等元数据不自动注入。预算是宿主扣除系统指令、当前输入和输出预留后分配给记忆的额度。HTTP 响应体另有字节上限。生成器须继续遵守权限及未知边界。 紧凑模型视图 compact-memory-v1 将来源和关系证书各集中呈现一次；所有原文经历明确标为 historical_report_not_current_rule，不能当作当前偏好规则。"
     },
     "IntegrationCapabilities": {
       "type": "object",
@@ -4631,6 +4651,24 @@
           "type": "object",
           "properties": {
             "op": {
+              "const": "unresolved"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "op",
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
               "const": "holds"
             },
             "subject_ref": {
@@ -5327,31 +5365,43 @@
         "relations": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "relation": {
-                "$ref": "#/$defs/BeliefRelation"
-              },
-              "applicability": {
-                "$ref": "#/$defs/MemoryApplicability"
-              }
-            },
-            "required": [
-              "relation",
-              "applicability"
-            ],
-            "additionalProperties": false
+            "$ref": "#/$defs/BeliefRelationAssessment"
           },
           "minItems": 0,
           "maxItems": 32
+        },
+        "relation_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BeliefRelationRef"
+          },
+          "maxItems": 32
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
         }
       },
       "required": [
         "state",
-        "complete",
-        "relations"
+        "complete"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "relations"
+          ]
+        },
+        {
+          "required": [
+            "relation_refs",
+            "evidence_refs"
+          ]
+        }
+      ]
     },
     "BeliefRelationRef": {
       "type": "object",
@@ -5372,6 +5422,22 @@
         "relation_id",
         "revision",
         "content_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "BeliefRelationAssessment": {
+      "type": "object",
+      "properties": {
+        "relation": {
+          "$ref": "#/$defs/BeliefRelation"
+        },
+        "applicability": {
+          "$ref": "#/$defs/MemoryApplicability"
+        }
+      },
+      "required": [
+        "relation",
+        "applicability"
       ],
       "additionalProperties": false
     }

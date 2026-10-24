@@ -34,6 +34,11 @@ REJECTION_REASONS = frozenset({
     "incomplete_history_package", "invalid_proposal", "verification_unavailable",
     "semantic_support_unconfirmed", "relation_support_unconfirmed", "linked_claim_unconfirmed",
 })
+CONSOLIDATION_REASONS = frozenset({
+    "verified_abstraction", "no_verified_abstraction", "not_attempted", "insufficient_shared_meaning",
+    "uncertain_attribution", "incompatible_qualifiers", "insufficient_evidence", "already_represented",
+})
+CONSOLIDATION_STATUSES = frozenset({"satisfied", "no_change", "unresolved"})
 _SAMPLING_COUNTS = (
     "recent_window_limit", "candidate_scan_limit", "candidate_limit", "association_depth",
     "dependency_depth", "candidate_count", "omitted_packages", "source_count",
@@ -116,6 +121,21 @@ def sanitize_learning_summary(summary):
         key: value for key in sorted(REJECTION_REASONS)
         if isinstance(reasons, dict) and (value := _monitor_count(reasons.get(key))) is not None
     }
+    consolidation = summary.get("consolidation")
+    if isinstance(consolidation, dict):
+        result["consolidation"] = {
+            key: _monitor_count(consolidation.get(key)) or 0 for key in (
+                "candidate_count", "objective_count", "satisfied_count", "no_change_count",
+                "unresolved_count", "suppressed_count", "attempted_count",
+            )
+        }
+        for key, allowed in (("status_counts", CONSOLIDATION_STATUSES),
+                             ("reason_counts", CONSOLIDATION_REASONS)):
+            values = consolidation.get(key)
+            result["consolidation"][key] = {
+                name: count for name in sorted(allowed)
+                if isinstance(values, dict) and (count := _monitor_count(values.get(name))) is not None
+            }
     return result
 
 
@@ -136,6 +156,20 @@ def summarize_learning(result):
             if isinstance(reason, str) and reason in REJECTION_REASONS:
                 reasons[reason] = reasons.get(reason, 0) + 1
     evaluated = _monitor_enum(result.get("status"), PROCESSING_STATUSES) in {"completed", "partial"}
+    consolidation = result.get("consolidation")
+    if isinstance(consolidation, dict):
+        consolidation = dict(consolidation)
+        objectives = consolidation.get("objectives", [])
+        objectives = objectives[:3] if isinstance(objectives, (list, tuple)) else []
+        consolidation["attempted_count"] = sum(
+            isinstance(item, dict) and item.get("attempted") is True for item in objectives)
+        for key, field, allowed in (("status_counts", "status", CONSOLIDATION_STATUSES),
+                                    ("reason_counts", "reason", CONSOLIDATION_REASONS)):
+            consolidation[key] = {
+                value: sum(isinstance(item, dict) and item.get(field) == value for item in objectives)
+                for value in sorted(allowed)
+                if any(isinstance(item, dict) and item.get(field) == value for item in objectives)
+            }
     return sanitize_learning_summary({
         "processing_status": result.get("status"), "learning_outcome": result.get("learning_outcome"),
         "accepted_counts": {key: count(result.get(key)) if evaluated else 0
@@ -149,6 +183,7 @@ def summarize_learning(result):
                                 if "belief_relation_versions" in publication else {})},
         "learning_window": result.get("learning_window"),
         "sampling": result.get("sampling"), "rejection_reason_counts": reasons,
+        "consolidation": consolidation,
     })
 
 

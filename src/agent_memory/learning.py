@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from psycopg.types.json import Jsonb
 
 from . import cognition
+from .consolidation_planning import plan_consolidation
 from .helpers import DomainError, digest, now, uid
 from .jobs import JobStore
 from .learning_windows import record_progress, recover_windows, select_window
@@ -120,6 +121,7 @@ class LearningEngine:
         return CognitiveBatch(
             job["id"], snapshot["scope"], tuple(events), documents[0], snapshot["working_snapshot"], documents[1],
             sampling=snapshot["sampling"], belief_relations=tuple(snapshot.get("belief_relations", ())),
+            consolidation_plan=snapshot.get("consolidation_plan"),
         ), snapshot
 
     def _snapshot(self, principal, brain_id, job):
@@ -135,7 +137,7 @@ class LearningEngine:
                 snapshot = {key: copy.deepcopy(value) for key, value in prior.items() if key in {
                     "scope", "source_snapshot", "memory_snapshot", "episode_snapshot", "working_revision",
                     "working_snapshot", "sampling", "learning_window", "learning_input_refs", "dependency_generation",
-                    "belief_relations", "belief_relation_snapshot",
+                    "belief_relations", "belief_relation_snapshot", "consolidation_plan",
                 }}
                 return self._resume_snapshot(conn, principal, brain, job, snapshot)
             if "event_id" in payload:
@@ -188,9 +190,32 @@ class LearningEngine:
                 "belief_relation_snapshot": [{"relation_id": item["relation_id"], "revision": item["revision"],
                                               "content_sha256": digest(item)}
                                              for item in neighborhood.belief_relations]}
+            candidate_plan = plan_consolidation(sources, assertions, neighborhood.belief_relations,
+                                                neighborhood.sampling, include_all=True)
+            identifiers = [item["objective_id"] for item in candidate_plan["objectives"]]
+            attempted = []
+            if identifiers and job["kind"] == "consolidate":
+                attempted = [row["objective_id"] for row in conn.execute(
+                    "SELECT DISTINCT objective->>'objective_id' AS objective_id FROM memory_jobs j "
+                    "CROSS JOIN LATERAL jsonb_array_elements(CASE "
+                    "WHEN jsonb_typeof(j.result #> '{consolidation,objectives}')='array' "
+                    "THEN j.result #> '{consolidation,objectives}' ELSE '[]'::jsonb END) objective "
+                    "WHERE j.tenant_id=%s AND j.owner_id=%s AND j.brain_id=%s AND j.kind='consolidate' "
+                    "AND j.state='completed' AND objective->>'dedup_eligible'='true' "
+                    "AND objective->>'objective_id'=ANY(%s::text[]) LIMIT %s",
+                    (*params, identifiers, len(identifiers)),
+                ).fetchall()]
+            snapshot["consolidation_plan"] = plan_consolidation(
+                sources, assertions, neighborhood.belief_relations, neighborhood.sampling,
+                attempted_ids=attempted,
+            )
+            if job["kind"] == "orient":
+                snapshot["consolidation_plan"]["objectives"] = []
             if window is not None:
                 snapshot.update(learning_window=window, learning_input_refs=required,
                                 working_snapshot=working)
+            if prior and "consolidation_plan" in prior:
+                snapshot["consolidation_plan"] = prior["consolidation_plan"]
             if prior and prior.get("source_snapshot") != snapshot["source_snapshot"]:
                 raise DomainError("context_stale", "Cognitive retry sources changed.")
             if prior and prior.get("episode_snapshot", []) != snapshot["episode_snapshot"]:
@@ -214,7 +239,8 @@ class LearningEngine:
                 (Jsonb(snapshot), source_ids, [m["memory_id"] for m in assertions], *params, job["id"], job["fence"]),
             )
             batch = CognitiveBatch(job["id"], scope, sources, assertions, working, episodes,
-                                   sampling=snapshot["sampling"], belief_relations=neighborhood.belief_relations)
+                                   sampling=snapshot["sampling"], belief_relations=neighborhood.belief_relations,
+                                   consolidation_plan=snapshot["consolidation_plan"])
             return batch, snapshot
 
     def semantic(self, principal, brain_id, job):
@@ -223,9 +249,11 @@ class LearningEngine:
         lease = {"lease_token": job["lease_token"], "fence": job["fence"]}
         operations = []
         renewable_budget = False
+        # Synchronous provider calls cannot renew their lease while waiting for a response.
+        lease_seconds = max(120, (service.semantic_processor.policy.max_wall_time_ms + 999) // 1000 + 5)
 
         def check():
-            self.jobs.renew(principal, brain_id, job["id"], **lease, lease_seconds=120)
+            self.jobs.renew(principal, brain_id, job["id"], **lease, lease_seconds=lease_seconds)
 
         def reserve(**request):
             operation_id = f"{job['fence']}:{request['phase']}"

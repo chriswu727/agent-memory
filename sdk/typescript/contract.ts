@@ -131,6 +131,7 @@ export type MemoryApplicability = {
 
 export type SemanticCondition =
   | { "op": "always" }
+  | { "op": "unresolved"; "label": string }
   | { "op": "holds"; subject_ref: string; predicate_ref: TypedPredicateRef; value: TypedValue; polarity?: "positive" | "negative" }
   | { "op": "eq" | "ne"; "key": string; "value": string | number | boolean | null }
   | { "op": "all" | "any"; "args": SemanticCondition[] }
@@ -296,10 +297,14 @@ export type BeliefRelation = {
   root_event_ids: Identifier[];
   endpoint_snapshots: { memory_version: MemoryVersion; content_sha256: string }[];
 };
+export type BeliefRelationAssessment = { relation: BeliefRelation; applicability: MemoryApplicability };
+
 export type BeliefResolution = {
   state: "unchanged" | "superseded" | "exception_applies" | "conflicted" | "uncertain";
   complete: boolean;
-  relations: { relation: BeliefRelation; applicability: MemoryApplicability }[];
+  relations?: BeliefRelationAssessment[];
+  relation_refs?: BeliefRelationRef[];
+  evidence_refs?: EvidenceRef[];
 };
 
 export type RecallItem = {
@@ -312,6 +317,9 @@ export type RecallItem = {
 };
 
 export type RecallResult = {
+  "model_context"?: string;
+  "context_format"?: "compact-memory-v1";
+  "belief_relations"?: BeliefRelationAssessment[];
   "recall_id": Identifier;
   "scope": BoundScope;
   "status": "grounded" | "partial" | "ambiguous" | "conflicted" | "no_match" | "indexing" | "degraded" | "deleted";
@@ -341,6 +349,7 @@ export type ContextBlock = {
 };
 
 export type ContextPacket = {
+  "model_context"?: string;
   "packet_id": Identifier;
   "turn_id": Identifier;
   "scope": BoundScope;

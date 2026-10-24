@@ -145,6 +145,33 @@ def test_belief_monitoring_exposes_only_bounded_counts_and_known_rejections():
     assert checked["accepted_counts"]["belief_links"] == checked["published_counts"]["belief_relations"] == 0
 
 
+def test_consolidation_monitoring_distinguishes_attempts_no_change_and_verified_results():
+    result = {"status": "completed", "consolidation": {
+        "planner_version": "private-version", "candidate_count": 3, "objective_count": 3,
+        "satisfied_count": 1, "no_change_count": 1, "unresolved_count": 1, "suppressed_count": 2,
+        "objectives": [
+            {"objective_id": "private-one", "status": "satisfied", "reason": "verified_abstraction", "attempted": True},
+            {"objective_id": "private-two", "status": "no_change", "reason": "insufficient_evidence", "attempted": True},
+            {"objective_id": "private-three", "status": "unresolved", "reason": "not_attempted", "attempted": False},
+        ],
+    }}
+    summary = summarize_learning(result)
+    assert summary["consolidation"] == {
+        "candidate_count": 3, "objective_count": 3, "satisfied_count": 1, "no_change_count": 1,
+        "unresolved_count": 1, "suppressed_count": 2, "attempted_count": 2,
+        "status_counts": {"satisfied": 1, "no_change": 1, "unresolved": 1},
+        "reason_counts": {"verified_abstraction": 1, "insufficient_evidence": 1, "not_attempted": 1},
+    }
+    assert "private-" not in json.dumps(summary)
+    assert sanitize_learning_summary(summary) == summary
+    corrupted = summary["consolidation"]
+    corrupted.update(candidate_count=True, objective_count=-1, suppressed_count=1_000_001,
+                     reason_counts={"private-reason": 1, "verified_abstraction": True})
+    cleaned = sanitize_learning_summary(summary)["consolidation"]
+    assert cleaned["candidate_count"] == cleaned["objective_count"] == cleaned["suppressed_count"] == 0
+    assert cleaned["reason_counts"] == {}
+
+
 @pytest.mark.parametrize("views,expected", [
     (["private-pattern-a", "private-pattern-b"], 2), ([], 0), (None, 0),
     ("private-pattern-id", 0), ({"private-pattern-id": "private-text"}, 0),

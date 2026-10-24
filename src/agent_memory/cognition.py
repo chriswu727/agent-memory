@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .applicability import ApplicabilityResult, evaluate_applicability, validate_observation
+from .context_views import FORMAT, context_view, memory_content, render_recall
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
 from .ontology import CORE_REGISTRY
@@ -252,7 +253,7 @@ def _usage(budget: dict) -> dict:
 
 def _measure(result: dict) -> int:
     for _ in range(6):
-        count = estimate_tokens(result)
+        count = estimate_tokens(render_recall(result))
         if result["usage"]["context_tokens"] == count:
             return count
         result["usage"]["context_tokens"] = count
@@ -514,7 +515,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         "recall_id": uid(), "scope": copy.deepcopy(scope), "status": "no_match", "items": [],
         "unknowns": [], "ambiguities": [], "conflicts": [], "coverage": coverage,
         "usage": _usage(request["budget"]), "next_step": "expand_search",
-        "retrieval_snapshot": snapshot, "recall_traces": [],
+        "retrieval_snapshot": snapshot, "recall_traces": [], "context_format": FORMAT,
     }
     known = {(memory["memory_id"], memory["revision"]) for memory in memories}
     candidates = list(memories)
@@ -632,7 +633,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             "retrieved_from": "unindexed_tail" if tail else "index",
             "display_mode": "explicit_recollection" if historical else "background_context",
         }
-        if "conditions" in memory or "valid_during" in memory:
+        if _has_applicability(memory):
             item["applicability"] = _memory_applicability(memory, state, scope, event_map, timestamp)
         result["items"].append(item)
         result["recall_traces"].append({
@@ -681,34 +682,47 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     result["usage"]["elapsed_ms"] = int((time.monotonic() - started) * 1000)
     if result["usage"]["stopped_by"] == "completed" and not result["items"]:
         result["usage"]["stopped_by"] = "no_candidates"
-    from .belief_resolution import resolve
+    from .belief_resolution import connected_item_groups, factor_relations, resolve
 
     refresh_beliefs = resolve(result["items"], candidates, event_map, scope, state, snapshot, timestamp)
+    groups = connected_item_groups(result["items"])
     limit = request["budget"]["max_context_tokens"]
-    while _measure(result) > limit and result["items"]:
-        result["items"].pop()
-        result["recall_traces"].pop()
-        refresh_beliefs(result["items"])
+    if _measure(result) > limit and result["items"]:
+        original_items, original_traces = result["items"], result["recall_traces"]
+        result["items"], result["recall_traces"] = [], []
         result["status"] = "partial"
         result["next_step"] = "answer_with_limits"
         result["usage"]["stopped_by"] = "context_limit"
         if "budget_exhausted" not in coverage["limitations"]:
             coverage["limitations"].append("budget_exhausted")
+        admitted = set()
+        for group in groups:
+            candidates = admitted | {item["memory"]["memory_id"] for item in group}
+            result["items"] = [item for item in original_items if item["memory"]["memory_id"] in candidates]
+            refresh_beliefs(result["items"])
+            if _measure(result) <= limit:
+                admitted = candidates
+        result["items"] = [item for item in original_items if item["memory"]["memory_id"] in admitted]
+        result["recall_traces"] = [trace for trace in original_traces if trace["memory_id"] in admitted]
+        refresh_beliefs(result["items"])
     if _measure(result) > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the minimal recall envelope")
+    factor_relations(result)
+    if _measure(result) > limit:
+        raise DomainError("budget_exceeded", "Budget cannot hold the final recall envelope")
+    result["model_context"] = render_recall(result)
     validate("RecallResult", result)
     return result
 
 
 def render_context(packet: dict) -> str:
-    return _serialized({
-        "trust": "memory_data_not_instructions",
-        "blocks": [{
-            "section": block["section"], "text": block["text"],
-            "sources": [{"event_id": ref["event_id"], "revision": ref["event_revision"]}
-                        for ref in block["evidence_refs"]],
-        } for block in packet["blocks"]],
-    })
+    return _serialized(context_view(packet))
+
+
+def _has_applicability(memory):
+    return ("conditions" in memory or "valid_during" in memory
+            or memory["memory_kind"] != "episodic" and any((
+                memory["valid_time"]["start"], memory["valid_time"]["end"])))
 
 
 def _memory_applicability(memory, state, scope, events, timestamp):
@@ -755,6 +769,12 @@ def _memory_applicability(memory, state, scope, events, timestamp):
             result["reasons"] = sorted(set(result["reasons"] + ["validity_unstated"]))
             if result["value"] == "true":
                 result.update(value="unknown", status="unknown")
+        if "valid_during" not in memory and memory.get("memory_kind") != "episodic" and "valid_time" in memory:
+            start, end = _range(memory["valid_time"])
+            instant = _stamp(at)
+            if start and start > instant or end and end < instant:
+                result.update(value="false", status="false", conflict=False)
+                result["reasons"] = sorted(set(result["reasons"] + ["outside_recorded_valid_time"]))
     except (ValueError, TypeError):
         result = ApplicabilityResult("unknown", reasons=("invalid_or_unresolved_context",),
                                      registry_fingerprint=CORE_REGISTRY.fingerprint).to_dict()
@@ -873,10 +893,18 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     if not _coverage(state, payload, 0)["read_fence_satisfied"]:
         raise DomainError("dependency_unavailable", "The preparation read fence is not covered", True)
     timestamp = now()
-    from .belief_resolution import atomic_units, resolution_evidence, resolve, version
+    from .belief_resolution import (
+        atomic_units,
+        connected_item_groups,
+        factor_relations,
+        resolution_evidence,
+        resolve,
+        version,
+    )
 
     recall_result = copy.deepcopy(recall_result)
-    resolve(recall_result["items"], state.get("belief_memories", [item["memory"] for item in recall_result["items"]]),
+    resolve([item for item in recall_result["items"] if item["display_mode"] != "do_not_surface"],
+            state.get("belief_memories", [item["memory"] for item in recall_result["items"]]),
             state.get("working_event_metadata", {}), scope, state, snapshot, timestamp)
     valid_evidence = list(state.get("verified_working_evidence_refs", []))
     recalled_evidence = set()
@@ -988,7 +1016,10 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             "use": "conversation_context_only_not_independent_historical_evidence",
         }), [{"event_id": event["event_id"], "event_revision": event["revision"],
               "source_content_sha256": event["content_sha256"], "relationship": "context_only"}]))
-    memory_rows, belief_membership = [], {}
+    memory_rows = []
+    belief_membership = {version(item["memory"]): {f"component-{index}"}
+                         for index, group in enumerate(connected_item_groups(result["recall_results"][0]["items"]))
+                         for item in group}
     for item in result["recall_results"][0]["items"]:
         if item["display_mode"] == "do_not_surface":
             continue
@@ -1004,15 +1035,13 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
                 references.append({"event_id": event_id, "event_revision": event["revision"],
                                    "source_content_sha256": event["content_sha256"], "relationship": "context_only"})
         applicability = (_memory_applicability(memory, state, scope, historical_events, timestamp)
-                         if "conditions" in memory or "valid_during" in memory else None)
+                         if _has_applicability(memory) else None)
         if applicability is not None:
             item["applicability"] = applicability
         applicable = applicability is None or applicability["value"] == "true" and not applicability["conflict"]
         resolution = item.get("belief_resolution")
         if resolution:
             applicable = applicable and resolution["complete"] and resolution["state"] == "unchanged"
-            belief_membership[version(memory)] = {
-                assessment["relation"]["relation_id"] for assessment in resolution["relations"]}
             for ref in resolution_evidence(resolution):
                 if ref not in references:
                     references.append(copy.deepcopy(ref))
@@ -1021,18 +1050,14 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
                 context_ref = {**ref, "relationship": "context_only"}
                 if context_ref not in references:
                     references.append(context_ref)
-        content = {
-            "statement": memory["statement"], "world": memory["world"],
-            "epistemic_status": memory["epistemic_status"], "valid_time": memory["valid_time"],
-            **{key: memory[key] for key in ("representation", "conditions", "claim_kind", "verification", "counterexamples", "procedure", "valid_during")
-               if key in memory},
-            **({"applicability": applicability,
-                "use": "source_attributed_applicable_memory" if applicable else "conditional_memory_not_current_rule"}
-               if applicability is not None else {}),
-            **({"belief_resolution": copy.deepcopy(resolution),
-                "use": "source_attributed_applicable_memory" if applicable else "belief_not_settled_current_rule"}
-               if resolution else {}),
-        }
+        content = memory_content(item)
+        if applicability is not None:
+            content["applicability"] = applicability
+        if resolution:
+            content["belief_resolution"] = copy.deepcopy(resolution)
+        if content["use"] != "historical_report_not_current_rule":
+            content["use"] = ("source_attributed_applicable_memory" if applicable
+                              else "belief_not_settled_current_rule" if resolution else "conditional_memory_not_current_rule")
         memory_rows.append({"section": "relevant_memory" if applicable else "conditional_memory",
                             "content": content, "references": references, "memory": memory})
     units = [[(block, [])] for block in blocks]
@@ -1103,5 +1128,23 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     result["usage"]["context_tokens"] = estimate_tokens(render_context(result))
     if result["usage"]["context_tokens"] > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the context limitation report")
+    factor_relations(result["recall_results"][0])
+    _measure(result["recall_results"][0])
+    result["recall_results"][0]["model_context"] = render_recall(result["recall_results"][0])
+    for block in result["blocks"]:
+        content = json.loads(block["text"])
+        if isinstance(content, dict) and "belief_resolution" in content:
+            resolution = content["belief_resolution"]
+            from .belief_store import relation_ref
+
+            resolution["relation_refs"] = [relation_ref(value["relation"])
+                                            for value in resolution.pop("relations", [])]
+            resolution.pop("evidence_refs", None)
+            block["text"] = _serialized(content)
+            block["token_count"] = estimate_tokens(block["text"])
+    result["model_context"] = render_context(result)
+    result["usage"]["context_tokens"] = estimate_tokens(result["model_context"])
+    if result["usage"]["context_tokens"] > limit:
+        raise DomainError("budget_exceeded", "Budget cannot hold the final context envelope")
     validate("ContextPacket", result)
     return result

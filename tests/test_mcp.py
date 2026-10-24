@@ -22,6 +22,11 @@ def response_for(request):
             "packet_id": "packet", "blocks": [], "coverage": {"limitations": []},
             "usage": {"context_tokens": 57},
         }
+    elif request["action"] == "recall":
+        result = {"items": [], "status": "no_match", "next_step": "none", "unknowns": [],
+                  "ambiguities": [], "conflicts": [], "coverage": {"limitations": []},
+                  "retrieval_snapshot": {"historical_evidence_status": "not_established"},
+                  "usage": {"context_tokens": 57}, "control_plane_secret": "excluded"}
     return {
         "message_type": "response", "contract_version": "1.0.0-draft",
         "request_id": request["request_id"], "action": request["action"],
@@ -53,6 +58,8 @@ def test_protocol_initialize_list_call_and_bound_identity():
                 result = await session.call_tool("memory_recall", {"query": "the rainy day"})
                 assert not result.isError
                 assert result.structuredContent["action"] == "recall"
+                assert json.loads(result.structuredContent["context"])["format"] == "compact-memory-v1"
+                assert "control_plane_secret" not in json.dumps(result.structuredContent)
                 result = await session.call_tool("memory_observe", {
                     "text": "The user supposedly likes rain", "conversation_id": "chat",
                     "branch_id": "main", "source_event_key": "note-1",

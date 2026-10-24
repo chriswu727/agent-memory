@@ -205,8 +205,8 @@ def test_each_instance_keeps_its_own_applicability_and_context_proof_sources():
     first, second = [instance["residuals"][0]["fact"] for instance in content["instances"]]
     assert first["applicability"]["value"] == "true"
     assert second["applicability"]["value"] == "false"
-    assert first["use"] == "source_attributed_applicable_memory"
-    assert second["use"] == "conditional_memory_not_current_rule"
+    assert first["use"] == "historical_report_not_current_rule"
+    assert second["use"] == "historical_report_not_current_rule"
     assert {ref["event_id"] for ref in block["evidence_refs"]} == {source["event_id"] for source in sources}
     assert_metered(packet)
 
@@ -238,11 +238,15 @@ def test_recall_controller_preserves_representation_conditions_and_counterexampl
     reservations = []
 
     def reason(request):
-        shown = json.loads(request.messages[1]["content"])["candidates"][0]
+        view = json.loads(request.messages[1]["content"])
+        shown = view["candidates"][0]
         assert shown["representation"] == "schema"
         assert shown["conditions"] == candidate["conditions"]
         assert shown["valid_during"] == candidate["valid_during"]
-        assert shown["counterexamples"] == candidate["counterexamples"]
+        assert [view["sources"][identifier] for identifier in shown["counterexamples"]] == [
+            {key: value for key, value in reference.items() if key != "source_content_sha256"}
+            for reference in candidate["counterexamples"]
+        ]
         assert "Never combine details from distinct episodes" in request.messages[0]["content"]
         return decision(selected=[candidate["memory_id"]])
 

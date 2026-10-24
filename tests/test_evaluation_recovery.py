@@ -142,6 +142,50 @@ def test_default_cli_cannot_read_dotenv_or_construct_provider(evaluation, monkey
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.parametrize("limit", ["0", "-1", "300001"])
+def test_stage_timeout_limit_is_validated_before_settings_or_billing(evaluation, monkeypatch, tmp_path, limit):
+    monkeypatch.setattr(evaluation.Settings, "from_env", forbid)
+    with pytest.raises(SystemExit) as error:
+        invoke(evaluation, monkeypatch, tmp_path, "--live", "--max-wall-time-ms", limit)
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("arguments", [[], ["--live"], ["--resume"], ["--recheck", "--resume", "--live"]])
+def test_diagnosed_continuation_requires_explicit_live_resume(evaluation, monkeypatch, tmp_path, arguments):
+    monkeypatch.setattr(evaluation.Settings, "from_env", forbid)
+    with pytest.raises(SystemExit) as error:
+        invoke(evaluation, monkeypatch, tmp_path, *arguments, "--continue-after-failure", "diagnosed")
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("continue_diagnosed", [False, True])
+def test_diagnosed_continuation_never_rewrites_failed_stage_or_repeats_paid_work(
+    evaluation, monkeypatch, tmp_path, continue_diagnosed,
+):
+    from contextlib import nullcontext
+
+    offline_settings(evaluation, monkeypatch)
+    report = saved_report(evaluation)
+    failed_stage = {"index": 0, "checks": {"failed": False}, "job": {"job_id": "already-paid"}}
+    report["scenarios"]["temporal"]["stages"] = [failed_stage]
+    evaluation.save(tmp_path / "report.json", report)
+    monkeypatch.setattr(evaluation, "MeteredTransport", lambda *a, **k: object())
+    monkeypatch.setattr(evaluation, "ChatCompletionsSemanticProvider", lambda *a, **k: nullcontext(object()))
+    monkeypatch.setattr(evaluation, "Database", lambda *a: object())
+    monkeypatch.setattr(evaluation, "MemoryService", lambda *a, **k: object())
+    monkeypatch.setattr(evaluation, "Trial", lambda *a: SimpleNamespace(learn=forbid, observe=forbid))
+    args = ["--live", "--resume"]
+    if continue_diagnosed:
+        invoke(evaluation, monkeypatch, tmp_path, *args, "--continue-after-failure", "diagnosed retained evidence")
+    else:
+        with pytest.raises(SystemExit) as error:
+            invoke(evaluation, monkeypatch, tmp_path, *args)
+        assert error.value.code == 2
+    saved = json.loads((tmp_path / "report.json").read_text())["scenarios"]["temporal"]
+    assert saved["stages"] == [failed_stage]
+    assert bool(saved.get("diagnosed_continuations")) is continue_diagnosed
+
+
 def test_recheck_uses_only_report_and_never_settings_database_or_api(evaluation, monkeypatch, tmp_path):
     report = saved_report(evaluation)
     report["scenarios"]["temporal"]["stages"] = [{"index": 0, "checks": {"old": False}}]
