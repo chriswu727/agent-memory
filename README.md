@@ -115,7 +115,7 @@ MEMORY_COGNITION_MODEL=<your chat model>
 
 `MEMORY_COGNITION_THINKING` 可选，值为 `enabled` 或 `disabled`；不设置时沿用提供方默认行为。仅对支持 `thinking.type` 参数的提供方使用，仍须配置上面三项；单独配置开关会在启动时拒绝。输出 token 上限与响应字节上限分别控制，截断内容不能作为成功提议。
 
-提供方需要支持 Chat Completions JSON mode。配置后，`BrainRuntime` 在回答前自动调用 `orient`：以本轮输入和同会话、同分支的近期来源为起点，加入当前访问范围允许的相关旧认识及其来源、父依赖和显式反例，提出当前目标、指代与约束，再检查这些推断是否得到所引来源支持。后台 `worker` 对新输入及实际交付的回复运行 `consolidate`，生成语义锚点、经历片段与轮廓、条件化认识和程序性候选。它们保留原始来源、版本、反例和适用条件；模型提议与检查都可能出错，结果始终标为推断。当前配置使用同一提供方执行两次独立请求，不构成客观事实认证。
+提供方需要支持 Chat Completions JSON mode。配置后，`BrainRuntime` 在回答前自动调用 `orient`：以本轮输入和同会话、同分支的近期来源为起点，加入当前访问范围允许的相关旧认识及其来源、父依赖和显式反例，提出当前目标、指代与约束，再检查这些推断是否得到所引来源支持。后台 `worker` 对新输入及实际交付的回复运行 `consolidate`，生成语义锚点、经历片段与轮廓、条件化认识和程序性候选。它们保留原始来源、版本、反例和适用条件；模型提议与检查都可能出错，结果始终标为推断。当前配置使用同一提供方执行两次独立请求，不构成客观事实认证。 核验器分别判断每条引用承载的前提，再用必填的 `proposal_verdict` 判断所有证据是否共同支持完整命题；缺少整体判定、整体不确定或任意引用不匹配都会拒绝发布。所有核验项还必须带 `link_verdict`：普通命题为 `null`，认识关系需明确判定，不能只凭局部证据有效就接受变化方向或有限概括。自定义核验提供方须遵守请求中的完整响应 schema。
 
 服务端把情境推断放进 `current_situation` 资料块，由运行时自动传给主模型；它只解释当前上下文，不能作为历史证据。例如“你记得我们去过海边吗？”可以触发回忆，不能因此建立“我们去过海边”的事实。助手已交付的说法可支持“助手曾说过”，也不能单独证明外部事件发生或任务完成。
 
@@ -284,3 +284,25 @@ TypeScript 测试与类型检查命令见 `sdk/typescript/package.json`。没有
 GitHub Actions 仅保留手动触发，不在 push 或 pull request 时自动运行。日常开发优先执行与修改相关的本地检查；发布前按改动影响验证，避免重复运行云 CI。
 
 接口结构校验、确定性回归测试、真实 MCP 协议往返和数据库测试，只验证各自覆盖的行为。完整架构中的 52 个系统场景尚不能据此宣称全部通过，也未宣称在长期记忆质量上超过任何基线。
+
+
+### 手动 DeepSeek 实测
+
+`examples/evaluate_deepseek.py` 通过真实来源捕获、后台学习、入库、召回和上下文准备检查合成会话，使用 DeepSeek-V4-Pro 思考模式。它只创建隔离的测试身份和大脑，不读取已有用户大脑。项目专用 PostgreSQL 须已启动并迁移，密钥放在忽略提交的 `.env` 中的 `DEEPSEEK_API_KEY`。
+
+```sh
+# 明确允许付费；先检查一个阶段，失败即停止后续依赖阶段
+uv run python -m examples.evaluate_deepseek --live --scenario temporal --stage-limit 1
+uv run python -m examples.evaluate_deepseek --live --resume --scenario temporal --stage-limit 3
+uv run python -m examples.evaluate_deepseek --live --resume --scenario conditional --stage-limit 3
+uv run python -m examples.evaluate_deepseek --live --resume --scenario abstraction --stage-limit 2
+
+# 仅重新校验保存的结果，不连接数据库或模型
+uv run python -m examples.evaluate_deepseek --recheck
+```
+
+默认把报告与调用记录存到忽略提交的 `.local/deepseek-evaluation/`。整个目录共享最多 16 次调用和 262,144 个预留输出 token；每阶段最多两次调用、每次最多 16,384 个输出 token，阶段总时间最多 120 秒。先落盘预留再发请求，不自动重试；恢复时保留已有额度、阶段和任务身份。未完成的已预留调用仍计入上限，不能当作没有花费。不同输出目录分别记账，做修复对照时需合并统计。保留失败报告，不能删除调用记录绕过预算。
+
+调用记录只保存安全用量字段、延迟、模型名和最终 JSON 内容，不保存请求正文、密钥、错误正文或隐藏思考内容。压缩响应以有上限的方式解码；不完整或无法解析的响应明确记为用量未知。当前计量示例使用 POSIX 文件锁，适合 macOS/Linux 开发环境。
+
+验收针对固定来源、关系方向、条件、有效期及实际召回/上下文输出；时间测试注入领域时钟，不代表已有宿主历史情境 API。内容关键词只是辅助护栏，还需人工检查生成命题。小样本诊断不等于长期效果基准，也没有使用主聊天模型回答来代替记忆质量判断。

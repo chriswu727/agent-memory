@@ -67,6 +67,8 @@ def verifier(request):
     data = json.loads(request.messages[-1]["content"])
     return encoded({"assessments": [{
         "proposal_id": candidate["proposal"]["proposal_id"],
+        "proposal_verdict": "supports",
+        "link_verdict": None,
         "relations": [{"evidence_index": evidence["evidence_index"],
                        "verdict": evidence["reference"]["relationship"]}
                       for evidence in candidate["evidence"]],
@@ -288,9 +290,10 @@ def test_malformed_proposals_are_bounded_and_redacted(invalid):
 
 def test_verifier_cannot_invent_ids_or_omit_source_relations():
     source = event("工作时我希望直接获得建议。")
-    invalid = {"assessments": [{"proposal_id": "invented", "relations": [
-        {"evidence_index": 0, "verdict": "supports"},
-    ]}]}
+    invalid = {"assessments": [{
+        "proposal_id": "invented", "proposal_verdict": "supports", "link_verdict": None,
+        "relations": [{"evidence_index": 0, "verdict": "supports"}],
+    }]}
     result = run(batch(source), proposals(claim(source)), verify=lambda _: encoded(invalid))
     assert result.status == "invalid_response" and not result.claims
 

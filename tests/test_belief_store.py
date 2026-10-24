@@ -31,8 +31,11 @@ def store(memory):
 
 def verified(request):
     result = json.loads(verifier(request))
+    groups = {item["proposal"]["proposal_id"]: item["group"]
+              for item in json.loads(request.messages[-1]["content"])["proposals"]}
     for item in result["assessments"]:
-        item["link_verdict"] = "supports"
+        if groups[item["proposal_id"]] == "belief_links":
+            item["link_verdict"] = "supports"
     return json.dumps(result)
 
 
