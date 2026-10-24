@@ -47,6 +47,7 @@ def situation(source, **changes):
 
 def episode(source, **changes):
     value = {"proposal_id": "episode-1", "action": "create", "episode_id": None,
+             "organization_statement": "These observed messages form an interaction about the user's request.",
              "expected_revision": None,
              "member_refs": [{"event_id": source["event_id"], "revision": source["revision"]}],
              "boundary_ref": None}
@@ -75,6 +76,8 @@ def verifier(request):
         "relations": [{"evidence_index": evidence["evidence_index"],
                        "verdict": evidence["reference"]["relationship"]}
                       for evidence in candidate["evidence"]],
+        **({"request_verdict": "supports"}
+           if candidate["proposal"].get("evidence_use") == "current_request" else {}),
         **({"instance_verdicts": [{"memory_version": item["memory_version"], "verdict": "supports"}
                                   for item in candidate["instance_support"]]}
            if "instance_support" in candidate else {}),
@@ -383,7 +386,8 @@ def test_late_provider_result_is_not_published(monkeypatch):
 
 def test_episode_members_are_ordered_scoped_and_versioned():
     first, second = event("开始制定计划。"), event("计划完成。", sequence=2)
-    existing = {"episode_id": "episode-existing", "revision": 2}
+    existing = {"episode_id": "episode-existing", "revision": 2, "scope": scope(), "state": "open",
+                "member_refs": [{"event_id": first["event_id"], "revision": 1}], "boundary_ref": None}
     proposed = episode(first, action="close", episode_id="episode-existing", expected_revision=2,
                        member_refs=[{"event_id": first["event_id"], "revision": 1},
                                     {"event_id": second["event_id"], "revision": 1}],

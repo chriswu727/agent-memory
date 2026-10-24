@@ -24,6 +24,20 @@ def relation_handle(value):
     return _handle("r", {key: value[key] for key in ("relation_id", "revision")})
 
 
+def memory_use(item):
+    memory = item["memory"]
+    if memory["memory_kind"] == "episodic" or memory.get("representation") == "literal":
+        return "historical_report_not_current_rule"
+    assessment, resolution = item.get("applicability"), item.get("belief_resolution")
+    unsettled = (memory["epistemic_status"] in {"disputed", "unknown"}
+                 or memory.get("verification", {}).get("state") == "contested")
+    applies = ((assessment is None or assessment["value"] == "true" and not assessment["conflict"])
+               and (resolution is None or resolution["complete"] and resolution["state"] == "unchanged"))
+    if applies and not unsettled:
+        return "source_attributed_applicable_memory"
+    return "belief_not_settled_current_rule" if resolution or unsettled else "conditional_memory_not_current_rule"
+
+
 def memory_content(item):
     memory = item["memory"]
     result = {key: copy.deepcopy(memory[key]) for key in (
@@ -34,13 +48,7 @@ def memory_content(item):
     for key in ("applicability", "belief_resolution"):
         if key in item:
             result[key] = copy.deepcopy(item[key])
-    assessment, resolution = item.get("applicability"), item.get("belief_resolution")
-    applies = ((assessment is None or assessment["value"] == "true" and not assessment["conflict"])
-               and (resolution is None or resolution["complete"] and resolution["state"] == "unchanged"))
-    historical = memory["memory_kind"] == "episodic" or memory.get("representation") == "literal"
-    result["use"] = ("historical_report_not_current_rule" if historical else
-                     "source_attributed_applicable_memory" if applies else
-                     "belief_not_settled_current_rule" if resolution else "conditional_memory_not_current_rule")
+    result["use"] = memory_use(item)
     return result
 
 

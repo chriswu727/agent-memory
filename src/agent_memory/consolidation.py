@@ -105,7 +105,7 @@ def validate_batch(conn, service, principal, brain, batch: CognitiveBatch,
             "root_event_ids": sorted({key[0] for key in expected})}
 
 
-def _check_result(batch, result, snapshot):
+def _check_result(batch, result, snapshot, *, current_input_refs=()):
     if result.status not in {"completed", "partial"}:
         if result.claims or result.situation_updates or result.episode_actions or result.belief_links:
             raise DomainError("invalid_evidence", "Unverified cognitive result cannot be published")
@@ -144,17 +144,35 @@ def _check_result(batch, result, snapshot):
                 raise DomainError("invalid_evidence", "Semantic learning remains inferred")
             if group == "situation_updates" and final.get("current_only") is not True:
                 raise DomainError("invalid_evidence", "Situation updates are current context only")
-            if group == "episode_actions" and item["episode_id"] is not None:
-                if item["episode_id"] in changed_episodes:
-                    raise DomainError("invalid_evidence", "An episode may have one action per batch")
-                changed_episodes.add(item["episode_id"])
             try:
                 references = SemanticProcessor._validate_proposal(
                     group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims,
                     abstraction_parents=abstraction_parents.get(item["proposal_id"], ()),
+                    current_input_refs=current_input_refs,
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
+            if item.get("evidence_use") == "current_request":
+                if final.get("request_verification") != {
+                    "state": "supported_request", "method": "semantic_model", "not_a_truth_certificate": True,
+                }:
+                    raise DomainError("invalid_evidence", "Missing current request verification")
+                assessments = [entry for entry in result.verification_assessments
+                               if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
+                if (len(assessments) != 1 or assessments[0].get("proposal_verdict") != "supports"
+                        or assessments[0].get("request_verdict") != "supports"
+                        or assessments[0].get("link_verdict", "missing") is not None):
+                    raise DomainError("invalid_evidence", "Current request assessment is unsupported")
+                relations = assessments[0].get("relations")
+                if (not isinstance(relations, list) or len(relations) != len(item["evidence_refs"])
+                        or any(not isinstance(relation, dict) or type(relation.get("evidence_index")) is not int
+                               or relation.get("verdict") != "supports" for relation in relations)
+                        or {relation["evidence_index"] for relation in relations} != set(range(len(item["evidence_refs"])))):
+                    raise DomainError("invalid_evidence", "Current request evidence assessment is incomplete")
+            if group == "episode_actions" and item["episode_id"] is not None:
+                if item["episode_id"] in changed_episodes:
+                    raise DomainError("invalid_evidence", "An episode may have one action per batch")
+                changed_episodes.add(item["episode_id"])
             if any(cognition.evidence_overlaps(ref, old) for ref in references
                    for old in snapshot["superseded_evidence"]):
                 _error()
@@ -324,6 +342,10 @@ def _publish_episode(conn, service, principal, brain, batch, action, snapshot, c
         return {"episode_id": identifier, "revision": revision, "scope": copy.deepcopy(batch.scope),
                 "state": state, "member_refs": refs, "boundary_ref": copy.deepcopy(action["boundary_ref"]),
                 "organization_status": "inferred", "job_id": job_id,
+                "organization_statement": action["organization_statement"],
+                "organization_scope": "episode_transition", "organization_action": action["action"],
+                "organization_source_version": ({"episode_id": previous["episode_id"], "revision": previous["revision"]}
+                                                if previous else None),
                 "proposal_id": action["proposal_id"], "root_event_ids": sorted(root_ids)}
 
     identifier = action["episode_id"] or "episode-" + digest([job_id, action["proposal_id"]])[:32]

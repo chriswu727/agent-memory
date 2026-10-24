@@ -447,6 +447,7 @@ class MemoryService:
         for item in working["items"]:
             value = item["value"]
             if (not isinstance(value, dict) or "observation" not in value
+                    or value.get("evidence_use") == "current_request"
                     or not isinstance(value.get("orientation_job_id"), str)
                     or item["expires_at"] is None or cognition._stamp(item["expires_at"]) <= timestamp):
                 continue
@@ -474,7 +475,8 @@ class MemoryService:
                 continue
             for item in result.get("situation_updates", []):
                 observation = item.get("observation")
-                if observation and (row["id"], observation) in candidates:
+                if (observation and item.get("evidence_use") != "current_request"
+                        and (row["id"], observation) in candidates):
                     observations.append(observation)
         return observations, complete
 
@@ -623,7 +625,7 @@ class MemoryService:
                 raise DomainError("invalid_evidence", "Orientation belongs to different input.")
             orientation = orientation_result(conn, self, principal, brain, turn)
         observations = [item["observation"] for item in orientation.get("situation_updates", [])
-                        if "observation" in item] if orientation else []
+                        if "observation" in item and item.get("evidence_use") != "current_request"] if orientation else []
         result, working, state = self._retrieval(conn, principal, brain, request["target"], query, plan, query_embedding, observations)
         if orientation:
             state["current_situation"] = orientation.get("situation_updates", [])

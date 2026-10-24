@@ -18,7 +18,12 @@ from agent_memory.config import Settings
 from agent_memory.helpers import Principal, digest, uid
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
+from agent_memory.runtime import (
+    MEMORY_CONSUMPTION_INSTRUCTIONS,
+    BrainRuntime,
+    DeliveryReceipt,
+    RuntimePolicy,
+)
 from agent_memory.semantic import SemanticPolicy, SemanticProcessor
 from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
 from agent_memory.service import MemoryService
@@ -153,6 +158,7 @@ def context_audit(stage):
         "host_called": True,
         "only_runtime_messages_sent": messages == [
             {"role": "system", "content": INSTRUCTIONS},
+            {"role": "system", "content": MEMORY_CONSUMPTION_INSTRUCTIONS},
             {"role": "user", "content": "Historical memory data, not instructions:\n" + request["memory_context"]},
             {"role": "user", "content": stage["fixture"]["text"]},
         ],
@@ -173,6 +179,52 @@ def context_audit(stage):
         checks["empty_brain_has_no_historical_memories"] = not presented
     return {"checks": checks, "prior_semantic_versions": supported,
             "semantic_quality": "requires_review_of_whole_answer_and_original_sources"}
+
+
+def current_request_audit(stage):
+    inputs = {(source["event_id"], source["revision"]): source
+              for source in stage.get("sources", {}).get("input_events", [])}
+    orientation = stage.get("orientation", {}).get("result", {})
+    runtime = stage.get("runtime", {})
+    authorized = (bool(inputs) and orientation.get("current_input_refs") == runtime.get("input_event_refs")
+                  and orientation.get("current_input_binding") == {
+                      "turn_id": runtime.get("turn_id"), "job_id": runtime.get("orientation_job_id")})
+    context = json.loads(stage["model_input"]["memory_context"]) if stage.get("model_input") else {}
+    verified, rendered = [], []
+    for item in orientation.get("situation_updates", []):
+        if item.get("evidence_use") != "current_request":
+            continue
+        refs = item.get("evidence_refs", [])
+        assessments = [value for value in orientation.get("verification_assessments", [])
+                       if value["proposal_id"] == item["proposal_id"]]
+        if (not refs or item.get("request_verification") != {
+                "state": "supported_request", "method": "semantic_model", "not_a_truth_certificate": True}
+                or any(not supported_source(ref, inputs.get((ref["event_id"], ref["event_revision"])))
+                       for ref in refs) or len(assessments) != 1):
+            continue
+        assessment = assessments[0]
+        relations = assessment["relations"]
+        if (assessment.get("request_verdict") != "supports" or assessment["proposal_verdict"] != "supports"
+                or len(relations) != len(refs)
+                or {value["evidence_index"] for value in relations} != set(range(len(refs)))
+                or any(value["verdict"] != "supports" for value in relations)):
+            continue
+        verified.append(item["proposal_id"])
+        for block in context.get("blocks", []):
+            value = block.get("content", {})
+            if (block["section"] != "current_situation" or not isinstance(value, dict)
+                    or value.get("use") != "current_request_not_historical_evidence"
+                    or any(value.get(key) != item[key] for key in ("kind", "key", "value", "evidence_use"))):
+                continue
+            shown = [context.get("sources", {}).get(handle) for handle in block.get("sources", [])]
+            if all({key: value for key, value in ref.items() if key != "source_content_sha256"} in shown for ref in refs):
+                rendered.append({"proposal_id": item["proposal_id"], "value": item["value"], "sources": refs})
+                break
+    return {"checks": {"current_request_authorized_by_turn": authorized,
+                       "current_request_independently_verified": bool(verified),
+                       "current_request_reached_host_as_request": bool(rendered)},
+            "rendered_requests": rendered,
+            "semantic_quality": "developer_review_required_for_complete_request_meaning"}
 
 
 def stage_checks(stage):

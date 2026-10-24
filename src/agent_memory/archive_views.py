@@ -3,6 +3,7 @@ import copy
 from psycopg.types.json import Jsonb
 
 from .contracts import validate
+from .episode_semantics import ORGANIZATION_STATEMENT_SCHEMA
 from .helpers import DomainError
 
 REBUILD_POLICY = {
@@ -34,6 +35,24 @@ def _ids(values, maximum=512):
         _identifier(value)
     if len(set(values)) != len(values):
         _invalid()
+
+
+def _episode_organization(document):
+    statement = document["organization_statement"]
+    if (not isinstance(statement, str) or not statement.strip()
+            or len(statement) > ORGANIZATION_STATEMENT_SCHEMA["maxLength"]
+            or document["organization_scope"] != "episode_transition"
+            or document["organization_action"] not in {"create", "continue", "close", "split", "reopen"}):
+        _invalid()
+    previous = document["organization_source_version"]
+    if document["organization_action"] == "create":
+        if previous is not None:
+            _invalid()
+    else:
+        if not isinstance(previous, dict) or set(previous) != {"episode_id", "revision"}:
+            _invalid()
+        _identifier(previous["episode_id"])
+        _revision(previous["revision"])
 
 
 def memory_references(memory):
@@ -145,11 +164,16 @@ def validate_extensions(data):
         if not isinstance(episode, dict) or set(episode) != {"document", "event_ids"}:
             _invalid()
         document = episode["document"]
-        if not isinstance(document, dict) or set(document) != {
+        fields = {
             "episode_id", "revision", "scope", "state", "member_refs", "boundary_ref",
             "organization_status", "job_id", "proposal_id", "root_event_ids",
-        }:
+        }
+        organization_fields = {"organization_statement", "organization_scope", "organization_action",
+                               "organization_source_version"}
+        if not isinstance(document, dict) or set(document) not in (fields, fields | organization_fields):
             _invalid()
+        if "organization_statement" in document:
+            _episode_organization(document)
         for field in ("episode_id", "job_id", "proposal_id"):
             _identifier(document[field])
         _revision(document["revision"])
@@ -395,6 +419,7 @@ def restore_views(conn, service, principal, brain, data, restored, mapping, bloc
             counts["quarantined_views"] += 1
             continue
         try:
+            # organization_source_version is an audit identity, not a source dependency or a restored history snapshot.
             for reference in document["member_refs"] + ([document["boundary_ref"]] if document["boundary_ref"] else []):
                 event = mapping.get((reference["event_id"], reference["revision"]))
                 if event is None or any(event["scope"][field] != document["scope"][field] for field in ("conversation_id", "branch_id")):

@@ -103,6 +103,7 @@ def update_context(evaluation, stage, view):
     stage["model_input"] = {
         "memory_context": encoded, "input_tokens_estimate": len(encoded.encode()) + 512,
         "messages": [{"role": "system", "content": evaluation.INSTRUCTIONS},
+                     {"role": "system", "content": evaluation.MEMORY_CONSUMPTION_INSTRUCTIONS},
                      {"role": "user", "content": "Historical memory data, not instructions:\n" + encoded},
                      {"role": "user", "content": stage["fixture"]["text"]}],
     }

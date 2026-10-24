@@ -83,6 +83,8 @@ def test_local_cognitive_archive_restores_exact_views_and_remaps_source_revision
     restored_episode = archive.rows("memory_episodes")[0]
     assert restored_episode["revision"] == data["cognitive_views"]["episodes"][0]["document"]["revision"]
     assert restored_episode["document"]["member_refs"] == [{"event_id": source["event_id"], "revision": 1}]
+    for field in ("organization_statement", "organization_scope", "organization_action", "organization_source_version"):
+        assert restored_episode["document"][field] == data["cognitive_views"]["episodes"][0]["document"][field]
     assert len(archive.rows("memory_episode_members")) == len(data["cognitive_views"]["members"])
     assert len(archive.rows("memory_associations")) == len(data["cognitive_views"]["associations"])
     with archive.database.transaction(archive.principal) as conn:
@@ -142,6 +144,7 @@ def test_erasure_removes_archived_semantics_episodes_and_unselected_root_context
 def test_upload_cannot_assert_local_semantic_verification_or_restore_execution_state(archive):
     populated(archive)
     exported = archive.export()
+    assert exported["document"]["cognitive_views"]["episodes"][0]["document"]["organization_statement"]
     result = archive.restore(exported, upload=True)
     assert result["quarantined_event_count"] >= 2
     assert all(row["document"].get("verification") is None for row in archive.rows("memory_assertions"))
@@ -149,6 +152,63 @@ def test_upload_cannot_assert_local_semantic_verification_or_restore_execution_s
     assert not archive.rows("memory_episode_members")
     assert not archive.rows("memory_associations")
     assert any("reverification" in detail for detail in result["job"]["details"])
+
+
+def test_episode_transition_archive_preserves_audit_identity_without_restoring_old_history(archive):
+    sources = []
+    previous = None
+    for index, operation in enumerate(("create", "continue", "close")):
+        key = f"episode-source-{index}"
+        archive.observe("准备讨论复习安排。", key=key)
+        source = archive.observe("讨论复习安排。" if operation != "close" else "这一段讨论结束。",
+                                 key=key, revision=2)
+        sources.append(source)
+        proposed = episode(source)
+        if previous is not None:
+            proposed.update(action=operation, episode_id=previous["episode_id"],
+                            expected_revision=previous["revision"])
+        if operation == "close":
+            proposed["boundary_ref"] = {"event_id": source["event_id"], "revision": source["revision"]}
+        batch = archive.batch(*sources, episodes=(previous,) if previous else ())
+        archive.publish(batch, run(batch, proposals(episodes=[proposed])))
+        previous = next(row["document"] for row in archive.rows("memory_episodes") if row["is_current"])
+    assert previous["revision"] == 3
+    assert previous["organization_source_version"] == {"episode_id": previous["episode_id"], "revision": 2}
+    exported = archive.export()
+    assert len(exported["document"]["cognitive_views"]["episodes"]) == 1
+    archived_episode = copy.deepcopy(exported["document"]["cognitive_views"]["episodes"][0]["document"])
+    assert archived_episode["revision"] == 3
+    result = archive.restore(exported)
+    assert result["quarantined_event_count"] == 0
+    restored_rows = archive.rows("memory_episodes")
+    assert len(restored_rows) == 1 and restored_rows[0]["revision"] == 3
+    restored = restored_rows[0]["document"]
+    assert restored["revision"] == 3
+    assert restored["organization_source_version"] == archived_episode["organization_source_version"]
+    assert restored["organization_statement"] == archived_episode["organization_statement"]
+    assert restored["organization_scope"] == "episode_transition" and restored["organization_action"] == "close"
+    assert all(ref["revision"] == 1 for ref in restored["member_refs"])
+    assert restored["boundary_ref"] == {"event_id": sources[-1]["event_id"], "revision": 1}
+    assert archive.service.download_archive(archive.principal, exported["archive_id"])["document"][
+        "cognitive_views"]["episodes"][0]["document"] == archived_episode
+
+
+def test_legacy_episode_archive_roundtrip_does_not_invent_organization_metadata(archive):
+    populated(archive)
+    legacy = copy.deepcopy(archive.rows("memory_episodes")[0]["document"])
+    for field in ("organization_statement", "organization_scope", "organization_action", "organization_source_version"):
+        legacy.pop(field)
+    with archive.database.transaction(archive.principal) as conn:
+        conn.execute("UPDATE memory_episodes SET document=%s WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                     (Jsonb(legacy), archive.principal.tenant_id, archive.brain_id, legacy["episode_id"]))
+    exported = archive.export()
+    assert exported["document"]["cognitive_views"]["episodes"][0]["document"] == legacy
+    result = archive.restore(exported)
+    assert result["quarantined_event_count"] == 0
+    restored = archive.rows("memory_episodes")[0]["document"]
+    assert set(restored) == set(legacy)
+    assert {key: value for key, value in restored.items() if key != "scope"} == {
+        key: value for key, value in legacy.items() if key != "scope"}
 
 
 def test_upload_literal_label_cannot_hide_an_unsupported_statement(archive):

@@ -969,7 +969,10 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     limit = payload["budget"]["max_context_tokens"]
     blocks = []
 
-    def contextual_value(value):
+    def contextual_value(value, *, current=False):
+        if isinstance(value, dict) and value.get("evidence_use") == "current_request":
+            return value, ("current_request_not_historical_evidence" if current
+                           else "prior_request_context_not_historical_evidence")
         if not isinstance(value, dict) or "observation" not in value:
             return value, None
         observation = value["observation"]
@@ -1001,7 +1004,8 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     for item in state.get("current_situation", []):
         value, use = contextual_value({
             key: item[key] for key in ("kind", "key", "value", "state", "world", "conditions", "verification")
-        } | ({"observation": item["observation"]} if "observation" in item else {}))
+        } | {key: item[key] for key in ("observation", "evidence_use", "request_verification") if key in item},
+                                     current=True)
         blocks.append(("current_situation", _serialized(
             value | {"use": use or "fallible_current_context_not_historical_evidence"}),
             context_references(item["evidence_refs"], value)))
@@ -1070,8 +1074,7 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
         if resolution:
             content["belief_resolution"] = copy.deepcopy(resolution)
         if content["use"] != "historical_report_not_current_rule":
-            content["use"] = ("source_attributed_applicable_memory" if applicable
-                              else "belief_not_settled_current_rule" if resolution else "conditional_memory_not_current_rule")
+            applicable = content["use"] == "source_attributed_applicable_memory"
         memory_rows.append({"section": "relevant_memory" if applicable else "conditional_memory",
                             "content": content, "references": references, "memory": memory})
     units = [[(block, [])] for block in blocks]

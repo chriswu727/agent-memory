@@ -3,6 +3,7 @@ import os
 from dataclasses import replace
 
 import pytest
+from psycopg.types.json import Jsonb
 from test_cognition import request
 from test_semantic import claim, episode, proposals, reference, run, situation
 
@@ -251,6 +252,10 @@ def test_episode_creation_references_actual_fragments_and_is_idempotent(memory):
     episodes = memory.rows("memory_episodes")
     assert len(episodes) == 1 and episodes[0]["state"] == "open"
     assert episodes[0]["document"]["member_refs"] == proposal["member_refs"]
+    assert episodes[0]["document"]["organization_statement"] == proposal["organization_statement"]
+    assert episodes[0]["document"]["organization_scope"] == "episode_transition"
+    assert episodes[0]["document"]["organization_action"] == "create"
+    assert episodes[0]["document"]["organization_source_version"] is None
     members = memory.rows("memory_episode_members")
     assert len(members) == 2 and {row["position"] for row in members} == {0, 1}
     assert all(row["role"] == "fragment" for row in members)
@@ -262,7 +267,7 @@ def test_episode_continue_close_and_reopen_use_exact_revisions(memory):
     memory.publish(initial, run(initial, proposals(episodes=[episode(first)])))
     previous = memory.rows("memory_episodes")[0]["document"]
     second = memory.observe("复习计划已经定好了。")
-    batch = memory.batch(second, episodes=(previous,))
+    batch = memory.batch(first, second, episodes=(previous,))
     action = episode(second, action="close", episode_id=previous["episode_id"], expected_revision=1,
                      boundary_ref={"event_id": second["event_id"], "revision": 1})
     memory.publish(batch, run(batch, proposals(episodes=[action])))
@@ -272,7 +277,7 @@ def test_episode_continue_close_and_reopen_use_exact_revisions(memory):
     with pytest.raises(DomainError, match="snapshot"):
         memory.publish(batch, run(batch, proposals(episodes=[action])))
     third = memory.observe("再补充一下昨天的复习计划。")
-    batch = memory.batch(third, episodes=(current,))
+    batch = memory.batch(first, second, third, episodes=(current,))
     action = episode(third, action="reopen", episode_id=current["episode_id"], expected_revision=2)
     memory.publish(batch, run(batch, proposals(episodes=[action])))
     current = next(row["document"] for row in memory.rows("memory_episodes") if row["is_current"])
@@ -293,6 +298,49 @@ def test_episode_split_closes_prefix_and_opens_suffix(memory):
     current = [row["document"] for row in memory.rows("memory_episodes") if row["is_current"]]
     assert {row["state"] for row in current} == {"open", "closed"}
     assert all(len(row["member_refs"]) == 1 for row in current)
+    assert all(row["organization_statement"] == action["organization_statement"] for row in current)
+    assert all(row["organization_scope"] == "episode_transition" and row["organization_action"] == "split"
+               for row in current)
+    assert all(row["organization_source_version"] == {"episode_id": previous["episode_id"], "revision": 1}
+               for row in current)
+
+
+def test_legacy_episode_without_organization_statement_remains_a_valid_frozen_parent(memory):
+    first = memory.observe("开始讨论复习计划。")
+    initial = memory.batch(first)
+    memory.publish(initial, run(initial, proposals(episodes=[episode(first)])))
+    previous = copy.deepcopy(memory.rows("memory_episodes")[0]["document"])
+    for field in ("organization_statement", "organization_scope", "organization_action", "organization_source_version"):
+        previous.pop(field)
+    with memory.database.transaction(memory.principal) as conn:
+        conn.execute("UPDATE memory_episodes SET document=%s WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                     (Jsonb(previous), memory.principal.tenant_id, memory.brain_id, previous["episode_id"]))
+    second = memory.observe("接着讨论数学复习安排。")
+    batch = memory.batch(first, second, episodes=(previous,))
+    action = episode(second, action="continue", episode_id=previous["episode_id"], expected_revision=1,
+                     organization_statement="后续数学复习讨论延续了已有的复习计划话题。")
+    result = run(batch, proposals(episodes=[action]))
+    assert result.status == "completed" and len(result.episode_actions) == 1
+    memory.publish(batch, result)
+    rows = memory.rows("memory_episodes")
+    assert next(row["document"] for row in rows if row["revision"] == 1) == previous
+    current = next(row["document"] for row in rows if row["is_current"])
+    assert current["revision"] == 2
+    assert current["organization_statement"] == action["organization_statement"]
+    assert current["organization_source_version"] == {"episode_id": previous["episode_id"], "revision": 1}
+
+
+def test_consolidation_cannot_publish_current_request_even_with_authorized_batch_refs(memory):
+    source = memory.observe("你还记得我们约好去海边吗？")
+    batch = memory.batch(source, current_input_refs=({"event_id": source["event_id"], "revision": 1},))
+    update = situation(source, value="核实是否存在过去的海边约定。", evidence_use="current_request")
+    result = run(batch, proposals(updates=[update]))
+    assert len(result.situation_updates) == 1
+    with pytest.raises(DomainError) as error:
+        memory.publish(batch, result)
+    assert error.value.code == "invalid_evidence"
+    assert memory.rows("memory_assertions") == []
+    assert memory.rows("memory_working_states") == []
 
 
 def test_episode_conflict_rolls_back_claims_published_in_same_transaction(memory):

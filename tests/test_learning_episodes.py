@@ -1,16 +1,18 @@
 import copy
+import json
 
 import httpx
 import pytest
 from psycopg.types.json import Jsonb
 from test_learning import learning as learning
-from test_semantic import episode, proposals, run
+from test_semantic import encoded, episode, proposals, run, verifier
 
 from agent_memory.client import MemoryActionError, default_budget
 from agent_memory.consolidation import publish_semantic
 from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.learning import validate_snapshot
-from agent_memory.semantic import CognitiveBatch
+from agent_memory.jobs import JobStore
+from agent_memory.learning import LearningEngine, validate_snapshot
+from agent_memory.semantic import CognitiveBatch, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 
@@ -34,6 +36,47 @@ def organize(harness, receipt, previous=None):
             "SELECT document FROM memory_episodes WHERE tenant_id=%s AND brain_id=%s AND id=%s AND revision=%s",
             (harness.principal.tenant_id, harness.brain, version["episode_id"], version["revision"]),
         ).fetchone()["document"]
+
+
+def test_production_neighborhood_supplies_complete_episode_sources_for_continuation(learning):
+    old_receipt = learning.observe("开始讨论复习计划。")
+    previous = organize(learning, old_receipt)
+    receipt = learning.observe("接着讨论数学复习安排。")
+    expected_ids = set(old_receipt["accepted_event_ids"] + receipt["accepted_event_ids"])
+    calls = []
+
+    def propose(request):
+        calls.append(request.phase)
+        data = json.loads(request.messages[-1]["content"])
+        assert data["episodes"] == [previous]
+        assert expected_ids <= {source["event_id"] for source in data["sources"]}
+        current = next(source for source in data["sources"] if source["event_id"] == receipt["accepted_event_ids"][0])
+        action = episode(current, action="continue", episode_id=previous["episode_id"], expected_revision=1,
+                         organization_statement="后续数学复习讨论延续了已有的复习计划话题。")
+        return encoded(proposals(episodes=[action]))
+
+    def verify(request):
+        calls.append(request.phase)
+        candidate = json.loads(request.messages[-1]["content"])["proposals"][0]
+        assert {item["source"]["event_id"] for item in candidate["evidence"]} == expected_ids
+        assert candidate["episode_context"]["prior_member_refs"] == previous["member_refs"]
+        return verifier(request)
+
+    learning.service.semantic_processor = SemanticProcessor(propose, verify)
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        job_id = learning.service._job(conn, learning.principal, brain, "consolidate", {
+            "event_id": receipt["accepted_event_ids"][0], "revision": 1,
+            "target": {"conversation_ref": "chat", "branch_ref": "main"},
+            "through_sequence": receipt["durable_through_sequence"],
+        })["job_id"]
+    job = JobStore(learning.database).claim(learning.principal, learning.brain, worker_id=uid(), job_id=job_id)
+    LearningEngine(learning.service).semantic(learning.principal, learning.brain, job)
+    completed = learning.job(job_id)
+    assert completed["state"] == "completed"
+    assert completed["result"]["publication"]["episode_versions"] == [{"episode_id": previous["episode_id"], "revision": 2}]
+    assert expected_ids <= {ref["event_id"] for ref in completed["result"]["source_snapshot"]}
+    assert calls == ["proposal", "verification"]
 
 
 def test_reorganization_during_model_call_prevents_orientation_publication(learning):
