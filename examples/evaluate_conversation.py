@@ -7,7 +7,8 @@ import copy
 import hashlib
 import json
 import os
-from dataclasses import asdict
+import time
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -15,9 +16,11 @@ from jsonschema import Draft202012Validator
 from agent_memory.api import create_app
 from agent_memory.client import MemoryClient
 from agent_memory.config import Settings
+from agent_memory.contracts import validator
 from agent_memory.helpers import Principal, digest, uid
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine
+from agent_memory.orientation import ORIENTATION_ROUTE_VERSION
 from agent_memory.runtime import (
     MEMORY_CONSUMPTION_INSTRUCTIONS,
     BrainRuntime,
@@ -69,15 +72,22 @@ def fingerprints():
     root = Path(__file__).resolve().parents[1]
     for name in ("examples/evaluate_conversation.py", "examples/evaluation_host.py",
                  "src/agent_memory/runtime.py", "src/agent_memory/runtime_client.py",
-                 "src/agent_memory/turns.py", "src/agent_memory/source_candidates.py"):
+                 "src/agent_memory/turns.py", "src/agent_memory/source_candidates.py",
+                 "src/agent_memory/orientation.py"):
         result[name] = digest((root / name).read_text())
     return result
 
 
-def plan():
+def runtime_policy(orientation_policy="always"):
+    if orientation_policy not in {"always", "on_demand"}:
+        raise ValueError("Unknown orientation policy")
+    return replace(RUNTIME_POLICY, orientation_policy=orientation_policy)
+
+
+def plan(orientation_policy="always"):
     return {"model": MODEL, "thinking": "enabled", "synthetic_only": True,
             "fixtures": list(FIXTURES), "instructions": INSTRUCTIONS,
-            "semantic_policy": asdict(SEMANTIC_POLICY), "runtime_policy": asdict(RUNTIME_POLICY),
+            "semantic_policy": asdict(SEMANTIC_POLICY), "runtime_policy": asdict(runtime_policy(orientation_policy)),
             "max_calls": MAX_CALLS, "max_reserved_output_tokens": MAX_OUTPUT_TOKENS,
             "host_max_output_tokens": 4096, "host_timeout_seconds": 180,
             "semantic_jobs": "at most one new consolidation job on each of learn/change",
@@ -92,10 +102,10 @@ def safe_error(error):
             and code.replace("_", "").isalnum() and len(code) <= 80 else None}
 
 
-def source_snapshot(service, principal, brain_id):
+def source_snapshot(service, principal, brain_id, *, limit=128):
     with service.database.transaction(principal) as conn:
         brain = service._brain(conn, principal, brain_id)
-        return service._events(conn, principal, brain, limit=128)
+        return service._events(conn, principal, brain, limit=limit)
 
 
 def memory_version(value):
@@ -154,6 +164,7 @@ def context_audit(stage):
             supported.append({"memory_version": {"memory_id": key[0], "revision": key[1]},
                               "statement": memory["statement"], "prior_user_supports": supports})
     messages = request["messages"]
+    policy = stage.get("runtime_policy", asdict(RUNTIME_POLICY))
     checks = {
         "host_called": True,
         "only_runtime_messages_sent": messages == [
@@ -166,8 +177,8 @@ def context_audit(stage):
         "current_input_not_historical": all(
             source_refs.get(handle, {}).get("event_id") not in current_ids
             for block in historical for handle in block.get("sources", [])),
-        "input_within_budget": request["input_tokens_estimate"] <= RUNTIME_POLICY.max_input_tokens,
-        "memory_within_budget": len(request["memory_context"].encode()) <= RUNTIME_POLICY.memory_context_tokens,
+        "input_within_budget": request["input_tokens_estimate"] <= policy["max_input_tokens"],
+        "memory_within_budget": len(request["memory_context"].encode()) <= policy["memory_context_tokens"],
     }
     if stage["name"] in {"recall", "recall_change"}:
         checks["prior_semantic_memory_reached_host"] = bool(supported)
@@ -227,6 +238,67 @@ def current_request_audit(stage):
             "semantic_quality": "developer_review_required_for_complete_request_meaning"}
 
 
+def skipped_request_audit(stage):
+    request = stage.get("model_input") or {}
+    try:
+        context = json.loads(request["memory_context"])
+        has_derived_request = any(
+            isinstance(block.get("content"), dict) and block["content"].get("evidence_use") == "current_request"
+            for block in context["blocks"])
+        direct = request["messages"][-1] == {"role": "user", "content": stage["fixture"]["text"]}
+    except (KeyError, IndexError, TypeError, ValueError):
+        direct, has_derived_request = False, True
+    return {"state": "not_derived", "checks": {
+        "skipped_orientation_kept_original_user_request": direct,
+        "skipped_orientation_has_no_verified_request_inference": not has_derived_request},
+        "semantic_quality": "Original input delivery is not verified intent extraction or working-state equivalence."}
+
+
+def orientation_audit(stage):
+    runtime = stage.get("runtime", {})
+    route = runtime.get("orientation_route")
+    policy = stage.get("runtime_policy", {}).get("orientation_policy", "always")
+    checks = {"orientation_route_matches_frozen_policy": policy == "always" if route is None else
+              isinstance(route, dict) and route.get("policy") == policy}
+    audit = {"route": copy.deepcopy(route), "semantic_orientation": "performed", "checks": checks}
+    if route is None:
+        return audit
+    valid = validator("OrientationRoute").is_valid(route)
+    checks["orientation_route_schema_valid"] = valid
+    if not isinstance(route, dict) or route.get("decision") != "skip":
+        return audit
+    ran_orientation = bool(runtime.get("orientation_job_id") or stage.get("orientation")
+                           or any(call.get("role") == "orient" for call in stage.get("cognitive_calls", [])))
+    audit["semantic_orientation"] = "performed_despite_skip" if ran_orientation else "not_run"
+    assessment = route.get("assessment") or {}
+    preflight = stage.get("orientation_preflight") or {}
+    request = preflight.get("request") or {}
+    sources = stage.get("sources", {}).get("input_events", [])
+    refs = runtime.get("input_event_refs", [])
+    bound = bool(refs) and refs == [{"event_id": source["event_id"], "revision": source["revision"]}
+                                  for source in sources]
+    fingerprint = digest([runtime.get("turn_id"), runtime.get("conversation_id"), runtime.get("branch_id"), refs])
+    checks.update({
+        "orientation_skip_has_bound_server_assessment": valid and isinstance(assessment, dict)
+        and assessment.get("version") == ORIENTATION_ROUTE_VERSION and assessment.get("decision") == "skip"
+        and route.get("reasons") == assessment.get("reasons") == ["no_contextual_dependencies"]
+        and bound and assessment.get("input_fingerprint") == fingerprint
+        and preflight.get("assessment") == assessment,
+        "orientation_skip_preflight_scope_matches_turn": request.get("action") == "prepare"
+        and request.get("target") == {"brain_ref": runtime.get("brain_id"),
+                                       "conversation_ref": runtime.get("conversation_id"),
+                                       "branch_ref": runtime.get("branch_id")}
+        and request.get("payload", {}).get("turn_id") == runtime.get("turn_id")
+        and request.get("payload", {}).get("assess_orientation") is True
+        and request.get("payload", {}).get("evidence_mode") == "prior_record_check"
+        and request.get("payload", {}).get("latest_input_event_ids") == [ref["event_id"] for ref in refs],
+        "orientation_skip_created_no_orientation_job_or_call": not ran_orientation,
+        "orientation_skip_used_no_model_recall_plan": runtime.get("recall_plan") is None
+        and runtime.get("recall_model_calls") == 0,
+    })
+    return audit
+
+
 def stage_checks(stage):
     output = stage.get("sources", {}).get("output_events", [])
     inputs = stage.get("sources", {}).get("input_events", [])
@@ -234,8 +306,6 @@ def stage_checks(stage):
     generated = stage.get("model_output")
     checks = {**context_audit(stage)["checks"],
               "turn_completed": stage.get("runtime", {}).get("stage") == "completed",
-              "orientation_completed_without_rejections": stage.get("orientation", {}).get("state") == "completed"
-              and stage.get("orientation", {}).get("result", {}).get("status") == "completed",
               "input_persisted_exactly": len(inputs) == 1
               and inputs[0]["observed"]["content"]["text"] == stage["fixture"]["text"],
               "model_answer_delivered_and_persisted": isinstance(generated, str) and bool(generated)
@@ -243,6 +313,11 @@ def stage_checks(stage):
               and output[0]["observed"]["delivery_state"] == "delivered"
               and output[0]["observed"]["content"]["text"] == generated,
               "no_execution_error": stage.get("error") is None}
+    routed = orientation_audit(stage)
+    checks.update(routed["checks"])
+    if routed["semantic_orientation"] != "not_run":
+        checks["orientation_completed_without_rejections"] = stage.get("orientation", {}).get("state") == "completed" \
+            and stage.get("orientation", {}).get("result", {}).get("status") == "completed"
     if stage["fixture"]["learn"]:
         jobs = stage.get("learning_jobs", [])
         checks["one_new_consolidation_job_executed"] = len(jobs) == 1
@@ -260,10 +335,15 @@ def stage_checks(stage):
 
 
 class ConversationTrial:
-    def __init__(self, output, report, database, provider, host, meter):
+    def __init__(self, output, report, database, provider, host, meter, *, runtime_factory=None,
+                 service_factory=None, source_limit=128):
         self.output, self.report, self.database = output, report, database
         self.provider, self.host, self.meter = provider, host, meter
         self.principal = Principal(**report["principal"])
+        self.runtime_factory = runtime_factory or BrainRuntime
+        self.service_factory = service_factory
+        self.policy = RuntimePolicy(**report.get("plan", {}).get("runtime_policy", asdict(RUNTIME_POLICY)))
+        self.source_limit = source_limit
         self.current = None
         self.role = "orient"
 
@@ -341,7 +421,9 @@ class ConversationTrial:
             self.save()
 
     def run_stage(self, fixture):
-        stage = {"name": fixture["name"], "fixture": copy.deepcopy(fixture), "state": "started"}
+        started = time.monotonic()
+        stage = {"name": fixture["name"], "fixture": copy.deepcopy(fixture), "state": "started",
+                 "runtime_policy": asdict(self.policy), "timings": {}}
         required = {"recall": {"learn"}, "recall_change": {"learn", "change"}}.get(fixture["name"], set())
         stage["required_history"] = [event["event_id"] for previous in self.report["stages"]
                                      if previous["name"] in required
@@ -349,8 +431,9 @@ class ConversationTrial:
         self.report["stages"].append(stage)
         self.current, self.role = stage, "orient"
         self.save()
-        service = MemoryService(self.database, semantic_processor=SemanticProcessor(
-            self.cognition, self.cognition, SEMANTIC_POLICY))
+        service = (self.service_factory(self.database) if self.service_factory else
+                   MemoryService(self.database, semantic_processor=SemanticProcessor(
+                       self.cognition, self.cognition, SEMANTIC_POLICY)))
         token = uid()
         settings = Settings(database_url=self.database.dsn,
                             api_keys={hashlib.sha256(token.encode()).hexdigest(): self.principal})
@@ -364,27 +447,35 @@ class ConversationTrial:
                 stage["brain_id"] = brain_id
                 trial = Trial(service, self.principal, brain_id)
                 stage["before"] = {"documents": trial.documents(),
-                                   "sources": source_snapshot(service, self.principal, brain_id)}
+                                   "sources": source_snapshot(service, self.principal, brain_id, limit=self.source_limit)}
                 previous_jobs = {job["id"] for job in JobStore(self.database).list(self.principal, brain_id, limit=200)}
-                runtime = BrainRuntime(memory, self.generate, deliver=self.deliver,
-                                       instructions=INSTRUCTIONS, policy=RUNTIME_POLICY)
+                runtime = self.runtime_factory(memory, self.generate, deliver=self.deliver,
+                                       instructions=INSTRUCTIONS, policy=self.policy)
                 stage["capabilities"] = runtime.capabilities()
                 self.save()
                 try:
-                    result = runtime.respond(fixture["text"], message_id=fixture["name"],
-                                             conversation_id="conversation-" + fixture["name"])
+                    runtime_started = time.monotonic()
+                    try:
+                        result = runtime.respond(fixture["text"], message_id=fixture["name"],
+                                                 conversation_id="conversation-" + fixture["name"])
+                    finally:
+                        stage["timings"]["runtime_seconds"] = round(time.monotonic() - runtime_started, 6)
                     stage["turn"] = asdict(result)
                     stage["runtime"] = runtime.journal.get(result.turn_id)
                     stage["sources"] = runtime.journal.sources(result.turn_id)
                     if fixture["name"] == "recall":
                         before = self.meter.summary()
-                        fresh = BrainRuntime(memory, self.generate, deliver=self.deliver,
-                                             instructions=INSTRUCTIONS, policy=RUNTIME_POLICY)
+                        fresh = self.runtime_factory(memory, self.generate, deliver=self.deliver,
+                                             instructions=INSTRUCTIONS, policy=self.policy)
                         replay = fresh.resume(result.turn_id)
                         stage["replay"] = {"result": asdict(replay), "checks_passed": replay.replayed
                                            and replay.text == result.text and self.meter.summary() == before}
                     if fixture["learn"]:
-                        self.learn(service, brain_id, previous_jobs)
+                        learning_started = time.monotonic()
+                        try:
+                            self.learn(service, brain_id, previous_jobs)
+                        finally:
+                            stage["timings"]["learning_seconds"] = round(time.monotonic() - learning_started, 6)
                 except Exception as error:
                     stage["error"] = safe_error(error)
                     rows = runtime.journal.list()
@@ -393,13 +484,23 @@ class ConversationTrial:
                         stage["runtime"] = row
                         stage["sources"] = runtime.journal.sources(row["turn_id"])
                 stage["after"] = {"documents": trial.documents(),
-                                  "sources": source_snapshot(service, self.principal, brain_id),
+                                  "sources": source_snapshot(service, self.principal, brain_id, limit=self.source_limit),
                                   "jobs": JobStore(self.database).list(self.principal, brain_id, limit=200)}
                 if stage.get("runtime", {}).get("orientation_job_id"):
                     stage["orientation"] = trial.job_result(stage["runtime"]["orientation_job_id"])
+                if stage.get("runtime", {}).get("orientation_route"):
+                    with self.database.transaction(self.principal) as conn:
+                        saved = conn.execute(
+                            "SELECT orientation_preflight FROM memory_runtime_turns "
+                            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s",
+                            (self.principal.tenant_id, self.principal.principal_id, brain_id,
+                             stage["runtime"]["turn_id"])).fetchone()
+                        stage["orientation_preflight"] = saved["orientation_preflight"] if saved else None
         stage["context_audit"] = context_audit(stage)
+        stage["orientation_audit"] = orientation_audit(stage)
         stage["checks"] = stage_checks(stage)
         stage["answer_review"] = {"status": "pending_developer_review", "rubric": fixture["review"]}
+        stage["timings"]["total_seconds"] = round(time.monotonic() - started, 6)
         stage["state"] = "finished"
         self.save()
 
@@ -410,10 +511,11 @@ def main():
     modes.add_argument("--plan", action="store_true", help="Show the frozen experiment without I/O or API calls")
     modes.add_argument("--live", action="store_true", help="Authorize this bounded paid experiment")
     modes.add_argument("--resume", action="store_true", help="Read the saved report only; never spend again")
+    parser.add_argument("--orientation-policy", choices=("always", "on_demand"), default="always")
     parser.add_argument("--output", type=Path, default=Path(".local/deepseek-conversation"))
     args = parser.parse_args()
     if args.plan:
-        print(json.dumps(plan(), ensure_ascii=False, indent=2))
+        print(json.dumps(plan(args.orientation_policy), ensure_ascii=False, indent=2))
         return
     if args.resume:
         saved = json.loads((args.output / "report.json").read_text())
@@ -429,7 +531,8 @@ def main():
     if not key:
         parser.error("DEEPSEEK_API_KEY must be configured locally")
     args.output.mkdir(parents=True, mode=0o700, exist_ok=False)
-    report = {"version": 1, "state": "started", "plan": plan(), "plan_sha256": digest(plan()),
+    planned = plan(args.orientation_policy)
+    report = {"version": 1, "state": "started", "plan": planned, "plan_sha256": digest(planned),
               "code_fingerprints": fingerprints(), "principal": asdict(Principal(uid(), uid())),
               "brains": {}, "stages": [], "limitations": [
                   "Synthetic small sample, not a long-term benchmark or human-neuron simulation.",

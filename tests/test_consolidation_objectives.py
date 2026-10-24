@@ -18,6 +18,8 @@ def install_instance_learning(learning):
     def propose(request):
         data = json.loads(request.messages[-1]["content"])
         snapshots.append(data)
+        if data.get("proposal_mode") == "orient-v1":
+            return encoded({"situation_updates": []})
         if len(snapshots) == 1:
             items = [claim(source, proposal_id=f"instance-{index}",
                            statement=source["observed"]["content"]["text"], memory_kind="episodic",
@@ -97,7 +99,9 @@ def test_orientation_does_not_schedule_cross_instance_organization(learning):
     assert job["state"] == "completed"
     assert job["result"]["consolidation_plan"]["candidate_count"] == 1
     assert job["result"]["consolidation_plan"]["objectives"] == []
-    assert snapshots[-1]["consolidation_plan"]["objectives"] == []
+    assert "consolidation_plan" not in snapshots[-1]
+    assert job["result"]["status"] == "completed"
+    assert job["result"]["learning_outcome"] == "no_proposals"
 
 
 def test_completed_nonwindow_job_with_failed_verifier_does_not_suppress_retry(learning):

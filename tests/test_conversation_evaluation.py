@@ -11,7 +11,7 @@ from test_cognition import event
 
 from agent_memory import cognition
 from agent_memory.config import Settings
-from agent_memory.helpers import Principal, uid
+from agent_memory.helpers import Principal, digest, uid
 from agent_memory.storage import Database
 
 
@@ -172,6 +172,95 @@ def test_degraded_orientation_is_not_hidden_by_successful_delivery(evaluation):
     assert not checks["orientation_completed_without_rejections"]
 
 
+def test_skipped_orientation_does_not_claim_verified_current_intent(evaluation):
+    stage = context_stage(evaluation)
+    audit = evaluation.skipped_request_audit(stage)
+    assert audit["state"] == "not_derived"
+    assert all(audit["checks"].values())
+    assert "current_request_independently_verified" not in audit["checks"]
+    stage["model_input"]["messages"][-1]["content"] = "A paraphrase that drops part of the question"
+    assert not evaluation.skipped_request_audit(stage)["checks"]["skipped_orientation_kept_original_user_request"]
+    view = json.loads(stage["model_input"]["memory_context"])
+    view["blocks"].append({"section": "current_situation", "content": {"evidence_use": "current_request"}})
+    update_context(evaluation, stage, view)
+    assert not evaluation.skipped_request_audit(stage)["checks"][
+        "skipped_orientation_has_no_verified_request_inference"]
+
+
+def skip_stage(evaluation):
+    stage = context_stage(evaluation)
+    stage.pop("orientation")
+    stage["runtime_policy"] = asdict(evaluation.runtime_policy("on_demand"))
+    row = stage["runtime"]
+    row.update(turn_id="turn", brain_id="brain", conversation_id="conversation", branch_id="main",
+               input_event_refs=[{"event_id": item["event_id"], "revision": item["revision"]}
+                                 for item in stage["sources"]["input_events"]],
+               orientation_job_id=None, recall_model_calls=0, recall_plan=None)
+    assessment = {"version": "orientation-route-v1", "decision": "skip", "reasons": ["no_contextual_dependencies"],
+                  "input_fingerprint": digest(["turn", "conversation", "main", row["input_event_refs"]]),
+                  "dependency_fingerprint": digest("test dependencies"), "snapshot": {
+                      "scope_generation": 1, "dependency_generation": 0, "durable_sequence": 2,
+                      "indexed_sequence": 1, "working_revision": 0}}
+    row["orientation_route"] = {"version": "orientation-route-v1", "policy": "on_demand", "decision": "skip",
+                                "reasons": ["no_contextual_dependencies"], "assessment": assessment}
+    stage["orientation_preflight"] = {"assessment": copy.deepcopy(assessment), "request": {
+        "action": "prepare", "target": {"brain_ref": "brain", "conversation_ref": "conversation", "branch_ref": "main"},
+        "payload": {"turn_id": "turn", "assess_orientation": True, "evidence_mode": "prior_record_check",
+                    "latest_input_event_ids": [ref["event_id"] for ref in row["input_event_refs"]]}}}
+    return stage
+
+
+def test_safe_skip_is_a_routing_success_and_never_semantic_orientation_success(evaluation):
+    stage = skip_stage(evaluation)
+    audit = evaluation.orientation_audit(stage)
+    assert audit["semantic_orientation"] == "not_run"
+    assert all(audit["checks"].values())
+    assert all(evaluation.stage_checks(stage).values())
+    assert "orientation_completed_without_rejections" not in evaluation.stage_checks(stage)
+    assert "orientation" not in stage
+
+
+@pytest.mark.parametrize("damage", ["policy", "version", "decision", "reason", "preflight", "fingerprint",
+                                  "scope", "source", "evidence_mode", "orientation_job", "call", "recall"])
+def test_skip_needs_exact_server_assessment_bound_to_actual_input_and_no_orientation(evaluation, damage):
+    stage = skip_stage(evaluation)
+    row, preflight = stage["runtime"], stage["orientation_preflight"]
+    route = row["orientation_route"]
+    if damage == "policy":
+        stage["runtime_policy"]["orientation_policy"] = "always"
+    elif damage == "version":
+        route["version"] = "other-version"
+    elif damage == "decision":
+        route["assessment"]["decision"] = "orient"
+    elif damage == "reason":
+        route["assessment"]["reasons"] = ["conditional_memory"]
+    elif damage == "preflight":
+        stage.pop("orientation_preflight")
+    elif damage == "fingerprint":
+        route["assessment"]["input_fingerprint"] = digest("another turn")
+    elif damage == "scope":
+        preflight["request"]["target"]["brain_ref"] = "another-brain"
+    elif damage == "source":
+        stage["sources"]["input_events"][0]["revision"] = 2
+    elif damage == "evidence_mode":
+        preflight["request"]["payload"]["evidence_mode"] = "ordinary"
+    elif damage == "orientation_job":
+        row["orientation_job_id"] = "unexpected-job"
+    elif damage == "call":
+        stage["cognitive_calls"] = [{"role": "orient", "state": "failed"}]
+    else:
+        row["recall_model_calls"] = 1
+    assert not all(evaluation.orientation_audit(stage)["checks"].values())
+
+
+def test_claimed_skip_cannot_hide_an_actual_partial_orientation(evaluation):
+    stage = skip_stage(evaluation)
+    stage["orientation"] = {"state": "completed", "result": {"status": "partial"}}
+    assert evaluation.orientation_audit(stage)["semantic_orientation"] == "performed_despite_skip"
+    assert not evaluation.stage_checks(stage)["orientation_completed_without_rejections"]
+    assert stage["orientation"]["result"]["status"] == "partial"
+
+
 @pytest.mark.parametrize("damage", ["delivery", "stored_text", "draft", "duplicate", "no_output"])
 def test_delivery_check_requires_one_exact_persisted_delivered_answer(evaluation, damage):
     stage = context_stage(evaluation)
@@ -201,13 +290,16 @@ def test_partial_learning_is_not_a_successful_conversation_memory_test(evaluatio
 
 
 @pytest.mark.integration
-def test_real_http_runtime_persists_answer_and_empty_learning_stays_a_failed_memory_test(evaluation, tmp_path):
+@pytest.mark.parametrize("orientation_policy", ["always", "on_demand"])
+def test_real_http_runtime_persists_answer_and_empty_learning_stays_a_failed_memory_test(
+        evaluation, tmp_path, orientation_policy):
     try:
         settings = Settings.from_env()
     except ValueError:
         pytest.skip("A dedicated PostgreSQL database is required")
     database = Database(settings.database_url, settings.migration_database_url)
-    report = {"principal": asdict(Principal(uid(), uid())), "brains": {}, "stages": []}
+    report = {"principal": asdict(Principal(uid(), uid())), "brains": {}, "stages": [],
+              "plan": {"runtime_policy": asdict(evaluation.runtime_policy(orientation_policy))}}
     cognitive_calls, host_calls = [], []
 
     class Meter:
@@ -235,7 +327,13 @@ def test_real_http_runtime_persists_answer_and_empty_learning_stays_a_failed_mem
     assert learned["state"] == "finished"
     assert learned.get("error") is None
     assert learned["checks"]["turn_completed"]
-    assert learned["checks"]["orientation_completed_without_rejections"]
+    if orientation_policy == "always":
+        assert learned["checks"]["orientation_completed_without_rejections"]
+    else:
+        assert learned["orientation_audit"]["semantic_orientation"] == "not_run"
+        assert all(learned["orientation_audit"]["checks"].values())
+        assert learned["runtime"]["orientation_job_id"] is None
+        assert "orientation_completed_without_rejections" not in learned["checks"]
     assert learned["checks"]["model_answer_delivered_and_persisted"]
     assert learned["checks"]["one_new_consolidation_job_executed"]
     assert learned["checks"]["learning_completed_without_rejections"]

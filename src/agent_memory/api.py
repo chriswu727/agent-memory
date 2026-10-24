@@ -76,6 +76,25 @@ class RuntimeAdvance(RuntimeLeaseMutation):
     durable_sequence: RuntimeCounter | None = None
     context_tokens: RuntimeCounter | None = None
     recall_plan: dict | None = None
+    response_review_policy: RuntimeFingerprint | None = None
+    orientation_route: dict | None = None
+
+
+class RuntimeResponseReviewReservation(RuntimeLeaseMutation):
+    policy_fingerprint: RuntimeFingerprint
+    request_fingerprint: RuntimeFingerprint
+    draft_sha256: RuntimeFingerprint
+
+
+class RuntimeResponseReviewCompletion(RuntimeLeaseMutation):
+    request_fingerprint: RuntimeFingerprint
+    status: Literal["approved", "rejected", "inconclusive"]
+    issue_codes: Annotated[list[Literal[
+        "current_input_misread", "unsupported_memory_claim", "applicability_override", "uncertainty_erased",
+        "unconfirmed_action", "uncertain_current_input_fidelity", "uncertain_memory_fidelity",
+        "uncertain_applicability", "uncertain_uncertainty", "uncertain_action_claims",
+        "incomplete_review", "review_unavailable",
+    ]], Field(max_length=16)]
 
 
 class RuntimeRecallReservation(RuntimeLeaseMutation):
@@ -104,6 +123,10 @@ def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
     result = {key: value for key, value in record.items() if key in allowed}
     if result.get("recall_plan") is not None:
         validate("RecallPlan", result["recall_plan"])
+    if result.get("response_review") is not None:
+        validate("ResponseReview", result["response_review"])
+    if result.get("orientation_route") is not None:
+        validate("OrientationRoute", result["orientation_route"])
     for field in ("input_event_refs", "output_event_refs", "context_event_refs", "unavailable_event_refs"):
         if field in result:
             result[field] = [
@@ -260,6 +283,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             "version_conflict": 409, "idempotency_conflict": 409,
             "lease_conflict": 409, "stage_conflict": 409, "turn_terminal": 409,
             "source_unavailable": 409, "context_stale": 409,
+            "response_review_required": 409, "response_review_uncertain": 409, "response_review_blocked": 409,
             "dependency_unavailable": 503, "budget_exceeded": 413,
         }.get(error.code, 422)
         return JSONResponse({"error": error.as_dict()}, status_code=status)
@@ -319,6 +343,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         fields = {
             "brain_id", "durable_sequence", "indexed_sequence", "dependency_generation",
             "scope_generation", "turn_count", "active_lease_count", "stage_counts", "pending_job_count",
+            "response_review_counts", "response_review_calls",
         }
         return {key: value for key, value in result.items() if key in fields}
 
@@ -408,6 +433,26 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         from starlette.concurrency import run_in_threadpool
 
         result = await run_in_threadpool(turn_store().reserve_recall, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/response-review/reserve")
+    async def reserve_turn_response_review(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeResponseReviewReservation)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().reserve_response_review, principal, brain_id, turn_id, **body)
+        return runtime_metadata(result)
+
+    @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/response-review/complete")
+    async def complete_turn_response_review(
+        brain_id: str, turn_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeResponseReviewCompletion)
+        from starlette.concurrency import run_in_threadpool
+
+        result = await run_in_threadpool(turn_store().complete_response_review, principal, brain_id, turn_id, **body)
         return runtime_metadata(result)
 
     @app.post("/v1/brains/{brain_id}/runtime/turns/{turn_id}/output")

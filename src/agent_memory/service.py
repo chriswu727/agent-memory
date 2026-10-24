@@ -592,7 +592,7 @@ class MemoryService:
     def _recall(self, conn, principal, brain, request, query_embedding=None):
         return self._retrieval(conn, principal, brain, request["target"], request["payload"], query_embedding=query_embedding)[0]
 
-    def _prepare(self, conn, principal, brain, request, query_embedding=None):
+    def _prepare(self, conn, principal, brain, request, query_embedding=None, *, persist_preflight=True):
         payload = request["payload"]
         if ("expected_dependency_generation" in payload
                 and payload["expected_dependency_generation"] != brain["dependency_generation"]):
@@ -615,6 +615,15 @@ class MemoryService:
             (*self._params(principal, brain["id"]), payload["turn_id"]),
         ).fetchone()
         orientation = None
+        if payload.get("assess_orientation"):
+            if (not turn or (turn["conversation_id"], turn["branch_id"]) != (
+                    request["target"].get("conversation_ref"), request["target"].get("branch_ref"))
+                    or not turn["input_event_refs"]
+                    or sorted(payload["latest_input_event_ids"]) != sorted(
+                        ref["event_id"] for ref in turn["input_event_refs"])
+                    or any(lookup[ref["event_id"]]["revision"] != ref["revision"]
+                           for ref in turn["input_event_refs"] if ref["event_id"] in lookup)):
+                raise DomainError("invalid_evidence", "Orientation assessment requires the bound turn input and scope.")
         if turn and turn["orientation_job_id"]:
             from .learning import orientation_result
 
@@ -638,6 +647,22 @@ class MemoryService:
             capabilities["guarantee_level"] = "partial_automation"
         capabilities["limitations"].append("Lifecycle guarantees have not been independently verified by this service.")
         packet = cognition.prepare(self._scope(principal, brain, request["target"]), safe_payload, working, result, state)
+        if payload.get("assess_orientation"):
+            from .orientation import assess_orientation
+
+            assessment = assess_orientation(
+                turn, working, state, planned=plan is not None,
+                embedded=self.embedding_provider is not None or query_embedding is not None,
+                historical=payload.get("evidence_mode") == "prior_record_check",
+            )
+            packet["orientation_assessment"] = assessment
+            if turn["stage"] == "captured" and persist_preflight:
+                conn.execute(
+                    "UPDATE memory_runtime_turns SET orientation_preflight=%s "
+                    "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s",
+                    (Jsonb({"assessment": assessment, "request": request}),
+                     *self._params(principal, brain["id"]), turn["turn_id"]),
+                )
         self._save_traces(conn, principal, brain, packet.get("recall_traces", []))
         return packet
 

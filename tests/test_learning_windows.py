@@ -137,7 +137,9 @@ def test_byte_boundary_accepts_exact_prefix_and_keeps_next_input_at_one_byte_les
         sources = learning.service._events(conn, learning.principal, brain,
                                            event_ids=[receipt["accepted_event_ids"][0] for receipt in receipts])
         working = learning.service._working(conn, learning.principal, brain, current["payload"]["target"], sources)
-        data = proposal_data(sources, (), working, (), {}, ())
+        data = proposal_data(sources, (), working, (), {}, (),
+                             learning_input_refs=[{"event_id": source["event_id"], "revision": source["revision"]}
+                                                  for source in sources])
         limit = request_payload("proposal", data, PROPOSAL_SCHEMA, SemanticPolicy().max_output_tokens)[1] + SAMPLING_RESERVE_BYTES
         at_limit, window = select_window(conn, learning.service, learning.principal, brain, current["payload"],
                                          policy=replace(SemanticPolicy(), **{limiting_field: limit}))

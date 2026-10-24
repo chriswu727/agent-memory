@@ -9,9 +9,34 @@ from .consolidation_planning import plan_consolidation
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
 from .jobs import JobStore
-from .learning_windows import record_progress, recover_windows, select_window
-from .semantic import CognitiveBatch, SemanticResult
-from .turns import TurnStore, _identifier, _refs
+from .learning_windows import bounds, record_progress, recover_windows, select_window
+from .semantic import (
+    EPISODE_SCOPE_INPUT_VERSION,
+    GENERAL_PROPOSAL_MODE,
+    ORIENT_PROPOSAL_MODE,
+    CognitiveBatch,
+    SemanticResult,
+    check_result_mode,
+    validate_input_contract,
+)
+from .turns import TurnStore, _hash, _identifier, _integer, _refs
+
+
+def _snapshot_proposal_mode(snapshot, kind=None):
+    mode = snapshot.get("proposal_mode", GENERAL_PROPOSAL_MODE)
+    if (mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE)
+            or kind is not None and kind != "orient" and mode == ORIENT_PROPOSAL_MODE):
+        raise DomainError("context_stale", "Cognitive proposal mode is unavailable for this task.")
+    return mode
+
+
+def _snapshot_input_contract(snapshot):
+    version = snapshot.get("input_contract_version")
+    try:
+        validate_input_contract(version)
+    except ValueError as error:
+        raise DomainError("context_stale", "Cognitive input contract is unavailable.") from error
+    return version
 
 
 def _current_input_authorization(result):
@@ -51,7 +76,75 @@ def _validate_current_input_binding(conn, service, principal, brain, result, eve
         raise DomainError("context_stale", "Current input authorization changed.")
 
 
+def _learning_inputs(snapshot, job, events):
+    if _snapshot_input_contract(snapshot) is None:
+        return ()
+    try:
+        refs = _refs(snapshot.get("learning_input_refs", []))
+        if "learning_input_refs" not in snapshot or not refs and "learning_window" not in snapshot:
+            return ()
+        window, payload, scope = snapshot["learning_window"], job["payload"], snapshot["scope"]
+        validate("BoundScope", scope)
+        start, end = bounds(payload)
+        attempted = _integer(window["attempted_through_sequence"], 1)
+        if (job["kind"] != "consolidate" or _snapshot_proposal_mode(snapshot) != GENERAL_PROPOSAL_MODE
+                or snapshot.get("current_input_refs") or snapshot.get("current_input_binding") is not None
+                or bounds(window) != (start, end) or not start <= attempted <= end
+                or _integer(window["input_count"]) != len(refs)
+                or any(payload["target"][target] != scope[field] for target, field in (
+                    ("conversation_ref", "conversation_id"), ("branch_ref", "branch_id")))):
+            raise ValueError("Learning window binding differs")
+        for field in ("conversation_id", "branch_id"):
+            _identifier(scope[field])
+        lookup = {(event["event_id"], event["revision"]): event for event in events}
+        sequences = []
+        for ref in refs:
+            event = lookup[(ref["event_id"], ref["revision"])]
+            sequence = _integer(event["sequence"], 1)
+            if (not start <= sequence <= attempted or not cognition._scope_allows(event["scope"], scope)
+                    or any(event["scope"][field] != scope[field] for field in ("conversation_id", "branch_id"))
+                    or event["observed"]["delivery_state"] not in ("received", "delivered", "partially_delivered")
+                    or event["observed"]["event_kind"] in ("source_correction", "delivery_receipt")):
+                raise ValueError("Learning source differs from its window")
+            sequences.append(sequence)
+        if sequences != sorted(set(sequences)):
+            raise ValueError("Learning inputs are not strictly ordered")
+    except (DomainError, ValueError, KeyError, TypeError) as error:
+        raise DomainError("context_stale", "Learning input window is malformed or changed.") from error
+    return tuple(copy.deepcopy(refs))
+
+
 def validate_snapshot(conn, service, principal, brain, result):
+    events, _ = _validated_snapshot(conn, service, principal, brain, result)
+    return events
+
+
+def _snapshot_documents(conn, service, principal, brain, refs, table, identifier, eligibility):
+    try:
+        if not isinstance(refs, (list, tuple)):
+            raise DomainError("validation_failed", "Invalid snapshot references.")
+        versions = set()
+        for ref in refs:
+            if not isinstance(ref, dict):
+                raise DomainError("validation_failed", "Invalid snapshot reference.")
+            versions.add((_identifier(ref[identifier]), _integer(ref["revision"], 1)))
+            _hash(ref["content_sha256"])
+    except (DomainError, KeyError) as error:
+        raise DomainError("context_stale", "Cognitive document snapshot is malformed.") from error
+    if not versions:
+        return {}
+    versions = sorted(versions)
+    rows = conn.execute(
+        "SELECT id,revision,document FROM " + table + " WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND (id,revision) IN (SELECT * FROM unnest(%s::text[],%s::bigint[])) AND " + eligibility,
+        (*service._params(principal, brain["id"]), [key[0] for key in versions], [key[1] for key in versions]),
+    ).fetchall()
+    return {(row["id"], row["revision"]): row["document"] for row in rows}
+
+
+def _validated_snapshot(conn, service, principal, brain, result):
+    _snapshot_proposal_mode(result)
+    _snapshot_input_contract(result)
     scope = result.get("scope", {})
     try:
         validate("BoundScope", scope)
@@ -72,38 +165,34 @@ def validate_snapshot(conn, service, principal, brain, result):
     _validate_current_input_binding(conn, service, principal, brain, result, lookup)
     if service._superseded_evidence(conn, principal, brain, [r["event_id"] for r in refs]):
         raise DomainError("context_stale", "Cognitive source was corrected.")
-    for ref in result.get("memory_snapshot", []):
-        row = conn.execute(
-            "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-            "AND id=%s AND revision=%s AND NOT invalidated AND NOT deleted AND NOT suppressed",
-            (*service._params(principal, brain["id"]), ref["memory_id"], ref["revision"]),
-        ).fetchone()
-        if (not row or row["document"] is None or row["document"]["lifecycle"] == "retracted"
-                or digest(row["document"]) != ref["content_sha256"]
-                or not cognition._scope_allows(service._rebind(row["document"], principal, brain)["scope"], scope)):
+    references = result.get("memory_snapshot", [])
+    memories = _snapshot_documents(conn, service, principal, brain, references, "memory_assertions", "memory_id",
+                                   "NOT invalidated AND NOT deleted AND NOT suppressed")
+    for ref in references:
+        document = memories.get((ref["memory_id"], ref["revision"]))
+        if (document is None or document["lifecycle"] == "retracted"
+                or digest(document) != ref["content_sha256"]
+                or not cognition._scope_allows(service._rebind(document, principal, brain)["scope"], scope)):
             raise DomainError("source_unavailable", "Cognitive parent changed.")
-    for ref in result.get("episode_snapshot", []):
-        row = conn.execute(
-            "SELECT document FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-            "AND id=%s AND revision=%s AND is_current AND NOT invalidated AND NOT deleted "
-            "AND document IS NOT NULL",
-            (*service._params(principal, brain["id"]), ref["episode_id"], ref["revision"]),
-        ).fetchone()
-        if (row is None or digest(row["document"]) != ref["content_sha256"]
-                or not cognition._scope_allows(service._rebind(row["document"], principal, brain)["scope"], scope)):
+    references = result.get("episode_snapshot", [])
+    episodes = _snapshot_documents(conn, service, principal, brain, references, "memory_episodes", "episode_id",
+                                   "is_current AND NOT invalidated AND NOT deleted AND document IS NOT NULL")
+    for ref in references:
+        document = episodes.get((ref["episode_id"], ref["revision"]))
+        if (document is None or digest(document) != ref["content_sha256"]
+                or not cognition._scope_allows(service._rebind(document, principal, brain)["scope"], scope)):
             raise DomainError("context_stale", "Cognitive episode changed.")
-    for ref in result.get("belief_relation_snapshot", []):
-        row = conn.execute(
-            "SELECT document FROM memory_belief_relations WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-            "AND id=%s AND revision=%s AND NOT invalidated AND NOT deleted AND document IS NOT NULL",
-            (*service._params(principal, brain["id"]), ref["relation_id"], ref["revision"]),
-        ).fetchone()
-        if row is None:
+    references = result.get("belief_relation_snapshot", [])
+    relations = _snapshot_documents(conn, service, principal, brain, references, "memory_belief_relations", "relation_id",
+                                    "NOT invalidated AND NOT deleted AND document IS NOT NULL")
+    for ref in references:
+        raw = relations.get((ref["relation_id"], ref["revision"]))
+        if raw is None:
             raise DomainError("context_stale", "Cognitive belief relationship changed.")
-        document = service._rebind(row["document"], principal, brain)
+        document = service._rebind(raw, principal, brain)
         if digest(document) != ref["content_sha256"] or not cognition._scope_allows(document["scope"], scope):
             raise DomainError("context_stale", "Cognitive belief relationship changed.")
-    return events
+    return events, {"memory_snapshot": memories, "episode_snapshot": episodes}
 
 
 def orientation_result(conn, service, principal, brain, row):
@@ -120,6 +209,8 @@ def orientation_result(conn, service, principal, brain, row):
     if job["state"] != "completed" or not job["result"]:
         return None
     result = job["result"]
+    mode = _snapshot_proposal_mode(result, job["kind"])
+    check_result_mode(mode, result)
     _current_input_authorization(result)
     scope = result.get("scope", {})
     if not isinstance(scope, dict):
@@ -137,7 +228,7 @@ def orientation_result(conn, service, principal, brain, row):
     if requests:
         from .consolidation import _check_result
 
-        batch = CognitiveBatch(row["orientation_job_id"], scope, tuple(events))
+        batch = CognitiveBatch(row["orientation_job_id"], scope, tuple(events), proposal_mode=mode)
         _check_result(batch, SemanticResult(result["status"], situation_updates=requests,
                                            verification_assessments=tuple(result.get("verification_assessments", ()))),
                       {"events": {(event["event_id"], event["revision"]): event for event in events},
@@ -168,24 +259,24 @@ class LearningEngine:
 
     def _resume_snapshot(self, conn, principal, brain, job, snapshot):
         service = self.service
-        events = validate_snapshot(conn, service, principal, brain, snapshot)
+        mode = _snapshot_proposal_mode(snapshot, job["kind"])
+        events, loaded = _validated_snapshot(conn, service, principal, brain, snapshot)
+        if job["kind"] == "orient":
+            current = service._working(conn, principal, brain, job["payload"]["target"], None)
+            if current["revision"] != snapshot["working_revision"]:
+                raise DomainError("context_stale", "Working context changed before orientation retry.")
         documents = []
-        for field, table, identifier in (("memory_snapshot", "memory_assertions", "memory_id"),
-                                         ("episode_snapshot", "memory_episodes", "episode_id")):
-            current = []
-            for reference in snapshot.get(field, []):
-                row = conn.execute(
-                    "SELECT document FROM " + table + " WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                    "AND id=%s AND revision=%s",
-                    (*service._params(principal, brain["id"]), reference[identifier], reference["revision"]),
-                ).fetchone()
-                current.append(service._rebind(row["document"], principal, brain))
-            documents.append(tuple(current))
+        for field, identifier in (("memory_snapshot", "memory_id"), ("episode_snapshot", "episode_id")):
+            documents.append(tuple(service._rebind(loaded[field][(ref[identifier], ref["revision"])], principal, brain)
+                                   for ref in snapshot.get(field, [])))
         return CognitiveBatch(
             job["id"], snapshot["scope"], tuple(events), documents[0], snapshot["working_snapshot"], documents[1],
             sampling=snapshot["sampling"], belief_relations=tuple(snapshot.get("belief_relations", ())),
             consolidation_plan=snapshot.get("consolidation_plan"),
             current_input_refs=tuple(snapshot.get("current_input_refs", ())),
+            proposal_mode=mode,
+            learning_input_refs=_learning_inputs(snapshot, job, events),
+            input_contract_version=_snapshot_input_contract(snapshot),
         ), snapshot
 
     def _snapshot(self, principal, brain_id, job):
@@ -198,15 +289,20 @@ class LearningEngine:
                                  (*params, job["id"])).fetchone()["result"]
             if prior:
                 _current_input_authorization(prior)
+            mode = (_snapshot_proposal_mode(prior, job["kind"]) if prior else
+                    ORIENT_PROPOSAL_MODE if job["kind"] == "orient" else GENERAL_PROPOSAL_MODE)
+            input_contract = (_snapshot_input_contract(prior) if prior else
+                              EPISODE_SCOPE_INPUT_VERSION if mode == GENERAL_PROPOSAL_MODE else None)
             windowed = job["kind"] == "consolidate" and "from_sequence" in payload
-            if windowed and prior and "working_snapshot" in prior:
+            frozen_orientation = job["kind"] == "orient" and mode == ORIENT_PROPOSAL_MODE
+            if (windowed or frozen_orientation) and prior and "working_snapshot" in prior:
                 snapshot = {key: copy.deepcopy(value) for key, value in prior.items() if key in {
                     "scope", "source_snapshot", "memory_snapshot", "episode_snapshot", "working_revision",
                     "working_snapshot", "sampling", "learning_window", "learning_input_refs", "dependency_generation",
                     "belief_relations", "belief_relation_snapshot", "consolidation_plan",
-                    "current_input_refs", "current_input_binding",
+                    "current_input_refs", "current_input_binding", "proposal_mode", "input_contract_version",
                 }}
-                if snapshot.get("current_input_refs") or snapshot.get("current_input_binding"):
+                if windowed and (snapshot.get("current_input_refs") or snapshot.get("current_input_binding")):
                     raise DomainError("context_stale", "Consolidation cannot authorize current input.")
                 return self._resume_snapshot(conn, principal, brain, job, snapshot)
             if "event_id" in payload:
@@ -223,7 +319,8 @@ class LearningEngine:
             through = payload["through_sequence"]
             if windowed:
                 required, window = select_window(conn, service, principal, brain, payload,
-                                                policy=service.semantic_processor.policy)
+                                                policy=service.semantic_processor.policy,
+                                                input_contract_version=input_contract)
                 through = window["attempted_through_sequence"]
             elif "event_id" in payload:
                 required = [{"event_id": payload["event_id"], "revision": payload["revision"]}]
@@ -241,6 +338,8 @@ class LearningEngine:
             neighborhood = (select_neighborhood(
                 conn, service, principal, brain, target, through_sequence=through,
                 required_event_refs=required, policy=service.semantic_processor.policy,
+                learning_input_refs=required if window is not None and input_contract is not None else (),
+                input_contract_version=input_contract,
             ) if required or not windowed else Neighborhood((), (), (), {"source_count": 0}))
             sources, assertion_documents, episode_documents = (
                 neighborhood.sources, neighborhood.assertions, neighborhood.episodes,
@@ -262,6 +361,12 @@ class LearningEngine:
                 "belief_relation_snapshot": [{"relation_id": item["relation_id"], "revision": item["revision"],
                                               "content_sha256": digest(item)}
                                              for item in neighborhood.belief_relations]}
+            if not prior or "proposal_mode" in prior:
+                snapshot["proposal_mode"] = mode
+            if input_contract is not None or prior and "input_contract_version" in prior:
+                snapshot["input_contract_version"] = input_contract
+            if frozen_orientation:
+                snapshot["working_snapshot"] = copy.deepcopy(working)
             if current_input_refs:
                 snapshot.update(current_input_refs=current_input_refs,
                                 current_input_binding={"turn_id": payload["turn_id"], "job_id": job["id"]})
@@ -294,6 +399,7 @@ class LearningEngine:
             if window is not None:
                 snapshot.update(learning_window=window, learning_input_refs=required,
                                 working_snapshot=working)
+            learning_inputs = _learning_inputs(snapshot, job, sources)
             if prior and "consolidation_plan" in prior:
                 snapshot["consolidation_plan"] = prior["consolidation_plan"]
             if prior and prior.get("source_snapshot") != snapshot["source_snapshot"]:
@@ -321,7 +427,8 @@ class LearningEngine:
             batch = CognitiveBatch(job["id"], scope, sources, assertions, working, episodes,
                                    sampling=snapshot["sampling"], belief_relations=neighborhood.belief_relations,
                                    consolidation_plan=snapshot["consolidation_plan"],
-                                   current_input_refs=tuple(current_input_refs))
+                                   current_input_refs=tuple(current_input_refs), proposal_mode=mode,
+                                   learning_input_refs=learning_inputs, input_contract_version=input_contract)
             return batch, snapshot
 
     def semantic(self, principal, brain_id, job):
@@ -381,6 +488,7 @@ class LearningEngine:
             if job["kind"] == "orient":
                 from .consolidation import _check_result, validate_batch
 
+                check_result_mode(batch.proposal_mode, asdict(result))
                 _check_result(batch, result, validate_batch(conn, service, principal, brain, batch, result),
                               current_input_refs=batch.current_input_refs)
                 target = job["payload"]["target"]

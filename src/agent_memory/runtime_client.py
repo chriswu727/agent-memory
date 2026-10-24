@@ -88,6 +88,8 @@ class RuntimeClient:
         working_revision: int | None = None, durable_sequence: int | None = None,
         context_tokens: int | None = None,
         recall_plan: Mapping[str, Any] | None = None,
+        response_review_policy: str | None = None,
+        orientation_route: Mapping[str, Any] | None = None,
     ) -> JsonObject:
         return self._post(
             turn_id, "advance", lease_token=lease_token, expected_revision=expected_revision,
@@ -98,6 +100,26 @@ class RuntimeClient:
             context_fingerprint=context_fingerprint, context_generation=context_generation,
             working_revision=working_revision, durable_sequence=durable_sequence,
             context_tokens=context_tokens, recall_plan=dict(recall_plan) if recall_plan is not None else None,
+            response_review_policy=response_review_policy,
+            orientation_route=dict(orientation_route) if orientation_route is not None else None,
+        )
+
+    def reserve_response_review(
+        self, turn_id: str, *, lease_token: str, expected_revision: int,
+        policy_fingerprint: str, request_fingerprint: str, draft_sha256: str,
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "response-review/reserve", lease_token=lease_token, expected_revision=expected_revision,
+            policy_fingerprint=policy_fingerprint, request_fingerprint=request_fingerprint, draft_sha256=draft_sha256,
+        )
+
+    def complete_response_review(
+        self, turn_id: str, *, lease_token: str, expected_revision: int,
+        request_fingerprint: str, status: str, issue_codes: Sequence[str] = (),
+    ) -> JsonObject:
+        return self._post(
+            turn_id, "response-review/complete", lease_token=lease_token, expected_revision=expected_revision,
+            request_fingerprint=request_fingerprint, status=status, issue_codes=list(issue_codes),
         )
 
     def reserve_recall(

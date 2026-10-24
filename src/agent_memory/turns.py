@@ -22,7 +22,8 @@ PUBLIC_FIELDS = (
     "revision", "fence", "claim_count", "generation_count", "worker_id", "lease_expires_at",
     "recovery_required", "input_event_refs", "context_event_refs", "output_event_refs", "context_fingerprint",
     "context_generation", "working_revision", "durable_sequence", "context_tokens",
-    "recall_plan", "recall_model_calls", "recall_input_bytes", "orientation_job_id",
+    "recall_plan", "recall_model_calls", "recall_input_bytes", "orientation_job_id", "orientation_route",
+    "response_review_policy", "response_review", "response_review_calls",
     "failure_code", "created_at", "updated_at",
 )
 
@@ -224,12 +225,19 @@ class TurnStore:
                 "SELECT count(*) AS count FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
                 "AND state<>'completed'", params,
             ).fetchone()["count"]
+            reviews = conn.execute(
+                "SELECT response_review->>'status' AS status,count(*) AS count "
+                "FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND response_review IS NOT NULL GROUP BY response_review->>'status'", params,
+            ).fetchall()
             return {
                 "brain_id": brain_id, "durable_sequence": brain["durable_sequence"],
                 "indexed_sequence": brain["indexed_sequence"], "dependency_generation": brain["dependency_generation"],
                 "scope_generation": brain["scope_generation"], "turn_count": sum(row["count"] for row in counts),
                 "active_lease_count": sum(row["active"] for row in counts),
                 "stage_counts": {row["stage"]: row["count"] for row in counts}, "pending_job_count": jobs,
+                "response_review_counts": {row["status"]: row["count"] for row in reviews},
+                "response_review_calls": sum(row["count"] for row in reviews),
             }
 
     def claim(self, principal, brain_id, turn_id, *, worker_id, lease_seconds=30, expected_revision=None):
@@ -316,6 +324,115 @@ class TurnStore:
             self._record(conn, row, "advance")
             return self._public(conn, principal, row)
 
+    def _response_review_binding(self, conn, principal, brain, row):
+        if self._unavailable(conn, principal, row):
+            raise DomainError("source_unavailable", "A response review source is unavailable.")
+        if row["context_generation"] != brain["dependency_generation"]:
+            raise DomainError("context_stale", "Memory changed since response generation.")
+        self._working_revision(conn, principal, row)
+        refs = row["output_event_refs"]
+        if len(refs) != 1:
+            raise DomainError("invalid_evidence", "Response review requires one generated draft.")
+        source = conn.execute(
+            "SELECT document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND id=%s AND revision=%s AND is_current AND NOT retired AND NOT suppressed AND NOT deleted",
+            (principal.tenant_id, principal.principal_id, brain["id"], refs[0]["event_id"], refs[0]["revision"]),
+        ).fetchone()
+        document = source["document"] if source else None
+        observed = document.get("observed", {}) if document else {}
+        content = observed.get("content", {})
+        if (observed.get("actor_role") != "assistant" or observed.get("delivery_state") != "draft"
+                or content.get("media_type") != "text/plain" or not isinstance(content.get("text"), str)
+                or document.get("content_sha256") != digest(content)):
+            raise DomainError("invalid_evidence", "Response review requires an unchanged assistant draft.")
+        return {"policy_fingerprint": row["response_review_policy"],
+                "draft_sha256": hashlib.sha256(content["text"].encode()).hexdigest(),
+                "context_fingerprint": row["context_fingerprint"],
+                "context_generation": row["context_generation"], "working_revision": row["working_revision"]}
+
+    def _approved_response_review(self, conn, principal, brain, row):
+        if row["response_review_policy"] is None:
+            return
+        expected = self._response_review_binding(conn, principal, brain, row)
+        review = row["response_review"]
+        if not isinstance(review, dict):
+            raise DomainError("response_review_required", "The generated response has not been reviewed.")
+        validate("ResponseReview", review)
+        if any(review[key] != value for key, value in expected.items()):
+            raise DomainError("context_stale", "Response review no longer matches this draft and context.")
+        if review["status"] != "approved":
+            raise DomainError("response_review_uncertain" if review["status"] == "pending" else "response_review_blocked",
+                              "Response review has not approved delivery.")
+
+    def reserve_response_review(self, principal, brain_id, turn_id, *, lease_token, expected_revision,
+                                policy_fingerprint, request_fingerprint, draft_sha256):
+        _integer(expected_revision, 1)
+        for value in (policy_fingerprint, request_fingerprint, draft_sha256):
+            _hash(value)
+        fingerprint = digest({"operation": "reserve_response_review", "revision": expected_revision,
+                              "policy_fingerprint": policy_fingerprint, "request_fingerprint": request_fingerprint,
+                              "draft_sha256": draft_sha256})
+        with self._transaction(principal, brain_id) as (conn, brain):
+            row = self._row(conn, principal, brain_id, turn_id)
+            self._lease(row, lease_token)
+            if row["stage"] != "generated":
+                raise DomainError("stage_conflict", "Response review requires a generated turn.")
+            binding = self._response_review_binding(conn, principal, brain, row)
+            if row["response_review_policy"] != policy_fingerprint or binding["draft_sha256"] != draft_sha256:
+                raise DomainError("invalid_evidence", "Review request differs from the configured policy or draft.")
+            if row["revision"] == expected_revision + 1 and row["last_transition_hash"] == fingerprint:
+                return self._public(conn, principal, row)
+            self._lease(row, lease_token, expected_revision)
+            if row["response_review"] is not None or row["response_review_calls"]:
+                raise DomainError("response_review_uncertain", "A response review reservation cannot be repeated.")
+            review = {**binding, "status": "pending", "request_fingerprint": request_fingerprint,
+                      "issue_codes": [], "not_a_truth_certificate": True}
+            validate("ResponseReview", review)
+            row = conn.execute(
+                "UPDATE memory_runtime_turns SET revision=revision+1,response_review=%s,response_review_calls=1,"
+                "last_transition_hash=%s,updated_at=clock_timestamp() "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
+                "RETURNING *,clock_timestamp() AS db_now",
+                (Jsonb(review), fingerprint, *self._params(principal, brain_id, turn_id)),
+            ).fetchone()
+            self._record(conn, row, "advance")
+            return self._public(conn, principal, row)
+
+    def complete_response_review(self, principal, brain_id, turn_id, *, lease_token, expected_revision,
+                                 request_fingerprint, status, issue_codes=()):
+        _integer(expected_revision, 1)
+        _hash(request_fingerprint)
+        if status not in {"approved", "rejected", "inconclusive"} or not isinstance(issue_codes, (tuple, list)):
+            raise DomainError("validation_failed", "Invalid response review completion.")
+        codes = list(issue_codes)
+        fingerprint = digest({"operation": "complete_response_review", "revision": expected_revision,
+                              "request_fingerprint": request_fingerprint, "status": status, "issue_codes": codes})
+        with self._transaction(principal, brain_id) as (conn, brain):
+            row = self._row(conn, principal, brain_id, turn_id)
+            self._lease(row, lease_token)
+            if row["stage"] != "generated":
+                raise DomainError("stage_conflict", "Response review completion requires a generated turn.")
+            binding = self._response_review_binding(conn, principal, brain, row)
+            reserved = row["response_review"]
+            if (not isinstance(reserved, dict) or reserved.get("request_fingerprint") != request_fingerprint
+                    or any(reserved.get(key) != value for key, value in binding.items())):
+                raise DomainError("invalid_evidence", "Review completion must match its exact reservation.")
+            completed = {**reserved, "status": status, "issue_codes": codes}
+            validate("ResponseReview", completed)
+            if row["revision"] == expected_revision + 1 and row["last_transition_hash"] == fingerprint:
+                return self._public(conn, principal, row)
+            self._lease(row, lease_token, expected_revision)
+            if reserved["status"] != "pending":
+                raise DomainError("response_review_blocked", "A completed response review cannot be replaced.")
+            row = conn.execute(
+                "UPDATE memory_runtime_turns SET revision=revision+1,response_review=%s,last_transition_hash=%s,"
+                "updated_at=clock_timestamp() WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
+                "RETURNING *,clock_timestamp() AS db_now",
+                (Jsonb(completed), fingerprint, *self._params(principal, brain_id, turn_id)),
+            ).fetchone()
+            self._record(conn, row, "advance")
+            return self._public(conn, principal, row)
+
     def bind_orientation(self, principal, brain_id, turn_id, *, lease_token, expected_revision, job_id):
         _integer(expected_revision, 1)
         _identifier(job_id)
@@ -389,10 +506,30 @@ class TurnStore:
             self._record(conn, row, "advance")
             return self._public(conn, principal, row)
 
+    def _check_orientation_route(self, conn, principal, brain, row, *, exact=True):
+        from .service import MemoryService
+
+        route = row.get("orientation_route")
+        if route is None or route["decision"] != "skip":
+            return
+        preflight = row.get("orientation_preflight")
+        if (route["policy"] != "on_demand" or row["orientation_job_id"] is not None
+                or row["recall_plan"] is not None or row["recall_model_calls"]
+                or not preflight or route["assessment"] != preflight["assessment"]
+                or route["reasons"] != route["assessment"]["reasons"]
+                or route["assessment"]["decision"] != "skip"):
+            raise DomainError("context_stale", "Orientation skip requires the original server assessment.")
+        service = self.service if self.service is not None else MemoryService(self.database)
+        # Publishing new assertions need not advance dependency_generation; re-read before spending.
+        fresh = service._prepare(conn, principal, brain, preflight["request"],
+                                 persist_preflight=False)["orientation_assessment"]
+        if fresh["decision"] != "skip" or (exact and fresh != route["assessment"]):
+            raise DomainError("context_stale", "Orientation dependencies changed before generation.")
+
     def advance(self, principal, brain_id, turn_id, *, lease_token, expected_revision, stage,
                 input_event_refs=None, context_event_refs=None, output_event_refs=None, context_fingerprint=None,
                 context_generation=None, working_revision=None, durable_sequence=None, context_tokens=None,
-                recall_plan=None):
+                recall_plan=None, response_review_policy=None, orientation_route=None):
         _integer(expected_revision, 1)
         if stage not in STAGES[1:-2]:
             raise DomainError("validation_failed", "Stage is not a valid advance target.")
@@ -402,14 +539,18 @@ class TurnStore:
             "context_fingerprint": context_fingerprint, "context_generation": context_generation,
             "working_revision": working_revision, "durable_sequence": durable_sequence,
             "context_tokens": context_tokens, "recall_plan": recall_plan,
+            "response_review_policy": response_review_policy,
+            "orientation_route": orientation_route,
         }.items() if value is not None}
         for key, value in changes.items():
             if key.endswith("_refs"):
                 changes[key] = _refs(value)
-            elif key.endswith("fingerprint"):
+            elif key.endswith("fingerprint") or key == "response_review_policy":
                 _hash(value)
             elif key == "recall_plan":
                 validate("RecallPlan", value)
+            elif key == "orientation_route":
+                validate("OrientationRoute", value)
             else:
                 _integer(value)
         allowed_at = {
@@ -418,6 +559,8 @@ class TurnStore:
             "context_fingerprint": {"prepared"}, "context_generation": {"prepared"},
             "context_tokens": {"prepared"}, "working_revision": {"prepared", "committed"},
             "recall_plan": {"prepared"},
+            "response_review_policy": {"prepared"},
+            "orientation_route": {"prepared"},
         }
         if any(stage not in allowed_at[key] for key in changes if key in allowed_at):
             raise DomainError("validation_failed", "Stage cannot replace previously bound turn metadata.")
@@ -426,7 +569,11 @@ class TurnStore:
             row = self._row(conn, principal, brain_id, turn_id)
             self._lease(row, lease_token)
             if row["revision"] == expected_revision + 1 and row["last_transition_hash"] == fingerprint:
+                if stage in ("prepared", "generating"):
+                    self._check_orientation_route(conn, principal, brain, row)
                 if stage == "delivering":
+                    self._check_orientation_route(conn, principal, brain, row, exact=False)
+                    self._approved_response_review(conn, principal, brain, row)
                     if self._unavailable(conn, principal, row):
                         raise DomainError("source_unavailable", "A turn source changed before delivery retry.")
                     if row["context_generation"] != brain["dependency_generation"]:
@@ -458,7 +605,11 @@ class TurnStore:
                 raise DomainError("source_unavailable", "A turn source was changed, erased, or is outside its scope.")
             if stage in ("prepared", "generating") and candidate["context_generation"] != brain["dependency_generation"]:
                 raise DomainError("context_stale", "Context generation differs from the current brain.")
+            if stage in ("prepared", "generating"):
+                self._check_orientation_route(conn, principal, brain, candidate)
             if stage == "delivering":
+                self._check_orientation_route(conn, principal, brain, candidate, exact=False)
+                self._approved_response_review(conn, principal, brain, candidate)
                 if candidate["context_generation"] != brain["dependency_generation"]:
                     raise DomainError("context_stale", "Memory changed before delivery.")
                 self._working_revision(conn, principal, candidate)
@@ -494,7 +645,7 @@ class TurnStore:
             assignments, values = [], []
             for key, value in changes.items():
                 assignments.append(f"{key}=%s")
-                values.append(Jsonb(value) if key.endswith("_refs") or key == "recall_plan" else value)
+                values.append(Jsonb(value) if key.endswith("_refs") or key in {"recall_plan", "orientation_route"} else value)
             assignments.extend([
                 "stage=%s", "revision=revision+1", "updated_at=clock_timestamp()", "last_transition_hash=%s",
                 "recovery_required=NULL", "generation_count=generation_count+%s",

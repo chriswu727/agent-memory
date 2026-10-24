@@ -134,7 +134,9 @@ def test_unrelated_scope_generation_change_rebinds_episodes_without_changing_sna
     job = learning.job(oriented["orientation_job_id"])
     assert job["state"] == "completed"
     assert job["result"]["status"] == "completed"
-    assert learning.snapshots[0]["episodes"][0]["scope"]["scope_generation"] == 2
+    assert "episodes" not in learning.snapshots[0]
+    assert job["result"]["scope"]["scope_generation"] == 2
+    assert all(item["scope"]["scope_generation"] == 2 for item in learning.snapshots[0]["existing_assertions"])
     assert job["result"]["episode_snapshot"][0]["content_sha256"] == digest(previous)
     assert job["result"]["memory_snapshot"]
     with learning.database.transaction(learning.principal) as conn:

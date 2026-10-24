@@ -1,5 +1,59 @@
 export type Identifier = string;
 
+export type OrientationReason =
+  | "existing_orientation" | "recall_plan" | "embedding_recall" | "historical_boundary_required"
+  | "conditional_memory" | "conditional_relation" | "working_state" | "incomplete_dependencies"
+  | "no_contextual_dependencies" | "recall_controller" | "assessment_unavailable";
+
+export type OrientationAssessment = {
+  version: "orientation-route-v1";
+  decision: "orient" | "skip";
+  reasons: OrientationReason[];
+  input_fingerprint: string;
+  dependency_fingerprint: string;
+  snapshot: {
+    scope_generation: number;
+    dependency_generation: number;
+    durable_sequence: number;
+    indexed_sequence: number;
+    working_revision: number;
+  };
+};
+
+export type OrientationRoute = {
+  version: "orientation-route-v1";
+  policy: "always" | "on_demand";
+  decision: "orient" | "skip";
+  reasons: OrientationReason[];
+  assessment: OrientationAssessment | null;
+};
+
+export type RuntimeOrientationState = { orientation_route: OrientationRoute | null };
+
+export type ResponseReviewIssue =
+  | "current_input_misread" | "unsupported_memory_claim" | "applicability_override" | "uncertainty_erased"
+  | "unconfirmed_action" | "uncertain_current_input_fidelity" | "uncertain_memory_fidelity"
+  | "uncertain_applicability" | "uncertain_uncertainty" | "uncertain_action_claims"
+  | "incomplete_review" | "review_unavailable";
+
+export type ResponseReview = {
+  status: "pending" | "approved" | "rejected" | "inconclusive";
+  policy_fingerprint: string;
+  request_fingerprint: string;
+  draft_sha256: string;
+  context_fingerprint: string;
+  context_generation: number;
+  working_revision: number;
+  issue_codes: ResponseReviewIssue[];
+  not_a_truth_certificate: true;
+};
+
+export type RuntimeResponseReviewState = {
+  response_review_policy: string | null;
+  response_review: ResponseReview | null;
+  response_review_calls: number;
+};
+
 export type TimeRange = {
   "start": string | null;
   "end": string | null;
@@ -349,6 +403,7 @@ export type ContextBlock = {
 };
 
 export type ContextPacket = {
+  "orientation_assessment"?: OrientationAssessment;
   "model_context"?: string;
   "packet_id": Identifier;
   "turn_id": Identifier;
@@ -477,6 +532,7 @@ export type PrepareRecallSelection = {
 };
 
 export type PreparePayload = {
+  "assess_orientation"?: boolean;
   "turn_id": Identifier;
   "latest_input_event_ids": (Identifier)[];
   "read_fence": ReadFence;

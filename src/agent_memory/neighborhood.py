@@ -5,6 +5,7 @@ from . import cognition
 from .candidates import _eligible, _scope_clause
 from .helpers import DomainError, digest
 from .retrieval import resolve_dependency_closure
+from .semantic import EPISODE_SCOPE_INPUT_VERSION
 
 
 @dataclass(frozen=True)
@@ -34,9 +35,12 @@ def _references(memory):
 
 
 class _Selector:
-    def __init__(self, conn, service, principal, brain, target, through, policy):
+    def __init__(self, conn, service, principal, brain, target, through, policy, *,
+                 learning_input_refs=(), input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
         self.conn, self.service, self.principal, self.brain = conn, service, principal, brain
         self.target, self.through, self.policy = target, through, policy
+        self.learning_input_refs = copy.deepcopy(tuple(learning_input_refs))
+        self.input_contract_version = input_contract_version
         self.params = service._params(principal, brain["id"])
         self.scope = service._scope(principal, brain, target)
         self.working = service._working(conn, principal, brain, target, None)
@@ -233,8 +237,10 @@ class _Selector:
             working[field] = retained
         data = proposal_data(events.values(), (self.bind(item) for item in memories.values()), working,
                              (self.bind(item) for item in episodes.values()), self.sampling,
-                             self.relations_for(events, memories))
-        return request_payload("proposal", data, PROPOSAL_SCHEMA, self.policy.max_output_tokens)[1]
+                             self.relations_for(events, memories), learning_input_refs=self.learning_input_refs,
+                             scope=self.scope, input_contract_version=self.input_contract_version)
+        return request_payload("proposal", data, PROPOSAL_SCHEMA, self.policy.max_output_tokens,
+                               input_contract_version=self.input_contract_version)[1]
 
     def include(self, events, memories=None, *, episodes=None, required=False):
         memories = memories or {}
@@ -332,8 +338,10 @@ class _Selector:
 
 
 def select_neighborhood(conn, service, principal, brain, target, *, through_sequence,
-                        required_event_refs, policy):
-    selector = _Selector(conn, service, principal, brain, target, through_sequence, policy)
+                        required_event_refs, policy, learning_input_refs=(),
+                        input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
+    selector = _Selector(conn, service, principal, brain, target, through_sequence, policy,
+                         learning_input_refs=learning_input_refs, input_contract_version=input_contract_version)
     rows = conn.execute(
         "SELECT document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND conversation_id=%s AND branch_id=%s AND sequence<=%s AND is_current AND NOT retired "

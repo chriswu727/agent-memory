@@ -278,6 +278,7 @@ class MemoryClient:
         evidence_mode: str | None = None, evidence_cutoff: Mapping[str, Any] | None = None,
         recent_event_limit: int | None = None, recall_plan: Mapping[str, Any] | None = None,
         expected_dependency_generation: int | None = None,
+        assess_orientation: bool | None = None,
         request_id: str | None = None,
     ) -> JsonObject:
         payload = {
@@ -296,6 +297,8 @@ class MemoryClient:
             payload["expected_dependency_generation"] = expected_dependency_generation
         if evidence_cutoff is not None:
             payload["evidence_cutoff"] = dict(evidence_cutoff)
+        if assess_orientation is not None:
+            payload["assess_orientation"] = assess_orientation
         return self.action("prepare", payload, conversation_id=conversation_id,
                            branch_id=branch_id, request_id=request_id)
 

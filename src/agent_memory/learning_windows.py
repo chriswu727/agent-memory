@@ -1,6 +1,7 @@
 from psycopg.types.json import Jsonb
 
 from .helpers import digest
+from .semantic import EPISODE_SCOPE_INPUT_VERSION
 
 WINDOW_SIZE = 8
 SAMPLING_RESERVE_BYTES = 2048
@@ -52,7 +53,8 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
     return identifier
 
 
-def select_window(conn, service, principal, brain, payload, *, policy):
+def select_window(conn, service, principal, brain, payload, *, policy,
+                  input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
     from .semantic import PROPOSAL_SCHEMA, proposal_data, request_payload
 
     start, end = bounds(payload)
@@ -77,8 +79,12 @@ def select_window(conn, service, principal, brain, payload, *, policy):
             continue
         events.append(service._rebind(row["document"], principal, brain))
         working = service._working(conn, principal, brain, target, events)
-        data = proposal_data(events, (), working, (), {}, ())
-        size = request_payload("proposal", data, PROPOSAL_SCHEMA, policy.max_output_tokens)[1]
+        data = proposal_data(events, (), working, (), {}, (),
+                             learning_input_refs=[{"event_id": event["event_id"], "revision": event["revision"]}
+                                                  for event in events],
+                             input_contract_version=input_contract_version)
+        size = request_payload("proposal", data, PROPOSAL_SCHEMA, policy.max_output_tokens,
+                               input_contract_version=input_contract_version)[1]
         if size + SAMPLING_RESERVE_BYTES > min(policy.max_request_bytes, policy.max_input_bytes):
             selected = selected[:index if len(events) > 1 else index + 1]
             break

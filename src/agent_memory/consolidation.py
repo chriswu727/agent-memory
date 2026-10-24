@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import asdict
 
 from psycopg.types.json import Jsonb
 
 from . import cognition
 from .contracts import validate
 from .helpers import DomainError, digest, now
-from .semantic import PROPOSAL_SCHEMA, CognitiveBatch, SemanticProcessor, SemanticResult
+from .semantic import (
+    PROPOSAL_SCHEMA,
+    CognitiveBatch,
+    SemanticProcessor,
+    SemanticResult,
+    check_result_mode,
+)
 
 
 def _error():
@@ -106,6 +113,7 @@ def validate_batch(conn, service, principal, brain, batch: CognitiveBatch,
 
 
 def _check_result(batch, result, snapshot, *, current_input_refs=()):
+    check_result_mode(batch.proposal_mode, asdict(result))
     if result.status not in {"completed", "partial"}:
         if result.claims or result.situation_updates or result.episode_actions or result.belief_links:
             raise DomainError("invalid_evidence", "Unverified cognitive result cannot be published")
