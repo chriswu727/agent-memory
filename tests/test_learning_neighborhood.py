@@ -11,7 +11,7 @@ from agent_memory import cognition
 from agent_memory.helpers import DomainError, digest, uid
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine
-from agent_memory.neighborhood import select_neighborhood
+from agent_memory.neighborhood import _Selector, select_neighborhood
 from agent_memory.semantic import CognitiveBatch, SemanticPolicy
 
 pytestmark = pytest.mark.integration
@@ -68,6 +68,88 @@ def versions(result):
     return {(memory["memory_id"], memory["revision"]) for memory in result.assertions}
 
 
+def literal(learning, event, **changes):
+    memory = cognition.extract_event(event)[0]
+    memory.update(changes)
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        return learning.service._publish(conn, learning.principal, brain, memory)
+
+
+def test_exact_literal_can_be_rebuilt_from_complete_sources_without_restricting_publication(learning):
+    original = source(learning, "Study conversation comes before planning.")
+    memory = literal(learning, original)
+    current = source(learning, "What study conversation applies?")
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        selector = _Selector(conn, learning.service, learning.principal, brain,
+                             {"conversation_ref": "chat", "branch_ref": "main"}, current["sequence"], SemanticPolicy())
+        package = {value["event_id"]: value for value in (original, current)}
+        limit = selector.request_bytes(package, {}, {}) + 2048
+        assert selector.request_bytes(package, {(memory["memory_id"], 1): memory}, {}) + 2048 > limit
+    result = select(learning, current, policy=replace(SemanticPolicy(), max_request_bytes=limit))
+    assert not result.assertions
+    assert {value["event_id"] for value in result.sources} == {original["event_id"], current["event_id"]}
+    assert next(value for value in result.sources if value["event_id"] == original["event_id"])["observed"] == original["observed"]
+    assert result.sampling["redundant_literal_assertions"] == 1
+    assert result.sampling["omitted_packages"] == 0
+    assert not result.sampling["publication_restricted"]
+
+
+@pytest.mark.parametrize("change", ["statement", "semantic", "parent", "counterexample", "legacy_relation", "belief_relation"])
+def test_literal_redundancy_never_discards_added_meaning_or_relationships(learning, change):
+    original = source(learning, "Study conversation comes before planning.")
+    opposite_source = source(learning, "Deadline requires silence.")
+    parent = literal(learning, opposite_source)
+    raw = cognition.extract_event(original)[0]
+    if change == "statement":
+        raw["statement"] += " A changed interpretation."
+    elif change == "semantic":
+        raw.update(representation="semantic_anchor", claim_kind="reported_preference")
+    elif change == "parent":
+        dependencies = [{"memory_id": parent["memory_id"], "revision": 1}]
+        raw["derivation"]["source_memory_versions"] = dependencies
+        raw["disclosure_basis"]["support_paths"][0]["source_memory_versions"] = dependencies
+    elif change == "counterexample":
+        raw["counterexamples"] = [reference(opposite_source, "contradicts")]
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        memory = learning.service._publish(conn, learning.principal, brain, raw)
+    if change == "legacy_relation":
+        link_exception(learning, memory, parent)
+    elif change == "belief_relation":
+        from test_belief_recall import relation
+
+        from agent_memory.belief_store import _insert, _relation_id
+
+        link = relation(parent, [memory])
+        link["scope"] = copy.deepcopy(memory["scope"])
+        link["relation_id"] = _relation_id(link)
+        with learning.database.transaction(learning.principal) as conn:
+            brain = learning.service._brain(conn, learning.principal, learning.brain)
+            _insert(conn, learning.service, learning.principal, brain, link,
+                    {(value["memory_id"], 1): value for value in (memory, parent)})
+    result = select(learning, source(learning, "Study conversation?"))
+    assert (memory["memory_id"], 1) in versions(result)
+    assert not result.sampling["publication_restricted"]
+    if change in {"legacy_relation", "belief_relation", "parent"}:
+        assert (parent["memory_id"], 1) in versions(result)
+
+
+def test_redundancy_requires_current_complete_source_and_cannot_bypass_history_cutoff(learning):
+    original = source(learning, "Study conversation comes before planning.")
+    literal(learning, original)
+    current = source(learning, "Study conversation?")
+    with learning.database.transaction(learning.principal) as conn:
+        conn.execute("UPDATE memory_events SET suppressed=true WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                     (learning.principal.tenant_id, learning.brain, original["event_id"]))
+    result = select(learning, current)
+    assert not result.assertions
+    assert original["event_id"] not in {value["event_id"] for value in result.sources}
+    assert result.sampling["publication_restricted"]
+    assert result.sampling["redundant_literal_assertions"] == 0
+
+
 def test_related_preference_and_counterexample_survive_long_distance_without_unrelated_history(learning):
     first = source(learning, "During study I prefer conversation before planning.", conversation="previous")
     exception = source(learning, "A deadline requires silence and immediate action.", conversation="previous")
@@ -121,7 +203,7 @@ def test_missing_dependency_omits_whole_related_package_and_restricts_learning(l
     result = select(learning, source(learning, "Study conversation?"))
     assert (child["memory_id"], 1) not in versions(result)
     assert result.sampling["publication_restricted"]
-    assert "dependency_incomplete" in result.sampling["limitations"]
+    assert {"dependency_incomplete", "belief_relation_incomplete"} & set(result.sampling["limitations"])
 
 
 def test_source_budget_never_keeps_positive_half_of_known_exception_package(learning):

@@ -278,9 +278,34 @@ export type RankSignal = {
   "model_or_index_version": Identifier;
 };
 
+export type MemoryVersion = { memory_id: Identifier; revision: number };
+export type BeliefRelationRef = { relation_id: Identifier; revision: number; content_sha256: string };
+export type BeliefRelation = {
+  relation_id: Identifier;
+  revision: number;
+  scope: BoundScope;
+  kind: "abstracts" | "equivalent" | "exception" | "supersedes" | "contradicts";
+  source_memory_version: MemoryVersion;
+  target_memory_versions: MemoryVersion[];
+  evidence_refs: EvidenceRef[];
+  conditions: SemanticCondition;
+  valid_during: ValidDuring;
+  world: MemoryAssertion["world"];
+  condition_registry_fingerprint: string;
+  verification: NonNullable<MemoryAssertion["verification"]>;
+  root_event_ids: Identifier[];
+  endpoint_snapshots: { memory_version: MemoryVersion; content_sha256: string }[];
+};
+export type BeliefResolution = {
+  state: "unchanged" | "superseded" | "exception_applies" | "conflicted" | "uncertain";
+  complete: boolean;
+  relations: { relation: BeliefRelation; applicability: MemoryApplicability }[];
+};
+
 export type RecallItem = {
   "memory": MemoryAssertion;
   "applicability"?: MemoryApplicability;
+  "belief_resolution"?: BeliefResolution;
   "rank_signals": (RankSignal)[];
   "retrieved_from": "index" | "unindexed_tail" | "archive_scan";
   "display_mode": "explicit_recollection" | "background_context" | "do_not_surface";
@@ -645,6 +670,7 @@ export type RecallFeedbackInput = {
 };
 
 export type RecallPlan = {
+  "belief_relation_refs"?: BeliefRelationRef[];
   "version": "evidence-recall-v1";
   "memory_versions": {
     "memory_id": Identifier;

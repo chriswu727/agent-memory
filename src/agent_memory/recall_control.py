@@ -10,6 +10,8 @@ from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator
 
+from .belief_resolution import frozen_relations, resolution_evidence
+from .belief_store import relation_versions
 from .client import default_budget, default_read_fence
 from .helpers import DomainError, digest
 
@@ -42,6 +44,9 @@ _INSTRUCTIONS = (
     "A schema or shared pattern does not prove unobserved details of any instance. "
     "Never combine details from distinct episodes into one event. Preserve each source's "
     "representation, conditions, time, and evidence independently. "
+    "Belief relations are fallible supported interpretations, not truth certificates. "
+    "Never use a superseded, exception-blocked, conflicted, or incomplete belief as a settled "
+    "current rule. Equivalent and abstracted beliefs do not transfer unobserved details. "
     "For finish, queries must be empty. For search, queries must be nonempty. For not_needed, "
     "selected_memory_ids must be empty. Do not supply explanations or hidden reasoning."
 )
@@ -117,6 +122,7 @@ class RecallController:
         scope = initial_packet["scope"]
         boundary = snapshot.get("evidence_cutoff")
         candidates, seen, warnings, searched, trace = {}, {}, [], set(), []
+        resolutions, seen_resolutions = {}, {}
         limitations = set(initial_packet["coverage"]["limitations"])
         recent = _union(*(_references(block["evidence_refs"]) for block in initial_packet["blocks"]
                           if block["section"] == "recent_context"))
@@ -129,6 +135,10 @@ class RecallController:
             return int((time.monotonic() - started) * 1000)
 
         def finish(outcome, selected=()):
+            relation_refs = frozen_relations([
+                {"belief_resolution": seen_resolutions.get(key, {})} for key in selected])
+            if len(relation_refs) > 64:
+                outcome, selected, relation_refs = "budget_exhausted", (), []
             if len(trace) < 16 and (not trace or trace[-1]["action"] != "finish"):
                 trace.append({"step": len(trace) + 1, "action": "stop", "reason": outcome,
                               "query_hashes": [], "candidate_count": len(seen), "selected_count": 0})
@@ -137,6 +147,7 @@ class RecallController:
                 "memory_versions": [{"memory_id": key, "revision": seen[key]["revision"]}
                                     for key in selected],
                 "recent_event_refs": recent, "observed_event_refs": observed,
+                "belief_relation_refs": relation_refs,
                 "outcome": outcome, "model_calls": model_calls, "search_calls": search_calls,
                 "input_bytes": input_bytes, "elapsed_ms": elapsed(), "trace": trace,
                 "coverage_limitations": sorted(limitations),
@@ -167,6 +178,7 @@ class RecallController:
                 if key in candidates and candidates[key] != candidate:
                     raise DomainError("context_stale", "A recall candidate changed within this plan.")
                 candidates[key] = candidate
+                resolutions[key] = copy.deepcopy(item.get("belief_resolution", {}))
 
         add_warning({"coverage": initial_packet["coverage"],
                      "historical_evidence_status": snapshot["historical_evidence_status"]})
@@ -193,7 +205,9 @@ class RecallController:
                 refs = _union(refs, block_refs)
                 recent_refs = next_recent
             for candidate in candidates.values():
-                candidate_refs = _references(candidate["evidence_refs"] + candidate.get("counterexamples", []))
+                resolution = resolutions.get(candidate["memory_id"], {})
+                candidate_refs = _references(candidate["evidence_refs"] + candidate.get("counterexamples", [])
+                                             + resolution_evidence(resolution))
                 if len(_union(observed, refs, candidate_refs)) > 64:
                     truncated = True
                     continue
@@ -202,9 +216,22 @@ class RecallController:
                     "valid_time", "evidence_refs", "representation", "claim_kind", "conditions",
                     "valid_during", "counterexamples", "verification",
                 ) if key in candidate})
+                if resolution:
+                    offered[-1]["belief_resolution"] = copy.deepcopy(resolution)
                 refs = _union(refs, candidate_refs)
 
             def make_request():
+                available = {(item["memory_id"], item["revision"]) for item in offered}
+                for candidate in offered:
+                    original = resolutions.get(candidate["memory_id"], {})
+                    if not original:
+                        continue
+                    candidate["belief_resolution"] = copy.deepcopy(original)
+                    required = set().union(*(relation_versions(assessment["relation"])
+                                            for assessment in original["relations"]
+                                            if assessment["applicability"]["value"] != "false"))
+                    if not required <= available:
+                        candidate["belief_resolution"].update(state="uncertain", complete=False)
                 data = {
                     "current_input": input_text, "context": context, "candidates": offered,
                     "warnings": warnings, "evidence_cutoff": boundary,
@@ -231,7 +258,8 @@ class RecallController:
                 request, size, fingerprint = make_request()
             if size > remaining or request.timeout_seconds <= 0:
                 return finish("budget_exhausted")
-            refs = _union(*(_references(value["evidence_refs"] + value.get("counterexamples", []))
+            refs = _union(*(_references(value["evidence_refs"] + value.get("counterexamples", [])
+                                        + resolution_evidence(value.get("belief_resolution", {})))
                             for value in context + offered))
             next_recent = _union(*(_references(value["evidence_refs"]) for value in context
                                    if value["section"] == "recent_context"))
@@ -242,6 +270,8 @@ class RecallController:
             observed = _union(observed, refs)
             recent = _union(recent, next_recent)
             seen.update({item["memory_id"]: candidates[item["memory_id"]] for item in offered})
+            seen_resolutions.update({item["memory_id"]: copy.deepcopy(item.get("belief_resolution", {}))
+                                     for item in offered})
             if elapsed() >= policy.max_wall_time_ms:
                 return finish("budget_exhausted")
             try:

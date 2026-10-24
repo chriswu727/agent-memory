@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 
 from . import cognition
@@ -12,6 +13,7 @@ class Neighborhood:
     assertions: tuple[dict, ...]
     episodes: tuple[dict, ...]
     sampling: dict
+    belief_relations: tuple[dict, ...] = ()
 
 
 class _Incomplete(Exception):
@@ -37,8 +39,11 @@ class _Selector:
         self.target, self.through, self.policy = target, through, policy
         self.params = service._params(principal, brain["id"])
         self.scope = service._scope(principal, brain, target)
+        self.working = service._working(conn, principal, brain, target, None)
         self.source_cache, self.memory_cache = {}, {}
         self.selected_sources, self.selected_memories, self.selected_episodes = {}, {}, {}
+        self.belief_relations = {}
+        self.redundant_literals = set()
         self.reasons = set()
         if brain["indexed_sequence"] < through:
             self.reasons.add("index_lag")
@@ -113,6 +118,22 @@ class _Selector:
         roots = [self.bind(root)]
         extra_source_ids = set()
         if exceptions:
+            from .belief_store import load_belief_relations
+
+            related = load_belief_relations(
+                self.conn, self.service, self.principal, self.brain, scope=self.scope,
+                memory_versions=[{"memory_id": root["memory_id"], "revision": root["revision"]}],
+            )
+            if related["incomplete_versions"]:
+                raise _Incomplete("belief_relation_incomplete")
+            if related["relations"]:
+                keys = {_key(memory) for memory in related["memories"]}
+                neighbors = self.load_memories(sorted(keys))
+                if len(neighbors) != len(keys):
+                    raise _Incomplete("belief_relation_incomplete")
+                roots.extend(memory for memory in neighbors if _key(memory) != _key(root))
+                extra_source_ids.update(event["event_id"] for event in related["events"])
+                self.belief_relations.update({item["relation_id"]: item for item in related["relations"]})
             rows = self.conn.execute(
                 "SELECT a.document,a.event_ids,a.is_current,a.invalidated,a.deleted,a.suppressed,e.event_ids AS edge_event_ids "
                 "FROM memory_associations e LEFT JOIN memory_assertions a "
@@ -133,7 +154,8 @@ class _Selector:
             neighbors = self.load_memories(sorted(keys))
             if len(neighbors) != len(keys):
                 raise _Incomplete("exception_unavailable")
-            roots.extend(memory for memory in neighbors if _key(memory) != _key(root))
+            known = {_key(memory) for memory in roots}
+            roots.extend(memory for memory in neighbors if _key(memory) not in known)
             extra_source_ids.update(identifier for row in rows for identifier in row["edge_event_ids"])
         if len(roots) > self.policy.max_assertions:
             raise _Incomplete("assertion_budget")
@@ -155,14 +177,81 @@ class _Selector:
             raise _Incomplete("unsupported_assertion")
         return events, {key: self.memory_cache[key]["document"] for key in memories}
 
-    def include(self, events, memories=None):
+    def relations_for(self, events, memories):
+        return [relation for _, relation in sorted(self.belief_relations.items())
+                if {_key(relation["source_memory_version"]),
+                    *(_key(ref) for ref in relation["target_memory_versions"])} <= memories.keys()
+                and set(relation["root_event_ids"]) <= events.keys()]
+
+    def redundant_literal(self, events, memories):
+        if len(memories) != 1:
+            return False
+        memory = next(iter(memories.values()))
+        if (memory["derivation"]["method"] != "direct_capture"
+                or memory["derivation"]["source_memory_versions"]
+                or memory.get("counterexamples") or len(memory["evidence_refs"]) != 1):
+            return False
+        if any(_key(memory) in {_key(relation["source_memory_version"]),
+                                *(_key(ref) for ref in relation["target_memory_versions"])}
+               for relation in self.belief_relations.values()):
+            return False
+        event = events.get(memory["evidence_refs"][0]["event_id"])
+        if event is None or not any(self.bind(memory) == self.bind(capture)
+                                    for capture in cognition.extract_event(event)):
+            return False
+        related = self.conn.execute(
+            "SELECT EXISTS (SELECT 1 FROM memory_associations WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND NOT invalidated AND ((source_id=%s AND source_revision=%s) OR (target_id=%s AND target_revision=%s))) "
+            "OR EXISTS (SELECT 1 FROM memory_episode_members m JOIN memory_episodes e "
+            "ON e.tenant_id=m.tenant_id AND e.owner_id=m.owner_id AND e.brain_id=m.brain_id "
+            "AND e.id=m.episode_id AND e.revision=m.episode_revision "
+            "WHERE m.tenant_id=%s AND m.owner_id=%s AND m.brain_id=%s AND m.memory_id=%s AND m.memory_revision=%s "
+            "AND e.is_current AND NOT e.invalidated AND NOT e.deleted) AS related",
+            (*self.params, *_key(memory), *_key(memory), *self.params, *_key(memory)),
+        ).fetchone()["related"]
+        return not related
+
+    def include_assertion(self, root):
+        events, memories = self.assertion_package(root)
+        redundant = self.redundant_literal(events, memories)
+        self.include(events, {} if redundant else memories)
+        if redundant:
+            self.redundant_literals.add(_key(root))
+
+    def request_bytes(self, events, memories, episodes):
+        from .semantic import PROPOSAL_SCHEMA, proposal_data, request_payload
+
+        working = copy.deepcopy(self.working)
+        for field in ("items", "open_loops"):
+            retained = []
+            for item in working[field]:
+                try:
+                    self.service._evidence(item["evidence_refs"], events.values())
+                    retained.append(item)
+                except DomainError:
+                    pass
+            working[field] = retained
+        data = proposal_data(events.values(), (self.bind(item) for item in memories.values()), working,
+                             (self.bind(item) for item in episodes.values()), self.sampling,
+                             self.relations_for(events, memories))
+        return request_payload("proposal", data, PROPOSAL_SCHEMA, self.policy.max_output_tokens)[1]
+
+    def include(self, events, memories=None, *, episodes=None, required=False):
         memories = memories or {}
         if len(self.selected_sources.keys() | events.keys()) > self.policy.max_sources:
             raise _Incomplete("source_budget")
         if len(self.selected_memories.keys() | memories.keys()) > self.policy.max_assertions:
             raise _Incomplete("assertion_budget")
+        combined_sources = self.selected_sources | events
+        combined_memories = self.selected_memories | memories
+        combined_episodes = self.selected_episodes | (episodes or {})
+        # Final sampling counts and omission reasons are added after package selection.
+        if not required and self.request_bytes(combined_sources, combined_memories, combined_episodes) + 2048 > min(
+                self.policy.max_request_bytes, self.policy.max_input_bytes):
+            raise _Incomplete("request_bytes_budget")
         self.selected_sources.update(events)
         self.selected_memories.update(memories)
+        self.selected_episodes.update(episodes or {})
 
     def omit(self, reason, *, relevant=False):
         self.reasons.add(reason)
@@ -220,8 +309,7 @@ class _Selector:
                     raise _Incomplete("episode_source_changed")
                 if not cognition._scope_allows(self.bind(episode)["scope"], self.scope):
                     raise _Incomplete("episode_scope")
-                self.include(events)
-                self.selected_episodes[episode["episode_id"]] = episode
+                self.include(events, episodes={episode["episode_id"]: episode})
             except _Incomplete as error:
                 self.omit(str(error), relevant=True)
 
@@ -250,7 +338,7 @@ def select_neighborhood(conn, service, principal, brain, target, *, through_sequ
         if any(event["scope"]["conversation_id"] != target.get("conversation_ref")
                or event["scope"]["branch_id"] != target.get("branch_ref") for event in events.values()):
             raise _Incomplete("input_scope")
-        selector.include(events)
+        selector.include(events, required=True)
     except _Incomplete as error:
         raise DomainError("source_unavailable", "Required cognitive input is unavailable or exceeds its budget") from error
     cue = "\n".join(event["observed"]["content"].get("text", "") for event in sorted(events.values(), key=lambda item: item["sequence"]))
@@ -259,7 +347,7 @@ def select_neighborhood(conn, service, principal, brain, target, *, through_sequ
         selector.reasons.add("cue_limit")
     for memory in selector.candidates(cue):
         try:
-            selector.include(*selector.assertion_package(memory))
+            selector.include_assertion(memory)
         except _Incomplete as error:
             selector.omit(str(error), relevant=True)
     for event in recent:
@@ -284,11 +372,16 @@ def select_neighborhood(conn, service, principal, brain, target, *, through_sequ
     for row in rows[:policy.max_assertions]:
         if _key(row["document"]) not in selector.selected_memories:
             try:
-                selector.include(*selector.assertion_package(row["document"]))
+                selector.include_assertion(row["document"])
             except _Incomplete as error:
                 selector.omit(str(error), relevant=cognition._lexical_score(cue, row["document"]["statement"]) > 0)
+    belief_relations = selector.relations_for(selector.selected_sources, selector.selected_memories)
+    if len(belief_relations) > policy.max_assertions:
+        selector.omit("belief_relation_budget", relevant=True)
+        belief_relations = belief_relations[:policy.max_assertions]
     selector.sampling.update(
         source_count=len(selector.selected_sources), assertion_count=len(selector.selected_memories),
+        redundant_literal_assertions=len(selector.redundant_literals - selector.selected_memories.keys()),
         episode_count=len(selector.selected_episodes), limitations=sorted(selector.reasons),
         selected_min_sequence=min((event["sequence"] for event in selector.selected_sources.values()), default=None),
         selected_max_sequence=max((event["sequence"] for event in selector.selected_sources.values()), default=None),
@@ -297,4 +390,5 @@ def select_neighborhood(conn, service, principal, brain, target, *, through_sequ
         tuple(sorted(selector.selected_sources.values(), key=lambda event: event["sequence"])),
         tuple(selector.selected_memories[key] for key in sorted(selector.selected_memories)),
         tuple(selector.selected_episodes[key] for key in sorted(selector.selected_episodes)), selector.sampling,
+        tuple(belief_relations),
     )

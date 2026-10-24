@@ -27,6 +27,23 @@ def _eligible(alias="a", *, current=True):
             f"AND {alias}.document IS NOT NULL ")
 
 
+def merge_belief_candidates(memories, candidate_state, package, *, selected=False):
+    from .belief_store import relation_versions
+
+    known = {(memory["memory_id"], memory["revision"]): memory for memory in memories}
+    known.update({(memory["memory_id"], memory["revision"]): memory for memory in package["memories"]})
+    endpoints = set().union(*(relation_versions(relation) for relation in package["relations"]))
+    candidate_state["valid_dependency_versions"] = set(candidate_state["valid_dependency_versions"]) | known.keys()
+    if not selected:
+        candidate_state["candidate_versions"] = list(set(candidate_state["candidate_versions"]) | endpoints)
+        for key in endpoints:
+            candidate_state["rank_signals"].setdefault(key, [{
+                "method": "association", "score": 1 / 61,
+                "meaning": "ranking_only_not_probability", "model_or_index_version": "belief-neighborhood-v1",
+            }])
+    return list(known.values())
+
+
 def collect_candidates(conn, service, principal, brain, target, query, recall_plan=None,
                        query_embedding=None):
     from .service import _vector

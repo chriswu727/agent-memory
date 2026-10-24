@@ -681,10 +681,14 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     result["usage"]["elapsed_ms"] = int((time.monotonic() - started) * 1000)
     if result["usage"]["stopped_by"] == "completed" and not result["items"]:
         result["usage"]["stopped_by"] = "no_candidates"
+    from .belief_resolution import resolve
+
+    refresh_beliefs = resolve(result["items"], candidates, event_map, scope, state, snapshot, timestamp)
     limit = request["budget"]["max_context_tokens"]
     while _measure(result) > limit and result["items"]:
         result["items"].pop()
         result["recall_traces"].pop()
+        refresh_beliefs(result["items"])
         result["status"] = "partial"
         result["next_step"] = "answer_with_limits"
         result["usage"]["stopped_by"] = "context_limit"
@@ -869,6 +873,11 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     if not _coverage(state, payload, 0)["read_fence_satisfied"]:
         raise DomainError("dependency_unavailable", "The preparation read fence is not covered", True)
     timestamp = now()
+    from .belief_resolution import atomic_units, resolution_evidence, resolve, version
+
+    recall_result = copy.deepcopy(recall_result)
+    resolve(recall_result["items"], state.get("belief_memories", [item["memory"] for item in recall_result["items"]]),
+            state.get("working_event_metadata", {}), scope, state, snapshot, timestamp)
     valid_evidence = list(state.get("verified_working_evidence_refs", []))
     recalled_evidence = set()
     for item in recall_result["items"]:
@@ -979,7 +988,7 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             "use": "conversation_context_only_not_independent_historical_evidence",
         }), [{"event_id": event["event_id"], "event_revision": event["revision"],
               "source_content_sha256": event["content_sha256"], "relationship": "context_only"}]))
-    memory_rows = []
+    memory_rows, belief_membership = [], {}
     for item in result["recall_results"][0]["items"]:
         if item["display_mode"] == "do_not_surface":
             continue
@@ -999,6 +1008,14 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
         if applicability is not None:
             item["applicability"] = applicability
         applicable = applicability is None or applicability["value"] == "true" and not applicability["conflict"]
+        resolution = item.get("belief_resolution")
+        if resolution:
+            applicable = applicable and resolution["complete"] and resolution["state"] == "unchanged"
+            belief_membership[version(memory)] = {
+                assessment["relation"]["relation_id"] for assessment in resolution["relations"]}
+            for ref in resolution_evidence(resolution):
+                if ref not in references:
+                    references.append(copy.deepcopy(ref))
         if applicability is not None:
             for ref in applicability["evidence_refs"]:
                 context_ref = {**ref, "relationship": "context_only"}
@@ -1012,14 +1029,17 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             **({"applicability": applicability,
                 "use": "source_attributed_applicable_memory" if applicable else "conditional_memory_not_current_rule"}
                if applicability is not None else {}),
+            **({"belief_resolution": copy.deepcopy(resolution),
+                "use": "source_attributed_applicable_memory" if applicable else "belief_not_settled_current_rule"}
+               if resolution else {}),
         }
         memory_rows.append({"section": "relevant_memory" if applicable else "conditional_memory",
                             "content": content, "references": references, "memory": memory})
     units = [[(block, [])] for block in blocks]
-    units.extend(_pattern_context_units(
+    units.extend(atomic_units(_pattern_context_units(
         memory_rows, [] if "recall_plan" in payload else state.get("pattern_views", []),
         scope, historical_events, snapshot, excluded, state.get("superseded_evidence_refs", []),
-    ))
+    ), belief_membership))
     uncertainty = {
         "recall_status": recall_result["status"],
         "historical_evidence_status": snapshot["historical_evidence_status"],

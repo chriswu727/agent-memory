@@ -56,6 +56,8 @@ def all_memories(data):
 
 
 def archive_identities(data):
+    from .belief_store import relation_sources, relation_versions
+
     identities = set()
     for memory in all_memories(data):
         identities.add(memory["memory_id"])
@@ -71,13 +73,17 @@ def archive_identities(data):
     for association in views.get("associations", []):
         identities.update(association["event_ids"])
         identities.update((association["source_id"], association["target_id"]))
+    for relation in data.get("belief_relations", []):
+        identities.update(relation_sources(relation))
+        identities.update(key[0] for key in relation_versions(relation))
     return identities
 
 
 def validate_extensions(data):
     if set(data) - {"format", "format_version", "events", "memories", "working_states", "tombstones",
                     "source_brain_id", "created_at", "retired_event_ids", "event_dependencies",
-                    "excluded_deleted_event_ids", "dependency_memories", "cognitive_views", "rebuild_policy", "archive_origin"}:
+                    "excluded_deleted_event_ids", "dependency_memories", "cognitive_views", "rebuild_policy", "archive_origin",
+                    "belief_relations"}:
         _invalid()
     if data.get("archive_origin", "legacy_unverified") not in {"local_export", "untrusted_upload", "legacy_unverified"}:
         _invalid()
@@ -116,6 +122,17 @@ def validate_extensions(data):
                 stack.extend((parent, False) for parent in edges[key])
     if "rebuild_policy" in data and data["rebuild_policy"] != REBUILD_POLICY:
         _invalid()
+    from .belief_store import validate_relation
+
+    relations = data.get("belief_relations", [])
+    if not isinstance(relations, list) or len(relations) > 5000:
+        _invalid()
+    relation_ids = set()
+    for relation in relations:
+        validate_relation(relation)
+        if relation["relation_id"] in relation_ids:
+            _invalid()
+        relation_ids.add(relation["relation_id"])
     views = data.get("cognitive_views", {"version": 1, "episodes": [], "members": [], "associations": []})
     if (not isinstance(views, dict) or set(views) != {"version", "episodes", "members", "associations"}
             or type(views["version"]) is not int or views["version"] != 1):
@@ -193,11 +210,14 @@ def validate_extensions(data):
 
 
 def export_views(conn, service, principal, brain, data, *, include_views):
+    from .belief_store import relation_versions
+
     params = service._params(principal, brain["id"])
     data["rebuild_policy"] = copy.deepcopy(REBUILD_POLICY)
     data["dependency_memories"] = []
     views = {"version": 1, "episodes": [], "members": [], "associations": []}
     data["cognitive_views"] = views
+    data["belief_relations"] = []
     if not data["memories"]:
         return
     if include_views:
@@ -212,11 +232,15 @@ def export_views(conn, service, principal, brain, data, *, include_views):
         views["associations"] = [dict(row) for row in conn.execute(
             "SELECT id,source_id,source_revision,target_id,target_revision,relation,event_ids FROM memory_associations "
             "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND NOT invalidated LIMIT 20001", params)]
+        data["belief_relations"] = [row["document"] for row in conn.execute(
+            "SELECT document FROM memory_belief_relations WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND NOT invalidated AND NOT deleted AND document IS NOT NULL ORDER BY id LIMIT 5001", params)]
     documents = {(memory["memory_id"], memory["revision"]): memory for memory in data["memories"]}
     needed = {key for memory in documents.values() for key in memory_parents(memory)}
     needed.update((member["memory_id"], member["memory_revision"]) for member in views["members"])
     needed.update((association[side + "_id"], association[side + "_revision"])
                   for association in views["associations"] for side in ("source", "target"))
+    needed.update(key for relation in data["belief_relations"] for key in relation_versions(relation))
     attempted = set(documents)
     while needed - attempted:
         keys = sorted(needed - attempted)
@@ -242,7 +266,13 @@ def export_views(conn, service, principal, brain, data, *, include_views):
 
 
 def sanitize_views(data, erased_events, erased_memories):
+    from .belief_store import relation_sources, relation_versions
+
     data["dependency_memories"] = [memory for memory in data.get("dependency_memories", []) if memory["memory_id"] not in erased_memories]
+    if "belief_relations" in data:
+        data["belief_relations"] = [relation for relation in data["belief_relations"]
+                                    if not erased_events.intersection(relation_sources(relation))
+                                    and not erased_memories.intersection(key[0] for key in relation_versions(relation))]
     views = data.get("cognitive_views")
     if views is None:
         return
@@ -347,10 +377,13 @@ def restore_memories(conn, service, principal, brain, data, available, blocked_e
 
 
 def restore_views(conn, service, principal, brain, data, restored, mapping, blocked_events):
+    from .belief_store import restore_beliefs
+
     params = service._params(principal, brain["id"])
     views = data.get("cognitive_views", {"episodes": [], "members": [], "associations": []})
     available_ids = {event["event_id"] for event in mapping.values()}
     counts = {"episodes": 0, "members": 0, "associations": 0, "quarantined_views": 0}
+    counts.update(restore_beliefs(conn, service, principal, brain, data, restored, mapping, blocked_events))
     if data.get("archive_origin") != "local_export":
         counts["quarantined_views"] = sum(len(views[field]) for field in ("episodes", "members", "associations"))
         return counts

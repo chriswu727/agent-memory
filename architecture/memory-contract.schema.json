@@ -1496,6 +1496,9 @@
         },
         "applicability": {
           "$ref": "#/$defs/MemoryApplicability"
+        },
+        "belief_resolution": {
+          "$ref": "#/$defs/BeliefResolution"
         }
       },
       "required": [
@@ -4582,6 +4585,14 @@
             ],
             "additionalProperties": false
           }
+        },
+        "belief_relation_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BeliefRelationRef"
+          },
+          "minItems": 0,
+          "maxItems": 64
         }
       },
       "required": [
@@ -5119,6 +5130,248 @@
         "reasons",
         "registry_fingerprint",
         "evaluated_at"
+      ],
+      "additionalProperties": false
+    },
+    "BeliefRelation": {
+      "type": "object",
+      "properties": {
+        "relation_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": {
+          "$ref": "#/$defs/BoundScope"
+        },
+        "kind": {
+          "enum": [
+            "abstracts",
+            "equivalent",
+            "exception",
+            "supersedes",
+            "contradicts"
+          ]
+        },
+        "source_memory_version": {
+          "type": "object",
+          "properties": {
+            "memory_id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "memory_id",
+            "revision"
+          ],
+          "additionalProperties": false
+        },
+        "target_memory_versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "memory_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "memory_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "conditions": {
+          "$ref": "#/$defs/SemanticCondition"
+        },
+        "valid_during": {
+          "$ref": "#/$defs/ValidDuring"
+        },
+        "world": {
+          "type": "string",
+          "enum": [
+            "real_world",
+            "quoted",
+            "roleplay",
+            "hypothetical",
+            "dream",
+            "unknown"
+          ]
+        },
+        "condition_registry_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "verification": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "enum": [
+                "supported_inference",
+                "contested"
+              ]
+            },
+            "method": {
+              "const": "semantic_model"
+            },
+            "not_a_truth_certificate": {
+              "const": true
+            }
+          },
+          "required": [
+            "state",
+            "method",
+            "not_a_truth_certificate"
+          ],
+          "additionalProperties": false
+        },
+        "root_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "endpoint_snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "memory_version": {
+                "type": "object",
+                "properties": {
+                  "memory_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "memory_id",
+                  "revision"
+                ],
+                "additionalProperties": false
+              },
+              "content_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "memory_version",
+              "content_sha256"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 9
+        }
+      },
+      "required": [
+        "relation_id",
+        "revision",
+        "scope",
+        "kind",
+        "source_memory_version",
+        "target_memory_versions",
+        "evidence_refs",
+        "conditions",
+        "valid_during",
+        "world",
+        "condition_registry_fingerprint",
+        "verification",
+        "root_event_ids",
+        "endpoint_snapshots"
+      ],
+      "additionalProperties": false
+    },
+    "BeliefResolution": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "unchanged",
+            "superseded",
+            "exception_applies",
+            "conflicted",
+            "uncertain"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "relation": {
+                "$ref": "#/$defs/BeliefRelation"
+              },
+              "applicability": {
+                "$ref": "#/$defs/MemoryApplicability"
+              }
+            },
+            "required": [
+              "relation",
+              "applicability"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "state",
+        "complete",
+        "relations"
+      ],
+      "additionalProperties": false
+    },
+    "BeliefRelationRef": {
+      "type": "object",
+      "properties": {
+        "relation_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "relation_id",
+        "revision",
+        "content_sha256"
       ],
       "additionalProperties": false
     }

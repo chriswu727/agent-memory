@@ -28,16 +28,16 @@ LEARNING_LIMITATIONS = frozenset({
     "exception_budget", "exception_unavailable", "assertion_budget", "dependency_incomplete",
     "unsupported_assertion", "assertion_retracted", "candidate_scan_limit", "candidate_limit",
     "episode_limit", "episode_source_changed", "episode_scope", "recent_window_limit",
-    "cue_limit", "recent_assertion_limit",
+    "cue_limit", "recent_assertion_limit", "belief_relation_incomplete", "belief_relation_budget", "request_bytes_budget",
 })
 REJECTION_REASONS = frozenset({
     "incomplete_history_package", "invalid_proposal", "verification_unavailable",
-    "semantic_support_unconfirmed",
+    "semantic_support_unconfirmed", "relation_support_unconfirmed", "linked_claim_unconfirmed",
 })
 _SAMPLING_COUNTS = (
     "recent_window_limit", "candidate_scan_limit", "candidate_limit", "association_depth",
     "dependency_depth", "candidate_count", "omitted_packages", "source_count",
-    "assertion_count", "episode_count",
+    "assertion_count", "episode_count", "redundant_literal_assertions",
 )
 _SAMPLING_SEQUENCES = (
     "through_sequence", "indexed_through_sequence", "selected_min_sequence", "selected_max_sequence",
@@ -52,6 +52,25 @@ def _monitor_enum(value, allowed):
     return value if isinstance(value, str) and value in allowed else "not_evaluated"
 
 
+def _monitor_window(value):
+    if not isinstance(value, dict):
+        return None
+    fields = ("from_sequence", "through_sequence", "attempted_through_sequence", "processed_through_sequence")
+    if any(_monitor_count(value.get(key), 2**63 - 1) is None for key in fields):
+        return None
+    start, end, attempted, processed = (value[key] for key in fields)
+    if not 1 <= start <= end or not start - 1 <= processed <= attempted <= end:
+        return None
+    result = {key: value[key] for key in fields}
+    result.update(has_more=processed < end, pending_sequence_span=end - processed,
+                  processing_succeeded=value.get("processing_succeeded") is True,
+                  status=_monitor_enum(value.get("status"), {"pending", "attempting", "processed", "deferred"}))
+    for key in ("input_count", "skipped_unavailable_count"):
+        if (count := _monitor_count(value.get(key))) is not None:
+            result[key] = count
+    return result
+
+
 def sanitize_learning_summary(summary):
     if not isinstance(summary, dict):
         return None
@@ -64,8 +83,10 @@ def sanitize_learning_summary(summary):
         values = summary.get(group)
         values = values if isinstance(values, dict) else {}
         result[group] = {key: _monitor_count(values.get(key)) or 0 for key in fields}
-        if group == "published_counts" and "pattern_views" in values:
-            result[group]["pattern_views"] = _monitor_count(values["pattern_views"]) or 0
+        optional = ("belief_links",) if group == "accepted_counts" else ("pattern_views", "belief_relations")
+        result[group].update({key: _monitor_count(values[key]) or 0 for key in optional if key in values})
+    if (window := _monitor_window(summary.get("learning_window"))) is not None:
+        result["learning_window"] = window
     sampling = summary.get("sampling")
     safe_sampling = {}
     if isinstance(sampling, dict):
@@ -118,11 +139,15 @@ def summarize_learning(result):
     return sanitize_learning_summary({
         "processing_status": result.get("status"), "learning_outcome": result.get("learning_outcome"),
         "accepted_counts": {key: count(result.get(key)) if evaluated else 0
-                            for key in ("claims", "situation_updates", "episode_actions")},
+                            for key in ("claims", "situation_updates", "episode_actions",
+                                        *(("belief_links",) if "belief_links" in result else ()))},
         "published_counts": {"claims": count(publication.get("memory_versions")),
                              "episode_versions": count(publication.get("episode_versions")),
                              **({"pattern_views": count(publication["pattern_view_ids"])}
-                                if "pattern_view_ids" in publication else {})},
+                                if "pattern_view_ids" in publication else {}),
+                             **({"belief_relations": count(publication["belief_relation_versions"])}
+                                if "belief_relation_versions" in publication else {})},
+        "learning_window": result.get("learning_window"),
         "sampling": result.get("sampling"), "rejection_reason_counts": reasons,
     })
 
@@ -175,7 +200,17 @@ class JobStore:
             if result[key] is not None:
                 result[key] = result[key].isoformat()
         if row["kind"] in {"orient", "consolidate"}:
-            summary = summarize_learning(row.get("result"))
+            learning = row.get("result")
+            if row["kind"] == "consolidate" and isinstance(row.get("payload"), dict) and "from_sequence" in row["payload"]:
+                from .learning_windows import pending_window
+
+                try:
+                    window = pending_window(row["payload"])
+                except (ValueError, KeyError, TypeError):
+                    window = None
+                if window is not None:
+                    learning = {"learning_window": window, **(learning if isinstance(learning, dict) else {})}
+            summary = summarize_learning(learning)
             if summary is not None:
                 result["learning_summary"] = summary
         return result

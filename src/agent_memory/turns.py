@@ -563,6 +563,11 @@ class TurnStore:
                 raise DomainError("invalid_evidence", "Delivery requires one previously recorded assistant draft.")
             service = self.service if self.service is not None else MemoryService(self.database)
             target = {"brain_ref": brain_id, "conversation_ref": row["conversation_id"], "branch_ref": row["branch_id"]}
+            orientation = None
+            if row["orientation_job_id"] and delivery_state != "draft":
+                from .learning import orientation_result
+
+                orientation = orientation_result(conn, service, principal, brain, row)
             event_id, _, _ = service._append_event(conn, principal, brain, target, incoming)
             output_refs = [{"event_id": event_id, "revision": source_revision}]
             candidate = {**row, "output_event_refs": output_refs}
@@ -573,6 +578,19 @@ class TurnStore:
             input_ids = {ref["event_id"] for ref in row["input_event_refs"] + row["context_event_refs"]}
             if event_id in input_ids:
                 raise DomainError("invalid_evidence", "Generated output cannot also be its own input evidence.")
+            if orientation and "dependency_generation" in orientation:
+                from .learning import validate_snapshot
+
+                # Revising this turn's own draft advances the generation without changing its input proof.
+                rebound = {**orientation, "dependency_generation": brain["dependency_generation"]}
+                validate_snapshot(conn, service, principal, brain, rebound)
+                updated = conn.execute(
+                    "UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                    "AND id=%s AND state='completed' AND result IS NOT NULL",
+                    (Jsonb(rebound), principal.tenant_id, principal.principal_id, brain_id, row["orientation_job_id"]),
+                )
+                if updated.rowcount != 1:
+                    raise DomainError("context_stale", "Orientation changed while recording delivery.")
             conn.execute(
                 "INSERT INTO memory_event_dependencies(tenant_id,owner_id,brain_id,input_event_id,output_event_id) "
                 "SELECT %s,%s,%s,input_id,%s FROM unnest(%s::text[]) AS sources(input_id) ON CONFLICT DO NOTHING",

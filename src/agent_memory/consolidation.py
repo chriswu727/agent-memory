@@ -86,6 +86,20 @@ def validate_batch(conn, service, principal, brain, batch: CognitiveBatch,
         if (row is None or digest(service._rebind(row["document"], principal, brain))
                 != digest(service._rebind(previous, principal, brain))):
             _error()
+    for previous in batch.belief_relations:
+        from .belief_store import relation_versions, validate_relation
+
+        validate_relation(previous)
+        row = conn.execute(
+            "SELECT document FROM memory_belief_relations WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND id=%s AND revision=%s AND NOT invalidated AND NOT deleted AND document IS NOT NULL",
+            (*params, previous["relation_id"], previous["revision"]),
+        ).fetchone()
+        if (row is None or digest(service._rebind(row["document"], principal, brain))
+                != digest(service._rebind(previous, principal, brain))
+                or not relation_versions(previous).issubset(parents)
+                or not set(previous["root_event_ids"]).issubset(key[0] for key in events)):
+            _error()
     superseded = service._superseded_evidence(conn, principal, brain, sorted({key[0] for key in events}))
     return {"events": events, "assertions": parents, "superseded_evidence": superseded,
             "root_event_ids": sorted({key[0] for key in expected})}
@@ -93,12 +107,15 @@ def validate_batch(conn, service, principal, brain, batch: CognitiveBatch,
 
 def _check_result(batch, result, snapshot):
     if result.status not in {"completed", "partial"}:
-        if result.claims or result.situation_updates or result.episode_actions:
+        if result.claims or result.situation_updates or result.episode_actions or result.belief_links:
             raise DomainError("invalid_evidence", "Unverified cognitive result cannot be published")
         return
     episodes = {episode["episode_id"]: episode for episode in batch.episodes}
     ids, changed_episodes = set(), set()
-    for group in ("claims", "situation_updates", "episode_actions"):
+    claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
+    claims = {item["proposal_id"]: {key: copy.deepcopy(value) for key, value in item.items() if key in claim_fields}
+              for item in result.claims}
+    for group in ("claims", "situation_updates", "episode_actions", "belief_links"):
         if batch.sampling.get("publication_restricted") and group != "situation_updates" and getattr(result, group):
             raise DomainError("invalid_evidence", "Incomplete history cannot support consolidation")
         schema_fields = set(PROPOSAL_SCHEMA["properties"][group]["items"]["properties"])
@@ -120,7 +137,7 @@ def _check_result(batch, result, snapshot):
                 changed_episodes.add(item["episode_id"])
             try:
                 references = SemanticProcessor._validate_proposal(
-                    group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes,
+                    group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims,
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
@@ -338,7 +355,12 @@ def publish_semantic(conn, service, principal, brain, batch: CognitiveBatch,
     from .pattern_store import refresh_patterns
 
     pattern_ids = refresh_patterns(conn, service, principal, brain, batch, memories, episodes)
+    from .belief_store import publish_links
+
+    links = publish_links(conn, service, principal, brain, batch, result,
+                          published_memories=memories, snapshot=snapshot)
     return {"status": result.status, "published_count": len(memories), "pattern_view_ids": pattern_ids,
+            "belief_relation_versions": [{"relation_id": link["relation_id"], "revision": link["revision"]} for link in links],
             "memory_versions": [{"memory_id": memory["memory_id"], "revision": memory["revision"]} for memory in memories],
             "episode_versions": episodes, "source_event_ids": snapshot["root_event_ids"],
             "source_memory_ids": sorted({memory["memory_id"] for memory in batch.existing_assertions}),

@@ -209,10 +209,13 @@ class MemoryService:
         ).fetchall()
         affected = sorted({row["id"] for row in rows})
         params = self._params(principal, brain["id"])
+        from .belief_store import invalidate_beliefs
         from .pattern_store import invalidate_patterns
 
         invalidate_patterns(conn, self, principal, brain, event_ids=event_ids,
                             memory_ids=set(affected) | set(memory_ids))
+        invalidate_beliefs(conn, self, principal, brain, event_ids=event_ids,
+                          memory_ids=set(affected) | set(memory_ids))
         conn.execute(
             "UPDATE memory_jobs SET result=NULL,state='superseded',lease_token_digest=NULL,lease_expires_at=NULL "
             "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND "
@@ -316,24 +319,12 @@ class MemoryService:
         )
         job = self._job(conn, principal, brain, "extract", {"event_id": document["event_id"], "revision": document["revision"]})
         if (self.semantic_processor and target.get("conversation_ref") and target.get("branch_ref")
-                and incoming["delivery_state"] in ("received", "delivered", "partially_delivered")):
-            cognitive_payload = {
-                "event_id": document["event_id"], "revision": document["revision"],
-                "target": {key: target[key] for key in ("conversation_ref", "branch_ref")},
-                "through_sequence": document["sequence"],
-            }
-            queued = conn.execute(
-                "SELECT id FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND kind='consolidate' AND state='queued' AND attempts=0 "
-                "AND payload #>> '{target,conversation_ref}'=%s AND payload #>> '{target,branch_ref}'=%s "
-                "ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
-                (*params, target["conversation_ref"], target["branch_ref"]),
-            ).fetchone()
-            if queued:
-                conn.execute("UPDATE memory_jobs SET payload=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                             (Jsonb(cognitive_payload), *params, queued["id"]))
-            else:
-                self._job(conn, principal, brain, "consolidate", cognitive_payload)
+                and incoming["delivery_state"] in ("received", "delivered", "partially_delivered")
+                and incoming["event_kind"] not in ("source_correction", "delivery_receipt")):
+            from .learning_windows import enqueue_window
+
+            enqueue_window(conn, self, principal, brain, target, document["sequence"],
+                           document["sequence"], coalesce=True)
         return document["event_id"], False, job["job_id"]
 
     def _observe(self, conn, principal, brain, request):
@@ -489,7 +480,9 @@ class MemoryService:
 
     def _retrieval(self, conn, principal, brain, target, query, recall_plan=None, query_embedding=None, context_observations=None):
         params = self._params(principal, brain["id"])
-        from .candidates import collect_candidates
+        from .belief_resolution import frozen_relations, resolution_evidence
+        from .belief_store import load_belief_relations
+        from .candidates import collect_candidates, merge_belief_candidates
 
         total = conn.execute(
             "SELECT count(*) AS value FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
@@ -498,9 +491,15 @@ class MemoryService:
         memories, candidate_state = collect_candidates(
             conn, self, principal, brain, target, query, recall_plan, query_embedding,
         )
+        beliefs = load_belief_relations(
+            conn, self, principal, brain, self._scope(principal, brain, target),
+            candidate_state["candidate_versions"],
+        )
+        memories = merge_belief_candidates(memories, candidate_state, beliefs, selected=recall_plan is not None)
         raw_working = self._working(conn, principal, brain, target, None)
         source_ids = {r["event_id"] for memory in memories for r in memory["evidence_refs"]}
         source_ids.update(event_id for memory in memories for event_id in memory.get("root_event_ids", []))
+        source_ids.update(event["event_id"] for event in beliefs["events"])
         source_ids.update(r["event_id"] for field in ("items", "open_loops") for item in raw_working[field] for r in item["evidence_refs"])
         source_ids.update(query.get("query_event_ids", []))
         source_ids.update(query["cue_event_ids"])
@@ -513,10 +512,12 @@ class MemoryService:
         events = self._events(conn, principal, brain, event_ids=sorted(source_ids)[:1024], limit=1024)
         tail = self._events(conn, principal, brain, after_sequence=brain["indexed_sequence"], limit=129)
         truncated = len(source_ids) > 1024 or len(tail) > 128
-        events = list({event["event_id"]: event for event in events + tail[:128]}.values())
+        events = list({event["event_id"]: event for event in events + beliefs["events"] + tail[:128]}.values())
         working = self._working(conn, principal, brain, target, events)
         state = self._state(conn, principal, brain, total)
         state.update(candidate_state)
+        state.update(belief_relations=beliefs["relations"], belief_incomplete_versions=beliefs["incomplete_versions"],
+                     belief_memories=memories)
         stored_observations, context_complete = self._context_observations(conn, principal, brain, target, working)
         observations = {}
         for observation in [*(context_observations or []), *stored_observations]:
@@ -570,12 +571,17 @@ class MemoryService:
                     if cognition._scope_allows(event["scope"], self._scope(principal, brain, target))
                 })
         if recall_plan is not None:
+            frozen = sorted(recall_plan.get("belief_relation_refs", []),
+                            key=lambda value: (value["relation_id"], value["revision"]))
+            if frozen != frozen_relations(result["items"]):
+                raise DomainError("context_stale", "Belief relations changed during recall planning.")
             expected = {(v["memory_id"], v["revision"]) for v in recall_plan["memory_versions"]}
             found = {(item["memory"]["memory_id"], item["memory"]["revision"]) for item in result["items"]}
             observed = {(ref["event_id"], ref["revision"]) for ref in recall_plan["observed_event_refs"]}
             if expected != found or any(
                 (ref["event_id"], ref["event_revision"]) not in observed
-                for item in result["items"] for ref in item["memory"]["evidence_refs"]
+                for item in result["items"] for ref in (
+                    item["memory"]["evidence_refs"] + resolution_evidence(item.get("belief_resolution", {})))
             ):
                 raise DomainError("invalid_evidence", "Selected memory versions are unavailable or unsupported.")
         self._save_traces(conn, principal, brain, result.get("recall_traces", []))
@@ -1004,6 +1010,16 @@ class MemoryService:
         invalidated = self._invalidate(conn, principal, brain, event_ids=descendants,
                                        memory_ids=sorted(affected_ids))
         conn.execute(
+            "UPDATE memory_jobs SET result=NULL,state='superseded',lease_token_digest=NULL,lease_expires_at=NULL "
+            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind IN ('orient','consolidate') "
+            "AND source_event_ids && %s::text[]",
+            (*params, sorted({reference["event_id"] for reference in old_evidence})),
+        )
+        from .belief_store import invalidate_beliefs
+
+        invalidate_beliefs(conn, self, principal, brain,
+                          event_ids={reference["event_id"] for reference in old_evidence})
+        conn.execute(
             "UPDATE memory_assertions SET is_current=false WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
             (*params, row["id"]),
         )
@@ -1066,10 +1082,13 @@ class MemoryService:
                 )
         erase = payload["mode"] == "erase_content"
         if erase:
+            from .belief_store import invalidate_beliefs
             from .pattern_store import invalidate_patterns
 
             invalidate_patterns(conn, self, principal, brain, event_ids=event_ids,
                                 memory_ids=memory_ids, deleted=True)
+            invalidate_beliefs(conn, self, principal, brain, event_ids=event_ids,
+                              memory_ids=memory_ids, deleted=True)
         conn.execute(
             "UPDATE memory_jobs SET result=NULL WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='query_embedding'",
             params,
@@ -1225,7 +1244,7 @@ class MemoryService:
         )
         job = self._job(conn, principal, brain, "export", {"archive_id": archive_id}, state="completed")
         includes = ["provenance", "tombstones", "model_versions"]
-        if any(data["cognitive_views"][field] for field in ("episodes", "members", "associations")):
+        if data.get("belief_relations") or any(data["cognitive_views"][field] for field in ("episodes", "members", "associations")):
             includes.append("relations")
         includes += [name for name, flag in (("events", "include_events"), ("assertions", "include_assertions"), ("working_states", "include_working_states")) if payload[flag]]
         return {"archive_id": archive_id, "format": data["format"], "format_version": CONTRACT_VERSION,

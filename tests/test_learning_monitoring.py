@@ -48,7 +48,7 @@ def test_job_processing_and_learning_outcomes_remain_distinct(status, outcome, c
     assert summary["processing_status"] == status
     assert summary["learning_outcome"] == outcome
     assert summary["accepted_counts"] == {
-        "claims": len(claims), "situation_updates": 0, "episode_actions": 0,
+        "claims": len(claims), "situation_updates": 0, "episode_actions": 0, "belief_links": 0,
     }
     assert summary["published_counts"] == {"claims": 0, "episode_versions": 0}
     assert "private-" not in json.dumps(public)
@@ -87,6 +87,62 @@ def test_snapshot_before_processing_is_not_reported_as_successful_learning():
         "sampling": {"source_count": 1}, "rejection_reason_counts": {},
     }
     assert "private-" not in json.dumps(public)
+
+
+def test_queued_window_reports_pending_progress_without_exposing_target_or_source_ids():
+    row = job_row(None, state="queued")
+    row["payload"] = {"from_sequence": 9, "through_sequence": 40,
+                      "target": {"conversation_ref": "private-conversation"}, "event_id": "private-event"}
+    window = JobStore(None)._public(row)["learning_summary"]["learning_window"]
+    assert window == {"from_sequence": 9, "through_sequence": 40,
+                      "attempted_through_sequence": 8, "processed_through_sequence": 8,
+                      "has_more": True, "pending_sequence_span": 32, "processing_succeeded": False,
+                      "status": "pending"}
+    assert "private-" not in json.dumps(JobStore(None)._public(row))
+
+
+@pytest.mark.parametrize("invalid", [True, -1, "private-value", 2**63])
+def test_window_summary_rejects_invalid_progress_values(invalid):
+    summary = sanitize_learning_summary({"learning_window": {
+        "from_sequence": 1, "through_sequence": 10,
+        "attempted_through_sequence": invalid, "processed_through_sequence": 0,
+    }})
+    assert "learning_window" not in summary
+
+
+def test_failed_window_distinguishes_attempted_from_processed_and_redacts_extra_metadata():
+    summary = summarize_learning({"status": "budget_exhausted", "learning_window": {
+        "from_sequence": 1, "through_sequence": 40, "attempted_through_sequence": 8,
+        "processed_through_sequence": 0, "processing_succeeded": False, "status": "deferred",
+        "has_more": False, "input_count": 8, "skipped_unavailable_count": 0,
+        "source_text": "private-text", "continuation_job_id": "private-child",
+    }})
+    assert summary["learning_window"]["pending_sequence_span"] == 40
+    assert summary["learning_window"]["has_more"] is True
+    assert summary["learning_window"]["attempted_through_sequence"] == 8
+    assert summary["learning_window"]["processed_through_sequence"] == 0
+    assert "private-" not in json.dumps(summary)
+
+
+def test_belief_monitoring_exposes_only_bounded_counts_and_known_rejections():
+    result = {
+        "status": "partial", "learning_outcome": "accepted_proposals",
+        "belief_links": [{"statement": "private-link"}],
+        "publication": {"belief_relation_versions": [{"relation_id": "private-relation", "revision": 1}]},
+        "rejected": [{"reason": "relation_support_unconfirmed"}, {"reason": "linked_claim_unconfirmed"},
+                     {"reason": "private-reason"}],
+        "sampling": {"limitations": ["belief_relation_incomplete", "belief_relation_budget", "private-reason"]},
+    }
+    summary = summarize_learning(result)
+    assert summary["accepted_counts"]["belief_links"] == 1
+    assert summary["published_counts"]["belief_relations"] == 1
+    assert summary["rejection_reason_counts"] == {"relation_support_unconfirmed": 1, "linked_claim_unconfirmed": 1}
+    assert summary["sampling"]["limitations"] == ["belief_relation_budget", "belief_relation_incomplete"]
+    assert "private-" not in json.dumps(summary)
+    summary["accepted_counts"]["belief_links"] = True
+    summary["published_counts"]["belief_relations"] = 1_000_001
+    checked = sanitize_learning_summary(summary)
+    assert checked["accepted_counts"]["belief_links"] == checked["published_counts"]["belief_relations"] == 0
 
 
 @pytest.mark.parametrize("views,expected", [
