@@ -76,6 +76,7 @@ _CLAIM = _object({
     "world": _WORLD, "conditions": {"$ref": "#/$defs/condition"},
     "evidence_refs": _array(_REF, 16, 1), "counterexamples": _array(_REF, 16),
     "source_memory_versions": _array(_VERSION, 16), "valid_time": _TIME,
+    "valid_during": {"$ref": "#/$defs/ValidDuring"},
     "procedure": {"oneOf": [{"type": "null"}, _PROCEDURE]},
 })
 _SITUATION = _object({
@@ -108,7 +109,6 @@ _BELIEF_LINK = _object({
     "conditions": {"$ref": "#/$defs/condition"}, "valid_during": {"$ref": "#/$defs/ValidDuring"},
 })
 PROPOSAL_SCHEMA["properties"]["belief_links"] = _array(_BELIEF_LINK, 16)
-_CLAIM["properties"]["valid_during"] = {"$ref": "#/$defs/ValidDuring"}
 _SITUATION["properties"]["observation"] = {"$ref": "#/$defs/ContextObservation"}
 PROPOSAL_SCHEMA["$defs"] = {"condition": _CONDITION, **NEW_SCHEMA_DEFINITIONS}
 PROPOSAL_SCHEMA["properties"]["consolidation_decisions"] = _array(_object({
@@ -152,8 +152,14 @@ _INSTRUCTIONS = (
     "not, all or any; legacy eq/ne keys are not valid new output. For context updates, "
     "observation is optional and requires independent explicit evidence of the current state. "
     "A conditional preference never proves that its condition currently holds. Preserve positive "
-    "and negative observations separately. Use valid_during with explicit unknown, unbounded or "
-    "instant boundaries; missing time knowledge is unknown, never unbounded. Do not resolve today "
+    "and negative observations separately. Every claim MUST include typed valid_during before "
+    "verification; it governs runtime applicability. valid_time is legacy nullable metadata and "
+    "does not substitute for valid_during. Preserve explicitly stated absolute starting instants. "
+    "If the source explicitly states that a preference has no scheduled end, use an unbounded "
+    "end; if no end is stated, use an unknown end. A null valid_time boundary never establishes "
+    "an unbounded boundary. Use {\"kind\":\"unknown\"} when validity is wholly unknown; "
+    "otherwise preserve each known boundary in an interval and mark unknown boundaries unknown. "
+    "Do not infer an instant or unbounded validity from chronology alone. Do not resolve today "
     "without a reliable source timestamp and timezone. This host contract currently supplies no "
     "authenticated local timezone: represent relative today validity as unknown and never emit an "
     "anchor. Sampling is bounded and never proves absence. "
@@ -209,7 +215,9 @@ _VERIFY_INSTRUCTIONS = (
     "observation requires support for its subject, typed predicate, "
     "value, polarity and validity interval independently of any conditional preference. Conditions "
     "in a rule are not observations that those conditions hold now. Unknown or missing time does "
-    "not support unbounded validity. For belief_links, linked_claim and target_assertions identify "
+    "not support unbounded validity. Assess the explicit typed valid_during on every claim, "
+    "including each instant or unbounded boundary, against its cited sources. A null valid_time "
+    "boundary supplies no evidence of unlimited validity. For belief_links, linked_claim and target_assertions identify "
     "the exact endpoints, not extra evidence. Judge each numbered excerpt as supporting its cited "
     "premise, then provide link_verdict for whether ALL premises jointly establish the proposed "
     "relationship, direction, conditions and validity. Every assessment MUST include both "
@@ -971,7 +979,6 @@ class SemanticProcessor:
             if group == "claims":
                 final["epistemic_status"] = "derived_inference"
                 final["condition_registry_fingerprint"] = CORE_REGISTRY.fingerprint
-                final.setdefault("valid_during", {"kind": "unknown"})
             if group == "situation_updates":
                 final["current_only"] = True
             if group == "belief_links":

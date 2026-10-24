@@ -347,7 +347,7 @@ class BrainRuntime:
         controller = self.recall_controller if lease.row["stage"] == "captured" else None
         prepared = self.memory.prepare(
             turn_id, recent_event_limit=self.policy.recent_context_events,
-            evidence_mode="prior_record_check" if controller else None, **arguments,
+            evidence_mode="prior_record_check", **arguments,
         )["result"]
         if controller is None:
             return prepared, None

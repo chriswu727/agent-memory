@@ -189,3 +189,29 @@ def test_prepare_refreshes_nested_recall_authoritative_text_after_applicability_
     assert packet["model_context"] == cognition.render_context(packet)
     assert packet["usage"]["context_tokens"] == len(packet["model_context"].encode())
     assert recalled["model_context"] == original
+
+
+def test_evaluation_timestamps_stay_in_diagnostics_without_changing_model_context():
+    sources, memories, current = scenario(kind="exception")
+    for memory in memories:
+        memory.update(conditions={"op": "always"}, valid_during={"kind": "unknown"})
+    current["belief_relations"] = [relation(memories[1], memories[:1], kind="exception")]
+    current["applicability_at"] = "2026-10-22T12:00:00Z"
+    earlier = recall(sources, memories, current)
+    earlier_packet = cognition.prepare(scope(), prepare_payload(), working(), earlier, current)
+    current["applicability_at"] = "2026-10-22T12:01:00Z"
+    later = recall(sources, memories, current)
+    later_packet = cognition.prepare(scope(), prepare_payload(), working(), later, current)
+    assert earlier["items"][0]["applicability"]["evaluated_at"] != later["items"][0]["applicability"]["evaluated_at"]
+    assert earlier["belief_relations"][0]["applicability"]["evaluated_at"] != later["belief_relations"][0]["applicability"]["evaluated_at"]
+    assert earlier["model_context"] == later["model_context"]
+    assert earlier_packet["model_context"] == later_packet["model_context"]
+    certificate = next(iter(context_view(later_packet)["relations"].values()))
+    assert certificate["valid_during"] == current["belief_relations"][0]["valid_during"]
+    assert "evaluated_at" not in certificate["applicability"]
+
+
+def test_user_authored_evaluation_metadata_is_not_removed_from_working_values():
+    value = {"applicability": {"evaluated_at": "A timestamp mentioned by the user"}}
+    packet = {"blocks": [{"section": "working_state", "text": json.dumps({"value": value}), "evidence_refs": []}]}
+    assert context_view(packet)["blocks"][0]["content"]["value"] == value

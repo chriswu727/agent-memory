@@ -342,7 +342,7 @@ def evidence_overlaps(first: dict, second: dict) -> bool:
 
 
 def _eligible_source(event: dict, ref: dict, historical: bool, intent: str,
-                     claim_kind: str | None = None) -> bool:
+                     claim_kind: str | None = None, *, verified_preference: bool = False) -> bool:
     role = event["observed"]["actor_role"]
     if role == "assistant" and claim_kind is not None:
         return (claim_kind in {"agent_said", "proposal_offered", "commitment_expressed"}
@@ -361,7 +361,12 @@ def _eligible_source(event: dict, ref: dict, historical: bool, intent: str,
             span["end"], bounds["end"]
         ):
             continue
-        acts.append(segment["act"])
+        act = segment["act"]
+        if (act == "instruction" and verified_preference and role == "user"
+                and event["observed"]["delivery_state"] == "received"
+                and span and bounds and span["start"] <= bounds["start"] and span["end"] >= bounds["end"]):
+            act = "direct_statement"
+        acts.append(act)
     return bool(acts) and all(act in {"direct_statement", "correction", "confirmation",
                                       "not_applicable"} for act in acts)
 
@@ -394,8 +399,16 @@ def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
         if historical and (cutoff is None or source["sequence"] > cutoff or event_id in excluded):
             return False
     claim_kind = memory.get("claim_kind")
+    verification = memory.get("verification", {})
+    verified_preference = (
+        claim_kind == "reported_preference" and memory["epistemic_status"] == "derived_inference"
+        and verification.get("state") in {"supported_inference", "contested"}
+        and verification.get("method") == "semantic_model"
+        and verification.get("not_a_truth_certificate") is True
+    )
     if claim_kind is not None and any(
-        not _eligible_source(events[ref["event_id"]], ref, historical, intent, claim_kind)
+        not _eligible_source(events[ref["event_id"]], ref, historical, intent, claim_kind,
+                             verified_preference=verified_preference)
         for ref in refs
     ):
         return False
@@ -406,7 +419,8 @@ def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
             event = events[ref["event_id"]]
             if event["sequence"] > cutoff or event["event_id"] in excluded:
                 return False
-            if not _eligible_source(event, ref, True, intent, claim_kind):
+            if not _eligible_source(event, ref, True, intent, claim_kind,
+                                    verified_preference=verified_preference):
                 return False
     paths = [path for path in basis["support_paths"]
              if path["path_id"] in basis["selected_path_ids"]]

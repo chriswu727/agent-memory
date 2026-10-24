@@ -86,6 +86,43 @@ def test_draft_requires_delivery_and_is_not_recalled(memory):
     assert recovered.resume(result.turn_id).stage == "completed"
 
 
+@pytest.mark.parametrize("text", [
+    "上次我们在月亮湖看过日出，对吧？",
+    "我的新暗号是银杏小舟。",
+])
+def test_current_input_is_not_reintroduced_as_historical_memory(memory, text):
+    prompts = []
+    runtime = BrainRuntime(
+        memory, lambda request: prompts.append(request) or "收到这条消息。", deliver=delivered,
+        policy=RuntimePolicy(recent_context_events=0),
+    )
+    result = runtime.respond(text, message_id="first", conversation_id="new-conversation")
+    packet = json.loads(prompts[0].memory_context)
+    assert prompts[0].messages[-1]["content"] == text
+    assert packet["memory_versions"] == {}
+    assert text not in prompts[0].memory_context
+    uncertainty = next(block["content"] for block in packet["blocks"]
+                       if block["section"] == "uncertainty")
+    assert uncertainty["historical_evidence_status"] == "enforced"
+    assert runtime.journal.sources(result.turn_id)["input_events"][0]["observed"]["content"]["text"] == text
+
+
+def test_lexical_runtime_uses_prior_statement_while_excluding_current_question(memory):
+    original = "我在松鹤小学上学。"
+    observed = memory.observe(original, source_event_key="prior-school", producer_ref="test",
+                              conversation_id="older-conversation", branch_id="main")["result"]
+    prompts = []
+    runtime = BrainRuntime(
+        memory, lambda request: prompts.append(request) or "你说过是在松鹤小学。", deliver=delivered,
+        policy=RuntimePolicy(recent_context_events=0),
+    )
+    runtime.respond("我在松鹤小学上学，对吗？", message_id="current", conversation_id="new-conversation")
+    packet = json.loads(prompts[0].memory_context)
+    assert original in prompts[0].memory_context
+    assert packet["memory_versions"]
+    assert {ref["event_id"] for ref in packet["sources"].values()} == set(observed["accepted_event_ids"])
+
+
 def test_uncertain_delivery_never_resends_without_idempotency(memory):
     sends = []
 

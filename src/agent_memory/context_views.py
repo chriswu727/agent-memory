@@ -81,7 +81,7 @@ class _Projection:
         value.update(source=self.memory(relation["source_memory_version"]),
                      targets=[self.memory(target) for target in relation["target_memory_versions"]],
                      evidence_refs=self.references(relation["evidence_refs"]),
-                     applicability=self.content(assessment["applicability"]),
+                     applicability=self.content(assessment["applicability"], "applicability"),
                      verification=self.content(relation["verification"], "verification"))
         if identifier in self.relations and self.relations[identifier] != value:
             raise DomainError("validation_failed", "Inconsistent context relation certificate")
@@ -115,6 +115,8 @@ class _Projection:
             return result
         result = {}
         for key, item in value.items():
+            if field == "applicability" and key == "evaluated_at":
+                continue
             if key == "registry_fingerprint" or (key == "status" and (
                     item == value.get("value") or item == "conflict" and value.get("conflict") is True)):
                 continue

@@ -31,7 +31,8 @@ def claim(source, **changes):
                             "predicate_ref": {"id": "core.activity", "version": 1},
                             "value": {"type": "concept", "id": "activity:work"}},
              "evidence_refs": [reference(source)], "counterexamples": [],
-             "source_memory_versions": [], "valid_time": copy.deepcopy(UNKNOWN_TIME), "procedure": None}
+             "source_memory_versions": [], "valid_time": copy.deepcopy(UNKNOWN_TIME),
+             "valid_during": {"kind": "unknown"}, "procedure": None}
     value.update(changes)
     return value
 

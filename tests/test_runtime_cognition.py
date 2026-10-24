@@ -8,13 +8,20 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from psycopg.types.json import Jsonb
+from test_learning import learning as learning
 from test_turns import turns as turns
 
 from agent_memory.api import create_app
 from agent_memory.client import MemoryClient
 from agent_memory.config import Settings
 from agent_memory.helpers import DomainError, Principal, digest, now, uid
-from agent_memory.runtime import BrainRuntime, _Lease
+from agent_memory.runtime import (
+    BrainRuntime,
+    DeliveryReceipt,
+    RuntimeBlocked,
+    RuntimePolicy,
+    _Lease,
+)
 from agent_memory.runtime_client import RuntimeClient
 
 
@@ -154,6 +161,116 @@ def test_generation_retains_sources_seen_by_orientation_but_not_selected_for_pro
     runtime._generate(lease, "Current input", {"conversation_id": "chat", "branch_id": "main"})
     assert transitions[0][0] == "prepared"
     assert transitions[0][1]["context_event_refs"] == [reference]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("has_counterexample", [False, True])
+def test_default_runtime_recalls_verified_preference_from_a_prior_instruction(learning, has_counterexample):
+    from test_semantic import claim, proposals, reference, run
+
+    from agent_memory.consolidation import publish_semantic
+    from agent_memory.semantic import CognitiveBatch
+
+    receipt = learning.observe("请用简短回答。", conversation="preferences")
+    source_ids = receipt["accepted_event_ids"]
+    if has_counterexample:
+        source_ids += learning.observe("请用详细回答。", conversation="preferences")["accepted_event_ids"]
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        sources = learning.service._events(conn, learning.principal, brain, event_ids=source_ids)
+    source = sources[0]
+    counterexamples = [reference(sources[1], "contradicts")] if has_counterexample else []
+    proposal = claim(source, statement="用户希望回答简短。", conditions={"op": "always"},
+                     counterexamples=counterexamples)
+    batch = CognitiveBatch(uid(), source["scope"], tuple(sources))
+    processed = run(batch, proposals(proposal))
+    assert processed.status == "completed"
+    assert processed.claims[0]["verification"]["state"] == (
+        "contested" if has_counterexample else "supported_inference"
+    )
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        published = publish_semantic(conn, learning.service, learning.principal, brain,
+                                     batch, processed, job_id=uid())
+    version = published["memory_versions"][0]
+    learning.service.semantic_processor = None
+    prompts = []
+    runtime = BrainRuntime(learning.memory, lambda request: prompts.append(request) or "你希望回答简短。",
+                           deliver=lambda _: DeliveryReceipt("delivered"),
+                           policy=RuntimePolicy(recent_context_events=0))
+    result = runtime.respond("我的回答偏好是什么？", message_id="recall", conversation_id="new-chat")
+    assert result.stage == "completed"
+    view = json.loads(prompts[0].memory_context)
+    assert version in view["memory_versions"].values()
+    assert proposal["statement"] in prompts[0].memory_context
+    assert "请用简短回答。" not in prompts[0].memory_context
+    assert {reference["event_id"] for reference in view["sources"].values()} == set(source_ids)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("time_bound", ["start", "end"])
+@pytest.mark.parametrize("retry_at,should_resume", [
+    ("2026-10-25T12:01:00Z", True),
+    ("2026-10-25T13:01:00Z", False),
+])
+def test_semantic_context_recovery_rechecks_validity_without_timestamp_churn(
+    learning, monkeypatch, retry_at, should_resume, time_bound,
+):
+    from test_semantic import claim, proposals, run
+
+    from agent_memory import cognition
+    from agent_memory.consolidation import publish_semantic
+    from agent_memory.semantic import CognitiveBatch
+
+    clock = ["2026-10-25T12:00:00Z"]
+    monkeypatch.setattr(cognition, "now", lambda: clock[0])
+    receipt = learning.observe("现在我希望回答简短。", conversation="preferences")
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        source = learning.service._events(conn, learning.principal, brain,
+                                         event_ids=receipt["accepted_event_ids"])[0]
+    validity = {"kind": "interval", "start": {"kind": "unbounded"}, "end": {"kind": "unbounded"},
+                time_bound: {"kind": "instant", "at": "2026-10-25T13:00:00Z"}}
+    proposal = claim(source, statement="用户报告希望回答简短。", valid_during=validity)
+    batch = CognitiveBatch(uid(), source["scope"], (source,))
+    processed = run(batch, proposals(proposal))
+    assert processed.status == "completed"
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        published = publish_semantic(conn, learning.service, learning.principal, brain,
+                                     batch, processed, job_id=uid())
+    assert published["published_count"] == 1
+    learning.service.semantic_processor = None
+    requests = []
+
+    def uncertain(request):
+        requests.append(request)
+        assert proposal["statement"] in request.memory_context
+        raise TimeoutError("Generation outcome is unknown")
+
+    policy = RuntimePolicy(memory_context_tokens=16000, recent_context_events=0)
+    runtime = BrainRuntime(learning.memory, uncertain, policy=policy)
+    with pytest.raises(TimeoutError):
+        runtime.respond("回答简短", message_id="current", conversation_id="chat")
+    row = runtime.journal.list()[0]
+    assert row["stage"] == "generating"
+    clock[0] = retry_at
+
+    def recover(request):
+        requests.append(request)
+        assert request.messages == requests[0].messages
+        assert request.request_id == requests[0].request_id
+        return "好的。"
+
+    resumed = BrainRuntime(learning.memory, recover, policy=policy, generation_is_idempotent=True,
+                           deliver=lambda _: DeliveryReceipt("delivered"))
+    if should_resume:
+        assert resumed.resume(row["turn_id"]).stage == "completed"
+        assert len(requests) == 2
+    else:
+        with pytest.raises(RuntimeBlocked, match="context_stale"):
+            resumed.resume(row["turn_id"])
+        assert len(requests) == 1
 
 
 def test_orientation_network_wait_does_not_prevent_lease_renewal():

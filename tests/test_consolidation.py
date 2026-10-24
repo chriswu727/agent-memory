@@ -107,6 +107,45 @@ def test_publication_rejects_changed_unselected_context_and_writes_nothing(memor
     assert not memory.rows("memory_assertions")
 
 
+def test_legacy_persisted_validity_and_frozen_parent_snapshot_remain_unchanged(memory):
+    import json
+
+    from test_semantic import encoded, verifier
+
+    from agent_memory.consolidation_planning import plan_consolidation
+    from agent_memory.semantic import SemanticProcessor
+
+    source = memory.observe("从2026年10月20日00:00 UTC起，我希望回答简短。")
+    old_batch = memory.batch(source)
+    old_proposal = claim(source, statement="用户报告从2026年10月20日00:00 UTC起希望回答简短。",
+                         conditions={"op": "always"}, valid_time={"start": "2026-10-20T00:00:00Z",
+                         "end": None, "precision": "exact", "basis": "source_explicit"})
+    old_result = run(old_batch, proposals(old_proposal))
+    legacy_claim = copy.deepcopy(old_result.claims[0])
+    legacy_claim.pop("valid_during")
+    memory.publish(old_batch, replace(old_result, claims=(legacy_claim,)))
+    stored = memory.rows("memory_assertions")[0]["document"]
+    assert "valid_during" not in stored and stored["valid_time"]["end"] is None
+    frozen = plan_consolidation((source,), (stored,), planner_version="independent-instance-comparison-v2")
+    frozen_before = copy.deepcopy(frozen)
+    updated_batch = memory.batch(source, existing_assertions=(stored,), consolidation_plan=frozen)
+    revised = claim(source, statement="用户报告希望得到简短回复。", conditions={"op": "always"},
+                    source_memory_versions=[{"memory_id": stored["memory_id"], "revision": stored["revision"]}])
+
+    def propose(request):
+        data = json.loads(request.messages[-1]["content"])
+        assert data["existing_assertions"] == [stored]
+        assert data["consolidation_plan"] == frozen_before
+        return encoded(proposals(revised))
+
+    result = SemanticProcessor(propose, verifier).process(updated_batch, reserve=lambda **_: None)
+    assert result.status == "completed" and result.claims[0]["valid_during"] == {"kind": "unknown"}
+    assert memory.publish(updated_batch, result)["published_count"] == 1
+    still_stored = next(row["document"] for row in memory.rows("memory_assertions")
+                        if row["id"] == stored["memory_id"])
+    assert still_stored == stored and frozen == frozen_before
+
+
 def test_source_erasure_during_model_work_blocks_publication(memory):
     source = memory.observe("工作时我希望直接获得建议。")
     batch = memory.batch(source)

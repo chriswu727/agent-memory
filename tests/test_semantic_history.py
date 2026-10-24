@@ -1,7 +1,80 @@
+import copy
+
 import pytest
 from test_cognition import event, request, scope, state
 
 from agent_memory import cognition
+
+
+def instruction_preference(source):
+    memory = cognition.extract_event(source)[0]
+    memory.update(statement="用户希望回答简短。", claim_kind="reported_preference",
+                  epistemic_status="derived_inference", memory_kind="interaction_preference",
+                  representation="semantic_anchor", conditions={"op": "always"},
+                  valid_during={"kind": "unknown"}, verification={"state": "supported_inference",
+                  "method": "semantic_model", "not_a_truth_certificate": True})
+    return memory
+
+
+def recall_preference(memory, source, *, cue=None):
+    cue = cue or event("我的回答偏好是什么？", sequence=2)
+    return cognition.recall(scope(), request("回答简短", intent="continue_conversation",
+        evidence_mode="prior_record_check", cue_event_ids=[cue["event_id"]], query_event_ids=[cue["event_id"]]),
+        [memory], [source, cue], state(2))
+
+
+@pytest.mark.parametrize("verification_state", ["supported_inference", "contested"])
+def test_verified_prior_preference_can_recall_a_complete_user_instruction(verification_state):
+    source = event("请用简短回答。")
+    memory = instruction_preference(source)
+    memory["verification"]["state"] = verification_state
+    assert len(recall_preference(memory, source)["items"]) == 1
+
+
+@pytest.mark.parametrize("change", [
+    "literal", "ordinary_claim", "supported_report", "missing_verification", "unchecked", "wrong_method",
+    "partial_span", "no_span", "current_input", "assistant", "user_delivered", "question", "mixed_question",
+])
+def test_preference_instruction_exception_cannot_admit_unverified_or_ineligible_history(change):
+    text = "请用简短回答。"
+    if change == "question":
+        text = "请用简短回答，好吗？"
+    elif change == "mixed_question":
+        text += "我们约好了去海边，对吗？"
+    source = event(text)
+    memory = instruction_preference(source)
+    if change == "literal":
+        memory = cognition.extract_event(source)[0]
+    elif change == "ordinary_claim":
+        memory["claim_kind"] = "reported_fact"
+    elif change == "supported_report":
+        memory["epistemic_status"] = "supported_report"
+    elif change == "missing_verification":
+        memory.pop("verification")
+    elif change == "unchecked":
+        memory["verification"]["state"] = "unverified"
+    elif change == "wrong_method":
+        memory["verification"]["method"] = "human_review"
+    elif change in {"partial_span", "no_span", "mixed_question"}:
+        for reference in [*memory["evidence_refs"], *memory["disclosure_basis"]["support_paths"][0]["evidence_refs"]]:
+            if change == "partial_span":
+                reference["span"]["start"] += 1
+            elif change == "no_span":
+                reference.pop("span")
+            else:
+                reference["span"]["end"] = len(text)
+    elif change == "assistant":
+        source["observed"].update(actor_role="assistant", delivery_state="delivered")
+    elif change == "user_delivered":
+        source["observed"]["delivery_state"] = "delivered"
+    cue = copy.deepcopy(source) if change == "current_input" else None
+    assert recall_preference(memory, source, cue=cue)["items"] == []
+
+
+def test_working_episode_eligibility_does_not_inherit_preference_instruction_exception():
+    source = event("请用简短回答。")
+    reference = instruction_preference(source)["evidence_refs"][0]
+    assert not cognition._eligible_source(source, reference, True, "episode")
 
 
 def historical(memory, sources, **changes):
