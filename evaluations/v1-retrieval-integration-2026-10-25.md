@@ -20,6 +20,8 @@ The wheel built and installed successfully. All 100 packaged runtime, contract, 
 
 The focused lexical groups passed 92 existing related tests and seven new regression cases. The three combined acceptance cases also passed independently before the integrated suite. The raw stopped-evaluation archive passed byte-exact restoration and confidential-value checks. No routine CI workflow was added or triggered.
 
+A subsequent evaluator-only safeguard change passed **57 offline tests in 1.54 seconds**, plus scoped Ruff and whitespace checks. It stops on an explicitly unsuccessful learning window or publication-restricted learning result, while preserving valid partial processing and the higher priority of unknown usage, runtime failure, and provider/budget errors. An output-root `STOP` marker takes effect at safe boundaries, preserving completed work and closing transports. An existing evidence directory remains non-resumable for paid work. These changes were made after the 3,739-test run and are covered by their separate focused result, not retrospectively attributed to that full-suite count. No database or provider call was used for these safeguard tests.
+
 ## Outstanding release work
 
 The real-model experiment stopped after 11 exchanges and 38 settled calls. All 11 current-input answers were faithful, but eight consecutive background learning windows were blocked by incomplete optional history. Two stored episode descriptions also turned uncertain persistence status into negative assertions. Current-input answer quality must not be confused with successful memory formation.

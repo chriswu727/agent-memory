@@ -103,8 +103,13 @@ def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_p
         "context_budget_unit": "UTF-8 bytes, conservatively named tokens by the runtime; not an exact tokenizer count",
         "probe_isolation": "Each memory probe restores the same trusted local archive into a new brain; "
                            "baseline probes use the same frozen summary or empty memory in separate brains.",
-        "stopping": "No retries, no repair loop; interrupted/unknown paid work stops the run. "
-                    "Partial semantic outcomes are retained. Server quota exhaustion stops the run.",
+        "stopping": "No retries or repair loop. Unknown usage, incomplete runtime execution, and provider or "
+                    "quota failures stop first. A learning job with sampling.publication_restricted=true or "
+                    "learning_window.processing_succeeded=false stops as learning_processing_incomplete; "
+                    "other valid partial outcomes remain nonfatal. An output-root STOP marker stops as "
+                    "operator_stop at safe boundaries before environment/provider setup, history/probe "
+                    "stages, and summary updates. An active stage finishes before the marker takes effect; "
+                    "known failures take precedence. No stop authorizes paid continuation.",
         "recovery": "--resume only reads saved evidence; it never continues paid work or resets usage.",
         "code_fingerprints": {name: digest((ROOT / name).read_text()) for name in files},
         "limitations": LIMITATIONS,
@@ -641,7 +646,35 @@ def stop_reason(stage, meter):
     if any(status in {"budget_exhausted", "provider_unavailable", "invalid_response", "verification_unavailable"}
            for status in statuses):
         return "cognitive_processing_unavailable"
+    for job in stage.get("learning_jobs", []):
+        result = job.get("result", {})
+        if (result.get("sampling", {}).get("publication_restricted") is True
+                or result.get("learning_window", {}).get("processing_succeeded") is False):
+            return "learning_processing_incomplete"
     return None
+
+
+class EvaluationStopped(Exception):
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def operator_stop_requested(output):
+    try:
+        (output / "STOP").lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def stage_boundary(output, meter=None, stage=None):
+    reason = stop_reason(stage, meter) if stage is not None else (
+        "unknown_provider_usage" if meter is not None and meter.summary()["usage_unknown_calls"] else None)
+    if reason:
+        raise EvaluationStopped(reason)
+    if operator_stop_requested(output):
+        raise EvaluationStopped("operator_stop")
 
 
 def run_arm(output, planned, arm, database, key):
@@ -659,8 +692,10 @@ def run_arm(output, planned, arm, database, key):
         transports.append(value)
         return value
 
-    meter = new_meter()
+    meter = None
     try:
+        stage_boundary(output.parent)
+        meter = new_meter()
         with ExitStack() as stack:
             policy = planned["semantic_policy"]
             cognition_settings = (Settings(
@@ -684,41 +719,41 @@ def run_arm(output, planned, arm, database, key):
             if planned["dataset"] is not None:
                 validate_dataset(planned["dataset"])
             for fixture in planned["fixtures"]:
+                stage_boundary(output.parent, meter)
                 print(json.dumps({"arm": arm, "stage": fixture["name"], "state": "started"}), flush=True)
                 trial.run_stage(fixture)
-                reason = stop_reason(report["stages"][-1], meter)
-                if reason:
-                    report.update(state="stopped", stopped_reason=reason)
-                    break
+                stage_boundary(output.parent, meter, report["stages"][-1])
                 if arm == "rolling_summary":
                     trial.update_summary()
-            else:
-                if planned["dataset"] is not None:
-                    trial.freeze_history()
-                    for fixture in planned["dataset"]["probes"]:
-                        trial.prepare_probe(fixture)
-                        trial.run_stage(fixture)
-                        report["stages"][-1]["held_out_oracle"] = copy.deepcopy(
-                            planned["dataset"]["oracle"][fixture["name"]])
-                        if arm == "memory":
-                            stage = report["stages"][-1]
-                            stage["held_out_source_audit"] = held_out_source_audit(
-                                stage, report["stages"][:len(planned["fixtures"])], stage["held_out_oracle"])
-                            stage["checks"].update(stage["held_out_source_audit"]["checks"])
-                        trial.save()
-                        reason = stop_reason(report["stages"][-1], meter)
-                        if reason:
-                            report.update(state="stopped", stopped_reason=reason)
-                            break
-                    else:
-                        report["state"] = "finished"
-                else:
-                    report["state"] = "finished"
+                    stage_boundary(output.parent, meter, report["stages"][-1])
+            if planned["dataset"] is not None:
+                stage_boundary(output.parent, meter)
+                trial.freeze_history()
+                for fixture in planned["dataset"]["probes"]:
+                    stage_boundary(output.parent, meter)
+                    trial.prepare_probe(fixture)
+                    stage_boundary(output.parent, meter)
+                    trial.run_stage(fixture)
+                    report["stages"][-1]["held_out_oracle"] = copy.deepcopy(
+                        planned["dataset"]["oracle"][fixture["name"]])
+                    if arm == "memory":
+                        stage = report["stages"][-1]
+                        stage["held_out_source_audit"] = held_out_source_audit(
+                            stage, report["stages"][:len(planned["fixtures"])], stage["held_out_oracle"])
+                        stage["checks"].update(stage["held_out_source_audit"]["checks"])
+                    trial.save()
+                    stage_boundary(output.parent, meter, report["stages"][-1])
+            report["state"] = "finished"
+    except EvaluationStopped as error:
+        report.update(state="stopped", stopped_reason=error.reason)
     except Exception as error:
         report.update(state="interrupted", error=conversation.safe_error(error))
     finally:
-        report["usage"] = meter.summary()
-        report["call_ledger"] = meter.records
+        report["usage"] = meter.summary() if meter is not None else {
+            "reserved_calls": 0, "completed_calls": 0, "reserved_output_tokens": 0,
+            "usage_confirmed_calls": 0, "usage_unknown_calls": 0, "usage_totals": {},
+        }
+        report["call_ledger"] = meter.records if meter is not None else []
         for transport in transports:
             transport.close()
         save(output / "report.json", report)
@@ -739,24 +774,29 @@ def main():
     if args.resume:
         print((args.output / "report.json").read_text())
         return
-    if args.live and args.output.exists():
+    stopped_directory = (args.live and args.output.is_dir() and not args.output.is_symlink()
+                         and operator_stop_requested(args.output)
+                         and {path.name for path in args.output.iterdir()} == {"STOP"})
+    if args.live and args.output.exists() and not stopped_directory:
         parser.error("Output exists; use --resume for read-only inspection. Paid work is never repeated.")
     planned = plan(args.profile, seed=args.seed, history_turns=args.history_turns,
                    orientation_policy=args.orientation_policy)
     if args.plan:
         print(json.dumps(planned, ensure_ascii=False, indent=2))
         return
-    args.output.mkdir(parents=True, mode=0o700, exist_ok=False)
+    args.output.mkdir(parents=True, mode=0o700, exist_ok=stopped_directory)
     result = {"state": "started", "plan": planned, "plan_sha256": digest(planned), "arms": {},
               "semantic_review": "pending_independent_review"}
     save(args.output / "report.json", result)
     try:
+        stage_boundary(args.output)
         settings = Settings.from_env()
         key = os.environ.get("DEEPSEEK_API_KEY")
         if not key:
             raise ValueError("DeepSeek credentials must be configured locally")
         database = Database(settings.database_url, settings.migration_database_url)
         for arm in planned["arms"]:
+            stage_boundary(args.output)
             directory = args.output / arm
             report = run_arm(directory, planned, arm, database, key)
             result["arms"][arm] = {"state": report["state"], "report": str(directory / "report.json"),
@@ -767,9 +807,14 @@ def main():
             save(args.output / "report.json", result)
             if report["state"] != "finished":
                 result.update(state="stopped", stopped_arm=arm)
+                if report.get("stopped_reason"):
+                    result["stopped_reason"] = report["stopped_reason"]
                 break
+            stage_boundary(args.output)
         else:
             result["state"] = "finished"
+    except EvaluationStopped as error:
+        result.update(state="stopped", stopped_reason=error.reason)
     except Exception as error:
         result.update(state="interrupted", error=conversation.safe_error(error))
     finally:
