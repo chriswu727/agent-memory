@@ -10,6 +10,8 @@
 
 本批学习修复加入了[从来源推导的关系能力限制](architecture/relation-capabilities.md)、[每个新输入根任务最多接纳三项历史比较](architecture/history-comparison-attention.md)，以及[在既有额度内跨私有会话继续未尝试的工作](architecture/cross-conversation-learning-funding.md)。未选中的机会、已接纳的待处理工作、评估后无需修改与实际发布会分别记录。[本地验收记录](evaluations/v1-2026-10-25-local-acceptance.md)保留了安装、回归与性能证据。这些修改仍需通过限定的真实记忆验收，不能据此宣称已达到人类的回忆准确度。
 
+[首次有限真实记忆验收](evaluations/v1-2026-10-25-acceptance-attempt-1.md)在完成十二轮实际交付、47 次用量已确认的调用后停止，原因是历史提议对自身关系覆盖情况的描述相互矛盾。运行时正确阻止了这次发布。[新版覆盖计算协议](architecture/history-link-coverage.md)从精确的关系端点推导覆盖情况，保留来源检查和语义核验；百轮历史与十二项隔离探针的验收仍未通过。
+
 后续认知内核的具体改造、实施依赖和行为评估见[认知记忆架构实施计划](architecture/cognitive-memory-plan.md)。计划中的新增能力仍待实现，不代表当前运行状态。
 
 ## 产品与接入目标

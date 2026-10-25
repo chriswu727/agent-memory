@@ -11,11 +11,12 @@ from test_learning_neighborhood import link_exception, publish, source, versions
 from test_semantic import encoded, proposals, reference
 
 from agent_memory import cognition
+from agent_memory.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION
 from agent_memory.belief_store import _insert, _relation_id, assertion_fingerprint
 from agent_memory.consolidation import publish_semantic
 from agent_memory.contracts import validate
 from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.history_semantics import MANIFEST_VERSION
+from agent_memory.history_semantics import LINK_DERIVED_INPUT_VERSION, MANIFEST_VERSION
 from agent_memory.learning import LearningEngine
 from agent_memory.learning_allocations import HISTORY_PHASE, allocation_metadata
 from agent_memory.learning_integration import _snapshot as integration_snapshot
@@ -389,7 +390,11 @@ def test_discovery_advances_past_exhausted_bridge_sources_to_all_derived_tail_ve
 
 
 @pytest.mark.parametrize("later_change", [None, "dependency", "scope"])
-def test_rebound_history_resumes_with_exact_raw_snapshot_and_separate_authority_fence(learning, later_change):
+@pytest.mark.parametrize("input_version", [RELATION_CAPABILITIES_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION])
+def test_rebound_history_resumes_with_exact_raw_snapshot_and_separate_authority_fence(
+    learning, later_change, input_version, monkeypatch,
+):
+    monkeypatch.setattr("agent_memory.learning_integration.LATEST_INPUT_CONTRACT_VERSION", input_version)
     root = publish(learning, source(learning, "A concise planning routine."))
     current = source(learning, "That concise planning routine.")
     manifest = manifest_for(current, root)
@@ -430,13 +435,18 @@ def test_rebound_history_resumes_with_exact_raw_snapshot_and_separate_authority_
         return
     resumed, frozen_again = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, learning.job(child_id))
     assert resumed == batch and frozen_again == frozen
-    response = {**proposals(), "integration_decisions": [
-        {"objective_id": item["objective_id"], "outcome": "no_change", "reason": "already_represented",
-         "link_proposal_ids": []} for item in selected["objectives"]]}
     calls = []
 
     def propose(request):
         calls.append(request)
+        if "integration_abstentions" in request.response_schema["properties"]:
+            response = {**proposals(), "integration_abstentions": [
+                {"objective_id": item["objective_id"], "reason": "already_represented"}
+                for item in selected["objectives"]]}
+        else:
+            response = {**proposals(), "integration_decisions": [
+                {"objective_id": item["objective_id"], "outcome": "no_change", "reason": "already_represented",
+                 "link_proposal_ids": []} for item in selected["objectives"]]}
         return encoded(response)
 
     result = SemanticProcessor(propose, lambda _: pytest.fail("No-change does not require verification")).process(

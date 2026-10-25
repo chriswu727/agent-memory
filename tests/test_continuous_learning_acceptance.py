@@ -55,7 +55,7 @@ class GroundedCognition:
         if data.get("proposal_mode") == "orient-v1":
             return encoded(proposals())
         if "integration_manifest" in data:
-            return self.history(data)
+            return self.history(data, request.response_schema)
         current = {(item["event_id"], item["revision"]) for item in data["learning_input_refs"]}
         selected = [source for source in data["sources"]
                     if (source["event_id"], source["revision"]) in current
@@ -68,7 +68,7 @@ class GroundedCognition:
                                               statement=statement(fact)))
         return encoded(proposals(*output))
 
-    def history(self, data):
+    def history(self, data, response_schema):
         manifest = data["integration_manifest"]
         if self.history_failure is not None:
             failure, self.history_failure = self.history_failure, None
@@ -106,7 +106,12 @@ class GroundedCognition:
                               "outcome": "proposed" if identifiers else "no_change",
                               "reason": None if identifiers else "insufficient_shared_meaning",
                               "link_proposal_ids": identifiers})
-        return encoded({**proposals(*claims), "belief_links": links, "integration_decisions": decisions})
+        accounting = ({"integration_abstentions": [
+            {"objective_id": decision["objective_id"], "reason": decision["reason"]}
+            for decision in decisions if not decision["link_proposal_ids"]
+        ]} if "integration_abstentions" in response_schema["properties"]
+            else {"integration_decisions": decisions})
+        return encoded({**proposals(*claims), "belief_links": links, **accounting})
 
     def verify(self, request):
         data = json.loads(request.messages[-1]["content"])

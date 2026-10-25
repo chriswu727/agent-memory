@@ -4,12 +4,12 @@ import copy
 
 from jsonschema import Draft202012Validator
 
-from .belief_store import assertion_fingerprint
 from .helpers import digest
 from .history_attention import validate_attention
 from .turns import _hash, _identifier, _integer
 
 MANIFEST_VERSION = "bounded-history-manifest-v1"
+LINK_DERIVED_INPUT_VERSION = "history-link-coverage-v1"
 HISTORY_DECISIONS = {
     "type": "array", "maxItems": 3,
     "items": {
@@ -25,9 +25,40 @@ HISTORY_DECISIONS = {
         },
     },
 }
+HISTORY_ABSTENTIONS = {
+    "type": "array", "maxItems": 3,
+    "items": {
+        "type": "object", "additionalProperties": False,
+        "required": ["objective_id", "reason"],
+        "properties": {
+            "objective_id": copy.deepcopy(HISTORY_DECISIONS["items"]["properties"]["objective_id"]),
+            "reason": {"enum": [reason for reason in HISTORY_DECISIONS["items"]["properties"]["reason"]["enum"]
+                                if reason is not None]},
+        },
+    },
+}
+_LINK_COVERAGE_SCHEMA = {
+    "type": "array", "maxItems": 16,
+    "items": {
+        "type": "object", "required": ["proposal_id", "target_memory_versions"],
+        "properties": {
+            "proposal_id": {"type": "string", "minLength": 1, "maxLength": 256},
+            "target_memory_versions": {
+                "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": True,
+                "items": {
+                    "type": "object", "additionalProperties": False, "required": ["memory_id", "revision"],
+                    "properties": {"memory_id": {"type": "string", "minLength": 1, "maxLength": 256},
+                                   "revision": {"type": "integer", "minimum": 1}},
+                },
+            },
+        },
+    },
+}
 
 
 def validate_manifest(manifest, *, events=None, assertions=None):
+    from .belief_store import assertion_fingerprint
+
     fields = {"version", "input_fingerprint", "input_refs", "through_sequence", "objectives",
               "unresolved_discovery", "discovery_limitations"}
     if (not isinstance(manifest, dict) or set(manifest) not in (fields, fields | {"attention"})
@@ -105,6 +136,42 @@ def validate_decisions(manifest, proposals):
     if claimed != links.keys():
         raise ValueError("Historical integration contains an unrelated link")
     return copy.deepcopy(decisions)
+
+
+def derive_link_decisions(manifest, proposals):
+    if (not isinstance(proposals, dict) or "integration_decisions" in proposals
+            or "integration_abstentions" not in proposals):
+        raise ValueError("Historical link coverage requires only explicit abstentions")
+    abstentions = proposals["integration_abstentions"]
+    if not Draft202012Validator(HISTORY_ABSTENTIONS).is_valid(abstentions):
+        raise ValueError("Invalid historical integration abstentions")
+    links = proposals.get("belief_links", [])
+    if not Draft202012Validator(_LINK_COVERAGE_SCHEMA).is_valid(links):
+        raise ValueError("Invalid historical integration link coverage")
+    if len({link["proposal_id"] for link in links}) != len(links):
+        raise ValueError("Duplicate historical integration link")
+    abstained = {item["objective_id"]: item["reason"] for item in abstentions}
+    expected = {item["objective_id"] for item in manifest["objectives"]}
+    if len(abstained) != len(abstentions) or not set(abstained) <= expected:
+        raise ValueError("Duplicate or unknown historical integration abstention")
+    decisions = []
+    for objective in manifest["objectives"]:
+        identifier = objective["objective_id"]
+        target = {key: objective["target_memory_version"][key] for key in ("memory_id", "revision")}
+        matching = sorted(link["proposal_id"] for link in links if target in link["target_memory_versions"])
+        if matching:
+            if identifier in abstained:
+                raise ValueError("Historical integration abstention contradicts a proposed link")
+            decisions.append({"objective_id": identifier, "outcome": "proposed", "reason": None,
+                              "link_proposal_ids": matching})
+        else:
+            if identifier not in abstained:
+                raise ValueError("Uncovered historical comparison requires explicit abstention")
+            decisions.append({"objective_id": identifier, "outcome": "no_change", "reason": abstained[identifier],
+                              "link_proposal_ids": []})
+    normalized = {key: value for key, value in proposals.items() if key != "integration_abstentions"}
+    normalized["integration_decisions"] = decisions
+    return validate_decisions(manifest, normalized)
 
 
 def integration_coverage(manifest, decisions, links, *, assessed):

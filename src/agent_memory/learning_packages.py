@@ -54,7 +54,7 @@ def _required_sources(selector, references):
 def _request_size(selector, mode, events, memories, sampling, *, input_refs=(), manifest=None):
     from .semantic import proposal_data, proposal_schema, request_payload
 
-    schema = proposal_schema(mode)
+    schema = proposal_schema(mode, input_contract_version=selector.input_contract_version)
     data = proposal_data(
         events.values(), (selector.bind(value) for value in memories.values()), empty_working(selector.working),
         (), sampling, selector.relations_for(events, memories), scope=selector.scope,

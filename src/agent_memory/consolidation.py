@@ -6,7 +6,7 @@ from dataclasses import asdict
 from psycopg.types.json import Jsonb
 
 from . import cognition
-from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION, validate_capability_link
+from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSIONS, validate_capability_link
 from .contracts import validate
 from .episode_semantics import (
     EPISODE_SOURCE_VIEW_INPUT_VERSIONS,
@@ -174,7 +174,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
             raise DomainError("invalid_evidence", "Historical integration decisions are unsupported") from error
     episodes = {episode["episode_id"]: episode for episode in batch.episodes}
     capabilities = (belief_capabilities(batch.scope, snapshot["events"].values(), snapshot["assertions"].values())
-                    if batch.input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION else None)
+                    if batch.input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS else None)
     ids, changed_episodes = set(), set()
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
     claims = {item["proposal_id"]: {key: copy.deepcopy(value) for key, value in item.items() if key in claim_fields}
@@ -215,7 +215,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 if group == "belief_links" and capabilities is not None:
                     validate_capability_link(item, capabilities)
                 validate_bounded_proposal(
-                    batch.proposal_mode, group, item, schema=proposal_schema(batch.proposal_mode),
+                    batch.proposal_mode, group, item, schema=proposal_schema(
+                        batch.proposal_mode, input_contract_version=batch.input_contract_version),
                     events=snapshot["events"], learning_input_refs=batch.learning_input_refs, links=result.belief_links,
                 )
                 references = SemanticProcessor._validate_proposal(

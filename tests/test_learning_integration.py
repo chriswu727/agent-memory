@@ -55,7 +55,10 @@ def setup_history(harness, monkeypatch, count=1):
                           "valid_during": copy.deepcopy(target["valid_during"]), "world": target["world"]})
             decisions.append({"objective_id": objective["objective_id"], "outcome": "proposed", "reason": None,
                               "link_proposal_ids": [link_id]})
-        return encoded({**proposals(*claims), "belief_links": links, "integration_decisions": decisions})
+        accounting = ({"integration_abstentions": []}
+                      if "integration_abstentions" in request.response_schema["properties"]
+                      else {"integration_decisions": decisions})
+        return encoded({**proposals(*claims), "belief_links": links, **accounting})
 
     def verify(request):
         requests.append((request.phase, json.loads(request.messages[-1]["content"])))

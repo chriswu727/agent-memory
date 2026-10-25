@@ -49,6 +49,19 @@ INTEGRATION_INSTRUCTIONS = (
     "episode actions or situation updates are permitted. Preserve all attribution, qualification and "
     "temporal uncertainty. A supported comparison applies only to its supplied endpoints."
 )
+LINK_DERIVED_INSTRUCTIONS = (
+    "History comparison accounting uses history-link-coverage-v1. Return integration_abstentions, "
+    "not integration_decisions. The runtime derives each objective's proposed links from exact "
+    "memory_id and revision membership in belief_links.target_memory_versions. A multi-target link "
+    "covers every matching manifest objective without duplicate model bookkeeping. For each objective "
+    "with no matching proposed link, return exactly one integration_abstentions item containing its "
+    "objective_id and an allowed non-null reason. An abstention records an explicit no_change judgment; "
+    "it is not a claim that a relation has been verified. Do not abstain on a covered objective, including "
+    "when another endpoint is covered by the same link. Empty integration_abstentions is valid only "
+    "when every manifest objective has a matching proposed link. Every link must match at least one "
+    "manifest objective. This accounting does not authorize evidence, establish semantic support, or "
+    "mean that a proposed relation was accepted; all source and independent verification rules still apply."
+)
 INTEGRATION_VERIFY_INSTRUCTIONS = (
     "Assess only the exact supplied endpoints and their complete source, parent, exception and "
     "relation evidence. Read ALL historical_context sources, assertions and relations, including "
@@ -78,7 +91,7 @@ def bounded_verification_context(mode, sources, assertions=(), relations=(), *, 
     return {}
 
 
-def bounded_proposal_schema(mode, base):
+def bounded_proposal_schema(mode, base, *, input_contract_version=None):
     schema = copy.deepcopy(base)
     properties = schema["properties"]
     for group in ("situation_updates", "episode_actions"):
@@ -102,10 +115,20 @@ def bounded_proposal_schema(mode, base):
     elif mode != HISTORY_INTEGRATION_MODE:
         raise ValueError("Unknown bounded proposal mode")
     else:
-        from .history_semantics import HISTORY_DECISIONS
+        from .history_semantics import (
+            HISTORY_ABSTENTIONS,
+            HISTORY_DECISIONS,
+            LINK_DERIVED_INPUT_VERSION,
+        )
 
-        properties["integration_decisions"] = copy.deepcopy(HISTORY_DECISIONS)
-        schema["required"].append("integration_decisions")
+        if input_contract_version == LINK_DERIVED_INPUT_VERSION:
+            properties.pop("integration_decisions", None)
+            schema["required"] = [key for key in schema["required"] if key != "integration_decisions"]
+            properties["integration_abstentions"] = copy.deepcopy(HISTORY_ABSTENTIONS)
+            schema["required"].append("integration_abstentions")
+        else:
+            properties["integration_decisions"] = copy.deepcopy(HISTORY_DECISIONS)
+            schema["required"].append("integration_decisions")
         properties["consolidation_decisions"] = {"type": "array", "items": {}, "maxItems": 0}
     return schema
 

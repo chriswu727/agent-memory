@@ -3,11 +3,11 @@ from __future__ import annotations
 import copy
 
 from . import cognition
-from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION
+from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSIONS
 
 MAX_EPISODE_EVIDENCE = 32
 EPISODE_SOURCE_VIEW_INPUT_VERSION = "episode-source-view-v1"
-EPISODE_SOURCE_VIEW_INPUT_VERSIONS = (EPISODE_SOURCE_VIEW_INPUT_VERSION, RELATION_CAPABILITIES_INPUT_VERSION)
+EPISODE_SOURCE_VIEW_INPUT_VERSIONS = (EPISODE_SOURCE_VIEW_INPUT_VERSION, *RELATION_CAPABILITIES_INPUT_VERSIONS)
 EPISODE_SOURCE_VIEW_INSTRUCTIONS = (
     "Existing episodes are source-backed navigation views, not factual propositions or independent "
     "evidence. Their membership and boundaries are fallible inferred organization, even when closed. "

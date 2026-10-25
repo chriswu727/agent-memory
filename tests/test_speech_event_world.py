@@ -13,6 +13,7 @@ from test_semantic import batch, claim, encoded, proposals, reference, run, veri
 from agent_memory.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION as VERSION
 from agent_memory.consolidation import _check_result
 from agent_memory.helpers import DomainError
+from agent_memory.history_semantics import LINK_DERIVED_INPUT_VERSION
 from agent_memory.semantic import (
     SPEECH_EVENT_INSTRUCTIONS,
     CognitiveBatch,
@@ -66,10 +67,11 @@ def test_recorded_old_contract_keeps_both_exact_requests_and_rejection(recorded)
     assert len(result.claims) == 2
 
 
-def test_recorded_conditional_speech_reaches_independent_verification_only_under_new_contract(recorded):
+@pytest.mark.parametrize("input_version", [VERSION, LINK_DERIVED_INPUT_VERSION])
+def test_recorded_conditional_speech_reaches_independent_verification_only_under_new_contract(recorded, input_version):
     old, calls, policy = recorded
     candidate = calls[0]["response"]["claims"][2]
-    data = replace(old, input_contract_version=VERSION)
+    data = replace(old, input_contract_version=input_version)
     seen = []
 
     def verify(request):
@@ -111,7 +113,8 @@ def test_speech_event_requires_verification_and_does_not_turn_condition_into_fac
     "user", "system", "source_correction", "delivery_receipt", "reported_fact", "external_world_fact",
     "inferred_pattern", "proposal_offered", "commitment_expressed", "partial_span", "mixed_counterexample",
 ])
-def test_speech_event_does_not_bypass_source_world_attribution_or_complete_unit_guards(change):
+@pytest.mark.parametrize("input_version", [VERSION, LINK_DERIVED_INPUT_VERSION])
+def test_speech_event_does_not_bypass_source_world_attribution_or_complete_unit_guards(change, input_version):
     source = event("If you need a reminder, tell me.", role="assistant")
     candidate = speech(source)
     sources = [source]
@@ -130,7 +133,7 @@ def test_speech_event_does_not_bypass_source_world_attribution_or_complete_unit_
         candidate["counterexamples"] = [reference(sources[1], "contradicts")]
     else:
         candidate["claim_kind"] = change
-    result = run(batch(*sources, input_contract_version=VERSION), proposals(candidate),
+    result = run(batch(*sources, input_contract_version=input_version), proposals(candidate),
                  verify=lambda _: pytest.fail("Ineligible source must not reach verification"))
     assert not result.claims and result.model_calls == 1
     assert result.rejected == ({"proposal_id": candidate["proposal_id"], "reason": "invalid_proposal"},)
@@ -159,7 +162,8 @@ def test_speech_publication_rechecks_explicit_source_frame():
         _check_result(changed, result, publication_snapshot(changed))
 
 
-def test_conditional_speech_relation_uses_same_source_gate_at_projection_and_publication():
+@pytest.mark.parametrize("input_version", [VERSION, LINK_DERIVED_INPUT_VERSION])
+def test_conditional_speech_relation_uses_same_source_gate_at_projection_and_publication(input_version):
     first = event("If you need a reminder, tell me.", role="assistant")
     second = event("If a reminder is needed, let me know.", 2, role="assistant")
     target = known(first, statement=speech(first)["statement"])
@@ -169,7 +173,7 @@ def test_conditional_speech_relation_uses_same_source_gate_at_projection_and_pub
     link = {"proposal_id": "link", "kind": "equivalent", "claim_proposal_id": candidate["proposal_id"],
             "target_memory_versions": [version(target)], "evidence_refs": [reference(first), reference(second)],
             "world": "real_world", "conditions": {"op": "always"}, "valid_during": {"kind": "unknown"}}
-    data = batch(first, second, existing_assertions=(target,), input_contract_version=VERSION)
+    data = batch(first, second, existing_assertions=(target,), input_contract_version=input_version)
     entry = belief_capabilities(data.scope, data.sources, data.existing_assertions)["endpoints"][0]
     assert entry["claim_kinds_for_endpoint_evidence"] == ["agent_said"]
     assert "equivalent" in entry["conditional_relations"] and "abstracts" not in entry["conditional_relations"]

@@ -22,6 +22,7 @@ from .applicability import (
 from .belief_capabilities import (
     CAPABILITY_INSTRUCTIONS,
     RELATION_CAPABILITIES_INPUT_VERSION,
+    RELATION_CAPABILITIES_INPUT_VERSIONS,
     relation_capabilities,
     validate_capability_link,
 )
@@ -54,12 +55,19 @@ from .episode_semantics import (
     _reference as episode_reference,
 )
 from .helpers import DomainError, digest
-from .history_semantics import integration_coverage, validate_decisions, validate_manifest
+from .history_semantics import (
+    LINK_DERIVED_INPUT_VERSION,
+    derive_link_decisions,
+    integration_coverage,
+    validate_decisions,
+    validate_manifest,
+)
 from .local_semantics import (
     BOUNDED_MODES,
     HISTORY_INTEGRATION_MODE,
     INTEGRATION_INSTRUCTIONS,
     INTEGRATION_VERIFY_INSTRUCTIONS,
+    LINK_DERIVED_INSTRUCTIONS,
     LOCAL_INSTRUCTIONS,
     LOCAL_OBSERVATION_MODE,
     LOCAL_VERIFY_INSTRUCTIONS,
@@ -190,7 +198,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = RELATION_CAPABILITIES_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = LINK_DERIVED_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -470,7 +478,7 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
             "current_input_citations_authorized": bool(current_input_refs),
             "reference_semantics": "citation_authority_not_request_evidence",
         }
-    if input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+    if input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         data["belief_relation_capabilities"] = belief_capabilities(scope, sources, assertions)
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         data["local_observation_contract"] = {
@@ -491,11 +499,11 @@ def validate_input_contract(version):
         raise ValueError("Unknown cognitive input contract")
 
 
-def proposal_schema(mode):
+def proposal_schema(mode, *, input_contract_version=None):
     if not isinstance(mode, str):
         raise ValueError("Unknown cognitive proposal mode")
     if mode in BOUNDED_MODES:
-        return bounded_proposal_schema(mode, PROPOSAL_SCHEMA)
+        return bounded_proposal_schema(mode, PROPOSAL_SCHEMA, input_contract_version=input_contract_version)
     if mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):
         raise ValueError("Unknown cognitive proposal mode")
     return ORIENT_PROPOSAL_SCHEMA if mode == ORIENT_PROPOSAL_MODE else PROPOSAL_SCHEMA
@@ -521,12 +529,14 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
                                else EPISODE_FIDELITY_VERIFY_INSTRUCTIONS)
     if input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + EPISODE_SOURCE_VIEW_INSTRUCTIONS
-    if input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+    if input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + CAPABILITY_INSTRUCTIONS + " " + SPEECH_EVENT_INSTRUCTIONS
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         instructions += " " + (LOCAL_INSTRUCTIONS if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
     elif proposal_mode == HISTORY_INTEGRATION_MODE:
         instructions += " " + (INTEGRATION_INSTRUCTIONS if phase == "proposal" else INTEGRATION_VERIFY_INSTRUCTIONS)
+        if phase == "proposal" and input_contract_version == LINK_DERIVED_INPUT_VERSION:
+            instructions += " " + LINK_DERIVED_INSTRUCTIONS
     messages = ({"role": "system", "content": instructions + "\nResponse JSON schema:\n" + _json(schema)},
                 {"role": "user", "content": _json(data)})
     size = len(_json({"messages": messages, "response_schema": schema,
@@ -729,7 +739,7 @@ def _check_claim_sources(proposal, events, scope, *, situation=False, current_re
         role = observed["actor_role"]
         source_world = cognition._world(observed, excerpt)
         speech_event = (
-            input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION and not situation
+            input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS and not situation
             and proposal.get("claim_kind") == "agent_said" and proposal["world"] == "real_world"
             and source_world == "hypothetical" and role == "assistant"
             and observed["event_kind"] == "message" and observed["delivery_state"] == "delivered"
@@ -938,7 +948,7 @@ class SemanticProcessor:
     def process(self, batch: CognitiveBatch, *, reserve, check=lambda: None, on_call_result=lambda **_: None,
                 prior_model_calls=0, prior_input_bytes=0) -> SemanticResult:
         try:
-            output_schema = proposal_schema(batch.proposal_mode)
+            output_schema = proposal_schema(batch.proposal_mode, input_contract_version=batch.input_contract_version)
             validate_input_contract(batch.input_contract_version)
         except ValueError:
             raise DomainError("validation_failed", "Unknown cognitive proposal mode or input contract") from None
@@ -1179,7 +1189,11 @@ class SemanticProcessor:
             return result(error)
         if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
             try:
-                integration_decisions = validate_decisions(batch.integration_manifest, proposed)
+                integration_decisions = (
+                    derive_link_decisions(batch.integration_manifest, proposed)
+                    if batch.input_contract_version == LINK_DERIVED_INPUT_VERSION
+                    else validate_decisions(batch.integration_manifest, proposed)
+                )
                 integration_proposal_links = copy.deepcopy(proposed.get("belief_links", []))
             except (ValueError, TypeError, KeyError):
                 return result("invalid_response")
@@ -1216,7 +1230,7 @@ class SemanticProcessor:
         items = [(group, item) for group in groups for item in proposed.get(group, [])]
         proposed_claims = {item["proposal_id"]: item for item in proposed.get("claims", [])}
         capabilities = (belief_capabilities(batch.scope, events.values(), assertions.values())
-                        if batch.input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION else None)
+                        if batch.input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS else None)
         ids = [item["proposal_id"] for _, item in items]
         if len(ids) != len(set(ids)) or len(items) > policy.max_proposals:
             return result("invalid_response")

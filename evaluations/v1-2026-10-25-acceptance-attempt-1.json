@@ -1,0 +1,335 @@
+{
+  "version": 1,
+  "kind": "failed_finite_acceptance_attempt",
+  "date": "2026-10-25",
+  "status": "stopped",
+  "gate_g4": "not_passed",
+  "candidate": {
+    "revision": "33cff1f19e9cb7f0e687dc19040a4bc50ace2372",
+    "build_id": "0c770b1de1ee3c0cfc4ed8e3c3f7a1869f348ebf9d5046e81b79b8fd9c92d520",
+    "archive_sha256": "4ae5097bb00aef4dd7fae9519036cd12f3dfeca25c8ac1fc5fa6456e442ce8d3",
+    "plan_sha256": "2890ea86189a2e7cf4f50673fed4336a9c3b1b38bf2428950b09d26007a371eb",
+    "migration_count": 22
+  },
+  "profile": {
+    "version": "memory-lifecycle-acceptance-v1",
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "arms": [
+      "memory"
+    ],
+    "planned_history_exchanges": 100,
+    "planned_isolated_probes": 12,
+    "checkpoint_after_exchanges": 16,
+    "durable_replay_after_exchanges": [
+      16,
+      100
+    ],
+    "paid_reviewer": false,
+    "baseline": false
+  },
+  "actual": {
+    "history_exchanges_delivered": 12,
+    "last_stage": "history-011",
+    "probes": 0,
+    "checkpoint_reached": false,
+    "durable_replay_checks_reached": false,
+    "host_calls": 12,
+    "cognitive_calls": 35,
+    "usage": {
+      "reserved_calls": 47,
+      "completed_calls": 47,
+      "reserved_output_tokens": 622592,
+      "usage_confirmed_calls": 47,
+      "usage_unknown_calls": 0,
+      "usage_totals": {
+        "prompt_tokens": 411579,
+        "completion_tokens": 175189,
+        "total_tokens": 586768,
+        "prompt_cache_hit_tokens": 122752,
+        "prompt_cache_miss_tokens": 288827
+      }
+    },
+    "stopped_reason": "cognitive_processing_unavailable",
+    "semantic_review_scope": "All delivered history stages 000–011 and their new publications; no unrun stage or probe is passed."
+  },
+  "limits": {
+    "max_root_model_calls": 4,
+    "max_root_input_bytes": 393216,
+    "max_phase_model_calls": 2,
+    "max_phase_input_bytes": 196608,
+    "aggregate_call_ceiling": 736,
+    "aggregate_reserved_output_token_ceiling": 10682368,
+    "observed_max_root_model_calls": 4,
+    "observed_max_root_input_bytes": 232474,
+    "observed_max_executed_phase_job_model_calls": 2,
+    "observed_max_executed_phase_job_input_bytes": 168091,
+    "machine_audit_failures": [
+      "history-011:pipeline_check"
+    ]
+  },
+  "stage011_failure": {
+    "current_encoding_processing_succeeded": true,
+    "history_job_id": "integrate:75062b0723a45752f2700395d206a77fd2df2c3311ed58cb9f4c7ba1900ecc86",
+    "history_job_state": "cancelled",
+    "history_job_last_error": "invalid_proposal",
+    "history_job_model_calls": 1,
+    "history_job_input_bytes": 63245,
+    "processing_status": "invalid_response",
+    "publication": {},
+    "coverage": {
+      "version": "bounded-history-manifest-v1",
+      "objectives": [
+        {
+          "reason": null,
+          "status": "not_evaluated",
+          "assessed": false,
+          "objective_id": "comparison-956556f6fb63fb32ea3eb505ed508a95790f03d3c2ca1436a12112aff7583966",
+          "verified_link_ids": []
+        },
+        {
+          "reason": null,
+          "status": "not_evaluated",
+          "assessed": false,
+          "objective_id": "comparison-d4291e7965e10c850604f702621b1f637f57ef032169a4d9925cc56c603e35d3",
+          "verified_link_ids": []
+        },
+        {
+          "reason": null,
+          "status": "not_evaluated",
+          "assessed": false,
+          "objective_id": "comparison-87fdaa1431b9cc213e8b206c1c387f26eb4e7eadc7b65c54c7d24a1036679603",
+          "verified_link_ids": []
+        }
+      ],
+      "assessed_count": 0,
+      "published_count": 0
+    },
+    "actual_response_canonical_sha256": "8ecb06da008b0917abd254b8a800fd8bdded01bb28cca374919e9ce0a2982995",
+    "proposed_claim": {
+      "proposal_id": "claim-0001",
+      "statement": "在这两条被比较的记录中，用户均以第一人称报告了一条日常笔记，并给出了该笔记的标签和页码。",
+      "claim_kind": "inferred_pattern",
+      "representation": "schema",
+      "source_memory_versions": [
+        {
+          "memory_id": "semantic-0d937a1144c2ebb2bcfde21bea38d8f9",
+          "revision": 1
+        },
+        {
+          "memory_id": "semantic-43994e1f0140084980afca76e192ae46",
+          "revision": 1
+        }
+      ]
+    },
+    "proposed_link": {
+      "proposal_id": "link-0001",
+      "kind": "abstracts",
+      "claim_proposal_id": "claim-0001",
+      "target_memory_versions": [
+        {
+          "memory_id": "semantic-0d937a1144c2ebb2bcfde21bea38d8f9",
+          "revision": 1
+        },
+        {
+          "memory_id": "semantic-43994e1f0140084980afca76e192ae46",
+          "revision": 1
+        }
+      ]
+    },
+    "selected_manifest_objectives": [
+      {
+        "objective_id": "comparison-956556f6fb63fb32ea3eb505ed508a95790f03d3c2ca1436a12112aff7583966",
+        "target_memory_version": {
+          "revision": 1,
+          "memory_id": "semantic-43994e1f0140084980afca76e192ae46",
+          "content_sha256": "350baf720e21fe9f359da06cf93ba1d118501164801b69300d451c0618d7d753"
+        }
+      },
+      {
+        "objective_id": "comparison-d4291e7965e10c850604f702621b1f637f57ef032169a4d9925cc56c603e35d3",
+        "target_memory_version": {
+          "revision": 1,
+          "memory_id": "semantic-cfa3bc61ac62621f4efed4604cd13275",
+          "content_sha256": "fd4a289e4d35f558a8e5b0634dd403bf27b91e01a9a1648ad3d23e774c99b9c5"
+        }
+      },
+      {
+        "objective_id": "comparison-87fdaa1431b9cc213e8b206c1c387f26eb4e7eadc7b65c54c7d24a1036679603",
+        "target_memory_version": {
+          "revision": 1,
+          "memory_id": "semantic-0d937a1144c2ebb2bcfde21bea38d8f9",
+          "content_sha256": "bd4db52b11b5ea1586bdee995a4c606f539b6a11825d3d2777b5828fcf7e79fe"
+        }
+      }
+    ],
+    "actual_integration_decisions": [
+      {
+        "objective_id": "comparison-956556f6fb63fb32ea3eb505ed508a95790f03d3c2ca1436a12112aff7583966",
+        "outcome": "proposed",
+        "reason": null,
+        "link_proposal_ids": [
+          "link-0001"
+        ]
+      },
+      {
+        "objective_id": "comparison-87fdaa1431b9cc213e8b206c1c387f26eb4e7eadc7b65c54c7d24a1036679603",
+        "outcome": "no_change",
+        "reason": "already_represented",
+        "link_proposal_ids": []
+      },
+      {
+        "objective_id": "comparison-d4291e7965e10c850604f702621b1f637f57ef032169a4d9925cc56c603e35d3",
+        "outcome": "no_change",
+        "reason": "incompatible_qualifiers",
+        "link_proposal_ids": []
+      }
+    ],
+    "inconsistent_objective_id": "comparison-87fdaa1431b9cc213e8b206c1c387f26eb4e7eadc7b65c54c7d24a1036679603",
+    "assessment": "The same selected endpoint is a target of link-0001 and declares no_change/already_represented with no link IDs. Strict validation correctly rejects the response before publication; all three objectives remain unassessed. This paid failure must not be automatically retried."
+  },
+  "final_learning_phases": {
+    "version": "encoding-integration-v1",
+    "encoding_open_count": 0,
+    "encoding_assessed_count": 12,
+    "history_integration_open_count": 2,
+    "history_integration_deferred_count": 1,
+    "history_integration_running_count": 0,
+    "history_integration_assessed_count": 8,
+    "history_integration_unassessed_objective_count": 3,
+    "legacy_unclassified_count": 0,
+    "unknown_count": 0,
+    "counts_complete": true
+  },
+  "audits": [
+    {
+      "file": "audit-history-000-007.json",
+      "sha256": "c56cab60a5c7f1bd817449b03178da27139e9734b4944a999f39483ab0576077",
+      "actual_stages": [
+        "history-000",
+        "history-001",
+        "history-002",
+        "history-003",
+        "history-004",
+        "history-005",
+        "history-006",
+        "history-007"
+      ],
+      "verdict": "no_release_blocker_found_in_reviewed_scope",
+      "counts": {
+        "source_events": 16,
+        "delivered_answers": 8,
+        "semantic_memories": 17,
+        "direct_attributed_memories": 16,
+        "schemas": 1,
+        "episode_versions": 8,
+        "belief_relations": 1,
+        "accepted_situation_updates": 1,
+        "rejected_optional_proposals": 0,
+        "learning_jobs": 13,
+        "cognitive_calls": 22,
+        "host_calls": 8,
+        "usage_unknown_calls": 0
+      }
+    },
+    {
+      "file": "audit-history-008-015.json",
+      "sha256": "e8fa529a42c353fabf9bf9622c7708758dc9b781ae6360457135f72acedd3109",
+      "actual_stages": [
+        "history-008",
+        "history-009",
+        "history-010",
+        "history-011"
+      ],
+      "unrun_requested_stages": [
+        "history-012",
+        "history-013",
+        "history-014",
+        "history-015"
+      ],
+      "assessment": {
+        "semantic_source_fidelity_of_delivered_answers_and_published_memory": "No unsupported factual promotion found in reviewed stages 008–011. Stage011 includes a correct but unsolicited historical reminder.",
+        "campaign_acceptance": "Not passed: stage011 history integration was rejected and the campaign stopped; stages012–015 were not run.",
+        "release_blocker": "The actual history proposal declares a selected endpoint no_change while simultaneously targeting it in link-0001. Strict validation rejects this internally inconsistent response; no false memory is published.",
+        "not_claimed": [
+          "No claim of complete 100-turn acceptance, held-out probe success, or biological memory calibration.",
+          "No claim that valid citations or model verification prove external truth.",
+          "Nonempty prior-episode navigation was not exercised; all eight retained episode-view collections were empty.",
+          "No inference of semantic completeness from machine checks or cumulative monitoring counters."
+        ]
+      },
+      "counts": {
+        "literal_memories": 13,
+        "evidence_references_checked": 29,
+        "semantic_memories": 9,
+        "episode_organizations": 4,
+        "situation_updates": 0,
+        "episode_navigation_collections_checked": 8,
+        "nonempty_episode_navigation_collections": 0,
+        "belief_relations": 1,
+        "relation_endpoint_hashes_checked": 3
+      }
+    }
+  ],
+  "private_evidence": {
+    "directory": ".local/v1-acceptance-33cff1f19e",
+    "files": [
+      {
+        "path": "provenance.json",
+        "sha256": "59b153c967678d81391789f1a84098d06e1d254a5b61a116fc78542fc40e9af9"
+      },
+      {
+        "path": "plan.json",
+        "sha256": "8e2326d80a51b0568fa8f952fe5f9fa98f99a122ba718cfd905c6c3206f04092"
+      },
+      {
+        "path": "source.tar",
+        "sha256": "4ae5097bb00aef4dd7fae9519036cd12f3dfeca25c8ac1fc5fa6456e442ce8d3"
+      },
+      {
+        "path": "run/report.json",
+        "sha256": "83c4b95215e89ff01cca98e50456b653af248f98b17eea03b1e597273859f844"
+      },
+      {
+        "path": "run/memory/report.json",
+        "sha256": "9c59689bb8a1802b64e53d69cd3aae03587ef531621de978844bbb1a790d3488"
+      },
+      {
+        "path": "run/memory/calls.jsonl",
+        "sha256": "13aeddd4cab256d266044b7747677754b3c579c9363bfb0b3f209e197fba9197"
+      },
+      {
+        "path": "audit-history-000-007.json",
+        "sha256": "c56cab60a5c7f1bd817449b03178da27139e9734b4944a999f39483ab0576077"
+      },
+      {
+        "path": "audit-history-008-015.json",
+        "sha256": "e8fa529a42c353fabf9bf9622c7708758dc9b781ae6360457135f72acedd3109"
+      },
+      {
+        "path": "run.log",
+        "sha256": "851d82317661c231b12dcb9848b4fcb57deb004d69b772abf3eb0121ff690dd2"
+      }
+    ],
+    "plan_file_hash_note": "The plan.json file hash covers serialized bytes; candidate.plan_sha256 covers canonical JSON and is the frozen execution-plan identity.",
+    "availability": "Full original artifacts remain private and unchanged. This public summary contains selected structured evidence and aggregate usage, not credentials, connection strings or provider hidden reasoning."
+  },
+  "launcher_warning": {
+    "kind": "runpy_duplicate_module",
+    "message": "<frozen runpy>:128: RuntimeWarning: 'examples.evaluate_memory_lifecycle' found in sys.modules after import of package 'examples', but prior to execution of 'examples.evaluate_memory_lifecycle'; this may result in unpredictable behaviour",
+    "assessment": "The private launcher imported the evaluator before executing it through runpy. The exact frozen package was verified. The recorded campaign stop was the later strict history-proposal rejection."
+  },
+  "repair_status": "pending_offline_verification",
+  "followup_policy": {
+    "max_new_full_campaigns_after_verified_repair": 1,
+    "automatic_paid_retry": false,
+    "overwrite_failed_attempt": false,
+    "second_failure": "Stop further paid campaigns and reassess offline."
+  },
+  "limitations": [
+    "No 100-exchange or twelve-probe acceptance passed.",
+    "Independent reviews found no unsupported factual promotion in delivered answers and published memory within actual stages000–011; this is not proof of external truth or population accuracy.",
+    "Episode labels are fallible organization metadata. Nonempty prior-episode navigation was not exercised.",
+    "No subsequent repair is verified by this report; the local prerequisite report remains separate evidence."
+  ]
+}
