@@ -1,75 +1,75 @@
-# 跨回合真实对话实测：2026-10-24
+# Live conversation across turns: 2026-10-24
 
-这次把记忆服务真正接入 DeepSeek 宿主对话，验证“用户陈述 → 自动学习 → 新回合回忆 → 偏好变更 → 新旧安排回忆”，另设独立空脑对照。五轮回答的事实内容均与合成用户原文相符，没有编造饮料或海边约定；但只有 **1/5 阶段通过全部机器检查**，且最后一次有记忆回忆的回答越过了运行时的不确定性标记，不能报告全管线通过。
+This test connected the memory service to a real DeepSeek host conversation: user statement → automatic learning → recall in a new turn → preference change → recall of old and new arrangements, plus an independent empty-brain control. All five answers matched the factual content of the synthetic user messages, without inventing a drink or a beach agreement. However, only **1/5 stages passed every machine check**, and the last memory-backed recall answer overrode runtime uncertainty labels. The full pipeline did not pass.
 
-[结构化结果](deepseek-2026-10-24-conversation.json) 保留完整原始基线、来源、模型输入输出、核验、运行状态、用量账本及独立开发审阅。原阶段的检查和待审阅字段均未改写，独立审阅位于 `developer_review`。基线原文件共 776,981 字节，SHA-256 为 `1d397a5f7faee4c5b42f52adc527c0e33f41895e1a6f8d8298817263ead91c4a`。
+The [structured results](deepseek-2026-10-24-conversation.json) preserve the complete raw baseline, sources, model inputs and outputs, verification, runtime state, usage ledger, and independent developer review. Original stage checks and pending-review fields were not rewritten; independent review is under `developer_review`. The original baseline file is 776,981 bytes, with SHA-256 `1d397a5f7faee4c5b42f52adc527c0e33f41895e1a6f8d8298817263ead91c4a`.
 
-## 实验实际经过哪些路径
+## Paths actually exercised
 
-宿主和认知处理均使用 `deepseek-v4-pro`，开启 thinking。服务通过真实本地 TCP HTTP 接口访问 PostgreSQL，每轮重新创建 service、client、runtime。回答经过本地投递记录，并将实际输出保存为 delivered 事件；这不是 QQ 等外部聊天渠道测试，也没有重启操作系统进程。
+Both host and cognitive processing used `deepseek-v4-pro` with thinking enabled. The service accessed PostgreSQL through a real local TCP HTTP interface, with a new service, client, and runtime created for every turn. Answers passed through a local delivery record, and actual outputs were persisted as delivered events. This was not an external channel test such as QQ, and no operating-system process was restarted.
 
-宿主收到固定助手说明、runtime 提供的紧凑记忆和本轮提问。没有附加测试答案、评分提示或完整近期对话；`recent_context_events=0`。此次没有 embedding 调用，也没有启用语义召回控制器。仅 learn/change 两轮执行一个新的整理窗口，其他回合的整理保留为待处理。
+The host received fixed assistant instructions, compact memory from the runtime, and the current question. No test answers, scoring instructions, or complete recent conversation were appended; `recent_context_events=0`. There were no embedding calls or semantic recall controller. Only learn/change executed one new consolidation window each; consolidation for other turns remained pending.
 
-## 五轮回答与管线结果
+## Five answers and pipeline results
 
-**learn：**准确确认“折纸灯”、先散步再看教材、开始日期和长期偏好，没有补充地点、时长或饮料。这是唯一全部机器检查通过的阶段。
+**learn:** Accurately acknowledged the name “Origami Lamp” (original Chinese: “折纸灯”), walking before reading the textbook, the start date, and the long-term preference. It added no location, duration, or drink. This was the only stage passing every machine check.
 
-**recall：**从旧资料准确回忆名称与顺序，对饮料约定明确无法确认。orientation 的用户询问和情境提议有 invalid_proposal 拒绝，结果仍为 partial。
+**recall:** Accurately recalled the name and order from historical material and explicitly could not confirm a drink agreement. Orientation's inquiry and situation proposals included `invalid_proposal` rejections, leaving the result partial.
 
-**change：**准确确认先看教材再散步及替代关系，保留旧安排曾存在这一事实。新用户语义发布成功，但 episode 提议未通过核验，整理结果为 partial。
+**change:** Accurately acknowledged reading the textbook before walking and the replacement relationship, while preserving that the old arrangement had existed. New user semantics were published, but an episode proposal failed verification, leaving consolidation partial.
 
-**recall_change：**新旧顺序、日期与名称符合原始消息，没有认领海边约定。但“当前有效”“已被替代”的确定措辞未保留 runtime 的未知状态。orientation 也有 invalid_proposal 拒绝，结果为 partial。
+**recall_change:** The old and new orders, dates, and name matched the original messages, and it did not assert a beach agreement. However, definite wording equivalent to “currently applicable” and “has been superseded” did not preserve the runtime's unknown state. Orientation also had `invalid_proposal` rejections and remained partial.
 
-**empty_control：**对相同问题没有猜测名称、顺序或饮料，承认缺少记录。orientation 的 episode 提议未通过核验，结果为 partial。
+**empty_control:** Did not guess the name, order, or drink for the same question and acknowledged missing records. An orientation episode proposal failed verification, leaving the result partial.
 
-这些审阅由开发用 Agent 逐条核对完整回答与原始来源，并非关键词出现就算成功，也不是独立人工基准。learn/change 的回答直接获得了本轮用户陈述，因此不能仅凭这两条回答正确证明跨回合记忆已经形成；对应的语义发布与后续 recall 另行验证。
+A developer agent reviewed the complete answers against original sources individually. These were not keyword-based passes or an independent human benchmark. The learn/change answers directly received the current user statements, so their correctness alone cannot establish cross-turn memory. Corresponding semantic publication and later recall were verified separately.
 
-## 真实历史语义链是否到达宿主
+## Did a real historical semantic chain reach the host?
 
-recall 的提示词包含初始用户陈述支持的精确语义版本。recall_change 同时包含初始和变更用户陈述支持的语义版本，未将当前问题当成历史证据。独立核查了来源 actor=user、delivery=received、revision、真实内容 hash、支持 span，以及来源在本轮输入之前存在。
+The recall prompt contained the exact semantic version supported by the initial user statement. The recall_change prompt contained semantic versions supported by both the initial and changed statements, without treating the current question as historical evidence. Independent checks verified source actor=user, delivery=received, revision, actual content hash, supporting span, and existence before the current input.
 
-五次模型输出均与实际投递文本、持久化 delivered 输出一致。recall 的完成回合由新 runtime 重放，返回相同文本，`replayed=true`；没有新增模型或投递调用。
+All five model outputs matched both the actual delivery text and the persisted delivered output. A new runtime replayed the completed recall turn, returning identical text with `replayed=true`, without another model or delivery call.
 
-宿主同时见到了原始摘录、用户语义断言和部分 assistant 历史陈述，所以可以确认用户语义链真实进入提示词，不能证明模型只使用了其中某一条路径。空脑对照对同一问题诚实回答缺少资料，这为记忆接入的作用提供了一个小样本观察，不等同于长期可靠性基准。
+The host also saw original excerpts, user semantic assertions, and some historical assistant statements. This establishes that the user semantic chain actually reached the prompt, but does not prove that the model used only one particular path. The empty-brain control honestly reported missing information for the same question. That provides a small observation of memory integration's effect, not a long-term reliability benchmark.
 
-## 事实正确与遵守不确定性是两项要求
+## Factual correctness and uncertainty compliance are separate requirements
 
-recall_change 的答案将新安排称为“当前有效”，并称旧顺序已经被替代。原始用户消息确实明确表达了这个变更意图，所以回答的事实内容与用户陈述一致。
+The recall_change answer called the new arrangement currently applicable and the old order superseded. The original user messages did explicitly express this change, so the answer's factual content matched those statements.
 
-但送入宿主的两条语义记忆均为 `applicability=unknown`，`use=belief_not_settled_current_rule`；旧记忆的 `belief_resolution=uncertain`，替代关系本身的 applicability 也为 unknown。原因是 claim 保存了明确的 legacy `valid_time` 起点，却缺少可供运行时判断的 typed validity，最终成为 `valid_during={"kind":"unknown"}`。新旧摘要中的自然语言日期足以诱使宿主自行推断当前有效，却不能改变 runtime 已给出的未知判断。
+However, both semantic memories supplied to the host had `applicability=unknown` and `use=belief_not_settled_current_rule`. The old memory had `belief_resolution=uncertain`, and the superseding relation itself also had unknown applicability. The claim stored an explicit legacy `valid_time` start but lacked typed validity usable by the runtime, resulting in `valid_during={"kind":"unknown"}`. Natural-language dates in the summaries could prompt the host to infer current applicability, but could not override the runtime's unknown verdict.
 
-因此本轮必须分别记录“与用户原文一致”和“未遵守运行时不确定性”。不能因为最终动作顺序碰巧正确，就将时间适用性链路标为成功。普通 recall 只陈述过去的名称和顺序，没有作当前适用性断言，不能与这一失败混为一谈。
+This run therefore records both agreement with the user's source text and failure to preserve runtime uncertainty. A coincidentally correct action order does not make the temporal-applicability pipeline pass. Ordinary recall only stated the past name and order, without asserting current applicability, and should not be conflated with this failure.
 
-## 本轮生产代码修复与尚未解决的问题
+## Production fixes and unresolved problems
 
-第一，默认词法召回也统一使用 `prior_record_check`。此前只有带召回控制器时才明确设置此边界，现在普通 runtime 也排除本轮输入及其后代充当旧记忆。此修复已包含在基线代码指纹中，五阶段的本轮输入隔离检查均通过。
+First, default lexical recall now consistently uses `prior_record_check`. Previously this boundary was explicit only with a recall controller; ordinary runtime now also excludes the current input and its descendants as old memory. This fix was already included in the baseline code fingerprints, and all five stages passed current-input isolation checks.
 
-第二，紧凑模型投影省略逐次变化的 applicability `evaluated_at`，包括关系评估中的同一字段；适用性结果、原因、证据和时间边界仍保留，完整控制响应仍可审计。这样避免仅因再次评估的时刻变化而改变模型上下文。此修复同样已包含在基线，完成回合重放检查通过；它不代表所有中断与崩溃恢复场景都已验证。
+Second, compact model projection omits the changing applicability `evaluated_at`, including the same field within relation evaluations. Applicability results, reasons, evidence, and temporal boundaries remain, and the full control response stays auditable. This prevents context changes caused solely by a new evaluation timestamp. This fix also preceded the baseline, whose completed-turn replay passed; it does not establish coverage of every interruption or crash-recovery scenario.
 
-第三，新的 claim 在提议及核验前必须明确提供 `valid_during`。来源明确给出的起点和“无预定结束日期”需要分别表示为确定时刻与 unbounded；未说明的边界保持 unknown，legacy `valid_time` 的 null 不代表无限期。原先发布前自动补 unknown 的路径已移除，核验也必须检查 typed validity。这一修复发生在基线之后，下文单独报告两调用补测；原五轮没有全量重跑。
+Third, new claims must explicitly provide `valid_during` before proposal verification. An explicit source start and no scheduled end must be represented as an instant and unbounded end, respectively. Unspecified boundaries remain unknown; legacy `valid_time` null does not mean unlimited duration. The old path that automatically filled unknown validity before publication was removed, and verification must check typed validity. This fix followed the baseline. Its separate two-call follow-up is reported below; the original five turns were not fully rerun.
 
-最后的独立代码审查发现，默认历史边界还会误挡“请用简短回答”这类已经核验的历史偏好。修复仅为语义核验过的 reported_preference 接受完整的、此前已接收的用户指令来源；有反证的偏好继续保留 contested 状态。普通事实、未经核验的原始指令、提问预设及本轮输入仍不能通过这个例外。此修复晚于真实模型实验，另用本地回归测试验证，未追加付费调用。
+The final independent code review found that the default historical boundary also blocked verified historical preferences phrased as instructions, such as “please use brief replies.” A narrow exception now accepts complete, previously received user-instruction sources only for semantically verified `reported_preference` claims. Preferences with counterevidence remain contested. Ordinary facts, unverified raw instructions, question presuppositions, and current input still cannot use this exception. This fix followed the live experiment and was validated with local regression tests, without additional paid calls.
 
-旧 unknown 记忆不根据自然语言摘要或 legacy null 追改；原基线失败完整保留。尚未解决的还有询问类 orientation 提议被拒绝、episode 判断不稳定，以及宿主可能忽略未知标记。时间字段补齐也不能单独证明宿主永远遵守这些标记。
+Old unknown memories were not backfilled from natural-language summaries or legacy null values; baseline failures remain intact. Rejected inquiry-oriented proposals, unstable episode judgments, and hosts potentially ignoring unknown labels also remain unresolved. Completing temporal fields alone cannot prove that hosts always honor these labels.
 
-## 时间表示修复的独立补测
+## Independent temporal-representation follow-up
 
-补测仅向独立 `SemanticProcessor` 提供原先 learn 阶段的同一条合成用户来源，执行一次提议与一次核验。它接受的完整偏好保留了“折纸灯”、先散步再看教材、长期偏好、2026-10-20 00:00 UTC 起生效和无预定结束日期，并明确生成起点为该时刻、终点为 unbounded 的 typed interval。
+The follow-up supplied only the same synthetic user source from the original learn stage to a standalone `SemanticProcessor`, making one proposal and one verification call. The accepted full preference retained the name, walking before reading the textbook, long-term intent, the 2026-10-20 00:00 UTC start, and no scheduled end. It explicitly generated a typed interval with that start instant and an unbounded end.
 
-整条命题和每条引文得到支持判断；接受文本与时间和核验收到的完整提议一致。时间探针在开始前一秒为 false，在起点及次日为 true。目标时间偏好检查通过。
+The whole claim and every citation received supporting verdicts. Accepted text and time matched the complete proposal seen by verification. Temporal probes returned false one second before the start, and true at the start and the next day. The target temporal-preference checks passed.
 
-额外生成的 episode create 被核验为 unknown 并拒绝，处理器整体仍为 **partial**，没有将它改称 completed。完整原补测保存在结构化报告的 `temporal_followup`，其独立完整命题审阅位置为 `followup_developer_review`。
+An additional episode-create proposal received an unknown verification verdict and was rejected. The processor's overall result remained **partial**, not completed. The complete original follow-up is under `temporal_followup` in the structured report; its independent whole-claim review is under `followup_developer_review`.
 
-本次补测没有把结果发布到原数据库，没有修改旧 unknown 记忆，没有调用宿主重新回答。它验证的是新时间提议与核验路径，不能声称时间修复后的完整端到端流程、宿主不确定性遵循或 episode 质量已经通过。
+This follow-up did not publish to the original database, change old unknown memories, or ask the host to answer again. It verifies the new temporal proposal and verification path, not a complete end-to-end pass after the repair, host uncertainty compliance, or episode quality.
 
-## 用量、复现与最终验证
+## Usage, reproduction, and final validation
 
-基线共 **18 次调用**，全部返回可确认用量：输入 **121,348 token**、输出 **73,944 token**，合计 **195,292 token**。其中输入缓存命中 35,328，未命中 86,020；预留最大输出 233,472 token 与实际输出不同。这些是提供方用量，不是账单金额。独立开发审阅没有追加被测模型调用。
+The baseline made **18 calls**, all with confirmed usage: **121,348 input**, **73,944 output**, and **195,292 total tokens**. Input cache hits were 35,328 and misses 86,020. The reserved maximum output of 233,472 tokens differs from actual output. These are provider usage figures, not billing amounts. Independent developer review added no calls to the model under test.
 
-独立补测另用 **2 次调用**，输入 **9,473**、输出 **12,561**，合计 **22,034 token**。共享账本累计 **20 次调用**，输入 **130,821**、输出 **86,505**，合计 **217,326 token**，全部用量已确认。没有清空账本或将基线用量归零。
+The independent follow-up made **2 calls**, using **9,473 input**, **12,561 output**, and **22,034 total tokens**. The shared ledger accumulated **20 calls**, **130,821 input**, **86,505 output**, and **217,326 total tokens**, with all usage confirmed. No ledger was cleared and baseline usage was not reset to zero.
 
-入口为 `examples/evaluate_conversation.py`。`--plan` 仅展示固定实验，`--live` 才允许付费；已有输出目录会在读取环境或构造提供方前拒绝再次执行。`--resume` 只读已存报告，不自动重试中断或失败的付费工作。实验总上限 20 次调用，未为追求全绿重复基线。
+The entry point is `examples/evaluate_conversation.py`. `--plan` only displays the fixed experiment; only `--live` allows paid calls. An existing output directory is rejected before reading environment configuration or constructing a provider. `--resume` only reads saved reports; it does not automatically retry interrupted or failed paid work. The experiment had a 20-call ceiling, and the baseline was not repeated to obtain all-green results.
 
-公开副本检查未发现凭证键、Authorization/Bearer/API key 内容或隐藏 reasoning_content。保留的是合成 principal/事件标识、合法用量统计和无令牌的租约状态元数据。
+Checks of the public copy found no credential keys, Authorization/Bearer/API key content, or hidden `reasoning_content`. Synthetic principal/event identifiers, legitimate usage statistics, and lease-state metadata without tokens are retained.
 
-最终本地检查：Python 全套 **1,726 项通过**（100.57 秒），包含新增的指令式偏好召回、真实反证及发布路径回归；Ruff、包构建、diff 检查通过。TypeScript 未修改，本轮未重复运行其测试。没有增加或触发云 CI，没有调用 Codex／Claude 订阅测试。真实模型基线的部分失败与宿主不确定性遵循失败仍保持原判，不能用本地测试通过替代完整产品验收。
+Final local checks: **1,726 Python tests passed** in 100.57 seconds, including new imperative-preference recall, real counterevidence, and publication-path regressions. Ruff, package build, and diff checks passed. TypeScript was unchanged and its tests were not repeated. No cloud CI was added or triggered, and no Codex/Claude subscription tests were run. The baseline's partial failures and host uncertainty-compliance failure retain their original verdicts; local test success does not substitute for complete product acceptance.

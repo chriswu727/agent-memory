@@ -1,55 +1,55 @@
-# 紧凑上下文与主动归纳实测：2026-10-24
+# Compact context and proactive abstraction evaluation: 2026-10-24
 
-这轮改动解决了已复现的上下文重复开销，并让后台能明确安排跨经历比较。真实模型测试仍没有全部通过：五个标准阶段只有一个完整通过；两次针对旧实例的补充归纳验证均未通过。候选比较已启动，未知条件也按新格式保存，但还不能宣称自主归纳已经可靠。
+These changes address reproduced context duplication and let background learning explicitly schedule comparisons across experiences. Live model tests still did not all pass: only one of five standard stages passed completely, and both supplementary abstraction tests using old instances failed. Candidate comparison was operating and unknown conditions used the new representation, but autonomous abstraction could not yet be called reliable.
 
-[结构化报告](deepseek-2026-10-24-compact-planning.json) 保留失败、诊断续跑、已发布认识、实际上下文、补充测试的最终提议与核验，以及共享调用账本。此前的 [八阶段报告](deepseek-2026-10-24.md) 保持原样。所有来源都是合成数据，没有读取已有用户大脑，没有用主聊天模型的最终回答代替记忆检查。
+The [structured report](deepseek-2026-10-24-compact-planning.json) preserves failures, diagnostic continuations, published beliefs, actual context, final proposals and verification from supplementary tests, and the shared call ledger. The earlier [eight-stage report](deepseek-2026-10-24.md) remains unchanged. All sources were synthetic. No existing user brain was read, and host chat answers were not substituted for memory checks.
 
-## 已验证的上下文改善
+## Verified context improvements
 
-复用此前真实模型写入的三条时间偏好及两条变化关系，仅重新读取数据库，不调用模型。在 8,000 单位预算内，三个时间点均保留完整语义关系组，正确呈现当天例外、次日恢复和指定日期后的长期替换。原来的 48,000 单位读取曾因重复结构裁掉关系端点。
+The diagnostic reused three temporal preferences and two change relations previously written by the live model, reading only the database without model calls. Within an 8,000-unit budget, all three time points retained the complete semantic relation group and correctly represented the same-day exception, next-day restoration, and long-term replacement after the specified date. The original 48,000-unit read had dropped relation endpoints because of duplicated structures.
 
-| 判断时点 | recall 占用 | prepare 占用 | 时间关系检查 |
+| Evaluation date | Recall usage | Prepare usage | Temporal relation checks |
 | --- | ---: | ---: | --- |
-| 10 月 24 日 | 7,886 | 7,900 | 通过 |
-| 10 月 25 日 | 7,898 | 7,912 | 通过 |
-| 10 月 27 日 | 7,867 | 7,881 | 通过 |
+| October 24 | 7,886 | 7,900 | Passed |
+| October 25 | 7,898 | 7,912 | Passed |
+| October 27 | 7,867 | 7,881 | Passed |
 
-这些数字是实际模型资料的 UTF-8 字节数，用作保守预算单位，不是模型 tokenizer 的 token 数。紧凑格式共享来源、关系和记忆版本引用；完整核验记录仍可通过服务端展开。预算内省去了额外的原文字面报告，并明确返回覆盖限制，因此不能把结果描述成全部资料毫无删减的等量压缩。
+These figures are UTF-8 byte counts of the actual model context, used as conservative budget units, not model-tokenizer token counts. The compact format shares references to sources, relations, and memory versions; complete verification records remain expandable on the server. Additional literal source reports were omitted to stay within budget, and coverage limits were explicitly returned. This is therefore not a lossless compression of all supplied material.
 
-Python、TypeScript、MCP 和主动回忆控制器已接通对应表示。SDK 优先使用服务端提供的权威文本，避免 JavaScript 重写数值表示后突破服务端已计算的预算；原始历史报告也明确标记为历史，不能绕过当前条件与时效判断。
+Python, TypeScript, MCP, and the active recall controller use the corresponding representation. SDKs prefer authoritative text supplied by the server, avoiding JavaScript numeric reserialization that could exceed the server-calculated budget. Raw historical reports are explicitly marked historical and cannot bypass current conditions or temporal applicability.
 
-## 付费测试的实际结果
+## Actual paid-test results
 
-| 测试 | 结果 | 观察 |
+| Test | Result | Observation |
 | --- | --- | --- |
-| 新建两次独立经历 | 未通过 | 四条语义事实发布，但两个经历创建提议自造 ID 被拒绝；旧查询还漏掉衣着事实 |
-| 提醒后的比较 | 未通过 | 初版规划选中了较短的衣着事实；提出概括后，核验请求超时，未发布 |
-| 基础直接建议偏好 | 通过 | 发布、召回和上下文准备均通过 |
-| 备考时先倾听 | 未通过 | 有条件例外及旧规则保留检查通过；额外未决事项的来源校验失败，任务为部分完成 |
-| 冲突自述与“银色状态” | 未通过 | 未解释条件按 `unresolved` 保存并维持未知，冲突保持不确定；其他提议核验失败，中文召回漏掉英文语义命题 |
-| 复用旧实例，初版规划补充测试 | 未通过 | 两次完整经历已进入选材，但长句的词面重合比例过低，没有比较目标，也没有概括 |
-| 复用旧实例，v2 弱线索探索 | 未通过 | 正确选择两次经历并提出共同认识；完整命题与关系核验均为 `unknown`，没有写入 |
+| Create two independent experiences | Failed | Four semantic facts were published, but two episode-creation proposals invented IDs and were rejected; the old query also missed clothing facts |
+| Comparison after a reminder | Failed | Initial planning selected shorter clothing facts; an abstraction was proposed, but verification timed out and nothing was published |
+| Base preference for direct advice | Passed | Publication, recall, and context preparation passed |
+| Listen first during exam preparation | Failed | Conditional-exception and old-rule preservation checks passed; an additional open loop failed source validation, leaving the job partial |
+| Conflicting self-reports and “silver state” | Failed | The unexplained condition remained unknown as `unresolved`, and the conflict remained uncertain; other proposals failed verification and Chinese recall missed the English semantic claim |
+| Reuse old instances: initial-planning supplement | Failed | Both complete experiences were selected as material, but long statements had too little proportional lexical overlap; no comparison objective or abstraction resulted |
+| Reuse old instances: v2 weak-cue exploration | Failed | Correctly selected both experiences and proposed a shared belief; whole-claim and relation verdicts were both `unknown`, so nothing was written |
 
-后续诊断保留前面的失败，只在已有有效前置事实时继续。它们不是重跑成功后的替换结果，也没有把部分成功改标为全场景通过。
+Later diagnostics retained earlier failures and continued only when valid prerequisite facts existed. They did not replace failed results with successful reruns or relabel partial success as a fully passing scenario.
 
-v2 规划每批最多选择两个强词面目标与一个弱线索目标；没有弱目标时可选三个强目标。弱目标必须仍有实词交集，先去重再选择，全部来源、条件、世界与独立性约束保持不变。免费预检确认它从真实保存的数据中选中两次经历，而非“用户想起往事”的提醒断言。旧 v1 冻结计划继续兼容恢复。
+The v2 planner selects at most two strong lexical objectives and one weak-cue objective per batch, or three strong objectives when no weak objective exists. Weak objectives must still share content words, with deduplication before selection. All source, condition, world, and independence constraints remain unchanged. Free preflight checks confirmed that it selected the two experiences from actual saved data, rather than the reminder assertion that the user recalled the past. Old v1 frozen plans remain resumable.
 
-最后一次模型提议抓到了“两个已报告实例都是先散步再复习”，也保留了独立实例父版本，但附带声称“时长不同”。河边那次没有报告时长，缺失信息不能证明差异。这是开发审阅发现的具体错误。核验模型对整个命题和关系都返回 `unknown`，系统拒绝发布；核验输出没有解释理由，因此不能断言它就是因时长错误而拒绝。
+The final model proposal captured that both reported instances involved walking before studying and retained independent parent-instance versions, but also claimed that the durations differed. The riverside instance did not report a duration; missing information cannot establish a difference. Developer review identified this concrete error. The verifier returned `unknown` for the whole claim and relation, and publication was rejected. It gave no reason, so the duration error cannot be asserted as the reason for rejection.
 
-这次拦截说明逐引文支持不足以证明整个概括；不能降低完整命题的核验门槛来换取通过。下一步需要更好地区分共同命题、已观察差异和未知细节，并评估有边界的修订机制。当前已完整核验但未成立的同一目标会去重，不会因再次提醒无限收费重试；新证据或实例版本变化可形成新目标。
+This rejection demonstrates that support for individual citations is insufficient to establish a whole abstraction. Lowering the whole-claim verification threshold to obtain a pass would be inappropriate. The next step is to distinguish shared claims, observed differences, and unknown details more clearly and assess bounded revision. A fully evaluated but unsupported objective is currently deduplicated rather than retried indefinitely at a cost after every reminder. New evidence or changed instance versions can form a new objective.
 
-## 本轮修复与仍有的缺口
+## Repairs and remaining gaps
 
-新提议禁止旧式自由键 `eq/ne`，不认识的概念用显式 `unresolved` 保留，旧数据继续兼容读取。经历创建 schema 与服务端规则对齐，ID 由运行时分配。慢速模型的任务租约覆盖配置的请求时限，评测可显式延长等待时间而不增加调用次数。网络故障或不完整核验不会永久抑制同一比较目标。
+New proposals cannot use legacy free-key `eq/ne`; unrecognized concepts are preserved explicitly as `unresolved`, while old data remains readable. The episode-creation schema now matches server rules, with IDs allocated by the runtime. Slow-model job leases cover the configured request timeout, and evaluation waiting time can be explicitly increased without increasing call count. Network failures or incomplete verification do not permanently suppress the same comparison objective.
 
-仍未解决的主要问题是中文线索到英文语义改写的发现、按不同粒度拆分事实后比较目标的质量，以及不添造细节的可靠归纳。补充测试没有验证最初被拒绝的经历创建场景已端到端通过；schema 修复不能代替这项真实验收。也没有长期运行、真实用户对话、规模增长或最终回答质量的结论。
+The main unresolved problems are discovering English semantic rewrites from Chinese cues, comparison-objective quality after facts are split at different granularities, and reliable abstraction without invented detail. Supplementary tests did not establish an end-to-end pass for the initially rejected episode-creation scenario; a schema fix is not a substitute for that live validation. There are also no conclusions about long-running use, real-user conversations, growth in scale, or final-answer quality.
 
-## 用量与复现
+## Usage and reproduction
 
-本报告共享一个账本，共 14 次 DeepSeek-V4-Pro 思考模式请求，最多两次调用一个阶段，没有自动重试。13 次确认用量合计输入 105,028、输出 71,873，共 176,901 token；另一次超时没有返回用量，不能视为零消耗。这些数字不包含此前报告的 24 次请求，也不是账单金额。
+This report uses one shared ledger for 14 DeepSeek-V4-Pro thinking-mode requests, with at most two calls per stage and no automatic retries. The 13 requests with confirmed usage totaled 105,028 input and 71,873 output tokens: 176,901 tokens. One timeout returned no usage and cannot be counted as zero. These figures exclude the earlier report's 24 requests and are not billing amounts.
 
-前两阶段总时限为 120 秒，后续为 240 秒；每次输出上限始终为 16,384 token。时间资料重放与弱候选预检没有模型调用。本轮停止在已声明的 14 次额度，没有为凑齐通过继续尝试。
+The first two stages had a total timeout of 120 seconds; later stages allowed 240 seconds. Every call retained a 16,384-token output cap. Temporal-context replay and weak-candidate preflight made no model calls. The run stopped at its declared 14-call allowance, without further attempts to accumulate passing results.
 
-标准入口及失败后诊断续跑参数见 [README](../README.md#手动-deepseek-实测)。补充测试复用了此前诊断大脑的真实实例，不能仅运行标准入口就宣称复现了该补充结果。公开报告保留相关输入、输出与指纹；本地原始诊断保留在忽略提交的 `.local/`，密钥与隐藏思考内容不发布。
+See the [README](../README.md#manual-deepseek-evaluation) for the standard entry point and diagnostic-continuation parameters after failure. Supplementary tests reused actual instances from an earlier diagnostic brain; running only the standard entry point does not reproduce those supplementary results. The public report preserves the relevant inputs, outputs, and fingerprints. Local raw diagnostics remain under ignored `.local/`; credentials and hidden reasoning are not published.
 
-最终本地检查：Python 全套 **1,447 项通过**，TypeScript **12 项通过**及类型检查通过；Ruff、Python 包构建和 diff 检查通过。没有增加或触发云 CI，没有调用 Codex／Claude 订阅测试。这些确定性检查覆盖代码行为，不会改变以上真实模型场景的失败结果。
+Final local checks: **1,447 Python tests passed**; **12 TypeScript tests** and type checking passed. Ruff, Python package build, and diff checks passed. No cloud CI was added or triggered, and no Codex/Claude subscription tests were run. These deterministic checks cover code behavior and do not alter the live-model failures above.

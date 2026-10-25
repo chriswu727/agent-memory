@@ -1,57 +1,59 @@
 # Agent Memory
 
-一个独立于模型、无界面的 Agent 记忆运行时。目标是让宿主接入一次后，运行时持续管理 Agent 的工作记忆、长期认识和回忆过程。普通用户正常交流即可；主 Agent 不需要主动调用保存或搜索工具，系统也必须正常形成和使用记忆。
+English | [简体中文](README.zh-CN.md)
 
-完整目标见 [架构与验收规范](architecture/architecture.html)，产品边界与宿主责任见 [自主记忆运行契约](architecture/autonomous-runtime.contract.json)。当前已实现底层记忆服务、同步文本自动生命周期，以及可选的情境理解、语义巩固和语义回忆：结合最近对话判断当前目标，生成有来源的认识与经历结构，按预算查找并选择记忆。完整宿主接入与长期记忆效果仍需验证，当前不能视为完整自主大脑。
+A model-independent, headless memory runtime for agents. The goal is to let a host integrate once, then let the runtime continuously manage the agent's working memory, long-term beliefs, and recall. Users should be able to converse normally; memory must form and be used even when the main agent does not explicitly call save or search tools.
 
-后续认知内核的具体改造、实施依赖和行为评估见[认知记忆架构实施计划](architecture/cognitive-memory-plan.md)。计划中的新增能力仍待实现，不代表当前运行状态。
+See the [architecture and acceptance specification](architecture/architecture.html) for the complete target, and the [autonomous runtime contract](architecture/autonomous-runtime.contract.json) for product boundaries and host responsibilities. The current implementation provides the underlying memory service, an automatic synchronous text lifecycle, and optional situation understanding, semantic consolidation, and semantic recall: it uses recent conversation to identify the current goal, creates beliefs and episode structures with traceable sources, and searches and selects memories within a budget. Complete host integration and long-term memory quality still need validation. This is not yet a complete autonomous brain.
 
-## 产品与接入目标
+The [cognitive memory implementation plan](architecture/cognitive-memory-plan.md) describes proposed changes to the cognitive core, implementation dependencies, and behavioral evaluation. Its additional capabilities remain planned work, not a description of current behavior.
 
-接入单位是一个具有稳定身份的 Agent。大脑身份独立于模型、进程和某个聊天窗口；参与者、关系与任务分别限定记忆范围。宿主通过适配器交出消息生命周期和记忆上下文的管理权，适配器负责调用底层操作，业务代码不逐轮手动编排 `observe / prepare / commit`。
+## Product and integration goals
 
-每轮运行时自动接收真实输入和工具结果，理解当前目标与指代，激活相关记忆，必要时继续寻找，并为模型组装有预算的当前工作区。真实送达或实际结果到达后，自动更新工作状态和长期记忆候选。后台按新证据、冲突与任务结果触发巩固、关联更新和活跃度变化。
+The unit of integration is an agent with a stable identity. Its brain identity is independent of the model, process, or chat window; participants, relationships, and tasks separately constrain memory scope. The host delegates management of the message lifecycle and memory context through an adapter. The adapter invokes the underlying operations, so application code does not manually orchestrate `observe / prepare / commit` on every turn.
 
-当前上下文仍然有容量限制，可以压缩临时内容；长期记忆由原始来源和版本化认知状态承担，不再依赖层层覆盖的滚动摘要。接入成功不能只用“多注入了一段检索结果”判断，需要验证持久状态、主动联想、理解更新和重启后的连续性。
+On each turn, the runtime should automatically receive actual inputs and tool results, understand the current goal and references, activate relevant memories, continue searching when needed, and assemble a budgeted working context for the model. Once actual delivery or an actual outcome is confirmed, it should update working state and long-term memory candidates. Background processing should trigger consolidation, association updates, and activation changes based on new evidence, conflicts, and task outcomes.
 
-完整接入必须在主 Agent 的记忆工具被禁用时仍能运作。MCP 是补充操作接口；仅支持工具调用的连接按实际能力报告。没有消息、推理或上下文生命周期控制权的宿主，不能标为完整接入。模型/API 代理若无法确认最终送达，也不能把生成完成当作用户已收到回复。
+The current context still has a capacity limit, and temporary content may be compacted. Long-term memory rests on original sources and versioned cognitive state rather than repeatedly overwritten rolling summaries. Successful integration requires more than injecting a retrieved passage: it must demonstrate persistent state, spontaneous associations, revised understanding, and continuity after a restart.
 
-产品无需管理页面。开发诊断通过经过鉴权的状态、指标和结构化运行日志接口提供：能追踪本轮使用了哪些记忆及其来源、为何继续或停止回忆、发生了什么版本变化、成本与失败原因。日志默认不复制聊天正文，也不记录模型隐藏推理。现有本地工作台只是可移除的开发辅助，不是产品入口或验收前提。
+Complete integration must work even when the main agent's memory tools are disabled. MCP is a supplementary operations interface; connections that only support tool calls must report that actual capability. A host without control over the message, reasoning, or context lifecycle cannot be labeled fully integrated. A model/API proxy that cannot confirm final delivery must not treat generation completion as proof that the user received the response.
 
-### 独立产品与可选接入
+The product does not require an administration UI. Authenticated status, metrics, and structured runtime log interfaces provide development diagnostics: which memories and sources a turn used, why recall continued or stopped, which versions changed, costs, and failure reasons. Logs do not copy conversation bodies by default and do not record hidden model reasoning. The existing local workbench is a removable development aid, not the product entry point or an acceptance prerequisite.
 
-产品首先面向通过 API key 使用模型的 Agent。直接接入和第三方机器人插件共用同一个记忆核心；AstrBot、LangBot、NapCat 等是可选接入途径，不是安装、运行或发展核心能力的前提。依赖方向固定为「宿主适配器 → 公共 API / SDK → 记忆核心」，核心不导入聊天框架，也不按框架分叉记忆算法。第三方专用依赖应放在可选适配包中。
+### Independent product and optional integrations
 
-核心拥有持久记忆、来源、身份与范围、回忆、学习、衰减和恢复规则。适配器负责真实事件转换、稳定身份映射、生命周期接线和交付回执；通过公共接口访问记忆，不直接访问数据库或维护另一份权威记忆。每轮应只有一个生命周期编排者，避免插件和模型代理同时捕获、注入或生成。
+The primary audience is agents that access models through API keys. Direct integrations and third-party bot plugins share the same memory core. AstrBot, LangBot, NapCat, and similar projects are optional entry points, not prerequisites for installing, running, or developing core capabilities. Dependencies flow in one direction: **host adapter → public API / SDK → memory core**. The core does not import chat frameworks or fork memory algorithms for individual frameworks. Framework-specific dependencies belong in optional adapter packages.
 
-更换模型、渠道或聊天框架时，应能继续绑定原有大脑；跨平台参与者与会话的关联必须由可信配置明确映射，不能仅凭昵称或模型猜测合并，也不能将私聊记忆自动带入群聊。卸载适配器不应删除核心数据。独立使用和适配器替换都需经过重启恢复、重试去重、范围隔离及更正删除的验收，不能把目标写成已完成能力。
+The core owns persistent memories, provenance, identity and scope, recall, learning, decay, and recovery rules. Adapters translate actual events, map stable identities, connect lifecycle hooks, and supply delivery receipts. They access memory through public interfaces rather than accessing the database directly or maintaining another authoritative memory store. Each turn should have one lifecycle orchestrator, avoiding duplicate capture, injection, or generation by a plugin and a model proxy.
 
-当前核心、HTTP API 和 Python 同步文本运行时已不依赖上述聊天框架；模型生成和发送仍由宿主回调提供。直接配置模型即可聊天的入口、模型兼容网关以及 QQ 框架适配插件尚未交付。MCP 继续作为补充接口，不能代替缺失的生命周期接入。
+Changing models, channels, or chat frameworks should allow the agent to retain its existing brain. Trusted configuration must explicitly map participants and conversations across platforms; display names or model guesses must not merge identities, and private-chat memories must not automatically enter group chats. Uninstalling an adapter should not delete core data. Independent operation and adapter replacement both require acceptance checks for restart recovery, retry deduplication, scope isolation, corrections, and deletion. These goals must not be presented as completed capabilities.
 
-## 电脑版使用
+The current core, HTTP API, and Python synchronous text runtime already operate independently of these chat frameworks. The host still supplies generation and delivery callbacks. A chat entry point configured directly with a model, a model-compatible gateway, and QQ framework adapters have not been delivered. MCP remains supplementary and cannot replace missing lifecycle integration.
 
-先安装 [uv](https://docs.astral.sh/uv/)，并启动 Docker Desktop，然后执行：
+## Desktop setup
+
+Install [uv](https://docs.astral.sh/uv/) and start Docker Desktop, then run:
 
 ```sh
 uv tool install --python 3.12 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
 agent-memory desktop setup
 ```
 
-此安装方式不需要 Git 或克隆项目，也不需要分别启动数据库、API 和 worker。如果安装提示命令目录不在 `PATH`，执行 `uv tool update-shell` 后重新打开终端。首次设置会询问用于记忆学习的模型服务地址、模型名称和 API key；输入密钥时不回显。当前支持兼容 Chat Completions 的提供方。模型名称和端点由用户提供，不默认使用任何订阅或调用模型试探配置。暂时跳过模型配置也可运行持久存储和词面回忆，但不会启用模型驱动的语义学习；状态中会标记 `cognition: not_configured`。
+This installation does not require Git or a repository clone, or separate startup commands for the database, API, and worker. If installation reports that the command directory is not in `PATH`, run `uv tool update-shell` and reopen your terminal. First-time setup asks for the service URL, model name, and API key used for memory learning; key input is hidden. Chat Completions-compatible providers are currently supported. The user supplies the model name and endpoint. Setup does not select a subscription or make model calls to probe the configuration. You can skip model configuration and still use persistent storage and lexical recall, but model-driven semantic learning remains disabled and status reports `cognition: not_configured`.
 
-设置会创建固定大脑身份及本机凭据，准备专属数据库，完成迁移，并在后台启动记忆服务和任务处理器。重复执行不会重新创建大脑或清空记忆。API 默认使用 `127.0.0.1:8788`，数据库默认使用 `127.0.0.1:55433`；首次设置遇到端口占用时选择空闲端口并保存。已有安装遇到端口冲突会报告问题，不停止其他进程或悄悄换到另一个大脑。
+Setup creates a stable brain identity and local credentials, prepares a dedicated database, applies migrations, and starts the memory service and worker in the background. Repeating setup does not recreate the brain or clear its memories. The default API address is `127.0.0.1:8788`, and the database defaults to `127.0.0.1:55433`. On first setup, occupied ports are replaced with available ports and saved. An existing installation reports a port conflict rather than stopping another process or silently switching to a different brain.
 
-完成后，设置结果会给出不含密钥的 MCP 配置，并将它保存到本机配置目录的 `mcp.json`。也可以重新获取：
+Setup prints an MCP configuration containing no secrets and saves it as `mcp.json` in the local configuration directory. You can retrieve it again with:
 
 ```sh
 agent-memory desktop mcp-config
 ```
 
-将这份配置添加到支持 stdio MCP 的宿主即可连接记忆工具。不同宿主的配置入口不同，当前不会自动修改外部客户端配置。宿主启动这条 MCP 连接时会自动启动或连接本机服务；退出 MCP 连接后，服务继续在后台处理任务。电脑重启后，下次 MCP 连接或 SDK 的 `open_client()` 会重新启动服务并沿用原大脑，不必重新设置。
+Add this configuration to a host that supports stdio MCP to connect the memory tools. Configuration locations vary by host; setup does not currently modify external client configuration automatically. Starting this MCP connection automatically starts or connects to the local service. Closing the MCP connection leaves the service processing background tasks. After a computer restart, the next MCP connection or SDK `open_client()` call starts the service again with the same brain; no new setup is required.
 
-**MCP 连接仍是 `tools_only`。** 它不会自动读取宿主全部聊天、接管 compact 或确认消息送达。需要自动记忆的 Agent 应使用下文的 Python 运行时，并由宿主提供消息生命周期。安装成功、认知模型已配置和宿主已自动接入是三个不同状态。
+**The MCP connection is still `tools_only`.** It does not automatically read all host conversations, take over compaction, or confirm message delivery. Agents that need automatic memory should use the Python runtime below and supply the host message lifecycle. Successful installation, a configured cognition model, and automatic host integration are three distinct states.
 
-### 本机状态与配置
+### Local status and configuration
 
 ```sh
 agent-memory desktop status
@@ -61,24 +63,24 @@ agent-memory desktop start
 agent-memory desktop restart
 ```
 
-`status` 检查认证后的服务、数据库、大脑身份和后台处理器；模型配置存在不代表已验证提供方可用或记忆质量。`logs` 返回有界的结构化服务事件，不包含聊天正文和 API key。`stop` 和 `restart` 保留数据库卷及配置，不删除记忆。停止通过已认证的服务实例完成，不根据遗留 PID 杀进程。使用 `setup` 更新认知配置时，会自动重启需要更新的服务；指定 `--no-start` 则只保存配置，稍后执行 `restart` 应用。更新安装的程序后，也应执行 `desktop restart`，让后台实例加载新代码。
+`status` checks the authenticated service, database, brain identity, and worker. The presence of model configuration does not verify provider availability or memory quality. `logs` returns bounded, structured service events without conversation bodies or API keys. `stop` and `restart` retain the database volume and configuration; they do not delete memories. Shutdown is requested through the authenticated service instance rather than by killing a process using a stale PID. Updating cognition configuration through `setup` automatically restarts the services that need the update. With `--no-start`, setup only saves configuration; run `restart` later to apply it. After updating the installed program, also run `desktop restart` so the background instance loads the new code.
 
-配置默认位于 macOS 的 `~/Library/Application Support/Agent Memory`、Windows 的 `%LOCALAPPDATA%\Agent Memory`，或 Linux 的 `$XDG_DATA_HOME/agent-memory`（未设置时为 `~/.local/share/agent-memory`）。所有桌面子命令都接受 `--directory <绝对目录>`；同一安装应始终使用同一目录。目录内包含本机凭据，记忆正文则持久存放在该安装的 Docker 数据卷中，复制配置目录不等于备份数据库。
+The default configuration directory is `~/Library/Application Support/Agent Memory` on macOS, `%LOCALAPPDATA%\Agent Memory` on Windows, or `$XDG_DATA_HOME/agent-memory` on Linux (`~/.local/share/agent-memory` when unset). All desktop subcommands accept `--directory <absolute-directory>`; use the same directory consistently for one installation. This directory contains local credentials. Memory content is persisted in the installation's Docker data volume, so copying the configuration directory does not back up the database.
 
-自动部署可以先只保存配置，稍后启动：
+For automated deployment, save configuration first and start the service later:
 
 ```sh
 agent-memory desktop setup --non-interactive --no-start
 agent-memory desktop start
 ```
 
-需要非交互配置认知模型时，用 `--base-url`、`--model` 和 `--api-key-env` 指定服务地址、模型及**已设置的密钥环境变量名称**；不要将密钥值写进命令参数。可选的 `--thinking enabled|disabled` 仅用于支持该参数的提供方。桌面服务使用自己的配置，不自动读取仓库 `.env`，也不会把原开发数据库里的大脑迁移到新安装。
+To configure cognition non-interactively, use `--base-url`, `--model`, and `--api-key-env` to specify the service URL, model, and **name of an already-set environment variable containing the key**. Do not put the key value in command arguments. The optional `--thinking enabled|disabled` flag is only for providers that support it. The desktop service uses its own configuration; it does not automatically read the repository's `.env` or migrate brains from the development database into the new installation.
 
-当前交付是本机命令行安装和服务管理，仍需要 uv 和 Docker Desktop；尚无原生一键安装包或特定宿主的完整生命周期适配。实现包含 Windows、Linux 的路径与进程处理，当前桌面端到端验收以 macOS 为范围，其他系统尚未实机验收。具体覆盖与限制见[桌面安装与恢复验收](evaluations/desktop-2026-10-24.md)。
+The current delivery provides local command-line installation and service management and still requires uv and Docker Desktop. There is no native one-click installer or complete lifecycle adapter for a specific host yet. The implementation includes Windows and Linux path and process handling, but desktop end-to-end acceptance currently covers macOS; the other operating systems have not been tested on actual machines. See [desktop installation and recovery acceptance](evaluations/desktop-2026-10-24.md) for coverage and limitations.
 
-### 开发方式
+### Development setup
 
-已有开发环境可继续使用以下路径。需要 Python 3.12、uv 和可运行的 Docker；在克隆的仓库目录执行。开发数据库使用项目独立的数据卷，与上述桌面安装分开。
+Existing development environments can continue using the following workflow. It requires Python 3.12, uv, and a working Docker installation. Run these commands from a cloned repository. The development database has its own project volume, separate from the desktop installation above.
 
 ```sh
 uv sync --frozen
@@ -88,15 +90,15 @@ uv run agent-memory migrate
 uv run agent-memory serve
 ```
 
-另开一个终端运行持久化任务处理器：
+Run the persistent worker in another terminal:
 
 ```sh
 uv run agent-memory worker
 ```
 
-服务地址为 <http://127.0.0.1:8787>，访问密钥保存在 `.local/access-token`。当前开发工作台也在此地址，可用于手工检查底层行为；目标产品不要求打开它。`init` 只运行一次；配置存在时不会覆盖。`.env` 与 `.local/` 包含本机凭据，已排除在版本管理之外。
+The service runs at <http://127.0.0.1:8787>, with its access token saved in `.local/access-token`. The development workbench is available at the same address for manually inspecting underlying behavior; the target product does not require opening it. Run `init` once; it does not overwrite existing configuration. `.env` and `.local/` contain local credentials and are excluded from version control.
 
-`init` 只生成配置。开发接入还需要在 API 启动后创建一个大脑，并持久保存返回的 `id`；以后始终绑定这个 ID，不能每次启动都创建新大脑。例如首次创建：
+`init` only creates configuration. A development integration must also create a brain after the API starts and persist the returned `id`. Reuse that ID thereafter rather than creating a new brain on every startup. For example, create it once with:
 
 ```python
 from pathlib import Path
@@ -107,11 +109,11 @@ with MemoryClient("http://127.0.0.1:8787", Path(".local/access-token").read_text
     Path(".local/brain-id").write_text(brain["id"] + "\n")
 ```
 
-数据库默认绑定 `127.0.0.1:55432`，HTTP 服务绑定 `127.0.0.1:8787`。工作台、API 与后台处理器共用一个内核。可用 `uv run agent-memory worker --once` 手动处理每个大脑的一项待处理工作。`docker compose down` 停止数据库而保留数据卷；不要使用 `down -v`，除非确实要删除整个数据库。
+The database binds to `127.0.0.1:55432` by default, and HTTP binds to `127.0.0.1:8787`. The workbench, API, and worker share the same core. Use `uv run agent-memory worker --once` to process one pending job per brain manually. `docker compose down` stops the database while retaining its volume; do not use `down -v` unless you intend to delete the entire database.
 
-## 自动接入
+## Automatic integration
 
-Python 的 `BrainRuntime` 接管同步文本轮次。宿主初始化一次，提供模型生成函数和实际发送函数；业务层只提交收到的消息，不调用记忆工具或逐轮编排存取。下例面向宿主开发者，其 Python 环境也需安装 `agent-memory-runtime`（可使用同一源码 URL）；`uv tool install` 安装的命令行工具有独立环境，不会修改宿主的 Python 依赖。接入代码可以直接读取本机配置并连接固定大脑：
+Python's `BrainRuntime` manages synchronous text turns. The host initializes it once with a model generation function and an actual delivery function. Application code submits received messages without calling memory tools or orchestrating reads and writes on each turn. The following example is for host developers. Install `agent-memory-runtime` in the host's Python environment as well, using the same source URL if needed; the CLI installed by `uv tool install` has an isolated environment and does not change the host's Python dependencies. Integration code can read the local configuration and connect to the stable brain directly:
 
 ```python
 from agent_memory.desktop_connection import open_client
@@ -129,21 +131,21 @@ with open_client() as memory:
     result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
 ```
 
-`open_client()` 自动启动或连接本机服务，返回绑定固定 `brain_id` 的 `MemoryClient`；可传 `directory=Path(...)` 选择安装目录，或用 `start_service=False` 仅连接已运行的服务。它不要求复制访问密钥，也不读取当前工作目录的 `.env`。开发部署仍可手动构造 `MemoryClient`，沿用原数据库中的大脑。
+`open_client()` starts or connects to the local service and returns a `MemoryClient` bound to the stable `brain_id`. Pass `directory=Path(...)` to select an installation directory, or `start_service=False` to connect only to an already-running service. It does not require copying an access token and does not read `.env` from the current working directory. Development deployments can still construct `MemoryClient` manually and retain the brain in their original database.
 
-上例的 `model`、`channel` 和消息身份来自宿主；`open_client()` 本身不捕获宿主消息。生成函数必须使用运行时提供的 `messages`，其中保留宿主系统指令，加入有来源和预算的记忆资料及当前输入。`message_id` 是宿主收到消息时持久分配的标识，重试必须不变；新进程使用同一个大脑身份即可重新接入。可运行的无模型示例见 [examples/autonomous.py](examples/autonomous.py)。
+The host supplies `model`, `channel`, and message identities in this example; `open_client()` does not capture host messages itself. The generation function must use the runtime-provided `messages`, which preserve host system instructions and add sourced, budgeted memory material and the current input. The host must persistently assign `message_id` when receiving a message and keep it unchanged across retries. A new process reconnects using the same brain identity. See [examples/autonomous.py](examples/autonomous.py) for an executable example that does not require a model.
 
-运行时自动执行输入落盘、回答前回忆、草稿保存、交付确认、有效工作状态保留与 checkpoint。每轮使用租约和修订检查；草稿写入和阶段推进、交付记录和阶段推进各自在同一事务中。`runtime.resume(turn_id)` 从持久阶段继续，完成过的轮次直接返回已交付结果，不重新生成或发送。配置认知处理器后，回答前还会理解当前情境；实际交付后才把经过来源检查的情境推断合入工作状态，推断不会被标为已证实事实。
+The runtime automatically persists inputs, recalls before answering, saves drafts, confirms delivery, retains valid working state, and checkpoints. Each turn uses leases and revision checks. Draft persistence and phase advancement share one transaction, as do delivery recording and phase advancement. `runtime.resume(turn_id)` continues from the persistent phase; completed turns return their delivered result without generating or sending again. With a cognition processor configured, the runtime also interprets the current situation before answering. Source-checked situation inferences are merged into working state only after actual delivery, and remain labeled as inferences rather than verified facts.
 
-只有宿主确认实际发送后才能返回 `delivered`；部分发送使用 `DeliveryReceipt("partially_delivered", delivered_text=actual_text)`，取消使用 `cancelled`，发送结果无法确认使用 `unknown`。没有发送函数时停在 `generated`，草稿不进入回忆。`delivered` 指宿主确认交付，不声称用户已经读过消息。
+Return `delivered` only after the host confirms actual sending. For partial delivery, use `DeliveryReceipt("partially_delivered", delivered_text=actual_text)`; use `cancelled` for cancellation and `unknown` when the sending outcome cannot be confirmed. Without a delivery function, the turn stops at `generated`, and its draft is excluded from recall. `delivered` means host-confirmed delivery, not proof that the user has read the message.
 
-外部模型调用或发送的结果不明确时，默认停止并报告 `generation_uncertain` / `delivery_uncertain`。仅当宿主根据 `request_id` / `delivery_id` 实现了持久去重或结果查询，才可开启 `generation_is_idempotent=True` / `delivery_is_idempotent=True`。普通 HTTP 重试、打印输出或一般模型 API 本身不能保证这个性质。租约失效可阻止后续存储与调用，但不能撤销已经进入外部系统的请求。删除或更正同样不能收回已经提供给模型或发送渠道的内容；后续生成结果会被重新检查。
+When an external model call or delivery has an uncertain outcome, the default is to stop and report `generation_uncertain` / `delivery_uncertain`. Enable `generation_is_idempotent=True` / `delivery_is_idempotent=True` only if the host implements durable deduplication or result lookup using `request_id` / `delivery_id`. Ordinary HTTP retries, printing output, or a typical model API do not establish this property. Lease expiration can block later writes and calls, but cannot cancel a request already accepted by an external system. Similarly, deletion and correction cannot retract content already provided to a model or delivery channel; subsequent generation results are checked again.
 
-`RuntimePolicy` 分别限制记忆资料与完整消息预算，使用 UTF-8 字节数保守估计；宿主应按模型的总窗口为输出和模型协议开销预留空间。当前文本输出服务上限为 64,000 字节。同步适配器不处理工具循环、流式消息、自动消息编辑、上下文压缩或多个并行轮次的分支合并，其能力明确标记为 `partial_automation`。
+`RuntimePolicy` separately limits memory material and the full message budget, using UTF-8 bytes as a conservative estimate. The host should reserve space within the model's total context window for output and protocol overhead. The current service limit for text output is 64,000 bytes. The synchronous adapter does not handle tool loops, streaming messages, automatic message editing, context compaction, or merging branches from concurrent turns. Its capability is explicitly reported as `partial_automation`.
 
-### 按需进行回复前分析
+### On-demand analysis before answering
 
-默认 `RuntimePolicy(orientation_policy="always")` 保留每轮的情境提议和独立核验。迁移至 `011_orientation_route.sql` 后，可对以普通对话、已知事实和偏好回忆为主的接入显式选择：
+The default `RuntimePolicy(orientation_policy="always")` retains a situation proposal and an independent verification on every turn. After applying `011_orientation_route.sql`, integrations focused on ordinary conversation and recall of known facts and preferences can explicitly select:
 
 ```python
 from agent_memory.runtime import RuntimePolicy
@@ -155,17 +157,17 @@ runtime = BrainRuntime(
 )
 ```
 
-服务器检查本次检索在适用性过滤之前的候选依赖和关系。没有情境依赖时，复用同一个上下文包直接回答，省去两次前台语义调用；有条件记忆、条件关系、工作项、未完成事项或不完整依赖时仍运行完整分析。已有定向任务继续恢复；语义回忆控制器和向量回忆暂时也保留完整分析。判断不增加分类模型调用，不按关键词猜测，也不声称全脑不存在其他相关记忆。
+The server examines candidate dependencies and relations from the current retrieval before applicability filtering. When there are no situation dependencies, it reuses the same context packet to answer directly, avoiding two foreground semantic calls. Conditional memories or relations, working items, unresolved items, or incomplete dependencies still require full analysis. Existing orientation jobs continue to resume; semantic recall controllers and vector recall also retain full analysis for now. Routing adds no classifier-model call, does not guess from keywords, and does not claim that the entire brain contains no other relevant memories.
 
-`orientation_route` 持久记录策略、跳过或分析的决定、固定原因、输入和依赖指纹。跳过不是语义核验成功。服务器保存内部预检，在进入准备与生成阶段时持锁重查；不能只依赖版本计数，因为后台新发布认识可能尚未推进该计数。生成后再检查跳过前提、当前上下文和来源，即使未配置回答核验器也检查；恢复不能静默更换策略。预检记录不进入普通监控响应，路由只含标识、计数与哈希，不复制消息正文。
+`orientation_route` persistently records the policy, the decision to skip or analyze, fixed reasons, and input and dependency fingerprints. Skipping is not successful semantic verification. The server stores an internal preflight and rechecks it under a lock before preparation and generation. A version counter alone is insufficient because newly published background beliefs may not yet have advanced it. After generation, the skip prerequisites, current context, and sources are checked again even without an answer reviewer. Recovery cannot silently change the policy. Preflight records are excluded from ordinary monitoring responses; routing exposes only identifiers, counts, and hashes, without copying message bodies.
 
-这两个策略不完全等价：跳过的轮次不会即时派生或提交新的情境摘要、目标和待办状态。原始输入仍独立传给宿主并落盘；配置认知处理器时后台学习仍排队，须由 worker 执行。依赖即时目标跟踪的 Agent 应保留 `always`。答案核验由原来的 `answer_reviewer` 独立决定，快速路径不会自动关闭它。
+The two policies are not fully equivalent: skipped turns do not immediately derive or commit new situation summaries, goals, or pending-task state. The original input is still independently passed to the host and persisted. With a cognition processor configured, background learning is still queued and must be executed by the worker. Agents that depend on immediate goal tracking should retain `always`. The existing `answer_reviewer` independently controls answer review; the fast path does not disable it automatically.
 
-按需路径用额外的本地读取换取减少前台模型等待，完整交付通常会准备或复核五次上下文。快照仍保守绑定全脑事件与索引进度；其他会话或后台活动可能触发 `context_stale`，即使最终相关内容相同。该并发可用性边界尚未优化，不能将当前小样本延迟外推为高并发性能。
+The on-demand path trades extra local reads for less foreground model waiting. Complete delivery typically prepares or rechecks context five times. Snapshots remain conservatively bound to brain-wide event and index progress. Other conversations or background activity may trigger `context_stale` even when the ultimately relevant content is unchanged. This concurrency limitation has not been optimized; current small-sample latency must not be extrapolated to high-concurrency performance.
 
-### 交付前的回答核验
+### Answer review before delivery
 
-记忆的适用性计算正确，不代表宿主一定会正确回答。可在接入时启用独立的回答核验：
+Correctly calculating a memory's applicability does not guarantee a correct host response. An integration can enable independent answer review:
 
 ```python
 import os
@@ -188,21 +190,21 @@ with ChatCompletionsAnswerReviewProvider(
     result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
 ```
 
-启用前须迁移数据库至 `010_response_review.sql`。这些环境变量由上例显式读取；没有配置 `answer_reviewer` 的原有接入保持关闭，不会暗中增加模型调用。`reviewer_id` 必须稳定标识实际端点、模型与推理配置；更换提供方时也应改变它，运行时无法自动辨认任意自定义回调的内部实现。
+Apply `010_response_review.sql` before enabling review. The example explicitly reads these environment variables. Existing integrations without `answer_reviewer` remain disabled and do not incur hidden model calls. `reviewer_id` must stably identify the actual endpoint, model, and reasoning configuration; change it when changing providers. The runtime cannot automatically identify the internal implementation of an arbitrary custom callback.
 
-每份草稿最多核验一次：先持久化草稿与调用预留，再把生成时的完整消息和原始草稿作为资料交给核验器。它分别检查当前输入、历史依据、适用性、不确定性与动作完成声明；所有检查明确一致且覆盖完整才准许返回草稿或进入发送。发现问题、不确定、非法响应或提供方失败都会抛出 `RuntimeBlocked`，草稿保留但不交付，也不进入回忆。宿主须处理这个状态；当前没有自动改写或付费重试来生成替代答案。
+Each draft is reviewed at most once. The runtime first persists the draft and call reservation, then supplies the reviewer with the full messages used for generation and the original draft as material. The reviewer separately checks the current input, historical support, applicability, uncertainty, and claims that actions have completed. Returning or sending the draft is permitted only when all checks explicitly agree and coverage is complete. Problems, uncertainty, invalid responses, or provider failures raise `RuntimeBlocked`. The draft is retained but neither delivered nor included in recall. Hosts must handle this state; there is currently no automatic rewriting or paid retry to generate a replacement answer.
 
-策略、请求和草稿摘要及记忆版本绑定在轮次上，服务端也检查交付许可。进程中断留下 `pending` 时，恢复不会重新调用核验器；已通过的草稿可以继续，但先重建并核对原上下文和当前适用性。准备后的策略不能通过关闭核验降级；已完成轮次仍重放原交付事实，不追认旧答案通过了新核验。发送结果未知时，即使恢复实例没有发送回调，也保持 `delivery_uncertain`。
+The policy, request and draft digests, and memory versions are bound to the turn; the server also checks delivery permission. Recovery does not call the reviewer again if a process interruption leaves review `pending`. An approved draft can continue after reconstructing and checking its original context and current applicability. A prepared policy cannot be downgraded by disabling review. Completed turns still replay the original delivery fact, without retroactively declaring that an old answer passed a new review. An unknown sending outcome remains `delivery_uncertain`, even if the recovery instance has no delivery callback.
 
-`GET /v1/brains/{brain_id}/runtime/turns/{turn_id}` 提供 `response_review_policy`、`response_review` 与预留调用数；`runtime/status` 提供各状态数量。诊断只保存指纹、状态和固定原因码，不复制草稿或对话正文。审核完成数、预留次数与实际 token 用量不同，调用方仍须独立计量实际提供方用量。
+`GET /v1/brains/{brain_id}/runtime/turns/{turn_id}` exposes `response_review_policy`, `response_review`, and reserved call counts; `runtime/status` exposes counts by state. Diagnostics store only fingerprints, states, and fixed reason codes, without copying drafts or conversation bodies. Completed review counts, reservations, and actual token usage are different quantities; callers must meter actual provider usage separately.
 
-核验增加一次模型请求和相应延迟；预算分别限制输入字节、输出 token 与响应字节。内置 HTTP 适配器实施网络超时，自定义同步回调必须自行遵守请求时限。语义一致和完整覆盖仍是模型判断，不是事实证明。许可只绑定交给发送回调的草稿；渠道截断或改写后的实际文本照实记录，不冒充已经通过同一核验的文本。
+Review adds one model request and its latency. Separate budgets limit input bytes, output tokens, and response bytes. The built-in HTTP adapter enforces network timeouts; custom synchronous callbacks must honor request deadlines themselves. Semantic consistency and complete coverage remain model judgments, not factual proof. Permission is bound only to the draft passed to the delivery callback. Text truncated or rewritten by a channel is recorded as actually delivered, without claiming it passed the same review.
 
-宿主解释协议 `memory-consumption-v3` 区分自然承接与完成存储的声明：没有相应操作的可信完成证据时，不提前宣称已经存好或永久记住；原始消息捕获也不证明语义巩固完成。这是含义约束，不是词语黑名单。回答被拒绝时，已收到的用户输入仍然落盘；配置语义处理器时，其后台学习窗口已在采集事务中排队，须由 worker 实际执行，排队本身不等于学习成功。
+The host interpretation protocol, `memory-consumption-v3`, distinguishes a natural conversational acknowledgment from a claim that storage has completed. Without trustworthy completion evidence for the corresponding operation, the host must not claim that something has already been saved or permanently remembered. Capturing the original message does not establish that semantic consolidation is complete. This is a semantic constraint, not a word blacklist. If an answer is rejected, the received user input remains persisted. With a semantic processor configured, its background learning window was already queued in the capture transaction and must actually run in the worker; queuing alone is not successful learning.
 
-### 语义回忆
+### Semantic recall
 
-宿主可在初始化时为回忆配置一个模型。主 Agent 仍然只接收组装好的上下文，不必决定何时调用记忆工具。以下代码沿用前面的 `memory`、`generate`、`deliver`；实际模型请求会使用宿主提供的 API 凭据：
+The host can configure a model for recall during initialization. The main agent still receives assembled context and does not need to decide when to call memory tools. This example reuses the earlier `memory`, `generate`, and `deliver`; actual model calls use API credentials supplied by the host:
 
 ```python
 import os
@@ -225,23 +227,23 @@ with ChatCompletionsRecallReasoner(
     result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
 ```
 
-适配器使用 Chat Completions 的 JSON mode，要求提供方支持 `response_format: {"type": "json_object"}`。`base_url` 是 API 根路径，适配器追加 `chat/completions`；模型名称由宿主显式选择。协议参考 [DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode/) 和 [Chat Completion API](https://api-docs.deepseek.com/api/create-chat-completion)。也可直接传入自己的 `reason(RecallReasoningRequest) -> str` 函数，按照请求中的 JSON Schema 返回决定。未配置控制器时继续使用词法回忆，不调用额外模型。
+The adapter uses Chat Completions JSON mode and requires support for `response_format: {"type": "json_object"}`. `base_url` is the API root; the adapter appends `chat/completions`. The host explicitly selects the model. See [DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode/) and the [Chat Completion API](https://api-docs.deepseek.com/api/create-chat-completion) for the protocol. You can also supply your own `reason(RecallReasoningRequest) -> str` function, returning a decision according to the request's JSON Schema. Without a controller, recall remains lexical and makes no additional model calls.
 
-每轮自动保留同一会话、同一分支最近的已接收或已交付消息，默认最多六条，可用 `RuntimePolicy(recent_context_events=...)` 调整为零到八条。它们按时间顺序提供情境，明确标记为对话资料；问题中的假设、助手的说法和梦境不会因此变成客观事实。最近消息和长期候选共同受上下文预算约束。
+Each turn automatically retains recent received or delivered messages from the same conversation and branch: up to six by default, configurable from zero to eight through `RuntimePolicy(recent_context_events=...)`. They provide chronological context and are explicitly labeled as conversation material. Assumptions in questions, assistant statements, and dreams do not thereby become objective facts. Recent messages and long-term candidates share the context budget.
 
-同步运行时的默认词法回忆与语义回忆都使用本轮输入之前的历史证据边界。本轮陈述仍作为当前输入参与回答和情境理解，但不能被重新检索为“早已记得”的独立证据。恢复时重新判断记忆的适用性；纯诊断字段 `evaluated_at` 不进入模型投影，避免仅因评估时刻刷新改变同一请求。完整诊断保留该时刻，真正的生效、到期或来源变化仍会阻止复用旧请求。
+Both default lexical recall and semantic recall in the synchronous runtime use a historical evidence boundary preceding the current input. The current statement still participates in answering and situation understanding as the current input, but cannot be retrieved again as independent evidence that it was already remembered. Recovery reassesses memory applicability. The diagnostic-only field `evaluated_at` is excluded from the model projection so that merely refreshing the evaluation time does not alter the same request. Full diagnostics retain that timestamp; actual changes in validity, expiration, or sources still prevent reuse of an old request.
 
-此前用户的“请用简短回答”等指令，在独立语义核验后可以作为偏好被回忆；来源必须是已接收的用户消息，并引用完整指令片段。这个规则也保留有反证的偏好状态，不会让原始指令直接变成事实，或放开提问预设、本轮输入及其后代的历史证据限制。
+Earlier user instructions such as “Please keep your answers brief” can be recalled as preferences after independent semantic verification. Their source must be a received user message, and the full instruction fragment must be cited. This rule also preserves preferences with counterevidence. It neither turns the original instruction directly into a fact nor relaxes historical-evidence restrictions for question presuppositions, the current input, or its descendants.
 
-控制器可以结束回忆，也可以提出新线索继续查找；结束时只能选择已经展示过的记忆 ID。所有搜索沿用本轮输入之前的证据边界，最终由服务端重新检查来源、版本、更正、删除和范围。无法区分多个候选时保留 `ambiguous`，找不到充分依据时保留 `insufficient`；`sufficient` 只表示模型认为内容相关，不代表事实已经验证或历史已穷尽。
+The controller can stop recalling or propose another cue and continue searching. At completion, it can select only memory IDs it has already seen. All searches retain the evidence boundary preceding the current input. The server ultimately rechecks sources, versions, corrections, deletions, and scope. Indistinguishable candidates remain `ambiguous`; inadequate support remains `insufficient`. `sufficient` means only that the model considers the material relevant, not that facts are verified or history has been exhausted.
 
-选定的版本、最近对话引用和覆盖限制在生成前作为 `recall_plan` 持久保存。恢复使用同一计划重新构造上下文；来源失效时停止，不静默改用另一份记忆。模型调用次数和输入字节数在每次请求前持久预留，进程中断后不会归零。搜索次数与耗时限制作用于每次规划尝试；它们不是跨重启累计计数。失败请求也消耗已预留额度，适配器不会自动重试。
+Selected versions, recent-conversation references, and coverage limits are persisted as a `recall_plan` before generation. Recovery reconstructs context from the same plan and stops if a source becomes invalid, rather than silently substituting another memory. Model-call counts and input bytes are durably reserved before each request and do not reset after a process interruption. Search-count and elapsed-time limits apply to each planning attempt; they do not accumulate across restarts. Failed requests still consume their reservations, and the adapter does not retry automatically.
 
-默认每次规划最多 15 秒，单次模型输出最多 1,024 token，并检查返回内容的字节上限。超时采用网络操作超时和返回后检查，不能强制中断任意宿主回调。调用与字节预算限制的是资源使用量，尚未接入提供方实际 token 计费，不等于金额上限。提供方故障、非法决定或预算耗尽会记录停止原因，并让回答保留不确定性。
+By default, each planning attempt has a 15-second limit, and each model output is limited to 1,024 tokens, with a response-byte limit checked as well. Timeouts use network-operation limits and checks after return; they cannot forcibly interrupt arbitrary host callbacks. Call and byte budgets limit resource use but are not connected to actual provider token billing and are not monetary caps. Provider failures, invalid decisions, or budget exhaustion record a stop reason and preserve uncertainty in the answer.
 
-### 情境理解与长期学习配置
+### Configuring situation understanding and long-term learning
 
-所有额外模型提供方默认关闭。要启用服务端认知处理，在 `.env` 中设置以下完整配置，并重启服务和后台处理器：
+All additional model providers are disabled by default. To enable server-side cognition in a development deployment, set the complete configuration below in `.env`, then restart the service and worker:
 
 ```dotenv
 MEMORY_COGNITION_BASE_URL=https://your-provider.example/v1
@@ -249,55 +251,55 @@ MEMORY_COGNITION_API_KEY=<your API key>
 MEMORY_COGNITION_MODEL=<your chat model>
 ```
 
-`MEMORY_COGNITION_THINKING` 可选，值为 `enabled` 或 `disabled`；不设置时沿用提供方默认行为。仅对支持 `thinking.type` 参数的提供方使用，仍须配置上面三项；单独配置开关会在启动时拒绝。输出 token 上限与响应字节上限分别控制，截断内容不能作为成功提议。
+`MEMORY_COGNITION_THINKING` is optional and accepts `enabled` or `disabled`; when unset, the provider's default behavior applies. Use it only with providers that support `thinking.type`. All three settings above remain required; configuring only the switch is rejected at startup. Output-token and response-byte limits are separate, and truncated content cannot count as a successful proposal.
 
-提供方需要支持 Chat Completions JSON mode。配置后，`BrainRuntime` 在回答前自动调用 `orient`：以本轮输入和同会话、同分支的近期来源为起点，加入当前访问范围允许的相关旧认识及其来源、父依赖和显式反例，提出当前目标、指代与约束，再检查这些推断是否得到所引来源支持。后台 `worker` 对新输入及实际交付的回复运行 `consolidate`，生成语义锚点、经历片段与轮廓、条件化认识和程序性候选。它们保留原始来源、版本、反例和适用条件；模型提议与检查都可能出错，结果始终标为推断。当前配置使用同一提供方执行两次独立请求，不构成客观事实认证。 核验器分别判断每条引用承载的前提，再用必填的 `proposal_verdict` 判断所有证据是否共同支持完整命题；缺少整体判定、整体不确定或任意引用不匹配都会拒绝发布。所有核验项还必须带 `link_verdict`：普通命题为 `null`，认识关系需明确判定，不能只凭局部证据有效就接受变化方向或有限概括。自定义核验提供方须遵守请求中的完整响应 schema。
+The provider must support Chat Completions JSON mode. Once configured, `BrainRuntime` automatically calls `orient` before answering. Starting with the current input and recent sources from the same conversation and branch, it adds relevant earlier beliefs allowed by the current access scope, along with their sources, parent dependencies, and explicit counterexamples. It proposes current goals, references, and constraints, then checks whether the cited sources support those inferences. The background `worker` runs `consolidate` on new inputs and actually delivered replies, producing semantic anchors, episode fragments and outlines, conditional beliefs, and procedural candidates. They retain original sources, versions, counterexamples, and applicability conditions. Both proposals and verification can be wrong, so results remain labeled as inferences. The current configuration uses the same provider for two independent requests and does not certify objective facts. The verifier assesses the premise carried by each citation, then uses the required `proposal_verdict` to determine whether the evidence jointly supports the complete proposition. A missing or uncertain overall verdict, or any mismatched citation, blocks publication. Every verification item must also include `link_verdict`: `null` for an ordinary proposition and an explicit verdict for a belief relation. Locally valid evidence alone cannot justify a change direction or bounded generalization. Custom verification providers must follow the request's complete response schema.
 
-服务端把情境推断放进 `current_situation` 资料块，由运行时自动传给主模型；它只解释当前上下文，不能作为历史证据。例如“你记得我们去过海边吗？”可以触发回忆，不能因此建立“我们去过海边”的事实。助手已交付的说法可支持“助手曾说过”，也不能单独证明外部事件发生或任务完成。
+The server places situation inferences in a `current_situation` material block that the runtime automatically passes to the main model. It interprets the current context and cannot serve as historical evidence. For example, “Do you remember when we went to the beach?” can trigger recall but cannot establish that a beach visit happened. A delivered assistant statement can support “the assistant previously said this,” but cannot independently prove an external event or task completion.
 
-新前台任务使用专用 `orient-v1` 契约，只提议和核验当前情境；长期认识、经历组织和认识关系留给后台。空情境合法，不强迫每条闲聊都产生推断；有情境提议时仍独立核验。模式和完整工作区随任务冻结，重试不刷新工作区时间戳；真实工作区版本变化会阻止复用。旧快照继续使用原通用契约，不自动升级。选材仍保留完整来源依赖并沿用保守预算；可选的 `on_demand` 策略及其能力取舍见前面的运行时说明。
+New foreground jobs use the dedicated `orient-v1` contract to propose and verify only the current situation. Long-term beliefs, episode organization, and belief relations remain background work. An empty situation is valid; ordinary conversation is not forced to produce inferences. Any proposed situation is still independently verified. The mode and complete workspace are frozen with the job, and retries do not refresh workspace timestamps. An actual workspace version change prevents reuse. Older snapshots continue using their original general-purpose contract without automatic upgrades. Material selection still preserves complete source dependencies and conservative budgets. See the runtime section above for the optional `on_demand` policy and its tradeoffs.
 
-新通用任务另冻结 `episode-operation-scope-v1` 输入契约。模型会收到明确的经历操作范围、按现有资格规则计算的可用成员，以及后台学习窗口的 `learning_input_refs`。历史来源仍可用于认识比较，但不能因此跨会话组织经历；空的经历列表只表示当前范围没有可编辑经历。学习引用不授予 `current_request` 权限，当前请求仍须单独绑定真实轮次。合法空文本记录可计入已处理窗口，但不能作为经历引文。选材按实际契约计算标签大小，避免长标识使批次超限。恢复时校验准确来源版本、窗口、会话与分支；旧快照缺少该契约版本时保持旧输入和提示词，不在重试中改写请求。
+New general-purpose jobs also freeze an `episode-operation-scope-v1` input contract. The model receives the explicit scope for episode operations, eligible members computed under the existing eligibility rules, and the background learning window's `learning_input_refs`. Historical sources can support belief comparison but do not authorize organizing episodes across conversations. An empty episode list means only that the current scope has no editable episodes. Learning references do not grant `current_request` authority; a current request must still be bound separately to an actual turn. Valid empty text records can count as processed within a window but cannot serve as episode citations. Material selection measures labels using the actual contract so that long identifiers do not overflow a batch. Recovery checks exact source versions, windows, conversations, and branches. Older snapshots without this contract version retain their original inputs and prompts; retries do not rewrite the request.
 
-当前问题或请求使用 `evidence_use: current_request` 单独表示。服务端从真实运行轮次绑定 `current_input_refs`；模型只能据此提出当前目标或待回答事项，并须通过独立的 `request_verdict`、整体命题及每条来源核验。这一路径不生成情境观察，也不能授权长期事实或把提问预设当作历史。快照恢复、发布和复用都会重查轮次绑定与原始判定，旧快照不会自动获得新权限。保留到后续工作区的请求标为此前请求背景，不继续冒充本轮请求。
+Current questions or requests are represented separately with `evidence_use: current_request`. The server binds `current_input_refs` from the actual runtime turn. The model may use these only to propose current goals or questions to answer, subject to an independent `request_verdict`, overall-proposition verification, and verification of every source. This path does not create situation observations, authorize long-term facts, or treat question presuppositions as history. Snapshot recovery, publication, and reuse all recheck the turn binding and original verdicts. Older snapshots do not acquire new permissions automatically. Requests retained in later workspaces are labeled as earlier request context, not the current request.
 
-条件与情境观察使用共同的版本化类型定义。例如“备考时喜欢安静”保存为条件规则，“正在备考”需要另有来源支持；规则本身不能激活自己。召回结果的 `applicability` 区分成立、不成立、未知和冲突，并记录判断时刻与依据。未知、冲突或过期的规则进入 `conditional_memory`，明确标为不能直接采用的当前规则；它仍可以作为历史被回想。上下文组装时再次判断，正证据与反证据都进入输出的来源依赖。
+Conditions and situation observations share versioned type definitions. For example, “prefers quiet when preparing for exams” is stored as a conditional rule; “is preparing for exams” needs separate source support. A rule cannot activate itself. Recall results use `applicability` to distinguish established, not established, unknown, and conflicting applicability, recording the evaluation time and supporting evidence. Unknown, conflicting, or expired rules enter `conditional_memory` and are explicitly labeled as unavailable for direct use as a current rule, although they can still be recalled as history. Context assembly reassesses applicability and includes both supporting and opposing evidence in its source dependencies.
 
-带反证或认识状态未定的内容，即使条件成立，也不会标成可直接采用的当前规则。`BrainRuntime` 在宿主原有指令之后加入固定的记忆解释协议，要求主模型区分历史陈述与当前适用性、保留未知和冲突、避免仅按日期或记录先后选择结论。协议计入输入预算及生成指纹；协议变化会阻止复用已准备或生成结果未明的旧上下文；已完成轮次仍可重放。已生成的回复沿用原交付流程，启用回答核验时还须通过核验及上下文绑定检查。解释协议本身是模型指导，不能保证任意模型都遵守，实际回答需单独验收。
+Content with counterevidence or an unresolved belief state is not labeled as a directly usable current rule even when its condition holds. After the host's existing instructions, `BrainRuntime` adds a fixed memory interpretation protocol requiring the main model to distinguish historical statements from current applicability, retain uncertainty and conflict, and avoid choosing conclusions solely by dates or record order. The protocol counts toward the input budget and generation fingerprint. A protocol change prevents reuse of old context that was prepared or whose generation outcome is uncertain; completed turns remain replayable. Already-generated replies retain their original delivery flow and, when answer review is enabled, must also pass review and context-binding checks. The interpretation protocol is model guidance, not a guarantee that every model follows it; actual answers require separate acceptance evaluation.
 
-当前核心词表覆盖活动、时段、情绪和任务状态，尚未实现动态概念治理；旧自由键条件仍可检索，但适用性保持未知。有效期明确区分未知与无限，时间不明不代表永久有效。纯时间内核支持带来源和时区的“今天”解析，但现有宿主契约未提供可信本地时区，语义写入要求相对日期保持未知，并拒绝模型自行给出的日期锚点。情境恢复还需匹配服务端已完成任务及其来源，不能只凭客户端填写的“已验证”标签。
+The current core vocabulary covers activities, time periods, emotions, and task states; dynamic concept governance is not implemented. Older free-key conditions remain retrievable but have unknown applicability. Validity explicitly distinguishes unknown from unbounded time; an unspecified time does not mean forever. The pure temporal core supports source- and timezone-aware interpretation of “today,” but the current host contract supplies no trusted local timezone. Semantic writes therefore require relative dates to remain unknown and reject model-supplied date anchors. Restoring situation state also requires a matching completed server-side job and its sources; a client-provided “verified” label is insufficient.
 
-新认知提议的每条 claim 都必须显式给出 `valid_during`，完全未知时也要输出 `{"kind":"unknown"}`。核验器检查的时间结构与最终保存的结构一致；旧 nullable `valid_time` 不能代替它，`end=null` 不能自动推断为无限。旧持久记录和冻结父快照继续保守读取，不自动补造有效期。自定义提供方需遵守更新后的响应 schema。
+Every claim in a new cognitive proposal must explicitly provide `valid_during`, including `{"kind":"unknown"}` when validity is entirely unknown. The verifier checks the same temporal structure that is ultimately stored. The older nullable `valid_time` cannot substitute for it, and `end=null` cannot automatically imply an unbounded interval. Older persistent records and frozen parent snapshots remain conservatively readable without fabricated validity periods. Custom providers must follow the updated response schema.
 
-新语义提议不再接受旧式 `eq/ne` 自由键条件。无法映射到已注册定义的概念用 `{"op":"unresolved","label":"银色状态"}` 保留原标签，在复合条件中继续按未知求值；标签碰巧等于某个已知词也不能激活条件。旧记录继续兼容读取，不自动迁移或猜测其含义。
+New semantic proposals no longer accept legacy `eq/ne` free-key conditions. A concept that cannot map to a registered definition retains its original label through an unresolved expression such as `{"op":"unresolved","label":"silver state"}` and continues to evaluate as unknown within compound conditions. A label that happens to match a known term still cannot activate the condition. Older records remain readable without automatic migration or guessed meanings.
 
-情境计划与调用额度持久保存，恢复时复用已有结果；模型请求不占用数据库事务。来源在请求期间被更正或删除时，旧结果不能发布或重新注入。情境处理失败不会把未验证内容写入工作状态。认知配置独立于前面的 `RecallController`：前者负责理解与学习，后者负责多步回忆策略；两者都需要显式配置，都会使用配置的 API 额度。
+Situation plans and call budgets are durable, and recovery reuses existing results. Model requests do not hold database transactions open. If sources are corrected or deleted during a request, the old result cannot be published or reinjected. Failed situation processing does not write unverified content into working state. Cognition configuration is independent of the earlier `RecallController`: cognition handles understanding and learning, while the controller handles multi-step recall strategy. Both require explicit configuration and consume the configured API allowance.
 
-默认每项语义任务最多调用两次模型、累计输入 196,608 字节；每个大脑的服务端认知与向量任务共享一小时滑动窗口，最多 100 次外部调用、2,000,000 字节输入。失败或结果不明的已预留调用仍计入额度。脑级额度耗尽时，本轮继续普通回答，不写入未经检查的情境推断。这些额度不包含宿主主模型或独立 `RecallController` 的调用。
+By default, each semantic job can make at most two model calls with 196,608 cumulative input bytes. Server-side cognition and vector jobs share a one-hour rolling budget per brain, capped at 100 external calls and 2,000,000 input bytes. Reserved calls with failed or uncertain outcomes still count. When the brain-level budget is exhausted, the turn continues with an ordinary answer without writing unchecked situation inferences. These budgets exclude the host's main model and the independent `RecallController`.
 
-后台学习使用持久的输入序列区间。尚未开始的同会话、同分支任务可以合并，但保留最早的处理起点；每批按顺序读取最多八条新输入，长消息会按请求字节预算缩小批次，再补充相关历史；单条本身超限时保留待处理状态。成功处理后，在同一事务中保存进度并创建剩余区间的续接任务。重试冻结原批次的来源、认识、经历和关系版本；来源变化时以新任务重建有效窗口。提供方故障只在剩余额度允许时有限重试，同一任务的累计额度不会重置，新任务也受大脑累计额度约束。非法结果、固定请求超限或额度不足不会推进处理进度；处理完成也不等于产生了新认识。
+Background learning uses persistent input-sequence windows. Jobs from the same conversation and branch that have not started may merge while retaining the earliest processing position. Each batch reads up to eight new inputs in order, shrinks for long messages to fit the request-byte budget, and adds relevant history. An individually oversized record remains pending. Successful processing saves progress and creates continuation jobs for the remaining window in the same transaction. Retries freeze the original batch's source, belief, episode, and relation versions. Source changes rebuild a valid window in a new job. Provider failures receive bounded retries only when budget remains. A job's cumulative budget never resets, and new jobs are also constrained by the brain's cumulative budget. Invalid results, oversized fixed requests, or insufficient budget do not advance progress. Completed processing does not necessarily produce a new belief.
 
-选材默认最多包含 32 条来源、32 条认识和 16 个经历，采用已有词面索引的有界候选查询；不是全历史扫描。附加材料同时接受实际请求字节预算，完整依赖包共同进入或退出选材。原文完整提供、断言可精确重建且没有额外关系或经历组织时，省去重复的字面捕获断言。相关认识缺少完整来源、父依赖、反例或变化关系，或整包超过预算时，停止该批次长期提议的发布，仍允许有依据的当前情境更新。任务结果的 `sampling` 记录覆盖限制，`learning_outcome` 区分无提议、无被接受提议、接受了提议及尚未评估；接受提议不等于已发布长期记忆，发布内容另见 `publication`。来源链超过预算的持续归纳仍需后续设计。
+Material selection defaults to at most 32 sources, 32 beliefs, and 16 episodes, using bounded candidate queries over the existing lexical index rather than scanning the entire history. Additional material must also fit the actual request-byte budget, with complete dependency bundles selected or excluded together. Redundant literal-capture assertions are omitted when the full original text is present, the assertion can be reconstructed exactly, and there are no additional relations or episode structures. Missing complete sources, parent dependencies, counterexamples, or change relations for relevant beliefs, or a bundle that exceeds the budget, blocks publication of that batch's long-term proposals while still allowing supported current-situation updates. The job result's `sampling` records coverage limits. `learning_outcome` distinguishes no proposals, no accepted proposals, accepted proposals, and not yet evaluated. Accepted proposals do not imply published long-term memory; see `publication` for published content. Continuous generalization whose source chains exceed the budget still needs further design.
 
-同一轮提议与核验现在也能建立有据的认识关系：不同实例的有限概括 `abstracts`、等价表述 `equivalent`、临时例外 `exception`、从明确时刻开始的改变 `supersedes`，以及未解决矛盾 `contradicts`。关系必须绑定新旧认识的精确版本、证据、条件与有效期，并独立核验整个关系是否成立。概括至少需要两个来源不重叠的实例，只描述这些实例支持的范围；等价要求语义限定相同，不能抹掉否定或未知时间。新认识未被接受时，相应关系也不能发布。这些判断仍是模型推断。
+The same proposal-and-verification cycle can now establish supported belief relations: bounded generalization across distinct instances (`abstracts`), equivalent formulations (`equivalent`), temporary exceptions (`exception`), changes beginning at an explicit time (`supersedes`), and unresolved contradictions (`contradicts`). Relations must bind exact old and new belief versions, evidence, conditions, and validity, and independently verify the complete relation. Generalization requires at least two instances with non-overlapping sources and may describe only the scope they support. Equivalence requires matching semantic qualifications and cannot erase negation or unknown time. A relation cannot publish if its new belief is not accepted. These judgments remain model inferences.
 
-后台另有明确的比较计划：从已选认识中寻找来源主体、世界和条件相容、支持事件不重叠的实例，每批最多三个比较目标。新计划最多选择两个强词面线索目标和一个弱线索探索目标；没有弱候选时可选三个强目标。弱候选仍需实词交集，先去重再排序，零交集不会进入探索。词面相似只用于选择候选，共同含义仍由模型提出并核验。模型需要逐目标提出有限概括及关系，或者明确说明本次不改变认识；只记录“用户想起往事”不算完成归纳。目标随任务快照冻结；v3 比较策略要求每条概括只表达一个最小共同命题，实例差异保留在原记录，缺失信息不能证明相同或不同。运行时把共同命题的引文逐一对应到每个父实例，核验模型必须分别确认各实例及整个命题、关系；缺失、重复或未知的逐实例判断都不能发布该概括。共同命题可只引用各实例相关的完整片段，抽象关系仍保留所有端点的完整来源；普通父依赖规则保持严格。完成有效核验或明确决定不变的相同实例版本组合不会因新的提醒反复规划，新实例、版本或比较策略变化可形成新目标。旧 v1/v2 冻结计划保持兼容，已记录的失败不会被删除。网络错误、缺失核验或非法提议不阻止后续重试。前台情境理解不自动承担整理目标，没有增加额外模型轮次，仍受原有两次调用预算约束。抽象核验另外区分“无关”与“未知”：只有核验明确标为 `irrelevant`、且不涉及任何结论限定或反证的引文，才可退出共同命题的支持集合。核验必须给出精确支持索引，每个实例仍须有留下的支持证据，整个命题和关系都须通过；文字、时间、条件、世界及父版本不改变。完整父引文仍保留在关系中，结构化核验和来源选择写入任务审计，普通监控只显示固定原因与数量。普通记忆不开放这条筛选路径。
+Background processing also has an explicit comparison plan. It looks among selected beliefs for instances with compatible source subjects, worlds, and conditions, and non-overlapping supporting events, choosing at most three comparison targets per batch. New plans select up to two strong lexical-cue targets and one weak-cue exploration target; without a weak candidate, they may select three strong targets. Weak candidates still require an intersection of content words and are deduplicated before ranking. Zero-overlap candidates do not enter exploration. Lexical similarity only selects candidates; the model still proposes and verifies their shared meaning. For each target, the model must propose a bounded generalization and relations or explicitly decide to leave the beliefs unchanged. Merely recording that “the user recalled the past” does not complete generalization. Targets are frozen in the job snapshot. The v3 comparison strategy requires each generalization to express one minimal shared proposition, preserving instance differences in the original records; missing information cannot prove sameness or difference. The runtime maps citations for the shared proposition to each parent instance. The verification model must separately confirm each instance and the complete proposition and relation. Missing, duplicate, or unknown per-instance judgments prevent publication. The shared proposition may cite only the relevant complete fragments of each instance, while the abstraction relation retains all endpoints' complete sources; ordinary parent-dependency rules remain strict. The same instance-version combination, once validly verified or explicitly left unchanged, is not replanned merely because of a new reminder. A new instance, version, or comparison strategy can create a new target. Older frozen v1/v2 plans remain compatible, and recorded failures are not deleted. Network errors, missing verification, or invalid proposals do not prevent later retries. Foreground situation understanding does not automatically take on consolidation targets. No extra model rounds were added, and the original two-call budget still applies. Abstraction verification additionally distinguishes irrelevant from unknown evidence: a citation may leave the shared proposition's support set only when verification explicitly marks it `irrelevant` and it carries no qualification or counterevidence for the conclusion. Verification must supply exact support indices; every instance must retain supporting evidence, and the complete proposition and relation must pass. Text, time, conditions, world, and parent versions remain unchanged. Complete parent citations remain in the relation. Structured verification and source selection enter the job audit, while ordinary monitoring exposes only fixed reasons and counts. This filtering path is not available to ordinary memories.
 
-认识变化保存在 `memory_belief_relations`，旧认识与过去的经历保持原样。召回会沿已知关系补齐端点和完整来源，即使新旧说法没有词面重合；`belief_resolution` 给出原规则未改变、被长期替代、当前例外、冲突或无法确定。只有关系与新认识都明确适用时，才阻止将旧规则当作当前规则；例外过期后重新判断旧规则。缺少关系端点、证据或预算时保持不确定，不会只留下旧规则。相关组共同接受上下文预算，持久回忆计划冻结展示过的关系版本及来源；新增关系会使旧计划失效。
+Belief changes are stored in `memory_belief_relations`, leaving earlier beliefs and past episodes intact. Recall follows known relations to include endpoints and complete sources even without lexical overlap between old and new statements. `belief_resolution` reports whether the original rule remains unchanged, is durably superseded, has a current exception, is conflicting, or cannot be resolved. An old rule is prevented from acting as the current rule only when both the relation and the new belief are explicitly applicable. The old rule is reassessed after an exception expires. Missing endpoints, evidence, or budget preserve uncertainty rather than leaving only the old rule. Related groups share the context budget, and persistent recall plans freeze displayed relation versions and sources. New relations invalidate old plans.
 
-删除或更正关系来源会撤销相应活动关系；实际擦除还会清除服务器所持档案中的相关内容。有独立证据的旧事实不会因此被反向撤销。可信本机档案可在核验后恢复关系，上传档案中的关系继续隔离。旧档案恢复不自动合并原脑在导出后发生的普通更正，删除记录则继续约束恢复。关系查找最多 32 条边、128 个认识版本、256 条来源与八层父依赖；达到上限时明确返回不完整，不能视为已查清全部变化。
+Deleting or correcting a relation's sources revokes the corresponding active relation. Erasure also removes relevant content from archives held by the server. Earlier facts supported by independent evidence are not revoked in reverse. Trusted local archives can restore relations after verification; relations from uploaded archives remain quarantined. Restoring an older archive does not automatically incorporate ordinary corrections made in the original brain after export, while deletion records continue to constrain restoration. Relation traversal is capped at 32 edges, 128 belief versions, 256 sources, and eight levels of parent dependencies. Reaching a cap explicitly reports incomplete coverage, not a complete account of all changes.
 
-经历发布后，运行时自动组织共同内容与实例差异，不增加模型调用。`patterns.py` 比较已有断言的完整语义字段：文字、条件、时间、现实或假设世界、核验状态等完全一致，且来自不重叠的经历，才可以共用一个定义。每次经历仍保留自己的来源、观察顺序和差异；没有观察到的内容不能从共同定义补入。这种精确共享与模型提出的 `abstracts` 关系分开：后者不会授权压缩不同含义的细节，也不能替代实例原文。
+After episode publication, the runtime automatically organizes shared content and instance differences without additional model calls. `patterns.py` compares assertions' complete semantic fields: text, conditions, time, actual or hypothetical world, verification state, and more must match exactly, and the assertions must come from non-overlapping episodes, before they can share one definition. Each episode retains its own sources, observation order, and differences. Unobserved content cannot be filled in from a shared definition. This exact sharing is separate from model-proposed `abstracts` relations; those relations do not authorize compressing details with different meanings or replacing the original instance text.
 
-新经历提议必须给出 `organization_statement`，明确说明这些交互记录为何构成一次分组或边界变化。核验包含旧经历、完整新旧成员来源、各来源角色和变更后的分组；缺少旧来源、版本不符或超过 32 条来源上限时拒绝该提议，不截断后声称核验完整。组织命题保存为整个状态转换的说明，不证明对话中提及的外部事件真实发生。旧经历记录可以没有此字段。
+New episode proposals must provide an `organization_statement` explaining why the interaction records form a grouping or boundary change. Verification includes the old episode, complete sources for old and new members, each source's role, and the resulting grouping. Missing older sources, version mismatches, or exceeding the 32-source limit cause rejection rather than truncation followed by a claim of complete verification. The organization statement explains the whole state transition; it does not prove that an external event mentioned in the conversation happened. Older episode records may lack this field.
 
-归档保留当前经历的组织信息和完整来源依赖，恢复时映射来源版本；`organization_source_version` 仅记录转换前的经历身份，不能作为独立证据，归档不保证包含该旧组织快照。它不会被误映射成来源事件版本。旧格式继续兼容，外部上传的经历仍先隔离。
+Archives retain the current episode's organization information and complete source dependencies, remapping source versions during restoration. `organization_source_version` records only the episode identity before the transition and cannot serve as independent evidence; the archive does not guarantee inclusion of that older organization snapshot. It is not misinterpreted as a source-event version. Older formats remain compatible, and externally uploaded episodes remain quarantined initially.
 
-共同定义和绑定存入独立的 `memory_pattern_views` 派生表，事实仍完整保存。构建上限为 64 条认识、16 个经历、256 条完整来源，缺少精确父版本或来源则跳过组织，原事实仍按原规则使用。更正、删除或经历改版会清空相关视图内容；视图不会成为其他独立事实的证据依赖。导出档案不携带这份缓存；可信本机档案恢复后从核验过的原事实与经历有界重建，上传档案继续隔离。
+Shared definitions and bindings are stored in the separate derived table `memory_pattern_views`, while facts remain fully stored. Construction is capped at 64 beliefs, 16 episodes, and 256 complete sources. Missing exact parent versions or sources skip organization; the original facts remain usable under their original rules. Corrections, deletions, or episode revisions clear affected views. A view does not become an evidentiary dependency for independent facts. Exported archives omit this cache. After restoration from a trusted local archive, it is rebuilt within bounds from verified original facts and episodes; uploaded archives remain quarantined.
 
-普通 `prepare` 只有在完整选中某个视图的事实、重新核验来源后，才尝试把重复含义呈现一次，并分别附上每个经历的绑定、差异和适用性。实际渲染没有更短时，使用完整事实；整个已选组共同接受上下文预算，避免因压缩单独丢掉差异。覆盖范围始终是所选断言，不能据此声称检索已找齐经历或例外。带持久 `recall_plan` 的路径继续使用完整事实，因为计划尚未冻结组织视图的版本。明确线索仍通过已有检索寻找对应经历的有据细节。
+Ordinary `prepare` attempts to present repeated meaning once only when it has selected all facts in a view and reverified their sources. It separately includes each episode's bindings, differences, and applicability. If rendering is not actually shorter, it uses the complete facts. The entire selected group shares the context budget so compression cannot independently discard differences. Coverage always refers to the selected assertions and does not establish that all episodes or exceptions were found. Paths with a persistent `recall_plan` continue to use complete facts because plans do not yet freeze organization-view versions. Explicit cues still use existing retrieval to find supported details of the corresponding episodes.
 
-语义向量是另一组可选配置；服务与后台处理器须使用相同的模型、版本标识和实际输出维度：
+Semantic embeddings are a separate optional configuration. The service and worker must use the same model, version identifier, and actual output dimensions:
 
 ```dotenv
 MEMORY_EMBEDDING_BASE_URL=https://your-provider.example/v1
@@ -307,66 +309,66 @@ MEMORY_EMBEDDING_MODEL_VERSION=<your stable model revision>
 MEMORY_EMBEDDING_DIMENSIONS=1024
 ```
 
-`1024` 仅为示例，必须替换为所选模型的实际维度，范围为 1–8192。后台为新发布的记忆创建向量；查询只有在请求预算中显式设置 `max_embedding_calls > 0` 才调用向量提供方。默认预算为零，仅设置环境变量不会启用每次查询的向量调用。例如：
+`1024` is only an example. Replace it with the selected model's actual dimensions, within 1–8192. Background processing creates vectors for newly published memories. Queries call the embedding provider only when their request budget explicitly sets `max_embedding_calls > 0`. The default is zero; environment variables alone do not enable embedding calls on every query. For example:
 
 ```python
 from agent_memory.client import default_budget
 
 budget = {**default_budget(16000), "max_embedding_calls": 1}
 result = memory.recall(
-    "以前我偏爱哪种香味？",
+    "Which scents did I used to prefer?",
     conversation_id=conversation_id, branch_id="main", budget=budget,
 )
 ```
 
-候选可通过词法、已配置的语义向量、经历结构和关联路径共同获得，随后统一检查来源与适用条件。词面命中保留的原始来源后，也会沿支持证据找到对应的语义认识：即使原文是中文、概括是英文，只要查询命中有效支持片段，仍可进入候选。桥接检查精确来源版本、内容哈希、范围、分支及删除状态，不能通过反例或背景引用冒充支持；之后仍检查完整依赖与当前适用性。每轮最多读取 64 条源事件，召回最多扫描 512 条关联认识，学习最多 256 条，实际额度可能更小；达到上限会报告覆盖限制。这不等于任意跨语言理解，也无法从已经没有词面命中的来源自动找回所有改写。不同表示采用不同的访问衰减：细节更快沉入深层，概括与关键认识保留更久，明确线索仍可能找回。衰减参数是可调整的工程策略，尚未经长期对话校准，也不是人脑遗忘的生物定律。访问衰减不会自动擦除原始来源；永久删除仍通过 `forget` 执行。
+Candidates can come from lexical retrieval, configured semantic vectors, episode structure, and association paths, then undergo common source and applicability checks. After a lexical hit on a retained original source, retrieval also follows supporting evidence to the corresponding semantic belief. For example, even if the source is Chinese and its generalization is English, a query matching a valid supporting fragment can still find that belief. The bridge checks exact source versions, content hashes, scope, branch, and deletion status; counterexamples or background citations cannot masquerade as support. Complete dependencies and current applicability are still checked afterward. Each turn reads at most 64 source events; recall scans at most 512 linked beliefs and learning at most 256, with actual budgets potentially lower. Reaching a limit reports restricted coverage. This does not establish arbitrary cross-language understanding or recover every paraphrase from sources with no lexical match. Representations use different access-decay policies: details move into deeper tiers sooner, while generalizations and key beliefs remain accessible longer, and explicit cues may still recover details. Decay parameters are adjustable engineering policies, not yet calibrated against long-term conversation and not biological laws of human forgetting. Access decay does not automatically erase original sources; permanent deletion still uses `forget`.
 
-内部检索命中或模型自称“有帮助”不会增加外部使用计数。实际交付后、同一上下文中明确关联到这次回忆的用户确认、纠正或可信工具结果，才可改变访问强度与用途评估；同一反馈事件只计一次。这些指标描述记忆的使用价值，不是真实性概率，也不会把助手自己说过的话升级成世界事实。
+Internal retrieval hits and model claims that a memory was helpful do not increase external-use counts. Only user confirmation, corrections, or trusted tool results received after actual delivery and explicitly linked to that recall in the same context can change access strength and usefulness assessments. Each feedback event counts once. These metrics describe memory utility rather than truth probabilities and do not promote an assistant's earlier statements into facts about the world.
 
-## 开发监控接口
+## Development monitoring interfaces
 
-接口使用与记忆服务一致的 Bearer 认证：
+These endpoints use the same Bearer authentication as the memory service:
 
-| GET 路径（前缀 `/v1/brains/{brain_id}/runtime`） | 内容 |
+| GET path (prefix `/v1/brains/{brain_id}/runtime`) | Content |
 | --- | --- |
-| `/status` | 持久化与索引进度、待处理任务数、轮次阶段、活动租约数 |
-| `/turns?limit=100` | 最近轮次，最多 200 条 |
-| `/turns/{turn_id}` | 当前阶段、修订、来源版本、上下文占用、回忆计划、累计调用额度、恢复状态 |
-| `/turns/{turn_id}/history?limit=100` | 有序阶段日志，最多 200 条 |
-| `/turns/{turn_id}/sources` | 单独按权限展开当前有效输入和输出 |
-| `/jobs?limit=100` | 最近后台与认知任务，最多 200 条 |
-| `/jobs/{job_id}` | 任务种类、状态、尝试次数、累计调用与输入额度、错误类别及安全学习摘要 |
+| `/status` | Persistence and index progress, pending job counts, turn phases, and active lease counts |
+| `/turns?limit=100` | Recent turns, up to 200 |
+| `/turns/{turn_id}` | Current phase, revision, source versions, context usage, recall plan, cumulative call budget, and recovery state |
+| `/turns/{turn_id}/history?limit=100` | Ordered phase history, up to 200 entries |
+| `/turns/{turn_id}/sources` | Separately authorized expansion of currently valid inputs and outputs |
+| `/jobs?limit=100` | Recent background and cognition jobs, up to 200 |
+| `/jobs/{job_id}` | Job type, status, attempts, cumulative call and input budgets, error category, and safe learning summary |
 
-`recall_plan` 包含选择的记忆版本、观察过的来源版本、停止原因、搜索次数、耗时、覆盖限制和结构化决策轨迹。轨迹只保存动作、查询哈希与候选数量，不复制查询文本或模型解释；`recall_model_calls` 和 `recall_input_bytes` 提供跨恢复累计的额度记录。`orientation_job_id` 可关联本轮情境任务；任务接口不返回任务正文、原始模型结果或租约凭证。向量提供方的用量可以记录，聊天语义提供方尚未统一记录实际 token；无法确定实际金额时费用为 `null`，不能当成免费。服务强制限制调用次数与输入字节，尚不保证货币金额上限；完整计费与后台指标仍待完善。
+`recall_plan` contains selected memory versions, observed source versions, stop reasons, search counts, elapsed time, coverage limits, and a structured decision trace. The trace stores actions, query hashes, and candidate counts without copying query text or model explanations. `recall_model_calls` and `recall_input_bytes` provide cumulative budget records across recovery. `orientation_job_id` links to the turn's situation job. Job endpoints do not return job bodies, raw model results, or lease credentials. Embedding-provider usage can be recorded, but actual tokens from chat-based semantic providers are not yet uniformly recorded. Cost is `null` when the actual amount cannot be determined; it must not be treated as free. The service enforces call-count and input-byte limits but does not yet guarantee a monetary cap. Complete billing and background metrics still need work.
 
-监控记录不复制正文，也不保存租约凭证或隐藏推理。来源更正后依赖输出退出有效回忆；擦除来源时递归擦除派生输出，并过滤服务器持有的导出档案。档案保留事件依赖供恢复后继续执行删除约束；运行中的租约和未完成轮次不随记忆档案迁移。
+Monitoring records do not copy content bodies or store lease credentials or hidden reasoning. Source corrections remove dependent outputs from valid recall. Erasing a source recursively erases derived outputs and filters exported archives held by the server. Archives retain event dependencies so deletion constraints remain enforceable after restoration. Active leases and unfinished turns do not migrate with a memory archive.
 
-认知任务列表和详情的 `learning_summary` 只返回处理状态、提议结果、接受与发布数量、固定采样限制和拒绝原因计数。例如任务 `completed` 但 `learning_outcome=no_proposals` 表示处理结束但没有提议；`accepted_counts` 有值也不代表已写入长期记忆，需再看 `published_counts`。`published_counts.pattern_views` 统计本次可用的组织视图，`belief_relations` 统计发布的认识关系，不代表客观事实数量或累计学习次数。`learning_window` 显示输入区间、尝试与成功处理位置，以及是否仍有待处理区间；`pending_sequence_span` 是序列跨度，不能当成消息条数。摘要不包含原文、模型解释或来源 ID；原认知结果因来源失效被清空后，待处理区间仍可独立展示。
+The `learning_summary` in cognition job lists and details returns only processing state, proposal outcome, accepted and published counts, fixed sampling limits, and rejection-reason counts. For example, a `completed` job with `learning_outcome=no_proposals` has finished processing without proposing anything. Nonzero `accepted_counts` also does not establish that long-term memory was written; check `published_counts`. `published_counts.pattern_views` counts organization views available in this run, and `belief_relations` counts published belief relations. Neither is a count of objective facts or cumulative learning events. `learning_window` shows the input interval, attempted and successfully processed positions, and whether an interval remains pending. `pending_sequence_span` is a sequence span, not a message count. Summaries exclude original text, model explanations, and source IDs. Pending intervals remain independently visible even when the original cognitive result has been cleared because its sources became invalid.
 
-`learning_summary.consolidation` 单独统计比较目标、尝试、核验成立、明确不变、未解决和去重数量，并只公开固定原因枚举。`no_change` 是模型本次决定，不代表已经证实“没有共同点”；`satisfied` 要求存在通过核验的概括关系，不能仅靠任务完成或模型自报。
+`learning_summary.consolidation` separately counts comparison targets, attempts, verified results, explicit no-change decisions, unresolved targets, and deduplications, exposing only fixed reason enums. `no_change` is the model's decision on this attempt, not proof that there is no shared meaning. `satisfied` requires a verified abstraction relation, not merely a completed job or model self-report.
 
-## 当前底层接口
+## Current low-level interfaces
 
-Python 客户端位于 `agent_memory.client`，底层流程示例是 [examples/connect.py](examples/connect.py)。TypeScript 客户端位于 [sdk/typescript](sdk/typescript)。以下是适配器需要编排的底层 HTTP 契约，并非目标产品要求用户或主 Agent 逐步操作的方式：
+The Python client is in `agent_memory.client`, with an underlying workflow example in [examples/connect.py](examples/connect.py). The TypeScript client is in [sdk/typescript](sdk/typescript). The following HTTP contract is for adapters to orchestrate; it is not the target product's required step-by-step workflow for users or the main agent:
 
-1. `observe` 保存真实接收或交付的消息，使用稳定的来源 ID。
-2. `prepare` 读取当前情境、工作状态和相关记忆。
-3. `prepared_context` / `preparedContext` 生成实际传给模型的资料文本。
-4. 模型需要进一步线索时使用 `recall`、`inspect`。
-5. 输出确实交付后，再 `observe` 输出并 `commit` 本轮状态。
-6. 宿主压缩或中断前使用 `checkpoint` 保存状态。
+1. `observe` persists actually received or delivered messages with stable source IDs.
+2. `prepare` reads the current situation, working state, and relevant memories.
+3. `prepared_context` / `preparedContext` produces the material actually sent to the model.
+4. Use `recall` and `inspect` if the model needs further cues.
+5. Only after actual delivery, `observe` the output and `commit` the turn's state.
+6. Use `checkpoint` before host compaction or interruption.
 
-不要把完整 `ContextPacket` 或 `RecallResult` 控制封套注入模型。`prepared_context` / `preparedContext` 与 `recalled_context` / `recalledContext` 输出 `compact-memory-v1`：资料直接作为 JSON 对象，来源与关系各呈现一次，`memory_versions` 将短引用映射回可供 `inspect` 使用的精确记忆 ID 与版本。MCP 的 `memory_recall` 也返回这个紧凑 `context`，不再返回完整 HTTP 封套；需要完整记录时使用 `inspect`。
+Do not inject the entire `ContextPacket` or `RecallResult` control envelope into the model. `prepared_context` / `preparedContext` and `recalled_context` / `recalledContext` produce `compact-memory-v1`: material appears directly as JSON objects, sources and relations are each presented once, and `memory_versions` maps short references to exact memory IDs and versions usable with `inspect`. MCP's `memory_recall` also returns this compact `context` rather than the complete HTTP envelope. Use `inspect` when complete records are needed.
 
-服务端的 `model_context` 保存按预算生成的权威文本。TypeScript SDK 优先原样使用它，避免科学计数法、大整数等在跨语言解析后改变文本、数值或上下文长度。兼容旧服务时仍可由字段重建，但如果重建结果超过服务端计量会明确拒绝，不能静默超预算。需要调整资料时应重新请求服务端组装，而不是修改封套字段后沿用旧的权威文本。
+The server's `model_context` contains the authoritative text assembled within the budget. The TypeScript SDK prefers this text unchanged, preventing scientific notation, large integers, or other cross-language parsing differences from changing text, values, or context length. Compatibility with older servers still permits reconstruction from fields, but reconstruction that exceeds the server's measurement is explicitly rejected rather than silently overflowing the budget. To change material, request a new server-side assembly instead of modifying envelope fields while retaining stale authoritative text.
 
-`prepare` 默认的 2,000 单位额度指宿主扣除系统指令、当前输入和输出预留后分配给记忆的预算；`recall` 默认 16,000。两者按上述实际模型资料的 UTF-8 字节数保守计量，不声称是精确 tokenizer 或整个 HTTP 响应的字节上限。HTTP 仍提供完整记录和诊断。相关认识组共同进入或退出预算，无法容纳时返回覆盖限制。原文字面记忆标为 `historical_report_not_current_rule`，不能绕过语义认识的时效、例外和冲突判断；详细的 `inspect` 输出继续独立计量。
+The default `prepare` budget of 2,000 units is the memory allocation left after the host accounts for system instructions, current input, and reserved output; `recall` defaults to 16,000. Both conservatively measure the UTF-8 bytes of the actual model material described above. They are not exact tokenizer counts or byte limits for the entire HTTP response. HTTP still exposes full records and diagnostics. Related belief groups enter or leave the budget together, with coverage limits returned when a group cannot fit. Literal source memories are labeled `historical_report_not_current_rule`; they cannot bypass temporal, exception, and conflict checks on semantic beliefs. Detailed `inspect` output continues to be metered separately.
 
-`POST /v1/actions` 接受 [JSON Schema 契约](architecture/memory-contract.schema.json)。身份由 API key 绑定，调用参数只能选择授权的大脑，不能自行指定租户或认证身份。运行中的能力声明位于 `GET /v1/capabilities`。
+`POST /v1/actions` accepts the [JSON Schema contract](architecture/memory-contract.schema.json). Identity is bound to the API key. Request parameters can select only an authorized brain and cannot set a tenant or authenticated identity. The running service's capability declaration is available at `GET /v1/capabilities`.
 
 ### MCP
 
-MCP 使用官方 Python SDK 1.x 的 stdio 协议，版本由 `uv.lock` 固定。桌面安装直接使用 `agent-memory desktop mcp-config` 生成的无密钥配置。下面是开发部署的手动客户端配置示例：
+MCP uses stdio through the official Python SDK 1.x, with its version pinned by `uv.lock`. Desktop installations should use the secret-free configuration generated by `agent-memory desktop mcp-config`. The following is a manual client configuration for development deployments:
 
 ```json
 {
@@ -384,56 +386,58 @@ MCP 使用官方 Python SDK 1.x 的 stdio 协议，版本由 `uv.lock` 固定。
 }
 ```
 
-MCP 允许模型主动回忆和提交有来源标记的笔记。它不会拦截宿主轮次、自动读取宿主完整对话、判断消息是否送达或接管压缩；配置服务端认知模型也不会改变这一边界。MCP 提交的笔记固定标记为 assistant 来源，不能冒充用户表达。完整的自动记录与回答前回忆需要宿主接入生命周期接口。
+MCP lets a model explicitly recall memories and submit notes with source labels. It does not intercept host turns, automatically read the host's full conversation, determine delivery, or take over compaction. Configuring a server-side cognition model does not change this boundary. Notes submitted through MCP are always marked as assistant-sourced and cannot impersonate user statements. Fully automatic capture and pre-answer recall require the host to integrate lifecycle interfaces.
 
-## 当前实现边界
+## Current implementation boundaries
 
-| 部分 | 当前实现 |
+| Area | Current implementation |
 | --- | --- |
-| 保存 | PostgreSQL 原始事件、来源修订、幂等提交、事务内任务入队 |
-| 工作状态 | 分支状态、修订检查、压缩交接；可选情境推断在实际交付后合入 |
-| 回忆 | 可选模型驱动的线索改写与候选选择、多路候选融合、适用条件、来源复核、持久计划与额度 |
-| 整理 | 原文捕获；可选语义提炼、经历边界、跨来源认识与程序性候选，保留推断标记和版本依赖 |
-| 共同内容与差异 | 精确语义共享、独立经历绑定、有据有限概括、完整组上下文预算 |
-| 认识变化与持续学习 | 有条件的例外、替代、等价与矛盾；持久学习区间、冻结快照、受预算约束的续接 |
-| 访问变化 | 按表示与时间计算访问层级；可信外部反馈更新使用计数和用途评估 |
-| 更正与删除 | 版本更新、同步失效、派生依赖清理、档案恢复时检查删除记录 |
-| 隔离 | 服务端身份绑定、应用查询过滤、PostgreSQL 强制行级隔离 |
-| 接入 | Python 同步文本自动运行时；HTTP、Python、TypeScript、MCP 底层操作 |
-| 桌面运行 | 固定本机 profile、大脑与凭据，自动启动数据库/API/worker，MCP 与 SDK 自动连接，停止保留数据 |
-| 开发辅助 | 鉴权状态、轮次与阶段日志、认知任务、回忆停止原因与额度、独立来源展开；可移除的本地工作台 |
+| Persistence | PostgreSQL source events, source revisions, idempotent submission, and transactional job enqueueing |
+| Working state | Branch state, revision checks, compaction handoff, and optional situation inferences merged after actual delivery |
+| Recall | Optional model-driven cue rewriting and candidate selection, multi-route candidate fusion, applicability conditions, source rechecks, persistent plans, and budgets |
+| Consolidation | Literal capture; optional semantic extraction, episode boundaries, cross-source beliefs, and procedural candidates with inference labels and version dependencies |
+| Shared content and differences | Exact semantic sharing, independent episode bindings, supported bounded generalization, and context budgets applied to complete groups |
+| Belief change and continuous learning | Conditional exceptions, supersession, equivalence, and contradiction; persistent learning windows, frozen snapshots, and budgeted continuation |
+| Access dynamics | Representation- and time-dependent access tiers; trusted external feedback updates use counts and usefulness assessments |
+| Correction and deletion | Version updates, synchronous invalidation, derived-dependency cleanup, and deletion-record checks during archive restoration |
+| Isolation | Server-bound identity, application query filtering, and forced PostgreSQL row-level security |
+| Integration | Python automatic synchronous text runtime; low-level HTTP, Python, TypeScript, and MCP operations |
+| Desktop operation | Stable local profile, brain, and credentials; automatic database/API/worker startup; automatic MCP and SDK connections; data retained on shutdown |
+| Development aids | Authenticated status, turn and phase logs, cognition jobs, recall stop reasons and budgets, separate source expansion, and a removable local workbench |
 
-条件触发的主动提醒、经过校准的衰减与关联传播、多模态理解、完整工具循环与流式宿主适配、云端账号与共享权限仍需实现和验证。程序性候选只是有来源的步骤与条件，不会自行执行或证明任务成功。当前仅支持拥有者私有范围；共享集合请求会明确拒绝。未配置语义 embedding 时，已有词法特征哈希不会被当成语义向量；配置后只在模型、版本、维度和内容哈希一致时使用对应向量。
+Condition-triggered proactive reminders, calibrated decay and association propagation, multimodal understanding, complete tool loops and streaming host adapters, cloud accounts, and shared permissions still need implementation and validation. Procedural candidates are only sourced steps and conditions; they do not execute themselves or prove task success. Only owner-private scope is currently supported; shared-collection requests are explicitly rejected. Without configured semantic embeddings, existing lexical feature hashes are not treated as semantic vectors. With embeddings configured, vectors are used only when model, version, dimensions, and content hash match.
 
-原始表达有来源，不代表其中的客观世界事实已经被独立验证。默认回忆返回有依据的候选，并以 `partial` 说明语义充分性尚未判断。可选控制器和认知处理器的语义判断仍可能出错，多路搜索也不能保证找齐所有相关历史。引用原文中的一个子串，不足以证明它可以独立成为新的结论。
+A source-backed original statement does not establish independent verification of its claims about the world. Default recall returns supported candidates and uses `partial` to indicate that semantic sufficiency has not been assessed. Semantic judgments by the optional controller and cognition processor can still be wrong, and multi-route search cannot guarantee complete retrieval of relevant history. Quoting a substring from an original source does not establish that it can stand alone as a new conclusion.
 
-只有保持原文含义和来源归属的直接表述可进入 `grounded` 工作状态。语义处理器生成的当前情境使用 `inferred` 状态与有效期；当前情境不能反过来作为历史证据。未决事项的通用提交接口目前只接受 `unknown` 状态，不能把一条有引用的笔记直接宣布为已经完成。
+Only direct statements that preserve original meaning and source attribution can enter `grounded` working state. The semantic processor's current-situation output uses `inferred` status and a validity period; the current situation cannot become historical evidence in reverse. The generic submission interface for unresolved items currently accepts only `unknown` status. A cited note cannot simply declare an item completed.
 
-当前档案导入导出和删除过滤不等于完成了生产备份体系。数据库物理备份、独立删除清单的恢复流程、迁移规模、运行 SLA 和长期对话效果，需要独立部署与实测。关闭和重开服务不会删除已提交记录。
+Archive import/export and deletion filtering do not constitute a complete production backup system. Physical database backups, restoration with an independent deletion manifest, migration at scale, operational SLAs, and long-term conversation quality require separate deployment and testing. Stopping and restarting the service does not delete committed records.
 
-当前单份档案最多 16 MB，每类记录最多 5,000 条；超出时明确报错，不会静默截断为不完整备份。分片导出和大规模恢复仍需实现。
+An archive is currently limited to 16 MB and 5,000 records of each type. Exceeding either limit produces an explicit error, not a silently truncated backup. Sharded export and large-scale restoration remain unimplemented.
 
-## 工程结构
+## Project structure
 
-- `src/agent_memory/cognition.py`：经历捕获、线索回忆、证据边界和工作区组装。
-- `src/agent_memory/runtime.py`、`turns.py`：自动文本生命周期、持久阶段与调用额度。
-- `src/agent_memory/recall_control.py`、`recall_provider.py`：语义回忆决策与可选模型适配器。
-- `src/agent_memory/semantic.py`、`learning.py`、`consolidation.py`：语义提议与检查、当前情境、后台认知发布。
-- `src/agent_memory/belief_store.py`、`belief_resolution.py`：认识关系、完整证据闭包与当前适用判断。
-- `src/agent_memory/learning_windows.py`、`neighborhood.py`：持久处理区间、按条数与字节预算选择完整材料。
-- `src/agent_memory/patterns.py`、`pattern_store.py`：共同语义与经历差异的精确绑定、验证、持久化和失效。
-- `src/agent_memory/candidates.py`、`retrieval.py`、`dynamics.py`：候选融合、版本依赖、访问层级与外部反馈。
-- `src/agent_memory/jobs.py`、`embeddings.py`、`vector_jobs.py`：持久任务、调用预算与可选向量处理。
-- `src/agent_memory/service.py`：事务、版本、生命周期与十个记忆操作。
-- `src/agent_memory/storage.py`、`migrations/`：PostgreSQL 数据模型与隔离。
-- `src/agent_memory/api.py`、`web/`：认证、HTTP 与本地工作台。
-- `src/agent_memory/client.py`、`mcp_server.py`、`sdk/typescript/`：宿主接入。
-- `src/agent_memory/local_profile.py`、`desktop.py`、`desktop_connection.py`：本机配置、服务生命周期与自动连接。
-- `architecture/`：完整目标、机器可读契约和 52 个系统验收场景。
+- `src/agent_memory/cognition.py`: episode capture, cue-driven recall, evidence boundaries, and workspace assembly.
+- `src/agent_memory/runtime.py`, `turns.py`: automatic text lifecycle, persistent phases, and call budgets.
+- `src/agent_memory/recall_control.py`, `recall_provider.py`: semantic recall decisions and the optional model adapter.
+- `src/agent_memory/semantic.py`, `learning.py`, `consolidation.py`: semantic proposals and checks, current situation, and background cognitive publication.
+- `src/agent_memory/belief_store.py`, `belief_resolution.py`: belief relations, complete evidence closure, and current applicability.
+- `src/agent_memory/learning_windows.py`, `neighborhood.py`: persistent processing windows and selection of complete material within count and byte budgets.
+- `src/agent_memory/patterns.py`, `pattern_store.py`: exact binding, validation, persistence, and invalidation of shared semantics and episode differences.
+- `src/agent_memory/candidates.py`, `retrieval.py`, `dynamics.py`: candidate fusion, version dependencies, access tiers, and external feedback.
+- `src/agent_memory/jobs.py`, `embeddings.py`, `vector_jobs.py`: persistent jobs, call budgets, and optional vector processing.
+- `src/agent_memory/service.py`: transactions, versions, lifecycle management, and the ten memory operations.
+- `src/agent_memory/storage.py`, `migrations/`: PostgreSQL data model and isolation.
+- `src/agent_memory/api.py`, `web/`: authentication, HTTP, and the local workbench.
+- `src/agent_memory/client.py`, `mcp_server.py`, `sdk/typescript/`: host integration.
+- `src/agent_memory/local_profile.py`, `desktop.py`, `desktop_connection.py`: local configuration, service lifecycle, and automatic connections.
+- `architecture/`: complete goals, machine-readable contracts, and 52 system acceptance scenarios.
 
-## 验证
+## Verification
 
-先启动并迁移项目专用数据库，然后运行：
+Documentation and developer-facing interfaces use English; this README also has a Chinese version. Multilingual test fixtures, language-recognition rules, and original evaluation inputs and outputs retain their source language. Translations of quoted evidence are labeled separately and do not replace raw records. See [repository conventions](AGENTS.md) for the language policy.
+
+Start and migrate the dedicated project database, then run:
 
 ```sh
 uv run pytest -q
@@ -441,43 +445,42 @@ uv run ruff check src tests examples
 uv build
 ```
 
-TypeScript 测试与类型检查命令见 `sdk/typescript/package.json`。没有配置数据库时，数据库相关测试会跳过；跳过不代表通过。测试使用新建的随机租户与大脑，不依赖私人对话，也不调用付费模型或 Codex／Claude 订阅。
+See `sdk/typescript/package.json` for TypeScript tests and type-check commands. Database-dependent tests are skipped when no database is configured; a skip is not a pass. Tests use newly created random tenants and brains, do not depend on private conversations, and do not call paid models or Codex/Claude subscriptions.
 
-GitHub Actions 仅保留手动触发，不在 push 或 pull request 时自动运行。日常开发优先执行与修改相关的本地检查；发布前按改动影响验证，避免重复运行云 CI。
+GitHub Actions is manual-only, with no automatic execution on push or pull requests. Day-to-day development prioritizes relevant local checks. Before publishing, validate according to the change's impact and avoid redundant cloud CI runs.
 
-接口结构校验、确定性回归测试、真实 MCP 协议往返和数据库测试，只验证各自覆盖的行为。完整架构中的 52 个系统场景尚不能据此宣称全部通过，也未宣称在长期记忆质量上超过任何基线。
+Interface-structure validation, deterministic regression tests, actual MCP protocol round trips, and database tests verify only their covered behavior. They do not establish that all 52 system scenarios in the complete architecture pass. The project also makes no claim of surpassing any baseline in long-term memory quality.
 
+### Manual DeepSeek evaluation
 
-### 手动 DeepSeek 实测
-
-`examples/evaluate_deepseek.py` 通过真实来源捕获、后台学习、入库、召回和上下文准备检查合成会话，使用 DeepSeek-V4-Pro 思考模式。它只创建隔离的测试身份和大脑，不读取已有用户大脑。项目专用 PostgreSQL 须已启动并迁移，密钥放在忽略提交的 `.env` 中的 `DEEPSEEK_API_KEY`。
+`examples/evaluate_deepseek.py` evaluates synthetic conversations through actual source capture, background learning, database publication, recall, and context preparation using DeepSeek-V4-Pro in thinking mode. It creates isolated test identities and brains without reading existing user brains. The dedicated project PostgreSQL database must be running and migrated. Put the key in `DEEPSEEK_API_KEY` in the git-ignored `.env` file.
 
 ```sh
-# 明确允许付费；先检查一个阶段，失败即停止后续依赖阶段
+# Explicitly enable paid calls; check one stage first and stop dependent stages on failure.
 uv run python -m examples.evaluate_deepseek --live --scenario temporal --stage-limit 1
 uv run python -m examples.evaluate_deepseek --live --resume --scenario temporal --stage-limit 3
 uv run python -m examples.evaluate_deepseek --live --resume --scenario conditional --stage-limit 3
 uv run python -m examples.evaluate_deepseek --live --resume --scenario abstraction --stage-limit 2
 
-# 仅重新校验保存的结果，不连接数据库或模型
+# Recheck saved results without connecting to the database or model.
 uv run python -m examples.evaluate_deepseek --recheck
 ```
 
-默认把报告与调用记录存到忽略提交的 `.local/deepseek-evaluation/`。整个目录共享最多 16 次调用和 262,144 个预留输出 token；每阶段最多两次调用、每次最多 16,384 个输出 token，阶段总时间最多 120 秒。先落盘预留再发请求，不自动重试；恢复时保留已有额度、阶段和任务身份。未完成的已预留调用仍计入上限，不能当作没有花费。不同输出目录分别记账，做修复对照时需合并统计。保留失败报告，不能删除调用记录绕过预算。
+Reports and call records are saved in the git-ignored `.local/deepseek-evaluation/` by default. The entire directory shares a maximum of 16 calls and 262,144 reserved output tokens. Each stage allows at most two calls, each capped at 16,384 output tokens, with a total stage time limit of 120 seconds. Reservations are persisted before requests, without automatic retries. Recovery retains existing budgets, stages, and job identities. Incomplete reserved calls still count toward the limit and cannot be treated as unspent. Separate output directories have separate ledgers and must be combined when reporting repair comparisons. Failure reports must be retained; deleting call records to bypass budgets is not allowed.
 
-慢速思考模型可显式传 `--max-wall-time-ms 240000`，上限 300,000 毫秒；不增加调用次数或输出额度。执行策略随阶段保存，服务端认知租约覆盖允许的请求时限及小量收尾时间。默认遇到失败停止；只有查明原因、确认仍有可用前置证据时，才用 `--live --resume --continue-after-failure "诊断原因"` 继续后续阶段。它会保留原失败和诊断记录，不重跑已完成阶段，也不能把整个场景改称通过。
+For slower thinking models, explicitly pass `--max-wall-time-ms 240000`, up to 300,000 milliseconds. This does not increase call or output allowances. The execution policy is saved with each stage, and server-side cognition leases cover the allowed request duration plus a small cleanup margin. Execution stops on failure by default. Only after diagnosing the cause and confirming usable prerequisite evidence should you continue dependent stages with `--live --resume --continue-after-failure "diagnostic reason"`. This retains the original failure and diagnostic record, does not rerun completed stages, and does not turn the entire scenario into a pass.
 
-调用记录只保存安全用量字段、延迟、模型名和最终 JSON 内容，不保存请求正文、密钥、错误正文或隐藏思考内容。压缩响应以有上限的方式解码；不完整或无法解析的响应明确记为用量未知。当前计量示例使用 POSIX 文件锁，适合 macOS/Linux 开发环境。
+Call records store only safe usage fields, latency, model names, and final JSON content, excluding request bodies, keys, error bodies, and hidden reasoning. Compressed responses are decoded with limits. Incomplete or unparseable responses explicitly record unknown usage. The current metering example uses POSIX file locks and is intended for macOS/Linux development environments.
 
-已保存[首轮实测](evaluations/deepseek-2026-10-24.md)与[紧凑上下文、主动归纳后续实测](evaluations/deepseek-2026-10-24-compact-planning.md)。后者包含 8,000 单位预算的零调用重放、14 次共享计量请求及未通过的归纳与跨语言场景。
+Saved reports include the [initial evaluation](evaluations/deepseek-2026-10-24.md) and [compact-context and proactive-generalization follow-up](evaluations/deepseek-2026-10-24-compact-planning.md). The latter includes zero-call replay with an 8,000-unit budget, 14 requests under shared metering, and failed generalization and cross-language scenarios.
 
-来源桥与逐实例归纳的[后续修缮报告](evaluations/deepseek-2026-10-24-memory-repairs.md)另保留一次失败和一次通过的独立认知处理器诊断。`examples/evaluate_memory_repairs.py --replay` 复用本地保存的合成数据做免费重放并冻结输入，`--live` 才允许最多两次调用；只有诊断完成且失败时，`--live --followup "具体原因"` 才能在同一账本中追加唯一一次两调用补测。原报告不改写，整个账本最多四次调用，`--resume` 只读报告。独立处理器测试不等于完成了数据库发布和宿主回答的端到端真实模型验收。
+The [source-bridge and per-instance generalization repair report](evaluations/deepseek-2026-10-24-memory-repairs.md) also retains one failed and one successful independent cognition-processor diagnostic. `examples/evaluate_memory_repairs.py --replay` reuses saved local synthetic data for free replay and freezes the inputs. Only `--live` permits up to two calls. Only after a completed, failed diagnostic can `--live --followup "specific reason"` append a single two-call follow-up to the same ledger. The original report is unchanged, the entire ledger is capped at four calls, and `--resume` only reads reports. An independent processor test is not end-to-end real-model acceptance of database publication and host answers.
 
-验收针对固定来源、关系方向、条件、有效期及实际召回/上下文输出；时间测试注入领域时钟，不代表已有宿主历史情境 API。内容关键词只是辅助护栏，还需人工检查生成命题。小样本诊断不等于长期效果基准，也没有使用主聊天模型回答来代替记忆质量判断。
+Acceptance checks fixed sources, relation direction, conditions, validity, and actual recall/context output. Temporal tests inject a domain clock; this does not establish an implemented host historical-situation API. Content keywords are only supplementary guardrails, and generated propositions still need human review. Small-sample diagnostics are not long-term quality benchmarks, and main-chat-model answers are not used as substitutes for memory-quality evaluation.
 
-### 完整同步对话实测
+### Complete synchronous conversation evaluation
 
-`examples/evaluate_conversation.py` 将真实 DeepSeek 主模型接入 `BrainRuntime`，通过本机 TCP HTTP API 与 PostgreSQL 执行输入捕获、情境理解、上下文准备、真实生成和交付确认；交付目标是持久化的本地测试收件箱。每轮重建服务、客户端和运行时，切换会话并关闭近期对话补充。使用固定合成偏好验证初次学习、跨会话回忆、偏好改变及无依据的提问，并增加独立空大脑对照。没有注入隐藏聊天记录或标准答案，也没有连接真实聊天渠道。
+`examples/evaluate_conversation.py` connects an actual DeepSeek main model to `BrainRuntime` and runs input capture, situation understanding, context preparation, real generation, and delivery confirmation through the local TCP HTTP API and PostgreSQL. Delivery targets a persistent local test inbox. Each turn reconstructs the service, client, and runtime, switches conversations, and disables recent-conversation supplementation. Fixed synthetic preferences test initial learning, cross-conversation recall, changed preferences, and unsupported questions, alongside an independent empty-brain control. No hidden conversation history or reference answers are injected, and no actual chat channel is connected.
 
 ```sh
 uv run python -m examples.evaluate_conversation --plan
@@ -485,15 +488,15 @@ uv run python -m examples.evaluate_conversation --live
 uv run python -m examples.evaluate_conversation --resume
 ```
 
-仅 `--live` 读取本地密钥和执行付费请求。共享账本最多 20 次调用、249,856 个预留输出 token；五个轮次最多各两次情境处理和一次主模型请求，仅两次新增信息执行各一次巩固任务，因此计划最多 19 次请求。主模型每次输出上限 4,096 token，认知请求上限 16,384 token。模型超时不自动重试；已有输出目录拒绝再次付费运行，`--resume` 只读报告，中断也不能自动重发。
+Only `--live` reads local keys and makes paid calls. The shared ledger is capped at 20 calls and 249,856 reserved output tokens. Each of five turns allows up to two situation-processing calls and one main-model call. Only the two turns introducing new information each execute a consolidation job, giving a planned maximum of 19 requests. Main-model output is capped at 4,096 tokens per call and cognition output at 16,384 tokens. Model timeouts are not retried automatically. An existing output directory rejects another paid run; `--resume` only reads the report, and interruption does not authorize automatic resubmission.
 
-报告分开记录实际进入主模型的持久语义版本、此前用户支持来源、最终回答、实际交付、任务完整程度及调用用量。管线检查通过不等于回答含义正确；自然回答须按预先固定的标准另行审阅。探测消息也正常产生后台任务，但本次预算不执行这些待处理窗口。此测试覆盖同步文本小样本，不代表长期稳定性、工具循环、流式输出、OS 进程崩溃恢复或任意 Agent 的完整接入。
+Reports separately record the persistent semantic versions actually supplied to the main model, prior supporting user sources, final answers, actual deliveries, task completeness, and usage. Passing pipeline checks does not establish that an answer is semantically correct; natural-language answers require separate review against criteria fixed in advance. Probe messages also create background jobs normally, but this run's budget does not execute those pending windows. This test covers a small synchronous-text sample, not long-term stability, tool loops, streaming, OS-process crash recovery, or complete integration of arbitrary agents.
 
-已保存[完整同步对话诊断](evaluations/deepseek-2026-10-24-conversation.md)。原始阶段、部分失败和后续专项补测分开记录；回答内容符合来源也不代表主模型遵守了运行时的不确定性标记。
+The [complete synchronous conversation diagnostic](evaluations/deepseek-2026-10-24-conversation.md) records original stages, partial failures, and later targeted follow-ups separately. An answer that agrees with its sources does not necessarily respect the runtime's uncertainty labels.
 
-该次基线暴露的有效期缺失可用 `uv run python -m examples.evaluate_temporal_repair --live` 做唯一一次专项诊断。它要求本地原始五阶段报告、固定来源版本和 18 次已确认调用的账本完全匹配，只重处理初次学习的用户原文；最多追加两次、每次 8,192 输出 token，仍受原 20 次调用和 249,856 预留输出 token 总额约束。结果另存 `temporal-followup.json`，不发布进数据库、不生成宿主回答、不改写原始失败；文件一旦存在就拒绝再次执行。`--resume` 只读专项结果。
+The missing-validity issue exposed by that baseline has a single targeted diagnostic available through `uv run python -m examples.evaluate_temporal_repair --live`. It requires an exact match to the original local five-stage report, fixed source versions, and ledger with 18 confirmed calls. It reprocesses only the original user text from initial learning, adding at most two calls of 8,192 output tokens each within the original totals of 20 calls and 249,856 reserved output tokens. Results are saved separately as `temporal-followup.json`, without database publication, host-answer generation, or rewriting the original failures. Once the file exists, another execution is rejected. `--resume` only reads the targeted result.
 
-当前请求、经历组织和记忆解释协议的修复使用独立实验入口：
+Repairs to current-request handling, episode organization, and the memory interpretation protocol use a separate experiment entry point:
 
 ```sh
 uv run python -m examples.evaluate_interaction_repair --plan
@@ -501,13 +504,13 @@ uv run python -m examples.evaluate_interaction_repair --live
 uv run python -m examples.evaluate_interaction_repair --resume
 ```
 
-该实验重跑同样的五轮真实链，并增加一次独立宿主诊断：冻结旧公开报告中适用性为未知的完整上下文，只插入新的通用记忆解释协议，再检查回答有没有把未知说成已确定。旧答案和评分标准不发送给被测模型；诊断不发布记忆、不交付用户，也不参与新五轮的学习。两部分共用最多 20 次调用、253,952 个预留输出 token，输入与代码指纹在首次请求前落盘；用量不明时阻止所有后续付费调用。默认目录 `.local/deepseek-interaction-repair/` 已存在就拒绝重跑，`--resume` 只读。机器检查与回答语义审阅分开保存。
+This experiment reruns the same five-turn real-model chain and adds an independent host diagnostic. It freezes the complete context with unknown applicability from the earlier published report, inserts only the new general memory interpretation protocol, and checks whether the answer turns uncertainty into certainty. The model does not receive old answers or grading criteria. The diagnostic neither publishes memory nor delivers to a user and does not contribute to learning in the new five-turn run. Both parts share a maximum of 20 calls and 253,952 reserved output tokens. Input and code fingerprints are persisted before the first request. Unknown usage blocks all subsequent paid calls. An existing default directory, `.local/deepseek-interaction-repair/`, rejects reruns, and `--resume` is read-only. Machine checks and semantic answer reviews are saved separately.
 
-已保存[当前请求、经历组织与记忆消费实测](evaluations/deepseek-2026-10-24-interaction-repair.md)：五轮流程 3/5 全过，原独立诊断触及输出上限；v2 的三项对照目标 2/3 通过，未知适用性仍被宿主越过。工程回归通过不代表此项真实验收通过；本批按用户后续要求将当前实现与失败报告一并提交，验收结果保持原判。
+The saved [current-request, episode-organization, and memory-consumption evaluation](evaluations/deepseek-2026-10-24-interaction-repair.md) reports full passes on 3/5 turns; the original independent diagnostic reached its output limit. The v2 comparison passed 2/3 objectives, while the host still overrode unknown applicability. Engineering regression passes do not make this real-model acceptance pass. The implementation and failure reports were committed together at the user's subsequent request, preserving the original verdicts.
 
-`examples/evaluate_consumption_repair.py --plan / --live / --resume` 是独立三项宿主对照入口，分别检查当前自述、已成立适用性和未知适用性。它冻结原 learn/recall/独立诊断输入，仅替换协议消息，不把原答案或评分标准发送给模型。来源须有完整已知用量；仅额外允许上述“前五轮完成，末次诊断恰好触及输出上限”的严格失败状态，不放行其他中断。新账本最多 3 次调用、12,288 个预留输出 token，须加到原实验用量中；不重试，已有目录拒绝重跑，`--resume` 只读。执行完成和语义通过分别记录。
+`examples/evaluate_consumption_repair.py --plan / --live / --resume` runs three independent host comparisons for current self-report, established applicability, and unknown applicability. It freezes the original learn/recall/independent-diagnostic inputs and replaces only protocol messages, without sending old answers or grading criteria to the model. Sources must have complete, known usage. The only additional permitted failure state is the strict case above: all first five turns completed and the final diagnostic exactly reached the output limit. Other interruptions are not permitted. The new ledger allows at most three calls and 12,288 reserved output tokens, which must be added to the original experiment's usage. There are no retries, an existing directory rejects reruns, and `--resume` is read-only. Execution completion and semantic success are recorded separately.
 
-回答核验与前台分工的验证分别使用以下入口：
+Answer review and the division of foreground work are evaluated through:
 
 ```sh
 uv run python -m examples.evaluate_answer_review --plan
@@ -518,12 +521,12 @@ uv run python -m examples.evaluate_memory_lifecycle --orientation-policy on_dema
 uv run python -m examples.evaluate_memory_lifecycle --profile long --history-turns 104 --plan
 ```
 
-前者冻结三个旧错误答案和三个正常对照，只评估核验器；最多六次、49,152 个预留输出 token，标签不发送给模型。后者的默认 smoke 运行五轮完整同步链，每轮最多两次前台认知、一次回答和一次核验，两个学习轮各另有最多两次后台调用，共最多 24 次、290,816 个预留输出 token。它检查原始请求和草稿的核验绑定、本地持久收件箱、长期认识、经历发布及重启回放，并保留实际输入输出和逐类延迟。两者 `--resume` 均只读，已有输出目录拒绝再次付费执行；没有自动修复或重试。
+The first freezes three previously incorrect answers and three normal controls, evaluating only the reviewer. It allows at most six calls and 49,152 reserved output tokens; labels are not sent to the model. The second runs five complete synchronous turns in its default smoke profile. Each turn allows up to two foreground cognition calls, one answer, and one review, while the two learning turns each allow up to two additional background calls: at most 24 calls and 290,816 reserved output tokens in total. It checks review binding to the original request and draft, the persistent local inbox, long-term beliefs, episode publication, and restart replay, and retains actual inputs, outputs, and latency by category. Both entry points have read-only `--resume` behavior and reject paid execution in an existing output directory. Neither repairs nor retries automatically.
 
-已保存[回答核验与前台分工实测](evaluations/deepseek-2026-10-24-answer-review.md)：六个固定回归均符合预期；首次链路第三轮因含糊的存储完成措辞被拦，保留原判。仅明确宿主承接规则后的唯一补测中，五个回答符合来源并交付，两个陈述回合仍误标为请求，完整流程为 3/5。共 44 次真实调用、302,914 token，全部用量已知；该历史版本前台仍需约 31–78 秒。该报告保留原始失败，不作为按需路由的测试结果。
+The saved [answer-review and foreground-work evaluation](evaluations/deepseek-2026-10-24-answer-review.md) reports that all six fixed regressions behaved as expected. The first chain was blocked on its third turn for ambiguous wording about storage completion; that verdict is retained. In the single follow-up after clarifying only the host acknowledgment rules, all five answers were source-consistent and delivered, but two statement turns were still mislabeled as requests, yielding 3/5 complete-flow passes. Across the runs, there were 44 actual calls and 302,914 tokens, with all usage known. That historical version still required roughly 31–78 seconds of foreground processing. The report preserves original failures and is not a test result for on-demand routing.
 
-[按需分析与延迟实测](evaluations/deepseek-2026-10-24-orientation-routing.md) 使用相同五轮夹具，五个回答均符合来源并交付，完整流程为 4/5。前台模型等待平均从历史记录的 56.47 秒降到 20.88 秒，本次完整回复平均 21.68 秒；这是历史前后比较，不是同版本成对 A/B。一次后台提议越过经历操作范围被正确拒绝；补齐范围契约后，基于原完整输入的独立两调用处理器补测通过，未重新执行五轮端到端链，原判不改写。按需模式不即时派生目标和待办，不能视为与完整模式等价。
+The [on-demand analysis and latency evaluation](evaluations/deepseek-2026-10-24-orientation-routing.md) uses the same five-turn fixture. All five answers were source-consistent and delivered, with 4/5 complete-flow passes. Average foreground model waiting decreased from the historical 56.47 seconds to 20.88 seconds; complete replies in this run averaged 21.68 seconds. This is a historical before/after comparison, not a paired A/B test on the same version. A background proposal that exceeded episode-operation scope was correctly rejected. After the scope contract was completed, an independent two-call processor follow-up using the original complete input passed. The five-turn end-to-end chain was not rerun, and the original verdict remains unchanged. On-demand mode does not immediately derive goals or pending tasks and is not equivalent to full mode.
 
-`long` 执行器准备 100–128 轮真实输入、生成和交付（默认 104），再从同一可信历史快照恢复六个隔离探针大脑。记忆内核、滚动摘要和无记忆三组使用相同宿主、上下文上限及各自相同的总调用上限，实际花费单独计量；摘要更新也计费。问题、期望内容和来源映射不进入历史编码或宿主输入。摘要只标为未核验的历史报告，不伪造来源，因此比较的是整套接入行为，不能归因于单一存储结构。
+The `long` runner prepares 100–128 turns of actual input, generation, and delivery (104 by default), then restores six isolated probe brains from the same trusted history snapshot. The memory-core, rolling-summary, and no-memory groups use the same host and context limit, with equal total call caps per group and separately metered actual costs. Summary updates also count toward paid usage. Questions, expected content, and source mappings do not enter history encoding or host input. Summaries are labeled only as unverified historical reports without fabricated provenance. The comparison therefore measures complete integration behavior and cannot be attributed to a single storage structure.
 
-长历史实验尚未真实完成。现有每脑每小时 100 次认知调用和 2 MB 输入预算仍生效，可能使运行提前停止；需要先验证基线实链并设计预算窗口内的持续执行，不能绕过限制或反复重跑刷出结果。压缩执行一百轮也不等于连续运行数月；模拟跨度与实际跨日运行须分别报告。
+The long-history experiment has not completed a real-model run. Existing per-brain budgets of 100 cognition calls and 2 MB input per hour still apply and may stop execution early. The real baseline chain must first be validated, and sustained execution designed within budget windows; limits must not be bypassed or experiments repeatedly rerun to obtain a passing result. Running a hundred turns in a short period is not equivalent to continuous operation over months. Simulated timespans and actual operation across days must be reported separately.

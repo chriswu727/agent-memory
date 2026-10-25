@@ -1,328 +1,328 @@
-# 认知记忆架构实施计划
+# Cognitive memory architecture implementation plan
 
-日期：2026-10-24。状态：设计与实施依据，尚未实现的能力不能据此标为已交付。
+Date: 2026-10-24. Status: design and implementation guidance. Capabilities that remain unimplemented must not be presented as delivered on the strength of this document.
 
-目标是让记忆自动参与 Agent 的当下理解、回忆、学习和行为调整：在有限上下文与计算预算内，留下重要含义、保留必要差异、用线索找回经历，并根据新证据改变认识。借鉴人类记忆的功能机制，具体数据结构与算法仍是需要验证的工程设计。
+The goal is for memory to participate automatically in an agent's current understanding, recall, learning, and behavioral adjustment: preserving important meaning and necessary differences, recovering episodes through cues, and revising beliefs with new evidence, all within finite context and compute budgets. Human memory provides functional inspiration; the specific data structures and algorithms remain engineering designs requiring validation.
 
-本计划细化[总体架构](architecture.html)与[宿主运行契约](autonomous-runtime.contract.json)，不重新搭建已有的持久化、身份隔离、来源版本和恢复基础。产品继续采用无管理页面的记忆运行时，通过 SDK、宿主适配器和必要的观测接口使用；MCP 提供补充操作。
+This plan elaborates the [overall architecture](architecture.html) and [host runtime contract](autonomous-runtime.contract.json). It does not rebuild the existing foundations for persistence, identity isolation, source versions, and recovery. The product remains a memory runtime without an administration UI, accessed through SDKs, host adapters, and necessary observability interfaces. MCP provides supplementary operations.
 
-## 实施顺序与当前落地
+## Implementation order and current status
 
-先打通“表示—判断—来源失效”闭环，再扩大归纳能力和时间跨度。否则更多记忆只会放大条件误用与错误概括。按依赖推进如下：
+First complete the loop from representation to judgment to source invalidation, then expand generalization and temporal coverage. Otherwise, more memories will amplify condition misuse and incorrect generalizations. Implementation follows these dependencies:
 
-1. **条件与情境内核。** 已实现 `ontology.py`、`temporal.py`、`applicability.py`，并接入提议核验、断言持久化、当前情境恢复、召回与上下文组装。类型定义不可变并带版本；多值关系不擅自互斥。有效期未知、负向证据、冲突与来源失效都有独立处理。旧自由键规则保留历史检索，不能凭自由键匹配自动采用。
-2. **有边界的跨经历选材与连续处理。** `neighborhood.py` 优先当前输入，查找允许范围中的相关旧认识，加载完整来源、精确父版本和有据关系闭包；剩余预算补近期上下文与完整经历。选材同时检查条数和实际提议请求字节，相关依赖包不完整时停止长期发布。`learning_windows.py` 持久保存待处理输入区间，每批最多八条并按字节预算缩批，成功后事务内记录进度并续接；合并不丢起点、重试不扩大原快照或重置额度。来源变化触发有效窗口重建。来源闭包增长、低词面重合的历史发现和真实长期质量仍待解决。
-3. **概括、差异与认识变化。** 精确共享视图保留独立实例、完整语义和差异。另已实现模型提议并分别核验的 `abstracts / equivalent / exception / supersedes / contradicts` 关系，绑定新旧认识版本、条件、有效期与证据；概括至少需要两个来源不重叠的实例。关系独立存储，发布不改写旧事实。召回补齐关系端点、重新判断当前适用性，并以整个相关组组装上下文；关系或来源缺失时保持不确定。删除、更正、可信本机恢复及持久计划失效已接通。概括不授权用典型细节填补经历，模型关系核验也不是客观事实证明。持续局部重评、规模化来源边界与真实归纳效果仍需完成。
-4. **选择性遗忘与工作区。** 将访问强度、稳定性、外部使用价值、间隔和干扰分开；完成焦点、暂停任务、待恢复事项的转换。保存和可达性分别控制，以已有来源重建细节，不能用典型模式补造细节。参数由对照实验校准。
-5. **完整宿主生命周期与效果评估。** 完成工具循环、流式实际交付、编辑和压缩交接；固定相同上下文与总成本预算做模块消融及真实持续运行评估。同步文本接入和确定性回归不能替代这些验收。
+1. **Condition and situation core.** `ontology.py`, `temporal.py`, and `applicability.py` are implemented and connected to proposal verification, assertion persistence, current-situation restoration, recall, and context assembly. Type definitions are immutable and versioned; multivalued relations are not arbitrarily treated as mutually exclusive. Unknown validity, negative evidence, conflict, and source invalidation receive separate handling. Older free-key rules remain historically retrievable but cannot become applicable merely through free-key matching.
+2. **Bounded cross-episode material selection and continuous processing.** `neighborhood.py` prioritizes the current input, finds relevant older beliefs within the permitted scope, and loads complete sources, exact parent versions, and supported relation closure. Remaining budget goes to recent context and complete episodes. Selection checks both record counts and actual proposal-request bytes; incomplete dependency bundles block long-term publication. `learning_windows.py` persists pending input intervals, processes at most eight inputs per batch with byte-based reductions, and transactionally records progress and continuation after success. Merging preserves the starting position, and retries neither expand the original snapshot nor reset budgets. Source changes trigger reconstruction of a valid window. Growing source closure, discovery of historical episodes with little lexical overlap, and actual long-term quality remain unresolved.
+3. **Generalization, differences, and belief change.** Exact-sharing views preserve independent instances, complete semantics, and differences. Model-proposed, separately verified `abstracts / equivalent / exception / supersedes / contradicts` relations are also implemented, binding old and new belief versions, conditions, validity, and evidence. Generalization requires at least two instances with non-overlapping sources. Relations are stored independently, and publication does not overwrite older facts. Recall completes relation endpoints, reassesses current applicability, and assembles context by whole related groups; missing relations or sources preserve uncertainty. Deletion, correction, trusted local restoration, and persistent-plan invalidation are connected. Generalization does not authorize filling episodes with typical details, and model verification of relations is not proof of objective fact. Continuous local reassessment, scalable source boundaries, and actual generalization quality still need work.
+4. **Selective forgetting and working context.** Separate access strength, stability, external utility, spacing, and interference. Complete transitions among focus, paused tasks, and items awaiting resumption. Control retention and accessibility separately, reconstructing details from existing sources rather than inventing them from typical patterns. Calibrate parameters through controlled comparisons.
+5. **Complete host lifecycle and outcome evaluation.** Complete tool loops, actual streaming delivery, edits, and compaction handoff. Fix equal context and total-cost budgets for module ablations and sustained real-world evaluation. Synchronous text integration and deterministic regressions do not substitute for these acceptance checks.
 
-认知提供方支持显式思考模式配置，输出 token 与响应字节预算分开，并保留学习结果分类及窗口进度。空 JSON 提议不再仅凭任务 `completed` 被解读为学到了东西；`accepted_proposals` 表示提议通过当前核验，不是最终发布成功或客观事实认证。精确共同内容组织不新增模型调用；认识关系复用原有提议与核验请求，不额外添加一轮调用。
+Cognition providers support explicit thinking-mode configuration. Output-token and response-byte budgets are separate, and learning-outcome classifications and window progress are retained. An empty JSON proposal is no longer interpreted as learning merely because its job is `completed`. `accepted_proposals` means proposals passed current verification, not that final publication succeeded or objective facts were certified. Organizing exact shared content adds no model calls. Belief relations reuse the existing proposal and verification requests without adding another round.
 
-已实现的部分仍有明确边界：核心词表有限，动态概念治理未实现；程序内核支持显式历史时刻求值，但尚无完整的历史情境重建 API。时间内核可以在提供可信来源时区时解析“今天”，当前宿主协议没有这个可信字段，因此语义处理要求相对日期保持未知，拒绝模型自造锚点。已经做过真实提供方的小样本诊断，尚未完成长期质量实验。
+Implemented portions still have explicit boundaries: the core vocabulary is limited, and dynamic concept governance is unimplemented. The programmatic core supports evaluation at an explicit historical time, but there is no complete historical-situation reconstruction API. The temporal core can resolve “today” when given a trusted source timezone. The current host protocol lacks that trusted field, so semantic processing requires relative dates to remain unknown and rejects model-invented anchors. Small-sample diagnostics with a real provider have run; long-term quality experiments have not been completed.
 
-默认选材上限为 32 条来源、32 条认识、16 个经历，父依赖最多 8 层；词面候选有界，不能保证语义改写、低词面重合的远期经历一定被找出。已存断言的完整 `root_event_ids` 可能随学习增加，超过预算时保守停止长期发布。不能把这套机制称为无限历史归纳；需要另行设计完整依赖元数据与本轮模型阅读内容的边界，同时保留更正、删除及反例传播。
+Default material-selection limits are 32 sources, 32 beliefs, and 16 episodes, with at most 8 parent-dependency levels. Lexical candidates are bounded, so semantic paraphrases or distant episodes with little lexical overlap are not guaranteed to be found. Stored assertions' complete `root_event_ids` may grow through learning; exceeding the budget conservatively stops long-term publication. This mechanism must not be called unlimited historical generalization. A separate design is needed for the boundary between complete dependency metadata and material read by the model on a particular turn, while preserving correction, deletion, and counterexample propagation.
 
-服务、Python 包和 TypeScript 契约同步提供可选的 `belief_resolution` 与 `belief_relation_refs`。协议仍处于草案阶段；严格校验旧 schema 的第三方客户端需要更新新增条件、有效期、适用性及资料块类型。`008_pattern_views.sql` 保存可重建组织视图，`009_belief_relations.sql` 保存带来源的认识关系；两者均不全量重写原事实，也不立即重新调用模型编码历史。
+The service, Python package, and TypeScript contract all expose optional `belief_resolution` and `belief_relation_refs`. The protocol remains a draft. Third-party clients that strictly validate an older schema must update for new condition, validity, applicability, and material-block types. `008_pattern_views.sql` stores rebuildable organization views, and `009_belief_relations.sql` stores sourced belief relations. Neither rewrites all original facts or immediately calls the model again to encode history.
 
-组织视图冻结共同定义、每个经历版本和观察顺序、事实版本与语义来源哈希；内容变化产生新的身份，不把最新版套回旧实例。读侧重新核验来源和经历，只有完整选中视图时才尝试共享呈现；整个已选组按实际渲染开销进入或退出上下文。视图的覆盖范围只限所选断言，不能代表全部历史或全部反例。带持久回忆计划的路径暂时保留完整事实，后续需要把组织版本一起冻结后再支持共享呈现。
+Organization views freeze the shared definition, each episode version and observation order, fact versions, and semantic source hashes. Content changes create a new identity rather than applying the latest definition to older instances. Reads reverify sources and episodes and attempt shared presentation only when a view is selected completely. The entire selected group enters or leaves context according to actual rendering cost. A view covers only its selected assertions, not all history or counterexamples. Paths with persistent recall plans retain complete facts for now; shared presentation will require freezing organization versions as well.
 
-组织上限独立于模型选材：64 条认识、16 个经历、256 条完整来源和最多 8 层父依赖。失效会清除视图正文，但不会通过组织边连带撤销有独立来源的事实。档案不导出组织缓存；可信本机恢复从原事实和经历重建，上传内容不能靠视图自行证明来源有效。
+Organization limits are independent of model material selection: 64 beliefs, 16 episodes, 256 complete sources, and at most 8 parent-dependency levels. Invalidation clears view content but does not revoke independently sourced facts through organization edges. Archives omit the organization cache. Trusted local restoration rebuilds it from original facts and episodes; uploaded material cannot use a view to certify its own provenance.
 
-## 设计依据与当前差距
+## Design rationale and current gaps
 
-当前代码已经具备来源保存、经历及关联表、带证据的语义提议与核验、访问衰减、多路候选融合、同步文本生命周期、删除传播与恢复。这些基础需要保留。
+The current code already provides source preservation, episode and association tables, evidence-backed semantic proposals and verification, access decay, multi-route candidate fusion, a synchronous text lifecycle, deletion propagation, and recovery. These foundations must be retained.
 
-早期 DeepSeek 试验中，成功召回主要使用原文；一次非思考模式巩固返回空提议，思考模式也曾受输出上限影响。2026-10-24 的新一轮 DeepSeek-V4-Pro 思考模式实测，已通过真实来源捕获、模型提议与核验、发布、召回和上下文准备验证基础偏好、一天例外及其到期恢复、未知备考条件。核验协议修正为逐引文前提判定与整体命题判定同时成立，关系判定字段不再可省略。实际失败和用量见 [实测报告](../evaluations/deepseek-2026-10-24.md)。
+Early DeepSeek experiments mainly recalled original text successfully. A consolidation run without thinking mode returned no proposals, and thinking mode also encountered output limits. A new DeepSeek-V4-Pro thinking-mode run on 2026-10-24 verified basic preferences, a one-day exception and restoration after expiration, and an unknown exam-preparation condition through actual source capture, model proposal and verification, publication, recall, and context preparation. The verification protocol was corrected to require both per-citation premise judgments and a whole-proposition judgment, with relation verdicts no longer optional. See the [evaluation report](../evaluations/deepseek-2026-10-24.md) for actual failures and usage.
 
-这轮实测也暴露了不能用单元测试通过掩盖的问题：只有三条语义认识和两条变化关系，重复证据结构就能耗尽 48,000 单位的保守召回预算，使关系端点缺失。免费提高读取预算后，长期替换的日期和方向判断正确，但没有解决效率问题。由此确定面向模型的紧凑上下文表示：每组来源与关系只呈现一次，以稳定引用保留可展开依据，并继续把相关记忆组作为完整预算单元；不能通过静默裁掉条件、来源或关系来缩短输出。原始历史陈述也需明确与当前可采用的规则区分，避免绕开语义版本的时效判断。
+That evaluation also exposed problems that passing unit tests cannot hide. With only three semantic beliefs and two change relations, repeated evidence structures exhausted the conservative 48,000-unit recall budget and left relation endpoints missing. Increasing the read budget in a free replay produced the correct date and direction for durable supersession but did not solve the efficiency issue. This established the need for a compact model-facing context representation: present each source and relation group once, retain inspectable evidence through stable references, and continue treating related memory groups as complete budget units. Output must not be shortened by silently cutting conditions, sources, or relations. Original historical statements also need explicit separation from currently usable rules so they cannot bypass semantic versions' temporal applicability.
 
-后续实现已经接通 `context_views.py` 的统一模型投影：来源、关系与记忆版本分别建立引用表，完整核验材料仍由服务端保留；SDK、MCP 和主动回忆控制器共用对应格式。HTTP `RecallResult.belief_relations` 每个关系只存一次，条目通过版本引用关联。预算以实际渲染文本计量，关联组原子保留，字面经历明确标为历史报告。新条件的结构化生成及接收校验都禁止旧 `eq/ne`，未解释概念使用真实的 `unresolved` 节点，历史读取保持兼容。
+Subsequent implementation connected a unified model projection in `context_views.py`. Sources, relations, and memory versions have separate reference tables, while complete verification material remains on the server. SDKs, MCP, and the active recall controller share the corresponding format. HTTP `RecallResult.belief_relations` stores each relation once, with entries connected through version references. Budgets measure actual rendered text, related groups are retained atomically, and literal episodes are explicitly labeled historical reports. Both structured generation and acceptance validation of new conditions reject legacy `eq/ne`; uninterpreted concepts use actual `unresolved` nodes, while historical reads remain compatible.
 
-`consolidation_planning.py` 在原有有界选材之上规划最多三个独立实例比较目标，并将计划纳入持久快照和请求字节预算。目标身份绑定精确版本、来源及限定，不绑定新提醒；只有完成有效核验或合法声明不变的目标才从完成任务中查询去重。临时故障与缺失核验仍可重试，前台 orient 不承担归纳目标。模型逐目标报告提议或不变，只有核验通过的 `abstracts` 关系能满足归纳目标。未尝试、无核验概括与模型声明不变分别报告，不把提醒记录当作共同认识。v3 规划沿用最多两个强词面目标加一个有实词交集的弱线索探索目标；没有弱候选时允许三个强目标。先去重再排序选择，零交集仍排除。比较策略进入目标身份，策略升级可以重新尝试一次旧实例组，同策略重复提醒继续去重，旧 v1/v2 冻结快照按原算法核验。概括只表达最小共同命题，每个实例的对应支持引文由运行时计算，核验分别判断各实例、整个命题和关系；缺失信息不能证明差异或相同。普通父依赖规则不放宽，只有经过结构校验的抽象关系允许共同命题省去无关父引文，该关系仍携带完整端点来源。核验可显式标记与命题任何实质内容均无关的片段，并提供精确支持索引；运行时只移除这类共同命题引文，重新验证每个实例的剩余支持与完整关系，结论文字保持原样。未知或反证不能这样丢弃，普通命题不允许使用该路径；原引文和结构化判定保留审计。当前候选仍依赖词面线索，这不是全历史自主语义发现。
+`consolidation_planning.py` plans at most three independent-instance comparison targets on top of bounded material selection and includes the plan in persistent snapshots and request-byte budgets. Target identity binds exact versions, sources, and qualifications rather than a new reminder. Deduplication queries completed jobs only for targets with valid completed verification or a valid no-change declaration. Transient failures and missing verification remain retryable, and foreground orient does not take on generalization targets. The model reports a proposal or no change for each target; only a verified `abstracts` relation can satisfy a generalization target. Unattempted targets, unverified generalizations, and model no-change declarations are reported separately. Recording a reminder does not count as shared understanding. v3 planning retains at most two strong lexical targets and one weak-cue exploration target with intersecting content words; without weak candidates, three strong targets are permitted. Deduplication precedes ranking and selection, and zero-overlap candidates remain excluded. The comparison strategy is part of target identity, so a strategy upgrade can retry an old instance group once, while repeated reminders under the same strategy remain deduplicated. Older frozen v1/v2 snapshots are verified under their original algorithm. Generalizations express only a minimal shared proposition. The runtime computes corresponding support citations for each instance, and verification separately judges every instance, the complete proposition, and the relation. Missing information cannot prove sameness or difference. Ordinary parent-dependency rules are not relaxed. Only structurally validated abstraction relations permit a shared proposition to omit irrelevant parent citations; the relation still carries complete endpoint sources. Verification may explicitly identify fragments unrelated to any substantive part of the proposition and provide exact support indices. The runtime removes only those citations from the shared proposition and revalidates each instance's remaining support and the complete relation, leaving the conclusion's text unchanged. Unknown evidence and counterevidence cannot be discarded this way, and ordinary propositions cannot use this path. Original citations and structured verdicts remain in the audit. Current candidate discovery still depends on lexical cues; this is not autonomous semantic discovery over all history.
 
-后续[紧凑上下文与主动归纳报告](../evaluations/deepseek-2026-10-24-compact-planning.md)记录了 8,000 单位预算下完整时间关系组的免费重放，以及未全部通过的真实模型阶段。v2 已能主动比较旧实例，但一次提议把未知时长写成时长差异，完整命题核验为未知并阻止发布。后续需要区分共同命题、已观察差异与未知细节，再评估有边界的修订，不能降低核验门槛换取通过。
+The subsequent [compact-context and proactive-generalization report](../evaluations/deepseek-2026-10-24-compact-planning.md) records free replay of a complete temporal relation group under an 8,000-unit budget, along with real-model stages that did not all pass. v2 could proactively compare older instances, but one proposal treated unknown duration as a difference in duration. Whole-proposition verification returned unknown and blocked publication. Further work must distinguish shared propositions, observed differences, and unknown details before evaluating bounded revision; lowering the verification threshold to obtain a pass is not acceptable.
 
-后续[来源桥与归纳修缮实测](../evaluations/deepseek-2026-10-24-memory-repairs.md)已用零调用重放找回遗漏的英文认识；独立认知处理器的两调用补测也通过逐实例、整体命题、关系和支持证据选择检查。首次失败照常保留，没有把未知判定追改为无关。该测试未将真实模型提议发布进数据库，也未验证宿主最终回答。
+The subsequent [source-bridge and generalization repair evaluation](../evaluations/deepseek-2026-10-24-memory-repairs.md) recovered a missed English belief through zero-call replay. A two-call follow-up with an independent cognition processor also passed per-instance, whole-proposition, relation, and support-selection checks. The first failure remains recorded, without retroactively changing an unknown verdict to irrelevant. This test did not publish the real-model proposal into the database or verify the host's final answer.
 
-后续[完整同步对话诊断](../evaluations/deepseek-2026-10-24-conversation.md)已经覆盖真实主模型的最终回答、本机 HTTP API、持久发布及本地实际交付。重建运行时、更换会话并关闭近期对话后，历史语义认识和原用户支持确实进入了主模型；空大脑对照也没有猜出资料。但多个阶段的情境理解或经历组织仍为部分完成，一次答案虽然与来源事实一致，却把运行时标记为未知的安排称为“当前有效”。不能将其判为整体验收通过。
+The subsequent [complete synchronous conversation diagnostic](../evaluations/deepseek-2026-10-24-conversation.md) covered final answers from a real main model, the local HTTP API, persistent publication, and actual local delivery. After reconstructing the runtime, changing conversations, and disabling recent-dialogue context, historical semantic beliefs and original user support did reach the main model. The empty-brain control did not guess the material. However, situation understanding or episode organization remained partially complete in several stages. One answer agreed with its source facts but described an arrangement labeled unknown by the runtime as “currently valid.” The overall acceptance result cannot be marked as passed.
 
-该实测定位了 claim 时间结构的协议遗漏：旧 nullable 日期已填写，`valid_during` 却可省略，核验后才被补成未知。新提议现已要求显式时间结构，并在核验前呈现最终区间；旧记录和冻结父快照不回填。默认词法回忆也已统一使用本轮输入前的证据边界；模型上下文省略纯诊断评估时刻，使语义相同的恢复请求稳定，真实生效或到期变化仍会阻止恢复。
+That evaluation identified an omission in the claim-time protocol: old nullable dates were supplied, but `valid_during` could be omitted and was filled as unknown only after verification. New proposals now require an explicit temporal structure and present the final interval before verification; older records and frozen parent snapshots are not backfilled. Default lexical recall now also uses the evidence boundary preceding the current input. Model context omits the diagnostic-only evaluation time, keeping semantically identical recovery requests stable while actual changes in effect or expiration still block recovery.
 
-历史边界保留已核验用户偏好的指令来源，例如“请用简短回答”。它要求此前已接收的用户消息、完整片段和有效的语义核验状态；不会把普通指令直接当成事实，也不放开询问预设或当前输入。独立时间补测已接受明确起点与开放终点的完整偏好，但额外经历分组仍被拒绝，处理器为部分完成；该次补测没有重跑完整宿主对话。
+The historical boundary retains instruction sources for verified user preferences, such as “Please keep your answers brief.” It requires a previously received user message, a complete fragment, and valid semantic-verification status. Ordinary instructions are not automatically facts, and question presuppositions or current inputs receive no exemption. The independent temporal follow-up accepted the complete preference with an explicit start and open endpoint, but an additional episode grouping was still rejected, leaving the processor partially complete. That follow-up did not rerun the full host conversation.
 
-当前请求已经增加独立来源用途：`current_request` 由服务端绑定真实轮次的当前输入，只能形成当前目标或待回答事项。核验分别判断请求本身、完整命题和每条来源；发布与恢复重查原始判定及绑定。问题中的预设不能据此变成历史事实，长期巩固不能获得这份权限，也不能生成环境观察。旧快照继续保持原有权限，保留请求进入后续工作区时明确降为此前请求背景。
+Current requests now have a separate evidence use: `current_request` is bound by the server to the current input of an actual turn and can form only a current goal or question to answer. Verification separately judges the request itself, the complete proposition, and every source. Publication and recovery recheck the original verdicts and binding. A question's presuppositions cannot become historical facts through this mechanism. Long-term consolidation cannot acquire this authority, nor can it create environmental observations. Older snapshots retain their original permissions. A retained request entering a later workspace is explicitly demoted to earlier request context.
 
-经历组织增加必填的 `organization_statement` 与完整转换核验上下文。对已有经历的继续、关闭、重开或拆分，必须展示完整新旧成员来源和精确旧版本，再判断组织命题及边界。每项经历提议的新旧成员来源闭包最多 32 条，闭包不完整时拒绝提议。它验证交互记录如何组织，不把记录中的问题、引用或假设变成外部事实；组织命题属于整个转换，不能误认成拆分后每个子组各自成立的结论。
+Episode organization now requires `organization_statement` and complete transition-verification context. Continuing, closing, reopening, or splitting an existing episode must present complete sources for old and new members and the exact older version before judging the organization proposition and boundary. Each episode proposal's combined old/new member source closure is limited to 32 sources; an incomplete closure rejects the proposal. This verifies how interaction records are organized, without turning their questions, quotations, or assumptions into external facts. The organization proposition describes the whole transition and must not be mistaken for a conclusion independently true of every subgroup after a split.
 
-模型消费侧统一保留认识争议和适用性：有反证、未知或冲突的内容不能标为可直接采用的当前规则。同步宿主在原有指令后加入固定解释协议，区分来源陈述、历史报告和当前适用规则；协议计入预算与生成指纹。这些约束仍需真实模型验收，不能把提示存在等同于宿主一定遵守。
+Model-facing consumption now consistently preserves belief disputes and applicability. Content with counterevidence, uncertainty, or conflict cannot be labeled a directly usable current rule. The synchronous host adds a fixed interpretation protocol after its original instructions, distinguishing source statements, historical reports, and currently applicable rules. The protocol counts toward the budget and generation fingerprint. These constraints still require real-model acceptance tests; the existence of a prompt does not guarantee host compliance.
 
-[当前请求与记忆消费实测](../evaluations/deepseek-2026-10-24-interaction-repair.md)已重跑真实五轮：3/5 阶段通过全部流程检查，三个提问回合的当前请求均准确进入宿主，两次长期偏好与经历实际发布。剩余拒绝分别涉及陈述误标为请求，以及组织命题加入未引用细节。宿主另暴露忽略当前原文、自造日期的问题；v2 协议在固定三例对照中修复了这两个样本，但未知适用性的样本仍把最新记录称为当前安排。原独立未知诊断还曾触及输出上限，所有失败均保留。最终本地回归 2,010 项通过；真实语义验收未全过。首次评审后暂缓发布，用户随后明确要求将当前实现和失败报告一并提交，验收结果保持原判。
+The [current-request and memory-consumption evaluation](../evaluations/deepseek-2026-10-24-interaction-repair.md) reran five real-model turns. All workflow checks passed for 3/5 stages. Current requests from all three question turns reached the host accurately, and two long-term preferences and episodes were actually published. Remaining rejections involved a statement mislabeled as a request and an organization proposition adding uncited details. The host also ignored current source text and invented dates. The v2 protocol fixed those two samples in a fixed three-case comparison, but the unknown-applicability sample still called the newest record the current arrangement. The original independent uncertainty diagnostic had also reached its output limit. All failures remain recorded. The final local regression run passed 2,010 tests; real semantic acceptance did not fully pass. Publication was initially held after review; the user later explicitly requested committing the implementation with its failure reports, preserving the original verdicts.
 
-这些缺口已经进入实现：新前台 `orient-v1` 使用专用提议与核验格式，只处理当前情境，长期认识、经历和关系留给后台。允许空情境；来源、工作区及模式冻结后恢复，真实工作区版本变化仍使旧任务失效。旧无模式快照沿用原契约。选材仍保留完整来源依赖及原保守预算，因此不能仅凭 schema 缩短宣称已解决延迟。
+These gaps have entered implementation. New foreground `orient-v1` uses dedicated proposal and verification formats and handles only the current situation, leaving long-term beliefs, episodes, and relations to the background. Empty situations are allowed. Recovery uses frozen sources, workspace, and mode; actual workspace version changes still invalidate older jobs. Older snapshots without a mode retain their original contract. Material selection still preserves complete source dependencies and the original conservative budgets, so a shorter schema alone does not establish that latency is solved.
 
-同步宿主新增可选 `AnswerReviewer`：原始草稿持久化后预留唯一核验调用，独立检查完整回答的来源、适用性和不确定性。服务端将许可绑定精确草稿、生成上下文和策略；未知、拒绝、失败和中断不放行，恢复不自动重新付费。核验后再次检查上下文，时间适用性变化也会阻止交付。它不修改原始记忆，也不自动改写答案；模型自报完整覆盖不能充当可证明的语义正确性。尚需评估错误拦截、正常回答误拒与新增延迟，不能把静默或拒绝率提高称为记忆质量提高。原五轮前台提供方耗时约 41–159 秒，是改造前的配置数据，不代表新路径已经变快。
+The synchronous host now has an optional `AnswerReviewer`. After persisting the original draft, it reserves a single verification call and independently checks the complete answer's sources, applicability, and uncertainty. The server binds permission to the exact draft, generation context, and policy. Unknown, rejected, failed, or interrupted reviews do not permit delivery, and recovery does not automatically pay for another call. Context is checked again after review; changes in temporal applicability can also block delivery. Review neither modifies original memories nor automatically rewrites answers. A model's claim of complete coverage is not provable semantic correctness. Error interception, false rejection of valid answers, and added latency still require evaluation; higher silence or rejection rates must not be described as better memory quality. Foreground provider time in the original five-turn run was roughly 41–159 seconds. Those are pre-change configuration measurements, not evidence that the new path is faster.
 
-前一批[回答核验与前台分工实测](../evaluations/deepseek-2026-10-24-answer-review.md)完成六个已知回归、一次在第三轮停止的链路及一次五轮补测，共 44 次调用、302,914 token。固定回归 6/6 符合预期；首次链路暴露“已记下”的承接/存储完成歧义，宿主协议 v3 明确无回执时不提前声明完成。唯一补测的五个回答符合来源并交付，但两个陈述回合仍被误标为请求，核验拒绝，完整流程只有 3/5 通过；后台偏好及替代关系正确发布。前台提供方耗时约 31–78 秒，分类可靠性和聊天延迟仍未解决。原失败不改写，该批结束时曾暂缓提交；后续工作及交付以按需路由报告为准。
+The previous [answer-review and foreground-work evaluation](../evaluations/deepseek-2026-10-24-answer-review.md) completed six known regressions, a chain that stopped on turn three, and a five-turn follow-up, totaling 44 calls and 302,914 tokens. The fixed regressions behaved as expected in 6/6 cases. The initial chain exposed ambiguity between conversational acknowledgment and completed storage in “I've noted that.” Host protocol v3 clarified that completion must not be claimed without a receipt. All five answers in the single follow-up were source-consistent and delivered, but two statement turns were still mislabeled as requests and rejected by verification, leaving only 3/5 complete-flow passes. Background preferences and supersession relations were published correctly. Foreground provider time was approximately 31–78 seconds; classification reliability and conversation latency remained unresolved. Original failures are unchanged. Committing was temporarily held at the end of that batch; subsequent work and delivery are documented in the on-demand routing report.
 
-目前仍是合成小样本诊断，没有长期运行、真实用户对话或一般化的最终回答质量结论。任务结束、合法 JSON、最终回答流畅，都不能替代学习效果验收。
+These remain synthetic small-sample diagnostics. There is no conclusion about long-term operation, real-user conversation, or generalized final-answer quality. Job completion, valid JSON, and fluent final answers cannot replace acceptance evaluation of learning outcomes.
 
-用户已允许为更长线的真实测试提高用量。后续先修复上述消费与前台职责问题，再完整重跑同步对话链路；另建冻结案例、指标与预算的长历史实验，不覆盖旧失败或重置旧账本。先做百轮历史，再根据发现扩大到千轮，覆盖相似经历干扰、间隔提醒、偏好变化与例外、模糊线索、错误预设、删除更正、重启及任务搁置恢复；模拟时间跨度与实际跨日运行分别报告。对照包括无记忆、滚动摘要和当前记忆内核，在相同宿主模型、上下文上限及总调用预算下比较；检索成功、无据回忆、适用性误用、背景学习、上下文开销、延迟及实际 token 用量独立计量。保留未参与调试的案例检验泛化，达到预设停止条件后先分析，不为追求通过而重复付费调用。这些是待执行的验证计划，当前小样本不能替代它们。
+The user has authorized increased usage for longer real-model tests. Further work should first repair the consumption and foreground-responsibility issues above, then rerun the complete synchronous conversation chain. A separate long-history experiment should freeze cases, metrics, and budgets without overwriting old failures or resetting old ledgers. Start with a hundred-turn history, then expand to a thousand turns based on findings. Cover interference among similar episodes, spaced reminders, preference changes and exceptions, vague cues, false presuppositions, corrections and deletion, restarts, and resumption of paused tasks. Report simulated timespans separately from actual operation across days. Controls include no memory, rolling summaries, and the current memory core under the same host model, context cap, and total-call budget. Meter retrieval success, unsupported recall, applicability misuse, background learning, context cost, latency, and actual tokens separately. Retain cases not used in debugging to test generalization. On reaching predefined stop conditions, analyze first rather than repeatedly paying to obtain a pass. These are pending evaluation plans; current small samples cannot substitute for them.
 
-百轮执行器现已具备冻结历史、统一付费账本、三组接线和归档隔离探针，但尚未完成真实长测。下一项工程前置是按数据库滑动窗口在整轮开始前预检认知额度：历史学习轮需要最多四次、393,216 输入字节的可用空间；不足时在创建 turn 和持有租约前保存等待状态，沿用原大脑、目录、历史和账本，等待自然到期。预检不能替代服务端最终预留。续跑只允许已提交回合边界或等待状态，未知费用、未确认交付、代码或计划变化都阻止继续；不能把半次完成的双阶段任务当作全新任务重付。上述等待和续跑尚未实现，现有 `--resume` 仍严格只读。
+The hundred-turn runner now has frozen history, a unified paid-call ledger, wiring for three groups, and archive-isolated probes, but a real long run has not been completed. The next engineering prerequisite is to preflight cognition budget against the database rolling window before starting a whole turn. A history-learning turn needs available capacity for up to four calls and 393,216 input bytes. If insufficient, save a waiting state before creating a turn or acquiring a lease, retain the same brain, directory, history, and ledger, and wait for natural expiration. Preflight cannot replace the server's final reservation. Continuation should be allowed only at committed turn boundaries or from a waiting state. Unknown costs, unconfirmed delivery, or changes to code or plan must block continuation. A partially completed two-stage task must not be charged again as a fresh task. This waiting and continuation behavior is not implemented; the existing `--resume` remains strictly read-only.
 
-长测前另冻结两轮真实历史、两个隔离探针的三组小对照，最多 38 次调用、352,256 个预留输出 token，先验证摘要来源、无记忆组隔离和跨重建恢复。当前 104 轮加六探针的三组预定合计上限为 1,192 次调用、11,493,376 个预留输出 token；相同公平上限不代表实际花费相同，闲置额度不得跨组挪用。执行期限也需冻结，不能通过改时间戳、换脑或放宽每小时限制加速完成。这些数额只是现有计划的资源上限，不是已消耗用量，也不保证这些测试可以覆盖真实长期质量。
+Before the long run, also freeze a small three-group comparison with two real history turns and two isolated probes, capped at 38 calls and 352,256 reserved output tokens, to verify summary provenance, no-memory-group isolation, and recovery across reconstruction. The currently planned three-group run of 104 turns plus six probes has an aggregate cap of 1,192 calls and 11,493,376 reserved output tokens. Equal fair caps do not imply equal actual spending, and unused allowance must not move between groups. The execution deadline must also be frozen. Completion cannot be accelerated by changing timestamps, switching brains, or relaxing hourly limits. These quantities are resource ceilings in the existing plan, not incurred usage, and do not guarantee coverage of actual long-term quality.
 
-紧凑表示与规划器接通后的实测进一步暴露两项选材限制：同一经历拆成多个小事实后，短衣着描述比长行动描述更容易达到词面比较阈值；中文来源生成英文命题后，中文线索可能只找到原文而漏掉对应语义认识。已增加每批至多一个弱词面探索位置，并实现从有词面命中的支持源片段到语义断言的有界桥接，版本、哈希、范围、作用域与完整依赖仍须有效；后续仍需按来源或经历改进比较粒度，并评估可选语义检索；需要覆盖跨语言、不同拆分粒度及不相关实例的反例测试，不能针对某个测试词语写特殊规则。当前固定比较目标和核验约束不等于解决了这些发现问题。
+Evaluation after connecting compact representation and the planner exposed two further material-selection limits. When one episode is split into small facts, short clothing descriptions more easily meet the lexical comparison threshold than longer action descriptions. When Chinese sources yield English propositions, Chinese cues may retrieve only the source and miss the corresponding semantic belief. Each batch now has at most one weak-lexical exploration slot, and a bounded bridge connects lexical hits on supporting source fragments to semantic assertions. Versions, hashes, access scope, operation scope, and complete dependencies must still be valid. Further work must improve comparison granularity by source or episode and evaluate optional semantic retrieval. Counterexample tests need to cover cross-language inputs, different splitting granularities, and unrelated instances, without special rules for a particular test word. Current fixed comparison targets and verification constraints do not solve these discovery problems.
 
-实施前的具体限制决定以下改造；对应的当前进展见上节：
+The specific pre-implementation limitations below motivated the proposed changes; their current progress is described above:
 
-- `LearningEngine._snapshot()` 主要读取同一会话最近 24 条来源，旧认识也要求来源包含于这个窗口，不能承担跨很远经历的归纳。
-- 条件与情境使用模型自由生成的键和值，缺少共同的语义定义；检索只过滤条件为假的候选，未知条件仍可能进入回答资料。
-- `dynamics.py` 主要依据表示类别、年龄和外部反馈计算访问权重，尚无独立的间隔、相似干扰与竞争机制。
-- `expand_schema_residual()` 原先只有纯函数展开检查。现已增加独立存储和读取链路，后续仍需真实语义抽象、长期学习质量和节省上下文的规模评估。
-- 自动宿主接入目前主要覆盖同步文本；工具循环、流式交付、消息编辑和压缩交接仍需完成。
+- `LearningEngine._snapshot()` primarily read the latest 24 sources in one conversation, with older beliefs also required to have sources inside that window. It could not support generalization across distant episodes.
+- Conditions and situations used model-generated free-form keys and values without shared semantic definitions. Retrieval filtered only candidates whose conditions were false, allowing unknown conditions into answer material.
+- `dynamics.py` mainly calculates access weights from representation type, age, and external feedback. It still lacks separate spacing, similarity-interference, and competition mechanisms.
+- `expand_schema_residual()` originally had only pure-function expansion checks. Independent storage and read paths have now been added, but actual semantic abstraction, long-term learning quality, and context savings at scale still require evaluation.
+- Automatic host integration currently mainly covers synchronous text. Tool loops, streaming delivery, message edits, and compaction handoff remain incomplete.
 
-## 一套内核，两种学习速度，多个时间尺度
+## One core, two learning speeds, multiple timescales
 
-保持模块化服务、独立 worker 与 PostgreSQL 作为权威存储。经历、命题、关系和动态状态共享版本与权限体系；向量和搜索索引属于可重建视图，不另外成为事实来源。没有证据证明必须拆分微服务或引入独立图数据库时，沿用现有部署方式。
+Retain the modular service, independent worker, and PostgreSQL as authoritative storage. Episodes, propositions, relations, and dynamic state share versioning and permissions. Vector and search indexes are rebuildable views, not additional sources of fact. Keep the current deployment unless evidence establishes a need for separate microservices or a dedicated graph database.
 
 ```mermaid
 flowchart TD
-  A[真实输入、交付和工具结果] --> B[持久捕获与语义编码]
-  B --> C[当前情境与有限工作区]
-  B --> D[可区分的经历与来源]
-  C --> E[按目标和线索回忆]
+  A[Actual inputs, deliveries, and tool results] --> B[Persistent capture and semantic encoding]
+  B --> C[Current situation and bounded working context]
+  B --> D[Distinct episodes and sources]
+  C --> E[Goal- and cue-driven recall]
   D --> E
-  F[长期认识、方法与未完事项] --> E
-  E --> G[核对适用条件并组装上下文]
-  G --> H[宿主模型回应或行动]
-  H --> I[真实交付、反馈和结果]
+  F[Long-term beliefs, procedures, and unfinished items] --> E
+  E --> G[Check applicability and assemble context]
+  G --> H[Host model response or action]
+  H --> I[Actual delivery, feedback, and outcomes]
   I --> B
-  D --> J[有预算的巩固与局部更新]
+  D --> J[Budgeted consolidation and local updates]
   I --> J
   J --> F
   J --> D
 ```
 
-快速路径保证当前发生的事可立即使用，慢速路径比较不同经历、保留反例并形成可复用认识。快慢描述处理方式，不把所有语义记忆强制变成慢学习：明确表达的偏好可以单次建立；从多次经历推导的一般规律需要额外依据。
+The fast path makes current events immediately usable; the slow path compares episodes, retains counterexamples, and forms reusable beliefs. Fast and slow describe processing modes rather than forcing all semantic memory to learn slowly. An explicitly expressed preference can form from one statement, while a general rule inferred from multiple experiences requires additional support.
 
-## 共同语义表示
+## Shared semantic representation
 
-记忆的最小单元采用带上下文的命题，而非孤立关键词。保留说话人、主体、关系、对象、否定、表达性质、现实或假设世界、有效时间和证据定位。关键词与向量只能帮助找到命题，不能自行证明关系成立。
+The smallest memory unit is a contextualized proposition, not an isolated keyword. Preserve speaker, subject, relation, object, negation, statement type, actual or hypothetical world, valid time, and evidence location. Keywords and vectors help find propositions but cannot establish relations themselves.
 
-在现有断言与工作状态上增加以下逻辑对象，具体 SQL 表与索引由契约和访问模式确定：
+Add the following logical objects to existing assertions and working state. Contracts and access patterns determine the actual SQL tables and indexes:
 
-| 对象 | 必须表达的内容 |
+| Object | Required information |
 | --- | --- |
-| PredicateDefinition | 稳定概念 ID、命名空间、类型、值域、适用主体、版本和别名 |
-| MemoryClaim | 主体、谓词、值、否定、条件、有效时间、来源和表达性质 |
-| ContextObservation | 当下情境值、来源、适用主体、有效范围及直接报告或推断状态 |
-| Episode | 经历身份、参与者、目标、时间范围、成员版本与可修订边界 |
-| MemoryRelation | 有类型的关联、方向、适用范围、证据与版本 |
-| MemoryDynamics | 稳定程度、访问历史、使用价值、干扰统计和策略版本 |
-| LearningOutcome | 处理覆盖、产物、拒绝或无变化原因、未完成部分与消耗 |
+| PredicateDefinition | Stable concept ID, namespace, type, value domain, applicable subject, version, and aliases |
+| MemoryClaim | Subject, predicate, value, negation, conditions, valid time, sources, and statement type |
+| ContextObservation | Current situation value, source, applicable subject, valid scope, and direct-report or inference status |
+| Episode | Episode identity, participants, goal, time range, member versions, and revisable boundaries |
+| MemoryRelation | Typed association, direction, applicable scope, evidence, and version |
+| MemoryDynamics | Stability, access history, utility, interference statistics, and policy version |
+| LearningOutcome | Processing coverage, outputs, rejection or no-change reasons, incomplete portions, and resource use |
 
-谓词与情境必须使用同一个版本化概念注册表。核心类型覆盖人物、活动、任务、时间、关系、需求和结果；领域扩展有独立命名空间。模型可以提出新概念，但不能靠字符串相近自动合并不同主体、含义或类型。不能归一化时保留未知和原文，不退回无条件适用。
+Predicates and situations must use the same versioned concept registry. Core types cover people, activities, tasks, time, relationships, needs, and outcomes; domain extensions have separate namespaces. Models may propose new concepts but cannot merge different subjects, meanings, or types based on string similarity. Failed normalization preserves uncertainty and original text rather than falling back to unconditional applicability.
 
-新谓词默认开放世界，显式定义单值或多值及互斥约束。“在工作”不能自动否定“在备考”；没有记录疲劳不等于明确不累。只有明确否定或已声明且满足的互斥约束，才能得到条件不成立。条件、主体、时间和例外指向分别绑定证据；解析“这个例外”时同时保留它所指前文的依赖。
+New predicates use an open-world assumption by default, with explicit single-value or multivalue definitions and exclusivity constraints. “Working” does not automatically negate “preparing for exams,” and no record of fatigue does not mean explicitly not tired. A condition can be deemed false only through explicit negation or a declared and satisfied exclusivity constraint. Conditions, subjects, time, and exception targets bind evidence separately. Resolving “this exception” must retain dependencies on the earlier text it refers to.
 
-编码请求向模型提供稳定的片段引用。模型选择引用并提出命题，程序生成精确版本、原文跨度与哈希，减少模型复制长 ID、数中文字符造成的失败。确定性检查负责结构、范围与引用合法性；语义支持仍需核验，不能因引用存在就判为正确。
+Encoding requests provide stable fragment references to the model. The model selects references and proposes propositions; code generates exact versions, source spans, and hashes, reducing failures from copying long IDs or counting Chinese characters. Deterministic checks validate structure, scope, and reference legality. Semantic support still requires verification; an existing citation is not automatically correct.
 
-条件不能自证。“备考时喜欢先聊天”只支持条件偏好，不支持“用户现在正在备考”。不得从待采用的规则、助手复述或内部回放反向生成让规则成立的情境事实；情境观察必须有独立于这次规则应用的来源依据。
+Conditions cannot establish themselves. “Prefers chatting first when preparing for exams” supports a conditional preference, not “the user is currently preparing for exams.” The rule being considered, an assistant restatement, or internal replay must not generate the situation facts that make that rule applicable. Situation observations require sources independent of the current rule application.
 
-## 条件、时间与变化
+## Conditions, time, and change
 
-分别判断“这条记忆可以被回想”与“这条认识现在可以采用”。候选可能与问题有关，但条件未知时不得当作当前有效偏好或执行依据。上下文包显式区分适用认识、待确认候选、冲突及历史资料。
+Judge separately whether a memory can be recalled and whether a belief can be used now. A candidate may be relevant to a question, but an unknown condition must prevent treating it as a currently valid preference or basis for action. Context packets explicitly distinguish applicable beliefs, candidates awaiting confirmation, conflicts, and historical material.
 
-条件表达式保留 `true / false / unknown` 三值语义；同一条件存在相互冲突的有效来源时，另行返回冲突状态，不能用未知或假悄悄掩盖。条件缺失不能转换为 false；无条件 `always` 只能来自明确表达或经核验的解释，不能作为模型漏写条件的默认值。
+Condition expressions retain three-valued `true / false / unknown` semantics. Conflicting valid sources for the same condition produce a separate conflict state rather than being silently hidden as unknown or false. A missing condition cannot become false. Unconditional `always` must come from explicit expression or a verified interpretation, not serve as the default for a condition omitted by the model.
 
-贯穿例子：
+Running example:
 
 ```text
-长期偏好
-  主体：用户甲
-  条件：活动为备考，且时段为晚上
-  内容：先聊十分钟，再安排复习
+Long-term preference
+  Subject: user A
+  Condition: preparing for exams, in the evening
+  Content: chat for ten minutes, then plan revision
 
-临时例外
-  主体：用户甲
-  关系：在限定范围内覆盖上述偏好
-  范围：来源明确指向的今天
-  内容：今天不复习，只安静聊天
+Temporary exception
+  Subject: user A
+  Relation: overrides the preference within a limited scope
+  Scope: today, as explicitly anchored by the source
+  Content: no revision today, only quiet conversation
 
-后续变化
-  内容：从下周开始先复习再聊天
-  关系：从明确生效时间起替代旧安排
+Later change
+  Content: starting next week, revise before chatting
+  Relation: supersedes the previous arrangement from an explicit effective time
 ```
 
-今天的例外不改写长期偏好；过了今天，它退出当前应用，仍可作为历史经历。未来偏好生效后，旧偏好仍能用于回答“以前怎么安排”。日期按来源时间、时区和原话解析；无法确定“今天”指向哪一天时保持未解析，不能无限续期。
+Today's exception does not overwrite the long-term preference. After today, it stops applying but remains historical experience. Once the future preference takes effect, the old preference can still answer “What did we used to do?” Dates are interpreted from source time, timezone, and original wording. If the day meant by “today” cannot be determined, it remains unresolved rather than being extended indefinitely.
 
-时间模型区分系统观察时间、所述事件发生时间和认识适用时间。适用时间支持明确区间、带时区的重复规则、带来源锚点的相对表达以及未解析状态；端点的未知与无界不能都用 `null` 表示。导入旧聊天不能把导入日期当作原话的今天，当地日界也不能固定按 24 小时计算。事实适用期结束、当前状态过旧和记忆可达性下降采用不同状态，不共用一个 TTL。
+The temporal model distinguishes system observation time, the described event's occurrence time, and belief validity. Validity supports explicit intervals, timezone-aware recurrence rules, relative expressions with source anchors, and unresolved states. Unknown and unbounded endpoints must not both be represented by `null`. Importing an old conversation must not treat the import date as “today” in its original wording, and local day boundaries cannot always be calculated as 24 hours. Expired factual applicability, stale current state, and reduced memory accessibility use different states rather than sharing one TTL.
 
-三类变化采用不同操作：临时例外由 `exception` 表达；真实习惯变化由带明确绝对起点的 `supersedes` 表达；承认过去说错或来源被更正时才撤回相应结论。现有更正路径会失效相关谱系，不能直接用它表示所有习惯变化。`contradicts` 保留未解决冲突，不简单采用最后一句。关系与新认识的适用条件都明确成立时，才使旧规则退出当前采用；关系过期后重新评估旧规则。关系查找最多 32 条边、128 个认识版本、256 条来源和八层父依赖，超限不能伪装为没有关系。
+Three kinds of change use different operations. Temporary exceptions use `exception`; actual habit changes use `supersedes` with an explicit absolute start. Conclusions are retracted when a past statement is acknowledged as wrong or its source is corrected. The existing correction path invalidates related lineage and cannot directly represent every habit change. `contradicts` preserves unresolved conflicts instead of simply adopting the latest statement. The old rule leaves current use only when both the relation and new belief are explicitly applicable. The old rule is reassessed when the relation expires. Relation lookup is capped at 32 edges, 128 belief versions, 256 sources, and eight parent-dependency levels; exceeding a cap must not masquerade as absence of a relation.
 
-当前明确请求在其授权范围内优先于推断出的长期交流习惯。认识和程序性记忆都不能提升宿主权限或自动授权外部行动。
+An explicit current request takes precedence over inferred long-term conversational habits within its authorized scope. Neither beliefs nor procedural memories can elevate host permissions or automatically authorize external actions.
 
-## 有限工作区与待恢复状态
+## Bounded working context and resumable state
 
-当前工作区保存本轮目标、人物指代、必要约束、活跃证据、未决问题和工具状态。暂时搁置的任务保存恢复线索、进度、来源版本与有效期，退出当前 token 空间；再次出现相关线索时先核对有效性再恢复。
+The current working context holds the turn's goals, person references, necessary constraints, active evidence, unresolved questions, and tool state. Paused tasks retain resumption cues, progress, source versions, and validity outside the active token space. Relevant cues trigger validity checks before restoration.
 
-工作区由任务边界和依赖组织，不仅按“最近六条消息”截取。必要的工具调用与结果配对、否定、取消信息和当前任务约束不能被普通闲聊挤掉。容量不足时减少不相关资料或返回部分状态，不能截断到改变含义。
+Working context is organized by task boundaries and dependencies, not merely clipped to the latest six messages. Necessary tool-call/result pairs, negations, cancellations, and current-task constraints must not be displaced by ordinary conversation. When capacity is insufficient, reduce unrelated material or return partial state rather than truncating content in a way that changes its meaning.
 
-前台按输入变化决定是否需要模型解释。已有情境仍有效、指代明确时复用经过版本检查的状态；出现新目标、歧义、矛盾或重要缺口时再触发理解与回忆。不把每一轮固定变成多次完整提议和核验。
+The foreground path decides whether model interpretation is needed from changes in input. When existing situation state remains valid and references are clear, reuse version-checked state. New goals, ambiguities, contradictions, or important gaps trigger understanding and recall. Do not turn every turn into a fixed sequence of multiple complete proposals and verifications.
 
-当前输入可以改变情境、提供新信息和触发回忆；其问题预设不能证明提问之前发生过某件事。用户讲述的童年经历记录为“用户报告的过去”，不会变成 Agent 亲历的童年。
+The current input can change the situation, supply information, and trigger recall. Its question presuppositions cannot prove something happened before the question. A user's childhood account is stored as a user-reported past, not as the agent's own childhood experience.
 
-## 经历组织与差异保留
+## Episode organization and preserving differences
 
-按目标、人物、场景、时间和实际结果的变化提出经历边界。边界允许重叠、嵌套和修订；捕获输入不等待边界确定。相似度用于发现关系，不能把两次相似经历合成同一件事。只有稳定来源 ID 等身份依据可以直接去重。
+Propose episode boundaries from changes in goals, people, setting, time, and actual outcomes. Boundaries may overlap, nest, and change. Input capture does not wait for boundary decisions. Similarity discovers relations but cannot merge two similar experiences into one event. Only identity evidence such as stable source IDs can directly deduplicate them.
 
-同一经历可以有语义锚点、经历轮廓、重要片段与原文引用。不同表示共享命题来源，并显式保留各自没有覆盖的细节。一个重要的具体画面可以长期可达；概括不是必然比细节更重要。
+An episode may have semantic anchors, an outline, important fragments, and source-text references. Different representations share proposition provenance and explicitly retain which details they do not cover. An important concrete scene may remain accessible for a long time; a generalization is not necessarily more important than a detail.
 
-跨经历形成图式时，保留共同模式与每次经历的差异。例如多次复习可以共享“先交流后规划”的程序，但某天取消、人物不同、结果失败，必须留在对应实例中。展开只能恢复该实例有来源的内容，不能用图式的常见部分补造未观察到的细节。
+Schemas formed across episodes retain shared patterns and each instance's differences. For example, several study sessions may share a “talk first, then plan” procedure, while a cancellation, different participant, or failed outcome must remain in the relevant instance. Expansion may recover only source-backed content of that instance, never fill unobserved details from typical schema components.
 
-情绪只以明确表达或带不确定性的推断记录，可帮助选择情境、编码重要性和回忆线索。它不直接证明事实，不自动形成永久性格标签，也不等于提高今后每轮的披露优先级。
+Emotion is recorded only as explicit expression or an inference with uncertainty. It can help select situations, encode importance, and provide recall cues. It does not directly establish facts, automatically create permanent personality labels, or permanently raise disclosure priority on every subsequent turn.
 
-## 跨经历巩固与有选择的回放
+## Cross-episode consolidation and selective replay
 
-将“最近窗口整理”改为受预算限制的相关证据采样。任务从新增来源、目标变化、方法失败、反例或更正触发，选取同主体与同概念的相关旧经历、代表性支持和反对实例。最近窗口仍提供局部语境，但不再是唯一证据范围。
+Replace recent-window summarization with budgeted sampling of relevant evidence. Jobs are triggered by new sources, changed goals, failed procedures, counterexamples, or corrections. They select relevant earlier episodes for the same subject and concept, along with representative supporting and opposing instances. The recent window still provides local context but is no longer the sole evidence boundary.
 
-为来源维护编码与巩固水位、待处理原因和游标，避免较旧事件因滑出窗口而永久漏处理。超过一次任务预算的簇分批处理，持久记录未覆盖范围；不得在缺少反例或父来源时发布声称完整的概括。
+Maintain encoding and consolidation watermarks, pending reasons, and cursors for sources so older events are not permanently missed after leaving the window. Process clusters exceeding one job's budget in batches and persist uncovered ranges. Do not publish supposedly complete generalizations while counterexamples or parent sources are missing.
 
-慢速学习比较多个独立经历，提出规律、适用边界、方法和例外。相同来源的复述、重复消息、摘要与摘要的摘要属于同一证据谱系，不计为独立重复观察。直接报告、推断规律、实际工具结果保持不同证据资格。
+Slow learning compares independent episodes and proposes rules, applicability boundaries, procedures, and exceptions. Restatements of the same source, duplicate messages, summaries, and summaries of summaries share one evidence lineage and do not count as independent observations. Direct reports, inferred rules, and actual tool results retain distinct evidentiary eligibility.
 
-后台调度考虑当前与待恢复目标、可能改变后续判断的矛盾、用户明确的重要性、未完约定、来源新颖性和处理成本。采用局部候选索引和有限探索，不要求先全量理解历史才能计算优先级。没有变化时不反复调用模型重新总结。
+Background scheduling considers current and resumable goals, contradictions that could change later judgments, user-declared importance, unfinished commitments, source novelty, and processing cost. Use local candidate indexes and limited exploration rather than requiring complete historical understanding before calculating priority. Do not repeatedly call models to resummarize unchanged material.
 
-把执行状态与学习结果分开。合法的无变化包括“已有等价认识”“无可泛化内容”“需要更多证据”；空提议但无法解释覆盖情况不能计为成功学习。模型给出的无变化理由也是待检查的结果。无依据内容不能为了提高产出率被强行写入。
+Separate execution status from learning outcome. Valid no-change results include “an equivalent belief already exists,” “nothing generalizable,” and “more evidence needed.” Empty proposals without an account of coverage do not count as successful learning. A model's no-change reason also requires checking. Unsupported content must not be forced into memory to raise output rates.
 
-每次发布使用来源快照、精确父版本和依赖代际检查。更正或删除先阻断旧派生结论的后续使用，再异步重建。模型请求继续放在数据库事务之外；重建不得绕过现有隔离、幂等与删除约束。
+Every publication uses source snapshots, exact parent versions, and dependency-generation checks. Corrections and deletions first block further use of old derived conclusions, then rebuild asynchronously. Model requests remain outside database transactions. Rebuilding must not bypass existing isolation, idempotency, or deletion constraints.
 
-快照还必须冻结概念定义、情境帧、时间锚点与解析配置、覆盖关系的版本。缓存、生成、发布和恢复都验证这些依赖。来源文字没有改变，不代表其概念映射或当下适用性没有改变；不能只检查旧有事件哈希。
+Snapshots must also freeze concept definitions, situation frames, temporal anchors and parsing configuration, and overriding-relation versions. Caching, generation, publication, and recovery validate these dependencies. Unchanged source text does not imply unchanged concept mapping or current applicability; checking only existing event hashes is insufficient.
 
-## 可达性、稳定程度与遗忘
+## Accessibility, stability, and forgetting
 
-将以下维度分开维护，不压成一个重要性分数：
+Maintain these dimensions separately rather than collapsing them into one importance score:
 
-- 稳定程度：这份表示在时间和干扰中保持可用的工程状态。
-- 当前可达性：在此目标、线索和竞争候选下，能否被选入工作区。
-- 使用价值：这条记忆是否帮助了实际任务或满足明确需求。
-- 证据状态：来源性质、版本、支持、反例和冲突。
-- 适用范围：人物、条件、世界类型和有效时间。
-- 细节可用性：原文、片段和索引目前是否仍存在且可访问。
+- Stability: the engineering state of a representation's continued usability under time and interference.
+- Current accessibility: whether it can enter working context given the goal, cues, and competing candidates.
+- Utility: whether the memory helped an actual task or met an explicit need.
+- Evidence state: source type, versions, support, counterexamples, and conflict.
+- Applicability scope: people, conditions, world type, and valid time.
+- Detail availability: whether source text, fragments, and indexes still exist and can be accessed.
 
-在现有时间衰减基础上，增加间隔使用、情境变化与相似记忆干扰的可观测历史。初始规则保持可解释与可替换；固定半衰期不标为人脑参数，也不预先宣称某种曲线最优。参数通过独立校准集选择，策略版本随结果记录。
+Extend current time decay with observable histories of spaced use, situation changes, and interference from similar memories. Initial rules should remain interpretable and replaceable. Fixed half-lives must not be labeled human-brain parameters, and no curve should be declared optimal in advance. Select parameters on an independent calibration set and record the policy version with results.
 
-真实场景中有来源的使用和外部结果可以影响稳定程度、维护间隔或用途估计；确认同一来源不等于确认世界事实。内部检索可临时激活工作区和索引缓存，默认不增加长期证据支持或靠循环自读无限延长保留。回放、回答引用、用户确认和工具结果分开计数并去重。
+Source-backed use and external outcomes in real situations may influence stability, maintenance intervals, or utility estimates. Confirming the same source is not independent confirmation of a fact about the world. Internal retrieval may temporarily activate working context and index caches, but by default adds no long-term evidentiary support and cannot indefinitely prolong retention through repeated self-reading. Replay, answer citations, user confirmations, and tool results are counted separately and deduplicated.
 
-相似经历增加检索竞争时，优先利用时间、人物与独特细节区分，而不是强行删除一个竞争候选。旧细节可以退出日常索引或工作区，明确线索仍可直接访问深层来源，不要求先命中一个可能遗漏它的概括。
+When similar episodes increase retrieval competition, first distinguish them through time, participants, and unique details rather than forcibly deleting a competitor. Old details may leave routine indexes or working context, while explicit cues can still directly access deeper sources without first matching a generalization that may omit them.
 
-认知淡出、索引降级和实际删除继续分离。默认不自动删除用户来源；永久保留依赖存储与备份政策，不能由访问衰减保证。真正删除后，概括、向量、关联、缓存和恢复档案不能继续重建被删除内容。
+Cognitive fading, index demotion, and actual deletion remain separate. User sources are not automatically deleted by default. Permanent retention depends on storage and backup policies, not access decay. After actual deletion, generalizations, vectors, relations, caches, and recovery archives must not reconstruct deleted content.
 
-## 线索回忆与重建
+## Cue-driven recall and reconstruction
 
-回忆流程按需执行：理解缺口，限定权限和历史截止点，组合关键词、语义、实体、时间与事件候选，沿有类型的关系有限展开，核对来源和适用条件，最后选择最小充分证据。
+Recall proceeds on demand: identify the gap, constrain permissions and the historical cutoff, combine lexical, semantic, entity, temporal, and event candidates, expand within bounds along typed relations, verify sources and applicability, and select the smallest sufficient evidence set.
 
-必须同时查找所选认识的相关否定、取消、临时例外和后续变化。它们是解释该认识所需的信息，不应仅因词面匹配较低被排在预算之外。容量不足时明确不能确认当前适用性，不能只留下更简短的错误结论。
+Relevant negations, cancellations, temporary exceptions, and later changes to a selected belief must be searched together. They are necessary to interpret that belief and must not fall outside the budget merely because of lower lexical similarity. Insufficient capacity must explicitly leave current applicability unconfirmed rather than retaining only a shorter, incorrect conclusion.
 
-适用性使用问题指向的目标情境与时间。现在不备考，可以阻止采用备考偏好，但不能因此过滤“我备考时喜欢什么”的历史回答。每次判断保留所用情境来源、已满足和未解决条件以及生效例外，便于审计，无需保存模型的隐藏推理。
+Applicability uses the target situation and time indicated by the question. Not currently preparing for exams may prevent applying an exam-preparation preference, but must not filter the historical answer to “What did I like while preparing for exams?” Each judgment retains situation sources, satisfied and unresolved conditions, and effective exceptions for audit without storing hidden model reasoning.
 
-当前行动、历史查询和未来计划显式携带不同的目标情境与判断时点。未来条件尚未发生时，只能形成条件计划，不能当作已经满足的情境或已经完成的经历。
+Current actions, historical queries, and future plans explicitly carry different target situations and evaluation times. Future conditions that have not occurred support only conditional plans, not situations already established or episodes already completed.
 
-回忆材料可分为当前适用、历史相关、需要确认、相互冲突和来源不足。继续搜索依据新增证据和候选区分能力；重复相同查询没有新增信息时停止。找不到、处理故障、预算停止和已删除分别报告，不能统称失忆，也不能把 no_match 当作事件不存在。
+Recall material can be classified as currently applicable, historically relevant, requiring confirmation, conflicting, or insufficiently sourced. Continued search depends on new evidence and the ability to distinguish candidates. Stop when repeating a query yields no new information. Report no match, processing failure, budget stop, and deletion separately rather than labeling them all forgetting. `no_match` is not proof that an event did not occur.
 
-唤回成功只计算提示之外、由提问前来源支持的新增细节。例如“那棵银杏树”可以帮助找回校名，但不能把提示中的银杏树本身当作系统已经记起的证据。重建允许重新组织表达，不允许添加典型但无来源的场景细节。
+Successful cue-driven recovery counts only new details absent from the prompt and supported by sources preceding the question. For example, “that ginkgo tree” may help recover a school name, but the ginkgo tree supplied in the cue cannot itself count as evidence of system recall. Reconstruction may reorganize wording but cannot add typical, unsourced scene details.
 
-遇到可靠的新证据、解释冲突或方法失效时，定向重评受影响的认识，并生成新版本。回忆本身不自动改写过去，也不把新解释覆盖成唯一历史。
+Reliable new evidence, conflicting interpretations, or failed procedures trigger targeted reassessment and new versions of affected beliefs. Recall itself does not automatically rewrite the past or replace history with a single new interpretation.
 
-## 方法、未完事项与长期连续性
+## Procedures, unfinished items, and long-term continuity
 
-程序性记忆记录目标、前置条件、步骤、环境版本、成功与失败结果、退出条件。仅说“这办法应该有效”不能形成已验证方法；环境变化或新失败触发适用性复核。
+Procedural memory records goals, preconditions, steps, environment versions, successful and failed outcomes, and exit conditions. Saying “this method should work” does not establish a verified procedure. Environment changes and new failures trigger applicability review.
 
-前瞻记忆记录约定、触发条件、截止时间与未完成状态。到期和取消都要能改变当前行为；少被提起不意味着承诺自动失效。它向宿主提出提醒或处理需求，外部调度和行动仍由宿主授权机制执行。
+Prospective memory records commitments, trigger conditions, deadlines, and incomplete status. Expiration and cancellation must affect current behavior; infrequent mention does not automatically invalidate a commitment. It proposes reminders or processing needs to the host, while external scheduling and action remain governed by host authorization.
 
-稳定身份、关系和能力认识也使用同一来源与更新规则。跨模型恢复保留这些可核对状态，交流风格与具体模型能力另行测试；不通过无证据生成固定人格标签制造连续性。
+Stable identity, relationships, and capability beliefs use the same source and update rules. Recovery across models preserves these verifiable states. Conversational style and specific model capabilities are tested separately. Continuity must not be manufactured by inventing fixed personality labels without evidence.
 
-## 接入、预算与观测
+## Integration, budgets, and observability
 
-完整适配器要提供真实消息及编辑、工具结果、每次相关推理前的上下文控制、交付和取消、压缩前 checkpoint、恢复与分支身份。记忆工具禁用时，自动生命周期仍应工作。纯 MCP 或仅替换 API URL 的接入按实际能力降级，不能标为完整接入。
+A complete adapter must provide actual messages and edits, tool results, context control before each relevant reasoning step, delivery and cancellation, pre-compaction checkpoints, recovery, and branch identities. The automatic lifecycle must still work when memory tools are disabled. Pure MCP integration or merely replacing an API URL must report reduced capabilities rather than claim complete integration.
 
-模型适配层显式声明 JSON 能力、思考配置、输入与输出 token 上限、超时和响应大小。修正 token 与字节配置混用的接口表达；输出截断、结构非法、无有效提议、核验失败分别记录。修复请求只在明确预算内进行，不反复重试直到得到想要的答案。
+The model adapter explicitly declares JSON support, thinking configuration, input/output token limits, timeouts, and response sizes. Correct interfaces that conflate tokens with bytes. Record output truncation, invalid structures, lack of valid proposals, and verification failure separately. Repair requests must remain within explicit budgets rather than retrying until the desired answer appears.
 
-前台与后台共享可追踪的成本账，分别保留调用预留、提供方返回的实际用量及未知费用。独立回忆控制器和宿主主模型也需要适配器上报，未能覆盖时明确计费范围。硬调用和上下文上限可直接执行，金额限制只在价格与用量信息足够时提供保证。
+Foreground and background work share a traceable cost ledger that separately retains call reservations, actual usage returned by providers, and unknown costs. Adapters must also report independent recall-controller and host-main-model calls; otherwise, explicitly state the billing coverage. Hard call and context caps can be enforced directly. Monetary limits can be guaranteed only when pricing and usage information are sufficient.
 
-观测接口增加学习有效产出、语义覆盖与积压、条件未解析或冲突、旧来源采样、重复查询无收益、证据失效、细节展开和降级原因。每项能关联策略及来源版本；默认只记录标识和统计，不复制聊天正文、凭据或隐藏推理。
+Observability interfaces add effective learning output, semantic coverage and backlog, unresolved or conflicting conditions, sampling of older sources, repeated queries without benefit, evidence invalidation, detail expansion, and reasons for degradation. Each can be associated with policy and source versions. By default, record identifiers and statistics without copying conversation bodies, credentials, or hidden reasoning.
 
-## 在现有程序中的实施依赖
+## Implementation dependencies in the existing codebase
 
-下列顺序按依赖组织，不代表可以把前半部分宣称为完整产品。评估夹具与结果记录贯穿全部工作。
+The sequence below follows dependencies; completing its first portion does not constitute a complete product. Evaluation fixtures and result records accompany every step.
 
-| 工作 | 主要落点 | 完成证据 |
+| Work | Main implementation locations | Completion evidence |
 | --- | --- | --- |
-| 语义类型、条件和时间契约 | 新增语义定义与情境模块；扩展契约、`semantic.py`、`cognition.py` | 同一谓词跨阶段一致；未知不当作适用；例外与习惯变化分开 |
-| 有效编码与当前工作区 | `semantic.py`、`learning.py`、`runtime.py` | 引用由程序生成；空结果可分类；暂停恢复与过期处理正确 |
-| 跨经历选材与慢速学习 | `learning.py`、`consolidation.py`、持久任务与索引 | 相隔很久的支持及反例都能参与；旧事件不因窗口滑动漏处理 |
-| 事件差异、图式和局部更新 | 经历、关联表与派生视图 | 相似事件不混同；概括保留差异；新证据只更新相关认识 |
-| 动态可达性和线索展开 | `dynamics.py`、`retrieval.py`、`recall_control.py` | 明确线索带来真实新增细节；时间、干扰和间隔分别可测 |
-| 通用宿主生命周期与成本 | Python runtime、TypeScript SDK、适配器及监控 | 无记忆工具仍自动工作；流式、工具循环、压缩与恢复通过契约 |
+| Semantic types, conditions, and temporal contracts | New semantic-definition and situation modules; extended contracts, `semantic.py`, `cognition.py` | The same predicate stays consistent across stages; unknown is not treated as applicable; exceptions and habit changes remain separate |
+| Effective encoding and current working context | `semantic.py`, `learning.py`, `runtime.py` | Code generates references; empty results are classifiable; pause/resume and expiration behave correctly |
+| Cross-episode selection and slow learning | `learning.py`, `consolidation.py`, persistent jobs and indexes | Distant support and counterexamples both participate; window movement does not omit older events |
+| Event differences, schemas, and local updates | Episode and association tables and derived views | Similar events remain distinct; generalizations preserve differences; new evidence updates only affected beliefs |
+| Dynamic accessibility and cue-based expansion | `dynamics.py`, `retrieval.py`, `recall_control.py` | Explicit cues recover genuinely new details; time, interference, and spacing are separately measurable |
+| General host lifecycle and cost | Python runtime, TypeScript SDK, adapters, and monitoring | Automatic operation without memory tools; streaming, tool loops, compaction, and recovery satisfy the contract |
 
-数据库改动采用新增字段和版本化对象的方式。旧来源保留原 ID 和修订号；旧断言先保持历史可检索，不因旧 `always` 或缺少字段就升级为当前可采用的结论。建立需要重新解释的队列，在预算内逐步重建；不全量即时调用付费模型。
+Database changes use additive fields and versioned objects. Older sources retain their original IDs and revision numbers. Older assertions initially remain historically retrievable; legacy `always` or missing fields do not upgrade them into currently usable conclusions. Queue records needing reinterpretation and rebuild incrementally within budgets rather than immediately calling paid models over the entire history.
 
-新概念、别名、关系、时间锚点和当前情境也纳入来源依赖、归档及删除传播，不能把用户内容提炼成无法删除的永久元数据。协议通过语义版本与能力声明兼容客户端；旧客户端不能静默丢掉新条件或未知状态，无法表达时使用明确降级结果。
+New concepts, aliases, relations, temporal anchors, and current situations also participate in source dependencies, archives, and deletion propagation. User content must not be distilled into permanent metadata that cannot be deleted. Semantic versioning and capability declarations support client compatibility. Older clients must not silently drop new conditions or unknown states; inability to represent them requires explicit degradation.
 
-新策略先在固定历史快照和隔离的派生视图上与旧策略比较，不写回正式反馈计数。切换按大脑与策略版本进行，可回退派生视图；删除世代、撤回事实和真实交付记录不能随策略回退而撤销。
+Compare new policies against old ones on fixed historical snapshots and isolated derived views without updating production feedback counters. Switch by brain and policy version, with rollback available for derived views. Deletion generations, retracted facts, and actual delivery records must not be undone by a policy rollback.
 
-## 行为验收
+## Behavioral acceptance
 
-建立独立真值账本，记录命题、原始来源、主体、时间、条件与允许的推断。账本不能由被测系统已经写出的记忆反过来充当。相同历史上的不同提示测试使用独立快照，避免上一道问题污染下一道的历史证据。
+Create an independent ground-truth ledger recording propositions, original sources, subjects, time, conditions, and permitted inferences. The system's own stored memories must not serve as that ledger. Different prompts on the same history use independent snapshots so one question cannot contaminate the next question's historical evidence.
 
-| 场景 | 必须观察的行为 |
+| Scenario | Required observed behavior |
 | --- | --- |
-| 备考偏好与今天例外 | 普通备考夜、例外当天、次日、考完后分别采用正确安排 |
-| 旧习惯与新习惯 | 分别回答以前和现在；正常变化不把旧经历判为从未发生 |
-| 条件自证与历史情境 | 条件偏好不证明当前条件成立；考完仍可回忆备考偏好，不将其直接应用于现在 |
-| 小学校名与银杏树 | 普通问题只取相关概括；增加真实线索后找回提示外的细节 |
-| 两次相似约定 | 相同人物和地点但不同日期、结果不混为一件事 |
-| 分散经历归纳 | 远隔窗口的支持与反例共同决定规律范围 |
-| 概括与差异恢复 | 保留否定、条件、人物、时间及例外；不补造典型细节 |
-| 暂停与恢复 | 恢复目标和未完成步骤，同时识别已取消或过期事项 |
-| 错误提示和重复附和 | 问句、助手复述和内部回放不伪造独立历史证据 |
-| 新证据与删除 | 失效认识不再进入新回答；档案恢复不复活删除内容 |
-| 自动接入 | 关闭页面、禁用记忆工具、重启及换模型后，状态仍可按能力恢复 |
+| Exam-preparation preference and today's exception | Correct arrangements on an ordinary exam-preparation evening, the exception day, the following day, and after exams |
+| Old and new habits | Separate answers for past and present; normal change does not imply that old episodes never happened |
+| Self-establishing conditions and historical situations | A conditional preference does not prove its condition currently holds; exam-preparation preferences remain recallable after exams without being applied to the present |
+| Primary-school name and ginkgo tree | Ordinary questions retrieve relevant generalizations; a real additional cue recovers details absent from the prompt |
+| Two similar commitments | The same people and place with different dates or outcomes do not become one event |
+| Generalization from dispersed episodes | Support and counterexamples far outside one window jointly determine a rule's scope |
+| Generalization and restoration of differences | Preserve negation, conditions, people, time, and exceptions without inventing typical details |
+| Pause and resume | Recover goals and unfinished steps while recognizing cancelled or expired items |
+| Misleading prompts and repeated agreement | Questions, assistant restatements, and internal replay do not fabricate independent historical evidence |
+| New evidence and deletion | Invalidated beliefs do not enter new answers; archive restoration does not resurrect deleted content |
+| Automatic integration | State can recover according to declared capabilities after closing the UI, disabling memory tools, restarting, or changing models |
 
-分别计量编码质量、条件适用、证据召回、回答使用、更新效果、接入行为和资源消耗。拒绝回答不能单独带来高分：同时报告有依据时的回答覆盖率与依据不足时的虚假回忆率。
+Measure encoding quality, condition applicability, evidence recall, answer consumption, update effects, integration behavior, and resource use separately. Refusal alone must not yield a high score. Report both answer coverage when evidence exists and false-recall rates when it does not.
 
-对照组包括最近窗口、滚动摘要加最近窗口、同来源过滤的常规 RAG、当前确定性路径，以及完整架构的逐模块消融。做相同最终上下文预算和相同总成本预算两种对比；总成本计入写入、核验、嵌入、后台、检索、回答和失败请求。
+Controls include a recent window, rolling summary plus recent window, conventional RAG with the same source filtering, the current deterministic path, and per-module ablations of the complete architecture. Compare both equal final-context budgets and equal total-cost budgets. Total cost includes writing, verification, embedding, background work, retrieval, answering, and failed requests.
 
-时间实验分别改变日历年龄、对话数量和相似干扰量。虚拟时钟验证过期与策略，不证明真实运行数年的质量；周/月持续运行单独报告。数据按整段历史划分训练、校准与隐藏测试集，先冻结评价规则再看结果。
+Temporal experiments vary calendar age, conversation count, and similarity interference independently. Virtual clocks test expiration and policies, not actual quality over years. Report sustained weekly/monthly operation separately. Split data into training, calibration, and hidden test sets by complete histories, and freeze evaluation rules before examining results.
 
-固定验收夹具要求权限越界、删除复活、未来信息泄漏、来源失效后发布、重复副作用及硬预算突破为零。语义质量使用独立样本与不确定性区间评价；半衰期、触发阈值、采样规模和模型调用策略均须校准，不能从脑科学论文直接抄取数值。
+Fixed acceptance fixtures require zero permission violations, resurrection of deleted content, future-information leakage, publication after source invalidation, duplicate side effects, and hard-budget overruns. Evaluate semantic quality on independent samples with uncertainty intervals. Half-lives, trigger thresholds, sampling sizes, and model-call policies all need calibration rather than direct numerical copying from neuroscience papers.
 
-本计划本身不触发新的付费模型评估，不新增自动 CI。实现后的真实模型试验使用预先固定的调用与费用预算；一般回归优先在本地运行。
+This plan itself does not trigger new paid-model evaluations or add automatic CI. Real-model experiments after implementation use predefined call and cost budgets; ordinary regressions run locally first.
 
-回复延迟的当前实现采用显式 `always` / `on_demand` 策略。按需路径依据本次检索的结构化依赖选择是否需要前台情境推理，保留条件、目标、未完成事项及不完整闭包的完整分析；跳过只表示不生成本轮派生情境，不冒充核验成功。准备与生成前在事务中重查依赖，避免后台发布新认识而版本号尚未变化的窗口。答案核验与异步学习各自保持独立；原始输入送达宿主不等价于即时形成 working goal。完整任务型记忆仍使用 `always`，不能把简单回忆的延迟改进外推到所有 Agent 任务。
+The current latency implementation uses explicit `always` / `on_demand` policies. On-demand routing uses structured dependencies from the current retrieval to decide whether foreground situation reasoning is needed. It retains full analysis for conditions, goals, unfinished items, and incomplete closures. Skipping means only that no derived situation is generated for the turn, not successful verification. Dependencies are rechecked transactionally before preparation and generation, covering the interval where background beliefs have been published but the version counter has not changed. Answer review and asynchronous learning remain independent. Delivering the original input to the host does not mean an immediate working goal has formed. Complete task-oriented memory still uses `always`; latency improvements for simple recall must not be extrapolated to every agent task.
 
-[按需路由实测](../evaluations/deepseek-2026-10-24-orientation-routing.md)的五个回答符合来源并交付，完整流程为 4/5；前台模型等待平均 20.88 秒，历史完整模式为 56.47 秒，属于历史前后比较。后台额外重建旧会话经历的提议被正确拒绝；已补齐版本化操作范围和学习输入标记，保留旧契约恢复、空文本处理与精确字节预算。基于原完整来源的两调用处理器补测通过，不等同于整条五轮链重新通过。最终本地 2,393 项 Python 回归通过；当前按需批次连同专项为 16 次真实调用、163,841 token，前一批 44 次用量另计。请求意图分类、回答核验延迟和长测前置仍需后续处理。
+The [on-demand routing evaluation](../evaluations/deepseek-2026-10-24-orientation-routing.md) delivered five source-consistent answers, with 4/5 complete-flow passes. Foreground model waiting averaged 20.88 seconds, compared with a historical full-mode average of 56.47 seconds; this is a historical before/after comparison. A background proposal to additionally reconstruct episodes from an older conversation was correctly rejected. Versioned operation scope and learning-input labels are now complete, while preserving recovery with the older contract, empty-text handling, and exact byte budgets. A two-call processor follow-up using the original complete sources passed, which is not equivalent to rerunning and passing the entire five-turn chain. The final local run passed 2,393 Python regressions. The on-demand batch plus its targeted follow-up used 16 actual calls and 163,841 tokens; the previous batch's 44 calls are separate. Request-intent classification, answer-review latency, and prerequisites for long runs still need work.
 
-## 后续研究：性格、情绪与记忆的相互作用
+## Future research: interactions among personality, emotion, and memory
 
-2026-10-24 用户明确的后续方向：先完善并验收第一版记忆库，再研究 Agent 的性格与情绪设定。此项是待研究范围，不代表已经选定架构、实现能力或启动论文调研；当前继续推进记忆内核、完整宿主接入与持续运行验证，不提前增加性格字段、情绪打分或新的模型调用。
+On 2026-10-24, the user set a future direction: first complete and validate the first memory-library version, then investigate agent personality and emotion settings. This is a research scope, not a selected architecture, implemented capability, or already-started literature review. Current work remains focused on the memory core, complete host integration, and sustained-operation validation, without prematurely adding personality fields, emotion scores, or model calls.
 
-后续研究首先区分三个对象：Agent 的性格设定及可能缓慢变化的倾向、随情境变化的短期情绪状态、这些状态对记忆处理的影响。是否允许性格从经历中改变、由谁控制、采用何种状态表示以及如何恢复，都需要研究与实验后决定。用户表达的情绪属于带主体和来源的观察，不能直接当成 Agent 自身的情绪；设定、观察与模型推断也不能相互冒充。
+Future research must first distinguish three objects: the agent's personality settings and potentially slow-changing tendencies, short-term emotion state that varies with context, and the effects of these states on memory processing. Whether personality may change through experience, who controls it, how state is represented, and how it recovers require research and experiments. A user's expressed emotion is a subject- and source-bound observation, not automatically the agent's own emotion. Configuration, observation, and model inference must also remain distinct.
 
-研究目标是检验性格与情绪能否有依据地参与注意分配、编码、巩固、遗忘和线索回忆，并进一步影响行为，而不只改变回答语气。这些都是待检验的工程假设。即使引入相关调节，也应保留原有事实来源、未知状态、更正和删除规则；当前情绪或性格倾向不能把一次经历变成永久事实，也不能提高证据真实性或覆盖用户当前的明确要求。需要专门检验情绪与回忆相互影响时的自我强化偏差；反复想起不增加独立证据，Agent 的情绪解释也不能证明用户的真实情绪。
+The research goal is to test whether personality and emotion can justifiably affect attention allocation, encoding, consolidation, forgetting, and cue-driven recall, and consequently behavior, rather than only changing response tone. These are engineering hypotheses to test. Any such modulation must preserve factual provenance, uncertainty, correction, and deletion rules. Current emotion or personality tendencies cannot make one episode a permanent fact, raise evidence truthfulness, or override the user's explicit current request. Self-reinforcing biases in the interaction of emotion and recall require dedicated tests. Repeated recall adds no independent evidence, and an agent's emotional interpretation cannot establish the user's actual emotion.
 
-正式设计前，系统阅读人格心理学、情感与记忆、认知神经科学及计算模型领域的原始研究和综述。对候选机制分别记录研究对象、实验条件、证据强弱、相反结果及工程借鉴边界，再选择可复现实验。评估应包括长期一致性、情绪恢复、跨情境适应、记忆偏差与资源消耗，并与没有这些模块的同一记忆内核做对照。
+Before formal design, systematically read primary research and reviews in personality psychology, affect and memory, cognitive neuroscience, and computational modeling. For each candidate mechanism, record study populations, experimental conditions, evidence strength, conflicting results, and the limits of engineering transfer, then select reproducible experiments. Evaluation should include long-term consistency, emotion recovery, adaptation across situations, memory biases, and resource costs, compared with the same memory core without these modules.
 
-功能上的人类记忆启发与神经元级模拟是不同的研究目标。暂不预设需要脉冲神经网络、生物神经元模型或特定人格量表；若未来考虑这些路线，应先明确其解决的问题和相对现有方案的可测收益。表现得更有性格或更有情绪，不足以证明实现了人脑神经机制或主观体验。
+Functional inspiration from human memory and neuron-level simulation are different research objectives. Do not assume a need for spiking neural networks, biological neuron models, or a particular personality inventory. If these directions are considered later, first identify the problem they solve and their measurable benefit over existing approaches. More personality-like or emotional behavior is not sufficient evidence of implemented human neural mechanisms or subjective experience.
 
-## 研究依据与借鉴边界
+## Research foundations and limits of transfer
 
-以下研究支持局部机制或提供计算解释，不证明上述软件等同人脑。工程实现需通过前面的行为与成本对照。
+The following research supports particular mechanisms or provides computational explanations; it does not establish that this software is equivalent to a human brain. Engineering implementations must pass the behavioral and cost comparisons above.
 
-- [Sun 等，2023，Organizing memories for generalization in complementary learning systems](https://pmc.ncbi.nlm.nih.gov/articles/PMC10400413/)：计算理论说明记住实例与提取可泛化结构存在权衡，支持选择性巩固。不能推出所有经历都应转成概括，或任意摘要器能够实现同等能力。
-- [Baldassano 等，2017，Discovering Event Structure in Continuous Narrative Perception and Memory](https://www.dpmlab.org/papers/Neuron17.pdf)：人类自然叙事神经影像研究支持多时间尺度的事件组织与回忆关联。我们借鉴事件边界和情境恢复，不把固定文本分块称为脑区机制。
-- [Bakker 等，2008，Pattern Separation in the Human Hippocampal CA3 and Dentate Gyrus](https://pmc.ncbi.nlm.nih.gov/articles/PMC2829853/)：人类 fMRI 发现与相似经历区分一致的活动模式。借鉴保留实例差异；相似度阈值与去重规则属于工程选择。
-- [Cepeda 等，2008，Spacing Effects in Learning](https://www.evullab.org/pdf/CepedaVulRohrerWixtedPashler-PS-2008.pdf)：人类行为实验表明复习间隔与目标保持时长相关。我们提出独立稳定性和可达性状态，但这两个字段及其公式不是该研究直接证明的机制。
-- [Sinclair 与 Barense，2018，Surprise and destabilize](https://barense.psych.utoronto.ca/wp-content/uploads/2018/07/2018_Sinclair_LearnMem.pdf)：人类实验研究预测误差与记忆更新，也观察到错误细节混入。借鉴新证据触发局部重评，同时用来源与版本限制错误重建。
-- [Mattar 与 Daw，2018，Prioritized memory access explains planning and hippocampal replay](https://www.princeton.edu/~ndaw/md18.pdf)：计算模型按未来需要与潜在决策改善解释回放优先级。借鉴有选择的调度；它不提供高效发现所有候选的现成算法，也不证明人脑直接执行该公式。
-- [Rose 等，2016，Reactivation of latent working memories with transcranial magnetic stimulation](https://doi.org/10.1126/science.aah7011)：人类神经实验支持暂时离开注意焦点的信息仍可能重新激活。借鉴焦点与待恢复任务的区分，不能据此保证长期经历无损保存。
+- [Sun et al., 2023, Organizing memories for generalization in complementary learning systems](https://pmc.ncbi.nlm.nih.gov/articles/PMC10400413/): computational theory describes a tradeoff between remembering instances and extracting generalizable structure, supporting selective consolidation. It does not imply that every episode should become a generalization or that any summarizer provides equivalent capabilities.
+- [Baldassano et al., 2017, Discovering Event Structure in Continuous Narrative Perception and Memory](https://www.dpmlab.org/papers/Neuron17.pdf): human neuroimaging during natural narratives supports event organization and recall associations across multiple timescales. We draw on event boundaries and situation restoration without calling fixed text chunks a brain-region mechanism.
+- [Bakker et al., 2008, Pattern Separation in the Human Hippocampal CA3 and Dentate Gyrus](https://pmc.ncbi.nlm.nih.gov/articles/PMC2829853/): human fMRI found activity patterns consistent with distinguishing similar experiences. This inspires preservation of instance differences; similarity thresholds and deduplication rules remain engineering choices.
+- [Cepeda et al., 2008, Spacing Effects in Learning](https://www.evullab.org/pdf/CepedaVulRohrerWixtedPashler-PS-2008.pdf): human behavioral experiments link review spacing to the desired retention interval. We propose separate stability and accessibility states, but those fields and their formulas are not mechanisms directly established by this study.
+- [Sinclair and Barense, 2018, Surprise and destabilize](https://barense.psych.utoronto.ca/wp-content/uploads/2018/07/2018_Sinclair_LearnMem.pdf): human experiments investigate prediction error and memory updating and also observe incorporation of incorrect details. This inspires targeted reassessment triggered by new evidence, with sources and versions constraining false reconstruction.
+- [Mattar and Daw, 2018, Prioritized memory access explains planning and hippocampal replay](https://www.princeton.edu/~ndaw/md18.pdf): a computational model explains replay priority through future need and potential improvement in decisions. This inspires selective scheduling; it does not supply a ready-made efficient algorithm for finding all candidates or prove that the brain directly implements its formula.
+- [Rose et al., 2016, Reactivation of latent working memories with transcranial magnetic stimulation](https://doi.org/10.1126/science.aah7011): human neuroscience experiments support reactivation of information temporarily outside the focus of attention. This inspires the distinction between focused and resumable tasks, not a guarantee of lossless long-term episode retention.

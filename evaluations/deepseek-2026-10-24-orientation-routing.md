@@ -1,73 +1,73 @@
-# 按需情境分析：延迟、记忆效果与失败记录
+# On-demand orientation: latency, memory behavior, and failures
 
-本次实现减少了普通回忆的前台模型等待，但没有通过全部后台学习验收。DeepSeek-V4-Pro 思考模式的五轮真实测试中，五次回答都通过独立答案核验并实际交付，开发审阅也确认回答符合本组来源；完整流程为 **4/5**。一次后台处理额外提议跨会话重建旧经历，被正确拒绝，原始 partial 和命令退出码 1 均保留。
+This implementation reduced foreground model waiting for ordinary recall, but did not pass all background-learning acceptance checks. In five live turns with DeepSeek-V4-Pro thinking mode, all five answers passed independent answer review and were delivered. Developer review also found them grounded in this fixture's sources. The complete pipeline passed **4/5** stages. One background run additionally proposed rebuilding an old episode across conversations and was correctly rejected; its original partial result and command exit code 1 remain recorded.
 
-完整输入、输出、路由证明、调用用量及独立审阅见[结构化证据](deepseek-2026-10-24-orientation-routing.json)。它冻结的是本次试验当时的代码和结果，后续修复不会将原始失败改成通过。
+See the [structured evidence](deepseek-2026-10-24-orientation-routing.json) for complete inputs, outputs, routing proofs, usage, and independent review. It freezes the code and results at the time of this trial. Later fixes do not turn original failures into passes.
 
-后续已修复这项输入契约缺口，使用原批次来源完成一次两调用的独立处理器补测，结果见末尾。未重新运行完整五轮链，首轮 4/5 保持原判。
+The input-contract gap was subsequently repaired, and one independent two-call processor follow-up used the original batch's sources, as reported below. The complete five-turn chain was not rerun; the original 4/5 verdict stands.
 
-## 瓶颈和架构取舍
+## Bottleneck and architectural tradeoffs
 
-此前五轮实测的前台提供方耗时合计 282.36 秒，其中回复前的情境提议与核验占 201.03 秒，约 **71.2%**。本地 `_prepare` 只读诊断约 11–117 毫秒，不含 HTTP、锁和日志写入；数据库重复读取值得优化，但不能解释几十秒的响应等待。
+The earlier five-turn experiment accumulated 282.36 seconds of foreground provider time, including 201.03 seconds for situation proposal and verification before answering, approximately **71.2%**. Read-only local `_prepare` diagnostics took about 11–117 milliseconds, excluding HTTP, locking, and log writes. Repeated database reads were worth optimizing, but did not explain response waits of tens of seconds.
 
-新增 `RuntimePolicy(orientation_policy="on_demand")`。服务器在适用性过滤前检查本次候选的依赖闭包；无条件资料和空历史可以直接使用原来的上下文包回答。有条件记忆、条件关系、工作项、未完成事项、不完整依赖、已有定向任务，或配置了语义回忆控制器/向量回忆时，保留完整分析。默认 `always` 不变，判断本身不调用分类模型。
+The new `RuntimePolicy(orientation_policy="on_demand")` lets the server inspect candidate dependency closure before applicability filtering. Unconditional material and empty history can use the existing context package directly. Conditional memories or relations, working items, open loops, incomplete dependencies, existing orientation jobs, or configured semantic recall controllers/vector recall retain full analysis. The default `always` mode is unchanged, and this decision makes no classifier-model call.
 
-这不是把生成的情境摘要偷偷换成未经核验的文本。跳过明确记录为 skip，不创建成功的语义任务，也不即时派生目标或待办。原始输入仍单独交给宿主、持久捕获并进入后台学习窗口。需要即时任务状态的 Agent 仍应使用完整模式。
+This does not silently replace generated situation summaries with unverified text. Skips are explicitly recorded as skip, create no successful semantic job, and derive no immediate goals or tasks. Raw input still reaches the host separately, is durably captured, and enters a background learning window. Agents requiring immediate task state should still use full mode.
 
-路由证明绑定输入、范围、来源和依赖，在准备、生成、幂等重放及交付边界重新校验。后台新增认识不一定推进现有版本计数，因此服务端还重读原始准备请求；不缓存整份上下文跨越模型等待。答案核验和来源、时间、更正、删除检查保留。代价是完整快速路径通常执行五次本地准备或复核；其他会话或索引变化可能引发保守的 `context_stale`。
+Routing proofs bind input, scope, sources, and dependencies, with revalidation at preparation, generation, idempotent replay, and delivery boundaries. Background insertion of new beliefs does not necessarily advance existing version counters, so the server also rereads the original preparation request. It does not cache the whole context across model waiting. Answer review and source, time, correction, and deletion checks remain. The tradeoff is that the complete fast path typically makes five local preparations or validations; other-conversation or index changes can conservatively trigger `context_stale`.
 
-另外将语义任务快照的逐条数据库读取改为按文档类型批量查询，恢复时复用本次已核验文档。精确版本、原文哈希、访问范围、删除和失效检查保留，不缓存跨请求的授权结果。
+Semantic-job snapshot reads were also changed from per-document database queries to batches by document type, reusing documents verified within the same recovery operation. Exact versions, original-text hashes, access scope, deletion, and invalidation checks remain. Authorization results are not cached across requests.
 
-## 同题真实测试
+## Live test with the same questions
 
-沿用此前五轮夹具、宿主指令、模型和答案核验规则，使用新的隔离大脑和账本。每轮重建服务、客户端和运行时，换会话，关闭近期对话；没有语义回忆规划器或 embedding。通过本机 TCP API、PostgreSQL 和持久交付文件运行。执行前冻结最多 24 次调用的上限，没有自动重试或修复循环。
+The trial reused the previous five-turn fixtures, host instructions, model, and answer-review rules, with a fresh isolated brain and ledger. Each turn rebuilt the service, client, and runtime, changed conversations, and disabled recent dialogue. There was no semantic recall planner or embedding. It ran through the local TCP API, PostgreSQL, and a durable delivery file. A maximum of 24 calls was frozen before execution, without automatic retries or repair loops.
 
-| 阶段 | 历史完整模式的前台模型等待 | 本次按需模式的前台模型等待 | 本次完整回复耗时 | 全流程 |
+| Stage | Historical full-mode foreground model wait | This on-demand foreground model wait | This complete reply time | Full pipeline |
 | --- | ---: | ---: | ---: | --- |
-| 首次学习 | 69.54 秒 | 17.71 秒 | 18.24 秒 | 通过 |
-| 换会话回忆 | 51.92 秒 | 31.88 秒 | 32.78 秒 | 通过 |
-| 更改偏好 | 78.09 秒 | 19.95 秒 | 20.78 秒 | 后台部分拒绝 |
-| 回忆新旧安排 | 52.14 秒 | 25.86 秒 | 27.00 秒 | 通过 |
-| 空记忆对照 | 30.67 秒 | 9.00 秒 | 9.60 秒 | 通过 |
+| Initial learning | 69.54 s | 17.71 s | 18.24 s | Passed |
+| Recall in a new conversation | 51.92 s | 31.88 s | 32.78 s | Passed |
+| Preference change | 78.09 s | 19.95 s | 20.78 s | Background partial rejection |
+| Recall of old and new arrangements | 52.14 s | 25.86 s | 27.00 s | Passed |
+| Empty-memory control | 30.67 s | 9.00 s | 9.60 s | Passed |
 
-同口径的前台模型等待平均从 **56.47 秒降至 20.88 秒**，本组观测减少约 **63%**。本次包含捕获、数据库、答案核验与交付的完整回复平均 **21.68 秒**。旧报告没有单独的完整回复计时，不能拿旧模型时间和新完整回复时间直接计算改善比例。
+Comparable foreground model waiting averaged **56.47 seconds previously and 20.88 seconds here**, an observed reduction of about **63%** in this sample. Complete reply time here, including capture, database operations, answer review, and delivery, averaged **21.68 seconds**. The old report did not separately measure complete reply time, so an improvement ratio must not compare old model time with new complete reply time.
 
-这是历史前后比较，不是同版本的成对 A/B，也没有足够样本推算尾部延迟或一般准确率。两次使用的代码和模型输出均存在差异。可直接确认的是本次五轮均合法走 skip，前台定向从十次调用降为零；宿主回答五次、答案核验五次均保留。主模型生成总耗时约 25.55 秒，答案核验约 78.85 秒，后者已经占本次前台模型等待约 **75.5%**。仍未达到即时聊天速度。
+This is a historical before/after comparison, not a paired A/B on the same version, and the sample is insufficient to estimate tail latency or general accuracy. Code and model outputs differed between runs. What is directly established is that all five turns legitimately skipped orientation, reducing foreground orientation from ten calls to zero while retaining five host-generation and five answer-review calls. Main-model generation totaled about 25.55 seconds; answer review totaled about 78.85 seconds, now roughly **75.5%** of foreground model waiting. This still does not achieve instant-chat speed.
 
-两个后台学习阶段分别耗时约 74.76 和 120.97 秒，未算进用户等回复的时间，但消耗的调用和 token 全部计入。减少前台分析没有使后台学习变快。
+The two background learning stages took approximately 74.76 and 120.97 seconds. They were excluded from time spent waiting for a reply, but all their calls and tokens were counted. Reducing foreground analysis did not make background learning faster.
 
-## 回答与记忆审阅
+## Answer and memory review
 
-五次自然回答符合预先固定的来源标准：准确承接用户原话；从真实历史找回“折纸灯”和原顺序；确认新的顺序；区分当前与已被替代的过去；不确认饮料和海边约定；空脑不猜测名称或顺序。本轮输入未被重新当作旧记忆，助手复述也未替代用户支持证据。
+All five natural-language answers met the predefined source criteria: accurately acknowledging the user's original words; recovering “Origami Lamp” (original Chinese: “折纸灯”) and the old order from actual history; confirming the new order; distinguishing current arrangements from the superseded past; not confirming drink or beach agreements; and not guessing names or orders with an empty brain. Current input was not reused as old memory, and assistant restatements did not replace user supporting evidence.
 
-首次学习发布了用户偏好和经历。更改阶段发布了新的用户偏好、当前会话的新经历，以及明确的 supersedes 关系。后续宿主上下文中，新偏好可采用，旧偏好已被替代，答案据此正确区分新旧。
+Initial learning published the user's preference and an episode. The change stage published the new preference, a new episode in the current conversation, and an explicit supersedes relation. In subsequent host context, the new preference was usable and the old one superseded; the answer correctly distinguished them.
 
-更改阶段还多提议了 `episode-create-learn-20261020`：成员来自旧会话，而任务属于新会话。确定性校验报 `Episode member source is unavailable or out of scope`，该提议没有进入语义核验和发布。新旧比较所需的历史来源可以被读取，不意味着允许在当前任务中跨会话组织经历。
+The change stage also proposed `episode-create-learn-20261020`, whose members came from an old conversation while the job belonged to the new one. Deterministic validation reported `Episode member source is unavailable or out of scope`. This proposal did not reach semantic verification or publication. Historical sources being readable for old/new comparison does not authorize cross-conversation episode organization in the current job.
 
-输入确有表达不足：它提供了旧来源用于关系比较，却没有明确的经历操作范围、合法成员集合或本次学习输入标签；`episodes=[]` 表示当前会话没有可编辑经历，容易被误读为历史来源也未组织。不能断言这就是模型内部出错的原因，但可以补齐这个真实存在的接口缺口。修复保留全部权限和证据检查，不删除比较所需的旧来源，不将学习引用冒充当前请求授权。
+The input did have an expression gap: it supplied old sources for relation comparison without an explicit episode-operation scope, eligible-member set, or current learning-input labels. `episodes=[]` meant no editable episode in the current conversation, but could be misread as meaning historical sources had never been organized. This cannot be asserted as the model's internal reason for the error, but the real interface gap can be repaired. The fix preserves all permission and evidence checks, keeps old sources needed for comparison, and does not treat learning references as current-request authorization.
 
-首次回答还主动解释持久记忆状态并提出提醒，略显技术化。它没有虚构已完成存储，但自然度仍有改进空间。
+The first answer also volunteered an explanation of persistent-memory state and offered a reminder, making it somewhat technical. It did not invent completed storage, but naturalness still has room to improve.
 
-## 用量与验证
+## Usage and validation
 
-本次实际 **14 次调用、118,460 token**：输入 76,948，输出 41,512，全部用量已知；实际预留输出额度 126,976，与真实输出量不同。加上此前答案核验批次，累计 58 次调用、421,374 token；不包括更早的项目实验，也不把 token 数当作账单金额。
+This run made **14 calls using 118,460 tokens**: 76,948 input and 41,512 output, with all usage known. Reserved output allowance was 126,976, distinct from actual output. Including the preceding answer-review batch gives 58 calls and 421,374 tokens. This excludes earlier project experiments and does not equate token counts with billing amounts.
 
-试验版本通过 **2,314 项 Python 测试**、12 项 TypeScript 测试、类型检查、Ruff 和构建；打包内容包含新运行时与迁移 010/011。新增测试覆盖仅 INSERT 新条件记忆却不推进版本计数、生成中变化、无核验器的交付、恢复策略改变、已交付收尾、伪造预检及学习排队。
+The trial version passed **2,314 Python tests**, 12 TypeScript tests, type checking, Ruff, and build checks. Packages included the new runtime and migrations 010/011. New tests cover conditional-memory INSERTs without version-counter changes, changes during generation, delivery without a reviewer, changed recovery policies, finalizing already-delivered turns, forged preflight proofs, and learning-job enqueueing.
 
-长历史、多周持续使用、高并发、任意 Agent 接入以及完整模式的请求分类可靠性仍未由这五例证明。本次性能收益也不能证明跳过即时目标推理与完整模式能力等价。
+These five cases do not establish reliability with long histories, weeks of continuous use, high concurrency, arbitrary agent integrations, or request classification in full mode. The performance gain also does not establish capability equivalence between skipping immediate goal inference and full mode.
 
-## 后续：明确经历操作范围
+## Follow-up: explicit episode-operation scope
 
-新通用任务冻结 `episode-operation-scope-v1`，向模型提供 `episode_operation_scope`、按现有证据规则计算的 `episode_eligible_member_refs` 和独立的 `learning_input_refs`。其余历史来源仍用于新旧认识比较，原来的跨会话提议仍会被拒绝。学习引用没有接入 `current_input_refs`，不会成为当前请求授权。旧任务缺少版本时继续使用原提示词与输入；对照原报告的四条通用提议、核验请求，重建消息与 schema 均完全一致。
+New general jobs freeze `episode-operation-scope-v1` and provide `episode_operation_scope`, `episode_eligible_member_refs` computed under existing evidence rules, and separate `learning_input_refs`. Other historical sources remain available for comparing old and new beliefs; the original cross-conversation proposal is still rejected. Learning references do not enter `current_input_refs` and do not authorize current requests. Old jobs without a version retain their original prompt and input. Reconstructed messages and schemas exactly matched all four general proposal/verification requests in the original report.
 
-边界回归另外修正两处兼容问题：合法空文本仍能进入已处理学习窗口，但不能用作经历引文；窗口和邻域按实际学习标签计量，长标识超限时缩小批次，保留原来的 2,048 字节采样预留，不增加调用或请求上限。历史来源不会全被计作本次学习输入。
+Boundary regressions also fixed two compatibility problems: valid empty text can remain in a processed learning window, but cannot be an episode citation; window and neighborhood budgets now count actual learning labels, reducing batch size when long identifiers exceed the budget while retaining the original 2,048-byte sampling reserve. Call and request limits were not increased. Historical sources are not all counted as current learning inputs.
 
-`examples.evaluate_episode_scope_repair` 冻结原 change 批次的四条来源、八个认识版本、工作区、采样与比较计划，仅为提议输入添加上述三项元数据及通用约束。原处理器输出和审阅标准不发送给模型，来源中的历史助手消息仍按其原始归属保留。保留原报告和原始账本的哈希；新的独立账本最多两次调用、32,768 个预留输出 token，已有目录拒绝重跑，用量未知时停止，`--resume` 只读。
+`examples.evaluate_episode_scope_repair` freezes the original change batch's four sources, eight belief versions, working state, sampling, and comparison plan. It adds only the three metadata fields above and general constraints to proposal input. Original processor outputs and review rubrics are not sent to the model; historical assistant messages retain their original attribution. Original report and ledger hashes are preserved. The new independent ledger permits at most two calls and 32,768 reserved output tokens, rejects reruns into an existing directory, stops on unknown usage, and provides read-only `--resume`.
 
-真实补测的处理器结果为 **completed，无拒绝**：新偏好、助手复述、来源支持的约束、当前会话的一组经历和指向原精确版本的 supersedes 关系均获独立模型核验，六项机器检查通过。只有当前会话的两条记录成为经历成员，没有再次提议重建旧会话。独立开发审阅确认五个接受提议均有完整来源支持，额外约束没有获得当前请求权限；这不是另一个模型家族的交叉验证。完整证据和另存的来源审阅见[专项补测记录](deepseek-2026-10-24-episode-scope.json)。
+The live follow-up processor returned **completed, with no rejections**. The new preference, assistant restatement, source-supported constraint, one current-conversation episode, and a supersedes relation targeting the exact old version all passed independent model verification. Six machine checks passed. Only the current conversation's two records became episode members, with no renewed proposal to rebuild the old conversation. Independent developer review found complete source support for all five accepted proposals, and the extra constraint gained no current-request authority. This was not cross-validation with another model family. Complete evidence and separate source review are in the [focused follow-up record](deepseek-2026-10-24-episode-scope.json).
 
-该补测只执行语义处理器，没有连接数据库、发布新记忆、生成宿主回答或交付消息。它支持范围契约修复的专项结论，不能将原五轮结果重判为 5/5，也没有解决完整 `always` 模式此前的请求意图分类问题。
+This follow-up ran only the semantic processor, without connecting to a database, publishing new memories, generating host answers, or delivering messages. It supports a focused conclusion about the scope-contract repair. It does not turn the original five-turn result into 5/5 or resolve earlier request-intent classification problems in full `always` mode.
 
-补测实际 **2 次调用、45,381 token**，其中输入 30,536、输出 14,845，全部用量确认。与本次原五轮合计 **16 次、163,841 token**；再加前一批回答核验实验为 **60 次、466,755 token**。原用量未归零，没有追加重试。
+The follow-up made **2 calls using 45,381 tokens**, comprising 30,536 input and 14,845 output, all confirmed. Together with the original five turns, that is **16 calls and 163,841 tokens**. Including the preceding answer-review batch gives **60 calls and 466,755 tokens**. Earlier usage was not reset, and no retries were added.
 
-最终实现通过 **2,393 项 Python 测试**（134.97 秒）、Ruff 与构建，轮子中的全部顶层 Python 模块、契约和迁移 010/011 与源码一致。TypeScript 的 12 项测试及类型检查在本轮此前已通过，其后相关文件未改动。没有新增或触发 GitHub CI。
+The final implementation passed **2,393 Python tests** in 134.97 seconds, Ruff, and build checks. Every top-level Python module, contract, and migration 010/011 in the wheel matched source. The 12 TypeScript tests and type checking had passed earlier in this batch, with no subsequent changes to those files. No GitHub CI was added or triggered.

@@ -1,49 +1,51 @@
-# 来源桥与共同命题修缮实测：2026-10-24
+# Source bridging and shared-claim repair evaluation: 2026-10-24
 
-这轮修复针对[上轮报告](deepseek-2026-10-24-compact-planning.md)中两处具体失败。来源桥接已通过旧数据的免费召回重放；真实 DeepSeek 独立归纳诊断先失败一次，修正证据角色后补测通过。原失败保留，没有改写旧记录或将 `unknown` 重新解释为通过。
+These repairs address two specific failures in the [previous report](deepseek-2026-10-24-compact-planning.md). Source bridging passed a free recall replay using existing data. The independent live DeepSeek abstraction diagnostic failed first, then passed one follow-up after evidence roles were clarified. The original failure remains recorded; no old records were rewritten and no `unknown` verdict was reinterpreted as a pass.
 
-[结构化结果](deepseek-2026-10-24-memory-repairs.json) 包含两次提议、核验、来源选择、实际接受结果、免费重放和共享用量账本。来源全部是既有合成测试文本，未发送真实用户大脑内容。
+The [structured results](deepseek-2026-10-24-memory-repairs.json) include both rounds of proposals, verification, source selection, actual acceptance results, free replay, and a shared usage ledger. All sources were existing synthetic test texts; no real user-brain content was sent.
 
-## 中文来源到英文概括的召回
+## Recalling English abstractions from Chinese sources
 
-此前词面检索主要匹配断言本身。中文原文经过模型概括为英文后，中文查询能找到原文，却漏掉对应语义断言。
+Previously, lexical retrieval primarily matched assertions themselves. When a model summarized Chinese source text in English, a Chinese query could find the original text but miss the corresponding semantic assertion.
 
-现在从命中的支持源片段有界查找派生认识，检查来源版本、哈希、片段范围、作用域及删除/更正状态，再走原有完整依赖和适用性校验。背景引用、反例或无关片段不能充当命中。原始断言和来源没有重新生成或改写，也没有调用模型或 embedding。
+The system now performs a bounded search for derived beliefs from matching supporting source spans. It checks source versions, hashes, span boundaries, scope, and deletion/correction state, then applies the existing complete dependency and applicability checks. Background citations, counterexamples, and unrelated spans cannot supply a match. Neither assertions nor sources are regenerated or rewritten, and no model or embedding call is made.
 
-旧 conditional 阶段在三个判断时间点都找回了英文冲突自述，`published_memories_recalled_and_prepared` 从 false 变为 true。未知“银色状态”和冲突判断仍保持原有边界；原任务因其他提议失败的 `job_completed=false` 没有改变。
+The old conditional stage recovered the English conflicting self-report at all three evaluation times, changing `published_memories_recalled_and_prepared` from false to true. The unknown “silver state” and conflict handling retained their original boundaries. The original task's `job_completed=false`, caused by other rejected proposals, did not change.
 
-另用中文查询“备考 同时 互相冲突 更正”验证：目标英文断言的直接词面分数为零，却能以原精确版本进入 recall 和 prepare，内容未变，预算及来源桥路径检查均通过。来源桥最多读取 64 条事件，召回扫描最多 512 条相关断言，学习最多 256 条，实际额度可更小；达到上限报告覆盖不足。这不是任意跨语言语义理解，仍要求存在可命中的保留来源。
+An additional query used the original Chinese “备考 同时 互相冲突 更正” (English gloss: “exam preparation, simultaneously, mutually conflicting, correction”). The target English assertion had a direct lexical score of zero, yet its exact original version reached recall and prepare unchanged, passing budget and source-bridge path checks. The bridge reads at most 64 events; recall scans at most 512 related assertions, and learning at most 256, with potentially smaller actual allowances. Reaching a limit reports incomplete coverage. This is not arbitrary cross-language semantic understanding: a retained source must still be discoverable through a matching cue.
 
-## 归纳中的共同点、无关来源与未知信息
+## Shared content, irrelevant sources, and unknown information
 
-新比较策略要求每条概括表达一个有限共同命题，实例差异留在原记录。运行时计算每个精确父实例的支持片段映射，核验必须分别确认每个实例、完整命题和抽象关系。比较策略进入目标身份，新策略能对旧失败实例组获得一次新尝试，同策略重复提醒继续去重，旧冻结计划保持兼容。
+The new comparison policy requires each abstraction to express one bounded shared claim, leaving instance differences in the original records. The runtime computes supporting-span mappings for each exact parent instance. Verification must independently confirm every instance, the complete claim, and the abstraction relation. The comparison policy is part of objective identity: a new policy can make one fresh attempt on an old failed instance group, while repeated reminders under the same policy remain deduplicated. Old frozen plans remain compatible.
 
-首次两调用测试生成了简洁的“这两次记录都显示用户在开始复习前先散步”，不再附加未经观察的时长差异。但模型仍把衣着片段复制到支持引文中。核验认为完整命题和关系成立，却将两个衣着片段判为 `unknown`。系统拒绝了该提议，这次结果仍为失败。
+The first two-call test generated a concise claim that both records showed the user walking before studying, without adding an unobserved difference in duration. However, it still copied clothing spans into the supporting citations. Verification supported the complete claim and relation but marked both clothing spans `unknown`. The system rejected the proposal; that result remains a failure.
 
-这暴露了另一处协议缺口：为追溯父实例而保留的完整来源，并不都支持共同命题。修复新增显式 `irrelevant`，仅表示片段与命题任何实质内容、否定、条件、限定或反证均无关；它和 `unknown` 不同。
+This exposed another protocol gap: complete sources retained to trace parent instances do not necessarily all support the shared claim. The repair adds an explicit `irrelevant` verdict, meaning only that a span is unrelated to any material content, negation, condition, qualifier, or counterevidence for the claim. This differs from `unknown`.
 
-仅对结构校验通过的抽象通路，核验必须给出与所有 `supports` 判断精确相符的支持索引。运行时可以移除明确无关的共同命题引文，但不得改写结论、条件、时间、世界或父版本。每个实例必须仍有留下的支持，整条命题和关系也必须通过；未知、反证或不完整判断不能被丢弃。普通记忆不允许使用该路径。完整父来源继续保留在关系中，筛选前引文与结构化判断进入任务审计，发布前再次验证来源与结构。
+Only for the structurally valid abstraction path must verification provide support indices exactly matching every `supports` verdict. The runtime may remove explicitly irrelevant citations from the shared claim, but may not rewrite its conclusion, conditions, time, world, or parent versions. Each instance must retain supporting evidence, and the entire claim and relation must pass. Unknown, counterevidential, or incomplete judgments cannot be discarded. Ordinary memories cannot use this path. Complete parent sources remain in the relation; pre-selection citations and structured judgments enter the job audit, and sources and structure are checked again before publication.
 
-唯一一次两调用补测通过。实际接受的命题是：
+The single two-call follow-up passed. The accepted claim was, in the original Chinese:
 
 > 在两个已比较的实例中，用户在开始复习前先散步，随后开始查看复习材料。
 
-核验选择两个行动片段，明确把两个衣着片段标为无关。共同命题留下两份支持引用，抽象关系保留四份完整引用，两个实例均明确支持，整条命题与关系也均支持。接受后的命题文字与提议完全一致；没有补造时长、地点、衣着差异、因果收益或永久习惯。
+English translation: “In the two compared instances, the user took a walk before starting to study, then began reviewing study materials.”
 
-这是开发审阅与模型核验共同检查的小样本结果，不是独立人工基准。真实提供方测试只运行独立 `SemanticProcessor`，没有把这次真实模型结果发布到数据库，也没有观察宿主的最终回答。
+Verification selected two action spans and explicitly marked two clothing spans irrelevant. The shared claim retained two supporting citations, while the abstraction relation kept all four citations. Both instances, the whole claim, and the relation received explicit support. The accepted claim text exactly matched the proposal. No duration, location or clothing difference, causal benefit, or permanent habit was invented.
 
-## 发布、审计与失效的独立验证
+This is a small sample checked by developer review and model verification, not an independent human benchmark. The live provider test ran only a standalone `SemanticProcessor`; it did not publish this live model result to the database or observe a host's final answer.
 
-另用确定性数据库集成测试验证完整发布路径：四条真实测试源事件形成两个多事件实例，提醒后发布筛选过的共同命题和完整关系；核验与来源选择持久保存，普通监控不泄露原文或引用身份，recall/prepare 保留来源与关系闭包。
+## Independent validation of publication, auditing, and invalidation
 
-即使更正的只是退出共同命题支持集合的衣着来源，相应父实例版本和依赖的抽象仍会失效。保留在关系中的来源没有因引文筛选逃过更正传播。该测试使用可控模型返回值，与真实 DeepSeek 独立诊断分别报告，不混称为完整真实模型端到端验收。
+A separate deterministic database integration test exercised the complete publication path: four actual test source events formed two multi-event instances; a reminder led to publication of the filtered shared claim and complete relation. Verification and source selection were persisted. Ordinary monitoring did not expose source text or citation identities, and recall/prepare retained the source and relation closure.
 
-## 用量、复现和边界
+Even correcting only a clothing source removed from the shared claim's support set invalidated the corresponding parent-instance version and dependent abstraction. Sources retained in the relation did not escape correction propagation through citation filtering. This test used controlled model responses and is reported separately from the live DeepSeek diagnostic; together they are not described as a complete live-model end-to-end acceptance test.
 
-两次诊断共享同一账本，共 **4 次调用**，全部返回用量：输入 **38,319**、输出 **14,819**，合计 **53,138 token**。首次失败 25,077 token，补测 28,061 token；不是账单金额。每次最多 16,384 输出 token，每轮仍最多两次调用及 240 秒，总上限四次，不自动重试。没有为补齐结果继续收费。
+## Usage, reproduction, and limits
 
-复现入口为 `examples/evaluate_memory_repairs.py`，需要本地保存的对应合成基线。`--replay` 免费重放并冻结原实例；`--live` 才允许付费；完成且失败后可用 `--live --followup "具体原因"` 进行唯一补测。它核对旧报告、冻结批次与完整账本，保留 `live.json`，另写 `followup.json`，拒绝第三次尝试。`--resume` 只读报告，`--resume --followup inspect` 只读补测。
+The two diagnostics shared one ledger and made **4 calls**, all returning usage: **38,319 input**, **14,819 output**, and **53,138 total tokens**. The initial failure used 25,077 tokens and the follow-up 28,061; these are not billing amounts. Each call allowed at most 16,384 output tokens; each round retained a two-call, 240-second limit, with four calls overall and no automatic retries. No further paid calls were made to obtain a complete set of passes.
 
-尚未证明长期运行的归纳稳定性、远期无词面线索的发现能力、规模化成本或最终回答质量。来源桥仍是有界候选机制，模型的逐实例与无关性判断也可能出错；这些边界不会因本次补测通过而消失。
+The entry point is `examples/evaluate_memory_repairs.py`, which requires the corresponding synthetic baseline saved locally. `--replay` replays for free and freezes the original instances; only `--live` permits paid calls. After a completed failed run, `--live --followup "specific reason"` permits one follow-up. It checks the old report, frozen batch, and complete ledger, preserves `live.json`, writes a separate `followup.json`, and rejects a third attempt. `--resume` reads the report only; `--resume --followup inspect` reads the follow-up only.
 
-最终本地检查：Python 全套 **1,562 项通过**，包含新增数据库发布与更正传播测试；Ruff、包构建、diff 检查通过。TypeScript 未修改，本轮未重复运行其测试。没有新增或触发云 CI，没有调用 Codex／Claude 订阅测试。
+Long-running abstraction stability, discovery without a lexical cue in distant history, costs at scale, and final-answer quality remain unproven. Source bridging is still a bounded candidate mechanism, and model judgments about individual instances and irrelevance can be wrong. The successful follow-up does not remove these limitations.
+
+Final local checks: **1,562 Python tests passed**, including the new database publication and correction-propagation tests. Ruff, package build, and diff checks passed. TypeScript was unchanged and its tests were not repeated. No cloud CI was added or triggered, and no Codex/Claude subscription tests were run.

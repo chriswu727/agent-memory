@@ -2,55 +2,55 @@
   "contract_version": "1.0.0-draft",
   "status": "target_specification_partially_implemented",
   "title": "Headless Autonomous Agent Memory Runtime",
-  "description": "规定自主记忆产品与宿主的运行责任。同步文本生命周期和可选的有预算语义回忆控制器已实现，完整认知架构仍为目标；此文件不能作为全部能力已经完成的声明。",
+  "description": "Defines operational responsibilities of the autonomous memory product and its host. The synchronous text lifecycle and optional budgeted semantic recall controller are implemented; the full cognitive architecture remains a target. This file is not a declaration that every capability is complete.",
   "product_boundary": {
-    "primary_deliverable": "运行在 Agent 推理生命周期中的持久认知记忆运行时",
+    "primary_deliverable": "A persistent cognitive memory runtime integrated into the agent inference lifecycle",
     "management_ui_required": false,
     "end_user_memory_commands_required": false,
     "primary_agent_memory_tool_calls_required": false,
-    "host_integration": "宿主在初始化时绑定稳定大脑身份及生命周期适配器；适配器自动编排每轮操作",
-    "context_authority": "运行时管理记忆上下文；宿主保留系统规则、工具协议与行动权限的权威",
-    "identity": "大脑身份跨模型与进程保持稳定；参与者、关系、任务与分支有独立范围",
-    "mcp_role": "补充主动探索、诊断、更正和授权删除；不作为自动记忆运行的必要触发器"
+    "host_integration": "The host binds a stable brain identity and lifecycle adapter at initialization; the adapter automatically orchestrates every turn",
+    "context_authority": "The runtime manages memory context; the host retains authority over system rules, tool protocols, and action permissions",
+    "identity": "Brain identity remains stable across models and processes; participants, relationships, tasks, and branches have independent scopes",
+    "mcp_role": "Supplementary active exploration, diagnostics, corrections, and authorized deletion; not a required trigger for automatic memory operation"
   },
   "integration_independence": {
     "status": "architecture_requirement_not_adapter_acceptance",
-    "primary_audience": "通过 API key 使用模型的 Agent；直接接入与第三方宿主共享核心",
+    "primary_audience": "Agents using models through API keys; direct integrations and third-party hosts share the same core",
     "third_party_bot_framework_required": false,
     "dependency_direction": "host_adapter -> public_api_or_sdk -> memory_core",
-    "core_ownership": "持久记忆、来源、身份与范围、回忆、学习、衰减及恢复规则",
-    "adapter_responsibility": "转换真实事件、映射稳定身份、接入生命周期和报告真实交付结果；不直连数据库或维护另一份权威记忆",
-    "packaging": "第三方专用依赖放在可选适配包中；核心不导入聊天框架",
-    "turn_ownership": "每轮只有一个生命周期编排者；插件与模型代理不能重复捕获、注入或生成",
-    "continuity": "更换模型或适配器时可授权绑定原大脑；卸载适配器不删除核心数据",
-    "identity_mapping": "跨平台参与者及会话只通过可信配置显式关联；不得按昵称或模型推测合并，不自动跨越私聊和群聊范围",
-    "current_boundary": "核心与同步文本运行时无 QQ 框架依赖；独立聊天入口、模型兼容网关及 QQ 适配插件尚未交付"
+    "core_ownership": "Persistent memory, provenance, identity and scope, recall, learning, decay, and recovery rules",
+    "adapter_responsibility": "Translate actual events, map stable identities, integrate lifecycle hooks, and report actual delivery outcomes; do not access the database directly or maintain another authoritative memory copy",
+    "packaging": "Third-party dependencies belong in optional adapter packages; the core does not import chat frameworks",
+    "turn_ownership": "Each turn has exactly one lifecycle orchestrator; plugins and model proxies must not duplicate capture, injection, or generation",
+    "continuity": "An authorized model or adapter change can bind the original brain; uninstalling an adapter does not delete core data",
+    "identity_mapping": "Cross-platform participants and conversations are linked explicitly through trusted configuration only; do not merge by nickname or model inference or automatically cross private/group-chat scopes",
+    "current_boundary": "The core and synchronous text runtime have no QQ-framework dependency; a standalone chat entry point, model-compatible gateway, and QQ adapter plugins have not shipped"
   },
   "full_integration_requirements": [
-    "认证后的稳定 Agent、参与者、会话、分支与消息标识",
-    "自动接收输入、消息修订、工具结果和生成取消事件",
-    "每次需要记忆的模型调用前可读取并替换记忆上下文，而非只追加历史",
-    "保留必要的最近对话、工具调用与结果配对以及宿主系统规则",
-    "生成状态与实际交付状态分离；缺少交付确认时保留 unknown",
-    "提交前检查工作修订和依赖代际；重复回调保持幂等",
-    "中断与恢复时能够重新构造工作状态并继续处理持久队列",
-    "持续报告实际验证过的能力；缺少关键控制权时明确降级"
+    "Authenticated stable agent, participant, conversation, branch, and message identifiers",
+    "Automatic receipt of inputs, message revisions, tool results, and generation-cancellation events",
+    "Ability to read and replace memory context before every model call that needs memory, rather than only appending history",
+    "Preservation of necessary recent conversation, tool call/result pairs, and host system rules",
+    "Separate generation state from actual delivery state; retain unknown without delivery confirmation",
+    "Check working revisions and dependency generations before commit; duplicate callbacks remain idempotent",
+    "Reconstruct working state and continue durable queues after interruption or recovery",
+    "Continuously report actually verified capabilities; explicitly degrade when essential control is unavailable"
   ],
   "automatic_cycle": [
     {
       "stage": "receive",
-      "trigger": "宿主收到输入、工具结果或外部反馈",
+      "trigger": "The host receives input, tool results, or external feedback",
       "owner": "lifecycle_adapter",
-      "behavior": "可靠捕获真实事件，区分草稿、计划、表达和实际结果；不依赖主 Agent 判断是否调用保存工具",
+      "behavior": "Reliably capture actual events, distinguishing drafts, plans, expressions, and actual outcomes; do not depend on the primary agent deciding to call a save tool",
       "existing_primitives": [
         "observe"
       ]
     },
     {
       "stage": "orient_and_recall",
-      "trigger": "推理前或本轮出现新的信息缺口",
+      "trigger": "Before inference or when a new information gap arises during the turn",
       "owner": "cognitive_controller",
-      "behavior": "结合当前目标、指代、关系和未完事项形成回忆需求，激活候选，检查证据；在总预算内继续寻找、澄清或停止",
+      "behavior": "Form recall needs from current goals, references, relationships, and unfinished matters; activate candidates and check evidence; continue searching, clarify, or stop within the total budget",
       "existing_primitives": [
         "prepare",
         "recall",
@@ -59,18 +59,18 @@
     },
     {
       "stage": "compose_context",
-      "trigger": "模型即将推理",
+      "trigger": "The model is about to infer",
       "owner": "context_manager",
-      "behavior": "从持久状态构造有限工作区，保留来源、时间和未知；压缩临时上下文不改变长期记忆的事实来源",
+      "behavior": "Build a bounded workspace from persistent state, preserving sources, time, and unknowns; compacting temporary context does not alter the factual sources of long-term memory",
       "existing_primitives": [
         "prepare"
       ]
     },
     {
       "stage": "reconcile_results",
-      "trigger": "收到交付确认、工具执行结果或取消信号",
+      "trigger": "Receipt of delivery confirmation, tool execution outcomes, or a cancellation signal",
       "owner": "lifecycle_adapter_and_cognitive_controller",
-      "behavior": "提交真实结果，更新工作状态、未完事项及有证据的学习候选；模型自述成功不等于执行成功",
+      "behavior": "Commit actual outcomes and update working state, unfinished matters, and grounded learning candidates; a model's claim of success is not execution success",
       "existing_primitives": [
         "observe",
         "commit",
@@ -79,16 +79,16 @@
     },
     {
       "stage": "consolidate",
-      "trigger": "新增证据、冲突、任务结果或待处理积压",
+      "trigger": "New evidence, conflicts, task outcomes, or pending backlog",
       "owner": "durable_background_controller",
-      "behavior": "增量形成概括、关联和方法，保留反例及适用条件；调整活跃度和细节策略；没有新证据的反思不增加真实性",
+      "behavior": "Incrementally form generalizations, associations, and methods while preserving counterexamples and applicability; adjust activation and detail policies; reflection without new evidence does not increase truthfulness",
       "existing_primitives": []
     },
     {
       "stage": "resume",
-      "trigger": "进程重启、会话恢复或上下文重建",
+      "trigger": "Process restart, conversation recovery, or context reconstruction",
       "owner": "lifecycle_adapter",
-      "behavior": "从持久状态恢复，不要求用户重复讲述或手动重新导入；恢复旧数据前应用当前删除与更正约束",
+      "behavior": "Recover from persistent state without requiring users to repeat their history or manually reimport it; apply current deletion and correction constraints before restoring old data",
       "existing_primitives": [
         "checkpoint",
         "prepare"
@@ -98,10 +98,10 @@
   "development_observability": {
     "status": "target_contract_not_complete_in_current_service",
     "surfaces": [
-      "经过鉴权的就绪状态、生命周期覆盖与队列水位",
-      "前台及后台的成本、上下文占用、耗时、失败和降级指标",
-      "按 turn_id 与 trace_id 查询有序的结构化运行事件",
-      "按权限展开来源、版本和策略以解释某次记忆决策"
+      "Authenticated readiness, lifecycle coverage, and queue watermarks",
+      "Foreground/background cost, context usage, latency, failure, and degradation metrics",
+      "Ordered structured runtime events queryable by turn_id and trace_id",
+      "Authorized expansion of sources, versions, and policies to explain a memory decision"
     ],
     "trace_fields": [
       "trace_id",
@@ -123,58 +123,62 @@
       "error_code"
     ],
     "diagnostic_questions": [
-      "这一轮为何想起这些记忆，证据来自哪里？",
-      "为何没有继续回忆：信息足够、无匹配、歧义、超限还是服务故障？",
-      "一次纠正改变了哪些认识，旧结论是否仍进入上下文？",
-      "哪些整理尚未完成，各自消耗多少时间和资源？"
+      "Why were these memories recalled this turn, and where did the evidence come from?",
+      "Why did recall stop: sufficient information, no match, ambiguity, exceeded limits, or service failure?",
+      "Which beliefs changed after a correction, and do old conclusions still enter context?",
+      "Which organization jobs remain incomplete, and how much time and resources has each consumed?"
     ],
     "content_in_logs_by_default": false,
     "hidden_reasoning_in_logs": false,
-    "access": "来源展开使用与记忆服务相同的认证和范围检查；日志不能成为绕过删除或隔离的副本",
-    "failure_policy": "诊断写入失败必须可见；诊断服务不替代持久化确认，也不修改记忆事务结果"
+    "access": "Source expansion uses the same authentication and scope checks as the memory service; logs must not become copies that bypass deletion or isolation",
+    "failure_policy": "Diagnostic-write failures must be visible; diagnostics neither replace persistence acknowledgments nor alter memory transaction outcomes"
   },
   "acceptance_invariants": [
-    "不安装任何第三方聊天框架时，直接接入仍能自动形成、使用并恢复记忆",
-    "经授权更换模型或宿主适配器后沿用原大脑；重试不重复捕获或发送，送达不确定时停止并核对，更正删除与范围隔离仍有效",
-    "关闭全部页面与主 Agent 的记忆工具，仍能自动形成并使用记忆",
-    "业务层不逐轮手写记忆操作；宿主适配器保证生命周期覆盖",
-    "不给用户历史聊天窗口，重启后仍可恢复有关状态并正确使用旧来源",
-    "含糊线索通过情境激活旧证据，不能只复述本轮提示冒充回忆",
-    "新证据能改变已有认识；反例、修正、无依据的模型输出分别处理",
-    "完整轨迹能解释来源、策略、停止原因和成本；不需要管理页面或隐藏推理",
-    "只有工具连接的宿主不能被标记为 full_lifecycle"
+    "Direct integration automatically forms, uses, and recovers memories without installing any third-party chat framework",
+    "Authorized model or host-adapter changes retain the original brain; retries do not duplicate capture or sending; uncertain delivery stops for reconciliation; correction, deletion, and scope isolation still hold",
+    "Automatic memory formation and use continue with all pages and primary-agent memory tools disabled",
+    "Business code does not manually program memory operations every turn; the host adapter guarantees lifecycle coverage",
+    "Relevant state can be recovered and old sources used correctly after restart without providing the user's historical chat window",
+    "Vague cues activate old evidence through the situation; repeating the current cue is not recall",
+    "New evidence can change existing beliefs; counterexamples, corrections, and unsupported model outputs are handled separately",
+    "Complete traces explain provenance, policies, stopping reasons, and cost without a management page or hidden reasoning",
+    "A host with only tool connectivity cannot be labeled full_lifecycle"
   ],
   "current_implementation": {
+    "status": "historical_synchronous_runtime_baseline",
+    "scope_note": "The available and remaining lists below preserve the early synchronous-runtime baseline, not the current feature inventory. Optional semantic consolidation and later scoped real-model evaluations are documented in the linked implementation and evaluation reports. Full autonomous-runtime acceptance remains incomplete.",
+    "current_progress": "../README.md#current-implementation-boundaries",
+    "evaluation_report": "../evaluations/deepseek-2026-10-24-orientation-routing.md",
     "available": [
-      "底层事件与版本存储",
-      "词法线索回忆",
-      "预算工作区",
-      "来源约束",
-      "更正删除",
-      "HTTP/SDK/MCP 底层接口",
-      "Python 同步文本自动生命周期",
-      "持久轮次、租约与原子输出捕获",
-      "鉴权状态与阶段日志接口",
-      "生成输出的来源依赖与删除传播",
-      "按时间和范围限定的最近对话情境",
-      "可选模型驱动的线索搜索、歧义判断与来源选择",
-      "服务端复核的持久回忆计划与确定性重建",
-      "请求前持久预留的模型调用次数与输入字节额度",
-      "不含正文的回忆决策轨迹与停止原因"
+      "Underlying event and version storage",
+      "Lexical cue-based recall",
+      "Budgeted workspace",
+      "Provenance constraints",
+      "Correction and deletion",
+      "Underlying HTTP/SDK/MCP interfaces",
+      "Automatic Python synchronous text lifecycle",
+      "Persistent turns, leases, and atomic output capture",
+      "Authenticated status and stage-log interfaces",
+      "Generated-output source dependencies and deletion propagation",
+      "Recent conversational context bounded by time and scope",
+      "Optional model-driven cue search, ambiguity assessment, and source selection",
+      "Server-revalidated persistent recall plans and deterministic reconstruction",
+      "Persistent pre-request reservations for model calls and input bytes",
+      "Content-free recall decision traces and stopping reasons"
     ],
     "remaining": [
-      "工具循环、流式与宿主消息修订适配器",
-      "更完整的情境理解、关联搜索与真实模型质量评测",
-      "完整上下文生命周期管理",
-      "语义巩固",
-      "同一经历的多层表示、片段独立衰减与分层回查",
-      "关联与活跃度调度",
-      "方法与未完事项学习",
-      "完整决策、成本与延迟观测"
+      "Adapters for tool loops, streaming, and host message revisions",
+      "More complete situation understanding, association search, and real-model quality evaluation",
+      "Complete context lifecycle management",
+      "Semantic consolidation",
+      "Multiple representations of one episode, independent fragment decay, and stratified lookup",
+      "Association and activation scheduling",
+      "Learning of methods and unfinished matters",
+      "Complete decision, cost, and latency observability"
     ],
     "full_runtime_acceptance_executed": false,
     "adapter_guarantee": "partial_automation",
-    "verification": "Deterministic recall and generation callbacks, mocked provider HTTP, and real PostgreSQL; no paid model or full cognitive benchmark executed.",
+    "verification": "This early baseline used deterministic recall and generation callbacks, mocked provider HTTP, and real PostgreSQL. Its checks did not include paid model calls or a full cognitive benchmark. Later scoped real-model evaluations are reported separately; they do not establish full cognitive acceptance.",
     "recall_budget_scope": {
       "durable_per_turn": [
         "model_calls",
@@ -210,13 +214,13 @@
       "detail_availability"
     ],
     "semantic_invariants": [
-      "关键词仅作线索；最小语义单元保留人物关系、否定、条件、时间与来源性质。",
-      "同一经历中不同片段独立衰减；重要具体片段可长期保留，过时概括也可淡出。",
-      "通用认识从有支持的经历增量形成，保留反例与有效范围；抽象程度不等于真实性。",
-      "日常可达不等于每轮注入；先读锚点与轮廓，按需展开，并允许明确线索直接回查深层。",
-      "新证据、外部使用与用户重要性指示可调整保留；模型自我复述不构成独立强化证据。",
-      "活跃度衰减、索引降级与内容擦除分别记录；真删除沿所有派生表示传播。",
-      "缺失细节不能由概括补写；保留下来的内容必须具有仍有效的来源支持。"
+      "Keywords are cues only; the minimum semantic unit preserves people and relationships, negation, conditions, time, and source type.",
+      "Fragments within one episode decay independently; important specific fragments can remain for years while outdated generalizations fade.",
+      "General beliefs form incrementally from supported experiences, retaining counterexamples and valid scope; abstraction is not truthfulness.",
+      "Everyday accessibility does not mean injection every turn; read anchors and outlines first, expand as needed, and allow explicit cues to directly search deeper layers.",
+      "New evidence, external use, and user importance signals may adjust retention; model self-restatement is not independent reinforcing evidence.",
+      "Record activation decay, index demotion, and content erasure separately; actual deletion propagates through every derived representation.",
+      "Generalizations cannot fill missing details; retained content must have source support that remains valid."
     ],
     "maintenance": {
       "decay": "timestamp_based_lazy_evaluation",
@@ -226,12 +230,12 @@
       "time_constants": "to_be_calibrated_by_evaluation"
     },
     "acceptance_targets": [
-      "旧经历保留稳定锚点与少数重要片段，普通细节不挤占当前工作区。",
-      "淡出内容可凭线索恢复仍存在的细节；上层遗漏不阻断直接深层检索。",
-      "分层或概括不改变否定、条件、来源角色与有效时间。",
-      "模型自我复述不刷高保留优先级或事实可信度。",
-      "新反例更新通用认识；真删除不从关键词、概括、向量或缓存泄露。",
-      "持续维护不反复扫描与模型总结全部历史；前后台预算均有界。"
+      "Old experiences retain stable anchors and a few important fragments without ordinary details crowding the current workspace.",
+      "Cues can recover retained details from faded content; omissions in higher layers do not block direct deep retrieval.",
+      "Stratification or generalization preserves negation, conditions, source roles, and valid time.",
+      "Model self-restatement does not inflate retention priority or factual confidence.",
+      "New counterexamples update general beliefs; actual deletion cannot leak through keywords, generalizations, vectors, or caches.",
+      "Continuous maintenance does not repeatedly scan and model-summarize all history; foreground and background budgets remain bounded."
     ],
     "acceptance_executed": false,
     "automatic_content_erasure_enabled": false

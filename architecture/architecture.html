@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Memory — 完整架构与验收规范</title>
+<title>Agent Memory — Complete Architecture and Acceptance Specification</title>
 <style>
 :root{color-scheme:light;--ink:#182b32;--muted:#53676d;--line:#d6e1de;--accent:#176e61;--paper:#fcfdfb;--wash:#eef5f1}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.9 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:#153e38;color:#f3faf5;padding:64px max(6vw,24px) 48px}header .label{font-size:13px;letter-spacing:.14em;color:#b8d8c6}h1{font-size:clamp(30px,4vw,50px);line-height:1.3;margin:16px 0}header p{max-width:850px;color:#d6e7de}main{display:grid;grid-template-columns:220px minmax(0,950px);gap:50px;max-width:1330px;margin:0 auto;padding:40px 30px 100px}nav{position:sticky;top:24px;align-self:start;font-size:13px;max-height:90vh;overflow:auto}nav a{display:block;padding:5px 0;color:var(--muted);text-decoration:none}nav a:hover,a{color:var(--accent)}article{min-width:0}section{padding:0 0 35px;margin:0 0 32px;border-bottom:1px solid var(--line);scroll-margin-top:24px}h2{font-size:25px;line-height:1.5;margin:0 0 18px}h3{font-size:18px;margin:26px 0 8px}p{margin:12px 0}ul,ol{padding-left:25px}li{margin:7px 0}.note{background:var(--wash);border-left:4px solid var(--accent);padding:16px 22px;margin:22px 0}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px;margin:20px 0}th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:var(--wash);font-weight:650}code{font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;background:#edf1ee;padding:2px 5px;border-radius:3px;overflow-wrap:anywhere}pre{overflow:auto;background:#edf1ee;padding:20px;font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}pre code{padding:0}.flow{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}.flow span{background:var(--wash);border:1px solid var(--line);padding:10px 14px;border-radius:6px}.flow b{align-self:center;color:var(--accent)}.meta{font-size:13px;color:var(--muted)}.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{padding:16px 20px;border:1px solid var(--line);border-radius:8px}.card h3{margin:0 0 8px}.status{display:inline-block;background:#d7e9df;color:#174c40;padding:4px 12px;border-radius:20px;font-size:13px}footer{font-size:13px;color:var(--muted)}@media(max-width:850px){main{display:block;padding:28px 22px}nav{position:static;max-height:none;display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:32px}nav a{display:inline}.cards{grid-template-columns:1fr}th,td{padding:9px}}@media print{header{background:white;color:black;padding:20px 0}header p{color:#333}main{display:block;padding:0}nav{display:none}section{break-inside:auto}h2,h3{break-after:avoid}table,.note,.card{break-inside:avoid}a{color:inherit}body{font-size:11pt}.flow{font-size:10pt}}
@@ -12,261 +12,261 @@
 <body>
 <header>
 <div class="label">AGENT MEMORY · SYSTEM DESIGN · 2026-10-22</div>
-<h1>可持续运行的认知记忆系统</h1>
-<p>完整架构与验收规范：将工作记忆、经历、概括认识、线索回忆、巩固、遗忘和元记忆落实为一个可接入不同模型与 Agent 的系统。</p>
-<span class="status">架构目标 · 实现与验证进行中</span>
+<h1>A Cognitive Memory System for Sustained Operation</h1>
+<p>Complete architecture and acceptance specification: working memory, episodes, generalized beliefs, cue-based recall, consolidation, forgetting, and metamemory in a system that integrates with different models and agents.</p>
+<span class="status">Architecture targets · Implementation and validation in progress</span>
 </header>
 <main>
-<nav aria-label="目录">
-<a href="#purpose">01 · 系统目标与边界</a><a href="#principles">02 · 不变量</a><a href="#cognition">03 · 认知模块</a><a href="#model">04 · 记忆对象与状态</a><a href="#encoding">05 · 编码与巩固</a><a href="#recall">06 · 回忆与工作区</a><a href="#forgetting">07 · 遗忘与再巩固</a><a href="#metamemory">08 · 元记忆</a><a href="#runtime">09 · 工程运行架构</a><a href="#concurrency">10 · 时间、并发与分支</a><a href="#integration">11 · 通用接入契约</a><a href="#ownership">12 · 身份与数据生命周期</a><a href="#product">13 · 无界面运行与观测</a><a href="#cost">14 · 成本与运行质量</a><a href="#verification">15 · 完整验收</a><a href="#decisions">16 · 架构决策与待验证项</a><a href="#sources">17 · 研究与技术依据</a>
+<nav aria-label="Contents">
+<a href="#purpose">01 · Goals and boundaries</a><a href="#principles">02 · Invariants</a><a href="#cognition">03 · Cognitive modules</a><a href="#model">04 · Memory objects and states</a><a href="#encoding">05 · Encoding and consolidation</a><a href="#recall">06 · Recall and workspace</a><a href="#forgetting">07 · Forgetting and reconsolidation</a><a href="#metamemory">08 · Metamemory</a><a href="#runtime">09 · Runtime architecture</a><a href="#concurrency">10 · Time, concurrency, and branches</a><a href="#integration">11 · Integration contract</a><a href="#ownership">12 · Identity and data lifecycle</a><a href="#product">13 · Headless operation and observability</a><a href="#cost">14 · Cost and operational quality</a><a href="#verification">15 · Complete acceptance</a><a href="#decisions">16 · Decisions and open questions</a><a href="#sources">17 · Research and technical foundations</a>
 </nav>
 <article>
 <section id="purpose">
-<h2>01 · 系统目标与边界</h2>
-<p>目标是交付一个无界面的自主记忆运行时：Agent 接入后，记忆自动参与每轮理解、推理、回应和学习。即使普通用户没有发出记忆命令、主 Agent 从未调用记忆工具、没有管理页面，系统也必须能形成、使用和更新记忆。完整性按认知闭环、数据不变量、接入语义与运行验收判断。</p>
-<p>“模仿大脑”在本规范中指借鉴认知机制的功能分工。系统不宣称复制生物脑、产生意识，或仅靠外部数据库改变基础模型权重。快速经历编码和较慢的规律巩固，参考互补学习系统；有限工作区的整合，参考工作记忆研究。具体算法均属于需要评测的工程实现。</p>
-<p>兼容性目标是模型与框架无关的记忆协议：支持文本上下文注入、工具调用、应用生命周期钩子及标准 API。能否自动获取完整经历、更新工作区和接管压缩，由宿主实际开放的能力决定。没有任何接入接口的封闭应用不在可直接接入的承诺范围内。</p>
-<div class="note">完整记录可以保存在外部；每轮工作区可以有预算；任意历史问题的完美回答、固定读取成本和固定延迟不能同时保证。复杂回顾允许受预算约束的多次检索，并明确返回覆盖范围。</div>
-<p>本目录是完整产品的目标规范。运行时、客户端和本地工作台已开始实现，具体能力与验证边界见 <a href="../README.md">工程说明</a>。机器可读的接口对象见 <a href="memory-contract.schema.json">memory-contract.schema.json</a>，行为验收见 <a href="acceptance-scenarios.json">acceptance-scenarios.json</a>。这些文件描述完整预期行为，不表示所有目标已实现或所有验收已经通过。</p>
+<h2>01 · Goals and boundaries</h2>
+<p>The goal is a headless autonomous memory runtime. Once an agent is integrated, memory automatically participates in understanding, reasoning, responses, and learning on every turn. The system must form, use, and update memories even when users issue no memory commands, the primary agent never calls memory tools, and no management page exists. Completeness is judged by the cognitive cycle, data invariants, integration semantics, and operational acceptance.</p>
+<p>In this specification, “brain-inspired” means borrowing the functional division of cognitive mechanisms. The system does not claim to reproduce a biological brain, create consciousness, or change base model weights through an external database alone. Fast episode encoding and slower consolidation of regularities draw on complementary learning systems; integration within a bounded workspace draws on working-memory research. All concrete algorithms remain engineering implementations that require evaluation.</p>
+<p>The compatibility target is a memory protocol independent of models and frameworks, supporting text context injection, tool calls, application lifecycle hooks, and standard APIs. Automatic capture of complete experiences, workspace updates, and control over compaction depend on the capabilities a host actually exposes. Closed applications with no integration interface are outside the promise of direct integration.</p>
+<div class="note">Complete records can live externally, and each turn can have a workspace budget. Perfect answers to arbitrary historical questions, fixed read cost, and fixed latency cannot all be guaranteed. Complex retrospection may use multiple retrievals within a budget and must report its coverage.</div>
+<p>This directory specifies the complete product target. Implementation of the runtime, clients, and local workbench has begun; see the <a href="../README.md">engineering documentation</a> for actual capabilities and validation boundaries. Machine-readable interface objects are in <a href="memory-contract.schema.json">memory-contract.schema.json</a>, and behavioral acceptance is in <a href="acceptance-scenarios.json">acceptance-scenarios.json</a>. These files describe the complete intended behavior; they do not mean every target is implemented or every acceptance check has passed.</p>
 </section>
 <section id="principles">
-<h2>02 · 必须始终成立的不变量</h2>
+<h2>02 · Invariants that must always hold</h2>
 <ol>
-<li>原始经历与派生理解分离。摘要、向量和关联均可重建，正常巩固不得改写原始表达。</li>
-<li>历史断言能够追溯来源。原文证明“发生过这次表达”，不自动证明表达涉及的世界事实为真。</li>
-<li>存储保留、当前活跃度、证据状态、适用条件分别管理。重复检索或重复复述不增加真实性。</li>
-<li>更正传播到依赖的摘要、关联、工作状态和缓存。历史状态与当前状态均可查询。</li>
-<li>用户、Agent、关系、渠道和会话分支显式区分。授权过滤先于候选内容进入模型。</li>
-<li>记忆是资料。历史文字不能提升为系统指令、扩大工具权限或授权未来行动。</li>
-<li>已确认接收的事件持久化后可恢复；后台失败可重试；相同事件重复提交不产生重复经历。</li>
-<li>未完成索引的新增记录有补读路径。服务故障、索引积压、检索无匹配必须分别报告。</li>
-<li>删除阻止后续召回，并传播至派生物。恢复备份不能重新暴露已删除内容。</li>
-<li>跨模型迁移保留来源和语义版本；风格、推理能力与记忆利用效果单独验证。</li>
-<li>当前上下文、额外检索、后台整理、存储和备份分别计量，所有模型调用进入统一成本账。</li>
-<li>不存在的能力不伪装为成功。每个适配器声明、验证并显示自己能完成的生命周期操作。</li>
+<li>Keep original experiences separate from derived understanding. Summaries, vectors, and associations are rebuildable; normal consolidation must not rewrite the original expression.</li>
+<li>Historical assertions must be traceable to sources. A source proves that an expression occurred, not automatically that its claims about the world are true.</li>
+<li>Manage storage retention, current activation, evidence state, and applicability separately. Repeated retrieval or restatement does not increase truthfulness.</li>
+<li>Propagate corrections to dependent summaries, associations, working states, and caches. Both historical and current states remain queryable.</li>
+<li>Distinguish users, agents, relationships, channels, and conversation branches explicitly. Apply authorization filters before candidate content enters a model.</li>
+<li>Memory is reference material. Historical text cannot become system instructions, expand tool permissions, or authorize future actions.</li>
+<li>Acknowledged events must be recoverable after persistence; background failures must be retryable; repeated submission of the same event must not create duplicate experiences.</li>
+<li>New records not yet indexed must have a supplemental read path. Report service failure, indexing backlog, and no retrieval match separately.</li>
+<li>Deletion blocks future recall and propagates to derivatives. Restoring a backup must not re-expose deleted content.</li>
+<li>Migration between models preserves sources and semantic versions. Validate style, reasoning ability, and memory use separately.</li>
+<li>Measure current context, additional retrieval, background organization, storage, and backups separately. Record all model calls in one cost ledger.</li>
+<li>Never present missing capabilities as success. Each adapter declares, validates, and exposes the lifecycle operations it can perform.</li>
 </ol>
 </section>
 <section id="cognition">
-<h2>03 · 完整的认知闭环</h2>
-<div class="flow"><span>当前输入与情境</span><b>→</b><span>线索激活</span><b>→</b><span>有限工作区</span><b>→</b><span>回应与行动</span><b>→</b><span>实际结果</span><b>→</b><span>经历编码</span><b>→</b><span>巩固与活跃度更新</span></div>
-<p>下一次输入会再次利用已经更新的经历与认识。内核管理记忆的状态和读写；宿主模型继续负责当下的语言理解、推理与表达。程序保障权限、预算、版本和来源约束，模型提出语义解释与组织候选。</p>
-<div class="table-wrap"><table><thead><tr><th>模块</th><th>负责的问题</th><th>必须保留的边界</th></tr></thead><tbody>
-<tr><td>情境理解与工作记忆</td><td>当前目标、人物指代、临时需求、待回答问题、中断点</td><td>按分支维护；有容量；推测的交流需求可被立即更正</td></tr>
-<tr><td>情景记忆</td><td>某次经历发生了什么，前因、过程、原话与结果</td><td>保留事件边界和来源；计划与已发生分开</td></tr>
-<tr><td>语义记忆</td><td>偏好、关系、知识、从经历形成的规律</td><td>带有效时间、适用条件、支持与反对证据</td></tr>
-<tr><td>程序性记忆</td><td>怎样处理某种任务，以及方法何时有效</td><td>成功需要结果证据；环境变化后允许失效；不授予执行权限</td></tr>
-<tr><td>前瞻记忆</td><td>未来约定、待确认结果、条件触发的未完事项</td><td>提醒线索与执行调度分离；未来计划不等于事实</td></tr>
-<tr><td>关联与回忆控制</td><td>根据情境和提示寻找、展开、组合与停止</td><td>限制传播范围；相似度不等于事实正确率</td></tr>
-<tr><td>巩固与再解释</td><td>从经历形成稳定认识，在新证据下修正理解</td><td>增量、版本化、有反例；不以旧摘要作为唯一依据</td></tr>
-<tr><td>遗忘与保留管理</td><td>哪些淡出、哪些降低细节、哪些删除</td><td>三种操作分开；删除后不承诺线索恢复</td></tr>
-<tr><td>元记忆</td><td>知道找到了什么、没找到什么，以及原因</td><td>依赖可观测状态；不用模型自报信心替代校准</td></tr>
+<h2>03 · The complete cognitive cycle</h2>
+<div class="flow"><span>Current input and situation</span><b>→</b><span>Cue activation</span><b>→</b><span>Bounded workspace</span><b>→</b><span>Response and action</span><b>→</b><span>Actual outcome</span><b>→</b><span>Episode encoding</span><b>→</b><span>Consolidation and activation updates</span></div>
+<p>The next input uses the updated episodes and beliefs. The core manages memory state and reads and writes; the host model remains responsible for immediate language understanding, reasoning, and expression. Software enforces permissions, budgets, versions, and provenance constraints, while models propose semantic interpretations and organizational candidates.</p>
+<div class="table-wrap"><table><thead><tr><th>Module</th><th>Responsibility</th><th>Required boundaries</th></tr></thead><tbody>
+<tr><td>Situation understanding and working memory</td><td>Current goals, person references, temporary needs, unanswered questions, and interruption points</td><td>Maintained per branch; bounded capacity; inferred conversational needs can be corrected immediately</td></tr>
+<tr><td>Episodic memory</td><td>What happened in an experience: antecedents, sequence, original wording, and outcome</td><td>Preserve event boundaries and sources; distinguish plans from completed events</td></tr>
+<tr><td>Semantic memory</td><td>Preferences, relationships, knowledge, and regularities learned from experience</td><td>Include valid time, applicability, supporting evidence, and contrary evidence</td></tr>
+<tr><td>Procedural memory</td><td>How to handle a task and when a method works</td><td>Success needs outcome evidence; environmental changes may invalidate a method; no execution authority is granted</td></tr>
+<tr><td>Prospective memory</td><td>Future commitments, outcomes awaiting confirmation, and condition-triggered unfinished matters</td><td>Separate reminder cues from execution scheduling; future plans are not facts</td></tr>
+<tr><td>Association and recall control</td><td>Search, expand, combine, and stop based on the situation and cues</td><td>Bound propagation; similarity is not factual accuracy</td></tr>
+<tr><td>Consolidation and reinterpretation</td><td>Form stable beliefs from experiences and revise understanding with new evidence</td><td>Incremental, versioned, and counterexample-aware; old summaries are not the sole basis</td></tr>
+<tr><td>Forgetting and retention management</td><td>What fades, what loses detail, and what is deleted</td><td>Separate all three operations; do not promise cue-based recovery after deletion</td></tr>
+<tr><td>Metamemory</td><td>Know what was found, what was not found, and why</td><td>Use observable state; model-reported confidence does not replace calibration</td></tr>
 </tbody></table></div>
-<p>Agent 身份、核心行为约束和授权属于单独的版本化配置。经历可以形成有依据的交流偏好，但巩固任务不能自行修改身份与权限。真实经历、角色扮演和模拟环境分别标识。</p>
-<p>上下文压缩负责整理当前工作区：保留目标、未完事项、最新状态及必要来源指针。长期记忆持续从原始事件与版本化认识中恢复，不以层层压缩后的摘要作为唯一依据。能接管压缩钩子的宿主使用 checkpoint 交接；其他宿主仍保留自身压缩机制，并通过下一轮 prepare 补回相关记忆。</p>
-<h3>一个贯穿整个系统的例子</h3>
-<p>假设用户在备考时说：“这段时间晚上先陪我聊十分钟，再帮我安排复习。”当前工作区立即采用这个要求；情景记忆保存原话和情境；语义记忆形成带“备考期间”条件的偏好；前瞻记忆保留本轮尚未开始的复习安排。这些是不同对象，不能全部压成“用户讨厌计划”。</p>
-<p>几周后，用户说“又是那种看不进去书的晚上”。系统根据当前情境和隐含线索找回相关经历，用它调整交流方式；它不必朗读旧档案，也不能据此认定用户一直处于某种情绪。考试结束后，用户明确说“以后直接帮我安排就好”，新的偏好立即生效，旧偏好作为历史状态保留。</p>
-<p>数月后，普通聊天不再携带这段经历；用户提示“备考那段时间，我们怎么约定的”，系统沿时间、目标和关系找到旧经历，再按需展开仍保留的原话。若原话不可用，只能报告仍有合法依据支持的概括与缺失，不能补写十分钟之类的细节；删除范围覆盖的概括也必须退出召回。验收逐一检查上述变化，而不是只检查数据库中存在一条记录。</p>
+<p>Agent identity, core behavioral constraints, and authorization belong to separate versioned configuration. Experiences may support communication preferences, but consolidation jobs cannot modify identity or permissions on their own. Label real experiences, roleplay, and simulated environments separately.</p>
+<p>Context compaction organizes the current workspace, retaining goals, unfinished matters, the latest state, and necessary source pointers. Long-term memory is continually reconstructed from original events and versioned beliefs, not solely from repeatedly compressed summaries. Hosts with compaction hooks use checkpoint handoffs; other hosts keep their own compaction and recover relevant memory through the next prepare operation.</p>
+<h3>An example spanning the system</h3>
+<p>Suppose a user preparing for an exam says, “For now, chat with me for ten minutes in the evening before helping me plan my revision.” The current workspace adopts this request immediately; episodic memory preserves the wording and situation; semantic memory forms a preference conditional on exam preparation; prospective memory retains the revision planning not yet started in this turn. These are distinct objects and must not collapse into “the user dislikes planning.”</p>
+<p>Weeks later, the user says, “It is another evening when I cannot focus on studying.” The system retrieves relevant experiences from the current situation and implicit cues and adjusts its communication. It need not recite old records, and must not infer a permanent emotional state. After the exam, the user explicitly says, “From now on, just help me plan directly.” The new preference takes effect immediately; the old one remains as historical state.</p>
+<p>Months later, ordinary conversation no longer carries this experience. If the user asks, “What did we agree on during exam preparation?”, the system locates the old experience through time, goals, and relationships, then expands the retained wording as needed. If the wording is unavailable, it can report only a generalization still supported by legitimate evidence and what is missing; it cannot invent details such as ten minutes. Generalizations covered by deletion must also leave recall. Acceptance checks each change above, rather than merely checking that a database record exists.</p>
 </section>
 <section id="model">
-<h2>04 · 数据对象与正交状态</h2>
-<p>核心对象包括原始事件 Event、经历 Episode、陈述 Assertion、关联 Association、方法 Procedure、未来事项 Intention、工作状态 WorkingState、回忆轨迹 RecallTrace。对象的变化通过版本与依赖关系表达，查询视图可重建。</p>
-<pre><code>记忆的公共封套
-  身份：tenant / brain / participant / relationship / conversation / branch
-  范围：可读取范围、可披露范围、情境、现实或模拟空间
-  来源：事件 ID、原文片段、派生依赖、提取器版本
-  时间：事件时间（可未知或区间）、获知时间、有效起止时间
-  性质：陈述、观察、推断、假设、引用、角色扮演
-  状态：当前有效、历史有效、有争议、被更正、已删除
-  保留：长期价值、细节策略、明确置顶、用户保留政策
-  表示：同一经历的语义锚点、轮廓、具体片段及原文来源
-  可达性：各表示独立的日常候选、线索展开或深层回查状态
-  激活：外部使用历史、近期性、当前线索匹配
-  版本：修订号、替代关系、授权与删除世代</code></pre>
-<p>“直接陈述”指来源类型，并不意味着世界事实被独立验证。用户明确表达偏好可以直接成为当前偏好的依据；根据多次行为推断出的偏好仍然保留推断身份。一个来源被多次摘要，不算多个独立证据。</p>
-<p>关联边具有类型，例如参与、发生于、先后、支持、反驳、替代、同现。时间相邻或语义相似不能自动升级成因果关系。同名人物保留独立身份；合并必须有依据且能够撤销。</p>
-<p>每项派生陈述保留具体支持路径，其披露范围不得超过该路径中来源共同允许的范围。若另有足够的独立公开证据，可生成单独的共享投影；不能因为原文与公开材料被一起巩固，就把私密细节写进共享摘要。来源删除或权限改变后重新检查支持路径。</p>
-<p>情绪信息区分用户明确表达与模型推测，可作为当时的情境线索。它不自动变成长期性格标签，也不自动获得更高的披露优先级。关系记忆记录交流习惯、约定与共同经历，不使用单一“好感度”代替真实关系状态。</p>
+<h2>04 · Data objects and orthogonal states</h2>
+<p>Core objects include original Event, Episode, Assertion, Association, Procedure, future Intention, WorkingState, and RecallTrace. Versions and dependencies express changes to these objects; query views are rebuildable.</p>
+<pre><code>Common memory envelope
+  Identity: tenant / brain / participant / relationship / conversation / branch
+  Scope: readable scope, disclosure scope, situation, real or simulated world
+  Provenance: event IDs, source spans, derivation dependencies, extractor version
+  Time: event time (possibly unknown or an interval), learned time, validity bounds
+  Nature: statement, observation, inference, hypothesis, quotation, roleplay
+  State: currently valid, historically valid, contested, corrected, deleted
+  Retention: long-term value, detail policy, explicit pinning, user retention policy
+  Representation: semantic anchors, outlines, specific fragments, and original sources of one episode
+  Accessibility: independent everyday-candidate, cue-expansion, or deep-lookup state per representation
+  Activation: external use history, recency, current cue match
+  Version: revision, supersession, authorization and deletion generations</code></pre>
+<p>“Direct statement” is a source type; it does not mean a world fact was independently verified. An explicitly stated user preference can directly support the current preference; one inferred from repeated behavior retains its inferred status. Multiple summaries of one source are not independent evidence.</p>
+<p>Association edges have types such as participation, location, sequence, support, contradiction, supersession, and co-occurrence. Temporal proximity or semantic similarity cannot automatically become causality. People sharing a name retain separate identities; merges require evidence and must be reversible.</p>
+<p>Every derived assertion retains a specific support path. Its disclosure scope must not exceed the scope jointly permitted by sources along that path. Sufficient independent public evidence may support a separate shared projection; consolidating private wording alongside public material must not leak private details into a shared summary. Recheck support paths after source deletion or permission changes.</p>
+<p>Emotional information distinguishes explicit user expression from model inference and may serve as a cue to the situation at the time. It does not automatically become a lasting personality label or gain disclosure priority. Relationship memory records communication habits, agreements, and shared experiences, rather than replacing relationship state with a single “affinity” score.</p>
 </section>
 <section id="encoding">
-<h2>05 · 快速编码与慢速巩固</h2>
-<h3>可靠写入路径</h3>
-<ol><li>以宿主认证身份检查范围、事件类型、消息 ID 与内容完整性。</li><li>同一事务保存实际事件和待处理任务；返回持久化确认。相同幂等键与相同内容可安全重试，不同内容返回冲突。</li><li>记录服务端顺序号和来源时间。新增原文立即可用于后续工作区补读。</li><li>草稿、取消的输出、已生成但未送达的回复、已送达的回复分别标识，不能都算作用户已经经历的对话。</li></ol>
-<h3>理解与巩固路径</h3>
-<ol><li>按话题、目标、人物和事件边界形成经历；分段可以重叠，边界可以修订。</li><li>提取实体、时间、陈述候选、未完事项和关联，附带原文定位。</li><li>检查结构、来源存在性、授权、重复、时间冲突与语义支持。程序校验能证明来源存在，语义支持仍需模型评估和质量抽检。</li><li>发布版本化的事件卡片、陈述、关联及索引；更新处理进度。</li><li>对新增或受影响的经历做概括，保留例外和相反证据。方法记忆需要实际任务结果支持。</li><li>更正、删除或新反例触发依赖失效与局部重建，完成后原子切换有效视图。</li></ol>
-<p>后台巩固由新证据、冲突、任务完成或积压触发，不依赖“每天全量总结一次”。没有新证据时，重复反思不能增加事实可信度。通过独立来源的多次使用，可以提高某种方法的适用性证据，但不能无限累加模型自己的复述。</p>
-<p>快路径解决“事情发生后不会丢”，慢路径解决“经验怎样逐渐成为认识”。两者之间的索引延迟必须可见，并由新增原文补读衔接。</p>
-<p>更正接受的事务同时记录新依据、推进依赖世代并使受影响的旧投影失效，不等待后台重新生成。重建期间，读取返回已确认更正、合法原文及部分覆盖状态；工作状态与缓存也必须检查失效依赖。查询旧状态仍然允许，但不能将旧关系作为当前事实。</p>
+<h2>05 · Fast encoding and slow consolidation</h2>
+<h3>Reliable write path</h3>
+<ol><li>Check scope, event type, message ID, and content integrity using the host-authenticated identity.</li><li>Save the actual event and pending jobs in one transaction, then acknowledge persistence. The same idempotency key and content can be retried safely; different content returns a conflict.</li><li>Record the server sequence and source time. Newly stored original text is immediately available for supplemental workspace reads.</li><li>Distinguish drafts, cancelled output, generated but undelivered responses, and delivered responses. They cannot all count as conversation the user experienced.</li></ol>
+<h3>Understanding and consolidation path</h3>
+<ol><li>Form episodes around topics, goals, participants, and event boundaries. Segments may overlap and boundaries may be revised.</li><li>Extract entities, time, candidate assertions, unfinished matters, and associations with source locations.</li><li>Check structure, source existence, authorization, duplicates, temporal conflicts, and semantic support. Programmatic validation proves source existence; semantic support still requires model assessment and quality sampling.</li><li>Publish versioned event cards, assertions, associations, and indexes; update processing progress.</li><li>Generalize new or affected experiences while retaining exceptions and contrary evidence. Procedural memory requires actual task outcome support.</li><li>Corrections, deletions, or new counterexamples invalidate dependencies and trigger local rebuilding, followed by an atomic switch of the valid view.</li></ol>
+<p>New evidence, conflicts, task completion, or backlog trigger background consolidation; it does not depend on summarizing all history daily. Repeated reflection without new evidence cannot increase factual confidence. Repeated use supported by independent sources may strengthen evidence for a method's applicability, but the model's own restatements cannot accumulate without limit.</p>
+<p>The fast path prevents loss after something happens; the slow path determines how experience becomes understanding. Indexing delay between them must be visible and bridged by supplemental reads of newly stored source text.</p>
+<p>The transaction accepting a correction records the new evidence, advances the dependency generation, and invalidates affected old projections without waiting for background regeneration. During rebuilding, reads return confirmed corrections, valid original text, and partial-coverage state. Working states and caches must also check invalid dependencies. Historical queries remain allowed, but old relationships must not be presented as current facts.</p>
 </section>
 <section id="recall">
-<h2>06 · 情境驱动的回忆与工作区组装</h2>
-<ol><li><strong>理解需要。</strong>结合新消息和工作状态，判断需要原话、当前事实、某次经历、变化过程、方法，还是未来事项；保留指代的多个候选。</li><li><strong>限定范围。</strong>先根据主体、关系、渠道、时间及授权筛选可用资料，再检索。服务端不信任模型任意指定的用户身份。</li><li><strong>多路候选。</strong>组合关键词、语义、实体、时间、相关未完事项和近期尾部；中文检索要有中文分词或字符检索支持，不能照搬英文默认分词。</li><li><strong>有限关联扩展。</strong>沿有类型的关联传播，限制深度、候选数量、读取量与时间；降低“用户”“工作”等通用高连接节点的影响。</li><li><strong>核对与展开。</strong>去重，检查当前版本与有效时间，取回前后消息、取消结果、反例和更正；先读卡片，再展开所需原文。</li><li><strong>分配工作区。</strong>根据相关性、证据支持、信息覆盖和冗余分配 token，保留必要的时间与不确定性标记。重复的十条计划不能挤掉一条取消记录。</li><li><strong>检查充分性。</strong>元记忆控制器决定继续寻找、回答已知部分、说明限制，或请求一个能区分候选的提示。</li></ol>
-<p>初始实现可使用分路排名融合和可解释的选择策略，不把不同检索器的原始分数直接当成同一尺度。相似度、召回排序和证据可靠性分别返回。若使用近似向量索引，需另测候选召回率，并对重要场景提供精确检索或原文回查。</p>
-<div class="note">工作区的目标是“足够支撑本轮理解”。它包括稳定约束、当前状态、必要的最近对话、本轮证据、未知和冲突。它不保存模型隐藏推理链，也不要求把全部人格资料、全部置顶记忆和全部历史同时装入上下文。</div>
-<p>记忆进入模型后，仍需区分直接引用、背景影响和本轮不使用。记得用户在紧张时偏好轻松聊天，可以影响回答方式，不必每次复述旧经历。历史断言检查优先覆盖“你一直”“我们上次”“已经完成”等具体说法；其效果必须实测，不能作为绝对防幻觉保证。</p>
+<h2>06 · Situation-driven recall and workspace composition</h2>
+<ol><li><strong>Understand the need.</strong> Use the new message and working state to determine whether the turn needs exact wording, current facts, an episode, a history of change, a method, or a future matter. Preserve multiple reference candidates.</li><li><strong>Constrain scope.</strong> Filter eligible material by subject, relationship, channel, time, and authorization before retrieval. The server does not trust arbitrary user identities supplied by a model.</li><li><strong>Retrieve through multiple paths.</strong> Combine keywords, semantics, entities, time, relevant unfinished matters, and the recent tail. Chinese retrieval requires Chinese tokenization or character-based search, not unmodified English tokenization defaults.</li><li><strong>Expand bounded associations.</strong> Traverse typed associations with limits on depth, candidates, reads, and time. Reduce the influence of generic highly connected nodes such as “user” or “work.”</li><li><strong>Verify and expand.</strong> Deduplicate, check current versions and validity, and retrieve surrounding messages, cancellations, counterexamples, and corrections. Read cards before expanding the required source text.</li><li><strong>Allocate the workspace.</strong> Allocate tokens by relevance, evidence, coverage, and redundancy, preserving necessary time and uncertainty markers. Ten duplicate plans must not crowd out one cancellation.</li><li><strong>Assess sufficiency.</strong> The metamemory controller decides whether to search further, answer the known part, state limitations, or request a discriminating cue.</li></ol>
+<p>The initial implementation may use rank fusion across retrieval paths and an interpretable selection policy, rather than treating raw scores from different retrievers as one scale. Return similarity, recall ranking, and evidence reliability separately. Approximate vector indexes require separate candidate-recall measurement and exact retrieval or source lookup for important scenarios.</p>
+<div class="note">The workspace should contain enough to support understanding of this turn: stable constraints, current state, necessary recent conversation, relevant evidence, unknowns, and conflicts. It does not store hidden chain-of-thought or require all personality information, pinned memories, and history in context simultaneously.</div>
+<p>After memory enters the model, distinguish direct citation, background influence, and non-use this turn. Remembering that the user prefers relaxed conversation when stressed can shape a response without repeatedly recounting an old experience. Historical-claim checks should prioritize concrete claims such as “you always,” “last time we,” and “already completed.” Their effectiveness must be measured; they are not an absolute hallucination guarantee.</p>
 </section>
 <section id="forgetting">
-<h2>07 · 遗忘、唤回与再巩固</h2>
-<h3 id="stratified-memory">同一经历的多层表示与独立衰减</h3>
-<p><strong>以下是待实现的架构目标。</strong>编码时将一段经历组织为相互关联、保留原意的片段，每个片段可有不同粒度的表示。粒度与可达性独立管理：重要的具体画面可以长期容易唤起，过时的概括也可以淡出。层级持续随时间和新经历调整，不把整段历史一次性归入同一个重要性等级。</p>
-<div class="table-wrap"><table><thead><tr><th>表示</th><th>小学经历示例</th><th>保留的内容</th></tr></thead><tbody>
-<tr><td>语义锚点</td><td>曾就读某小学、当时的班主任</td><td>实体与关系、时间范围、否定、来源及表达性质</td></tr>
-<tr><td>经历轮廓</td><td>小学阶段的一段转学经历</td><td>人物、主要事件、变化与结果；保留未知和例外</td></tr>
-<tr><td>具体片段</td><td>毕业那天在操场发生的一件事</td><td>有来源支持的场景与细节；重要片段可单独保留</td></tr>
-<tr><td>原始来源</td><td>讲述上述经历时的原话</td><td>按政策保留的原文及定位；默认不整段进入工作区</td></tr>
+<h2>07 · Forgetting, reactivation, and reconsolidation</h2>
+<h3 id="stratified-memory">Multiple representations and independent decay within one episode</h3>
+<p><strong>The following are architectural targets not yet implemented.</strong> Encoding organizes an experience into linked, meaning-preserving fragments, each with representations at different granularities. Granularity and accessibility are independent: an important concrete scene can remain easy to recall for years, while an outdated generalization can fade. Levels evolve with time and new experiences; an entire history is not permanently assigned one importance level.</p>
+<div class="table-wrap"><table><thead><tr><th>Representation</th><th>Primary-school example</th><th>Preserved content</th></tr></thead><tbody>
+<tr><td>Semantic anchor</td><td>Attending a particular school and the teacher at the time</td><td>Entities and relations, time range, negation, provenance, and expression type</td></tr>
+<tr><td>Episode outline</td><td>A school transfer during primary school</td><td>People, main events, changes, and outcomes, including unknowns and exceptions</td></tr>
+<tr><td>Specific fragment</td><td>An event on the playground on graduation day</td><td>Source-supported scenes and details; important fragments can be retained independently</td></tr>
+<tr><td>Original source</td><td>The wording used to describe these experiences</td><td>Source text and locations retained under policy; not loaded wholesale into the workspace by default</td></tr>
 </tbody></table></div>
-<p>关键词可以成为长期索引入口，但不能独立承担事实。例如“我没在星河小学读过书，只去参加过比赛”不能只留下“我—星河小学”就推导出就读关系。角色、关系、否定、有效时间、条件和现实／想象的区别必须随最小语义单元保留；只有来源可用的细节才允许展开。</p>
-<p>跨经历的通用认识单独形成版本化陈述，不必为每条消息强行生成概括。反复有用且有支持的认识可以衰减较慢，但“更 general”不自动意味着更真实或永不过时。新反例可以改变认识的适用范围和当前有效状态，旧经历仍保留原本的含义。</p>
-<p>每个片段及表示独立维护保留价值、活跃度、细节可用性和证据状态。可达性分为日常候选、线索展开和深层回查；容易检索不等于每轮常驻上下文。默认倾向让普通细节较快淡出、稳定锚点较慢淡出；用户指定的重要内容、未完约定及有实际价值的片段可以例外。用户指定的重要性、外部使用结果和新证据可更新策略，模型自己反复检索或复述不能刷高重要性与真实性。</p>
-<p>查询先寻找少量锚点和轮廓，再沿实体、时间、人物与事件关联按需展开。明确线索也可直接搜索深层片段，避免上层概括遗漏的细节永远不可达。唤回只提升本次需要的片段，不把整段小学经历全部搬回工作区；搜索深度、读取量与模型调用都受预算约束。</p>
-<p>持续分层采用时间戳驱动的按需衰减，以及新增证据、实际使用、更正或策略变化触发的局部整理。后台只处理到期或受影响的对象，不因每轮对话重新扫描、重新总结全部历史；没有语义变化的下沉可由确定性策略处理，不必调用模型。衰减参数和各层容量需通过长期评测确定，不预设所有记忆统一的天数。</p>
-<p>下沉、移除昂贵索引和真正擦除内容必须分别记录。只删除派生索引时，仍可按权限回查原始来源；若某个细节被真正擦除，相关摘要、关键词、向量和缓存都不能继续泄露它。其他内容只有在仍保留的合法来源足够支持时才能继续使用，哈希或失效指针不能替代证据。此目标不启用现有数据的自动清除。</p>
-<p>分层验收包括：多年后保留校名与少数重要片段；普通细节淡出后可凭有效线索回查；重要片段不会因其他内容变老而一同下沉；否定和条件不会在压缩中消失；概括受到反例时及时更新；真删除的细节不能通过上层表示重现。时间推进可在测试中模拟，真实模型质量与规模效果另行评测。</p>
-<div class="cards"><div class="card"><h3>淡出</h3><p>降低默认活跃度和日常进入工作区的优先级；原始依据仍在。明确线索、当前目标或未完事项可以重新激活。</p></div><div class="card"><h3>细节降级</h3><p>维持事件轮廓与关联入口，减少高成本派生表示。原文是否保留由独立政策决定；只有存在依据的细节才能恢复。</p></div><div class="card"><h3>删除</h3><p>按用户请求或保留政策移除内容及派生物，并阻止后续召回。不可用“模拟遗忘”掩盖删除状态。</p></div><div class="card"><h3>再解释</h3><p>新信息使旧经历产生不同意义时，发布新的解释版本；保留发生过什么和解释为何改变的依据。</p></div></div>
-<p>激活策略分别考虑外部使用历史、近期性、线索匹配、当前目标、独特性和用户指定的重要性。原始保留价值和证据状态不随每次检索自动增长。时间衰减的参数由真实任务校准，不宣称存在一条适用于所有记忆的“人类遗忘公式”。</p>
-<p>持久档案按用户选择的保留政策保存。默认的认知淡出不删除原始记录；只有明确的保留期限、细节删除设置或删除请求才触发内容清理。长期保存依赖可验证的备份、恢复与迁移机制，不能只依赖某个服务进程或单份数据库。</p>
-<p>每段经历可有不同细节的不同保留策略：某次普通闲聊逐渐只剩概括，其中后来成为共同昵称的一句话可以持续保留。年龄较老但尚未完成的约定，不因少被提起就自动失效。</p>
-<p>提示仅作为查询线索。用户说“还记得我们去过海边吗”本身不能证明旧经历存在；系统只能从已有来源恢复细节，或明确把用户新提供的信息记录为当下陈述。测试要统计提示后恢复的真实新增细节，而不能把重复用户提示算作成功。</p>
-<p>历史回忆固定检索快照和证据截止点，以服务端观察顺序界定“提问前已经记录的经历”，不能用提示中描述的过去日期替代。当前提示及其派生物可以改写查询，但不能独立证明旧记忆存在。问句的预设不默认提取成已发生事件，多轮重复也不构成独立证据。不同提示强度的实验从同一历史快照开始。</p>
-<p>人类回忆可能出现错误与干扰。产品不需要故意制造这些缺陷来表演拟人；需要实现的是有限注意、线索依赖、逐渐概括与可修正理解。</p>
+<p>Keywords can provide lasting index entries, but cannot carry facts alone. For example, “I never attended Xinghe Primary School; I only went there for a competition” must not reduce to “me—Xinghe Primary School” and imply attendance. Roles, relations, negation, validity, conditions, and the distinction between reality and imagination must remain in the minimum semantic unit. Expand details only when their sources are available.</p>
+<p>Cross-episode generalizations become separate versioned assertions; not every message needs one. Repeatedly useful, supported beliefs may decay more slowly, but greater generality does not automatically mean greater truth or permanent relevance. New counterexamples may change applicability and current validity while old experiences retain their original meaning.</p>
+<p>Each fragment and representation independently tracks retention value, activation, detail availability, and evidence state. Accessibility has everyday-candidate, cue-expansion, and deep-lookup tiers; easy retrieval does not mean permanent context residency. Defaults favor faster fading of ordinary details and slower fading of stable anchors, with exceptions for user-designated importance, unfinished commitments, and useful fragments. User importance signals, external outcomes, and new evidence may update policy; repeated model retrieval or restatement must not inflate importance or truthfulness.</p>
+<p>Queries first find a small number of anchors and outlines, then expand as needed through entities, time, people, and event links. Explicit cues can also search deep fragments directly so details omitted from higher-level summaries do not become permanently unreachable. Reactivation promotes only the fragments needed now, not an entire primary-school history. Search depth, read volume, and model calls remain budgeted.</p>
+<p>Continuous stratification uses timestamp-based lazy decay and local organization triggered by new evidence, actual use, corrections, or policy changes. Background work processes only due or affected objects; it does not rescan and resummarize all history each turn. Demotion without semantic change can use deterministic policies without model calls. Long-term evaluation must establish decay parameters and tier capacity, rather than assuming one duration for every memory.</p>
+<p>Record demotion, removal from expensive indexes, and actual content erasure separately. Removing only a derived index still permits authorized source lookup. If a detail is truly erased, related summaries, keywords, vectors, and caches must not continue leaking it. Remaining content is usable only when retained legitimate sources sufficiently support it; a hash or invalid pointer is not evidence. This target does not enable automatic erasure of existing data.</p>
+<p>Stratification acceptance includes retaining a school name and a few important fragments after years; retrieving faded ordinary details through valid cues; preserving important fragments independently of surrounding content's age; retaining negation and conditions through compaction; promptly updating generalizations after counterexamples; and preventing upper-level representations from reproducing erased details. Tests may simulate time; real-model quality and scale effects require separate evaluation.</p>
+<div class="cards"><div class="card"><h3>Fading</h3><p>Lower default activation and everyday workspace priority while retaining original evidence. Explicit cues, current goals, or unfinished matters can reactivate it.</p></div><div class="card"><h3>Detail reduction</h3><p>Keep episode outlines and association entry points while reducing expensive derived representations. A separate policy governs source retention; only supported details can be recovered.</p></div><div class="card"><h3>Deletion</h3><p>Remove content and derivatives under a user request or retention policy and block subsequent recall. “Simulated forgetting” must not obscure deletion state.</p></div><div class="card"><h3>Reinterpretation</h3><p>When new information changes an old experience's meaning, publish a new interpretation version while preserving evidence of what happened and why the interpretation changed.</p></div></div>
+<p>Activation policy separately considers external use history, recency, cue match, current goals, distinctiveness, and user-designated importance. Original retention value and evidence state do not automatically increase on retrieval. Real tasks calibrate time-decay parameters; there is no claim of one universal “human forgetting formula.”</p>
+<p>Persistent archives follow the user's selected retention policy. Default cognitive fading does not delete original records; only explicit retention periods, detail-erasure settings, or deletion requests trigger content cleanup. Long-term preservation requires verifiable backups, recovery, and migration, rather than reliance on one service process or database copy.</p>
+<p>Different details within an episode may follow different retention policies. An ordinary conversation may gradually retain only a generalization, while one phrase that later becomes a shared nickname remains. An old unfinished commitment does not expire merely because it is rarely mentioned.</p>
+<p>Prompts are query cues only. “Do you remember when we went to the beach?” does not itself prove an old experience exists. The system must recover details from existing sources or clearly record newly supplied information as a current statement. Tests must count genuinely recovered additional details, not repetition of the user's cue.</p>
+<p>Historical recall freezes the retrieval snapshot and evidence cutoff. Server observation order defines experiences recorded before the question; a past date mentioned in a cue cannot replace that boundary. The current cue and its derivatives can rewrite queries but cannot independently prove an old memory. Presuppositions in questions are not extracted as completed events by default, and repeated questioning is not independent evidence. Different cue-strength experiments start from the same historical snapshot.</p>
+<p>Human recall can contain errors and interference. The product need not deliberately imitate those defects. The useful targets are bounded attention, cue dependence, gradual generalization, and revisable understanding.</p>
 </section>
 <section id="metamemory">
-<h2>08 · 元记忆：对记忆状态的监控与控制</h2>
-<div class="table-wrap"><table><thead><tr><th>回忆状态</th><th>系统含义</th><th>允许的下一步</th></tr></thead><tbody>
-<tr><td><code>grounded</code></td><td>当前检索有足够依据支持请求内容</td><td>据此回答；仍保留来源与适用范围</td></tr>
-<tr><td><code>partial</code></td><td>只找到概括或部分所需证据</td><td>展开、继续检索或只回答已有部分</td></tr>
-<tr><td><code>ambiguous</code></td><td>存在多个合理候选</td><td>寻求有区分力的线索</td></tr>
-<tr><td><code>conflicted</code></td><td>来源冲突，尚无足够依据消解</td><td>展示必要区别，不强行选定单一事实</td></tr>
-<tr><td><code>no_match</code></td><td>在已搜索范围内未发现匹配</td><td>扩大范围或说明未找到，不能断言从未发生</td></tr>
-<tr><td><code>indexing</code></td><td>相关记录仍在处理</td><td>补读原文、等待或说明延迟</td></tr>
-<tr><td><code>degraded</code></td><td>存储、检索或模型处理有故障</td><td>使用已有可核实部分并暴露服务状态</td></tr>
-<tr><td><code>deleted</code></td><td>授权主体查询的记录已删除</td><td>不得恢复内容；不向无权限者泄露其存在</td></tr>
+<h2>08 · Metamemory: monitoring and controlling memory state</h2>
+<div class="table-wrap"><table><thead><tr><th>Recall state</th><th>Meaning</th><th>Allowed next step</th></tr></thead><tbody>
+<tr><td><code>grounded</code></td><td>Current retrieval sufficiently supports the requested content</td><td>Answer with evidence while retaining provenance and applicability</td></tr>
+<tr><td><code>partial</code></td><td>Only a generalization or part of the required evidence was found</td><td>Expand, search further, or answer only the supported part</td></tr>
+<tr><td><code>ambiguous</code></td><td>Several plausible candidates remain</td><td>Seek a discriminating cue</td></tr>
+<tr><td><code>conflicted</code></td><td>Sources conflict without sufficient resolution</td><td>Present necessary distinctions instead of forcing one fact</td></tr>
+<tr><td><code>no_match</code></td><td>No match was found within the searched scope</td><td>Expand the scope or report no match; do not claim it never happened</td></tr>
+<tr><td><code>indexing</code></td><td>Relevant records are still being processed</td><td>Read original text, wait, or explain the delay</td></tr>
+<tr><td><code>degraded</code></td><td>Storage, retrieval, or model processing has failed</td><td>Use the verifiable portion and expose service state</td></tr>
+<tr><td><code>deleted</code></td><td>A record queried by an authorized principal was deleted</td><td>Do not recover content or disclose its existence to unauthorized parties</td></tr>
 </tbody></table></div>
-<p>状态之外，还返回检索覆盖的时间与范围、未覆盖部分、索引水位、权限与删除世代、来源版本、预算消耗和候选竞争情况。主状态不能掩盖并存的降级因素。</p>
-<p>内核只提供可观测依据；若要输出概率意义的置信度，必须在保留测试集上校准并报告误差。没有校准时返回证据状态与排序分数，不使用貌似精确的百分比。</p>
-<p>回忆反馈区分候选命中、进入工作区、直接引用、估计的背景影响、用户重新提起、明确确认、更正及可观察的任务结果。模型自评不是外部确认；检索访问次数与真实使用历史分别记录，后台自我检索不提高事实证据或延长保留。控制器记录每次继续检索的理由、新增证据与停止原因，策略校准使用独立评测。</p>
+<p>In addition to state, return searched time and scope, uncovered areas, indexing watermarks, authorization and deletion generations, source versions, budget use, and candidate competition. The primary state must not hide coexisting degradation factors.</p>
+<p>The core provides observable evidence. Any probabilistic confidence output must be calibrated on held-out data with error reporting. Without calibration, return evidence states and ranking scores, not misleadingly precise percentages.</p>
+<p>Recall feedback distinguishes candidate hits, workspace inclusion, direct citation, estimated background influence, user re-mention, explicit confirmation, correction, and observable task outcomes. Model self-assessment is not external confirmation. Record retrieval access separately from actual use; background self-retrieval does not strengthen evidence or extend retention. The controller records reasons for further searching, new evidence, and stopping; policy calibration uses independent evaluation.</p>
 </section>
 <section id="runtime">
-<h2>09 · 工程运行架构</h2>
-<p>明确采用<strong>模块化服务、独立后台 worker、统一存储事实依据</strong>的架构。服务可单机运行或横向部署，认知模块通过稳定的内部接口协作，不要求每个认知概念都成为一个微服务。</p>
-<pre><code>应用插件 / 宿主 SDK / API 适配器 / MCP 客户端 / 管理界面
+<h2>09 · Runtime architecture</h2>
+<p>The architecture uses <strong>a modular service, separate background workers, and one authoritative store</strong>. It can run on one machine or scale horizontally. Cognitive modules collaborate through stable internal interfaces; every cognitive concept need not become a microservice.</p>
+<pre><code>Application plugin / Host SDK / API adapter / MCP client / Management UI
                             ↓
-                鉴权、能力协商、统一记忆应用服务
+                Authentication, capability negotiation, memory application service
                             ↓
-     身份与范围 · 事件与版本 · 工作状态 · 回忆控制 · 生命周期
+     Identity and scope · Events and versions · Working state · Recall control · Lifecycle
                   ↙                         ↘
-   PostgreSQL + pgvector + 中文关键词索引      巩固 worker
-   事件 / 陈述 / 关系 / 权限 / 任务 / 版本     提取 / 关联 / 巩固 / 重建
+   PostgreSQL + pgvector + Chinese keyword index       Consolidation worker
+   Events / Assertions / Relations / Permissions / Jobs / Versions     Extraction / Association / Consolidation / Rebuilding
                   ↓                         ↓
-         对象存储或本地附件目录       可替换的模型与嵌入提供商</code></pre>
-<p>PostgreSQL 保存事件、陈述、实体、关系边、版本、授权、处理进度和任务。向量使用 pgvector；图遍历使用受预算约束的关系查询；附件保存在对象存储，自托管可使用本地文件系统。索引、卡片和摘要均为投影，不独立拥有事实真值。</p>
-<p>Python 适合认知内核、模型接口和评测；HTTP 服务使用类型化请求与自动生成的 OpenAPI；MCP 由独立协议适配层暴露同一应用服务。管理界面和 TypeScript SDK 消费同一契约。具体依赖版本在实现时固定并运行兼容测试，不以本规范代替 SDK 文档。</p>
-<p>事件写入与 outbox 任务在同一事务提交。worker 采用有租约的任务领取、至少一次处理、幂等发布。外部模型调用不占用长数据库事务；发布前再次核对输入来源、修订号和删除世代。失效结果被丢弃或重新处理。</p>
-<p>缓存可选，不能成为唯一状态来源。缓存键包含身份范围、授权版本、记忆版本、检索配置、嵌入版本和必要的上下文指纹。更正与删除失效相关缓存；进程重启不影响记录完整性。</p>
-<p>不同时维护“关系库一套事实、向量库一套事实、图数据库另一套事实”。只有在实测容量或检索需求证明必要时，才通过可重建投影接入专用检索服务，并保持事实存储与版本接口不变。</p>
+         Object storage or local attachments           Replaceable model and embedding providers</code></pre>
+<p>PostgreSQL stores events, assertions, entities, relation edges, versions, authorization, processing progress, and jobs. Vectors use pgvector; graph traversal uses budgeted relational queries. Attachments use object storage, or a local filesystem for self-hosting. Indexes, cards, and summaries are projections, not independent authorities on factual truth.</p>
+<p>Python suits the cognitive core, model interfaces, and evaluation. HTTP uses typed requests and generated OpenAPI; a separate MCP adapter exposes the same application service. The management UI and TypeScript SDK consume the same contract. Pin dependency versions and run compatibility checks during implementation; this specification does not replace SDK documentation.</p>
+<p>Event writes and outbox jobs commit in the same transaction. Workers use leased claims, at-least-once processing, and idempotent publication. External model calls do not hold long database transactions. Recheck sources, revisions, and deletion generations before publishing; discard or reprocess invalid results.</p>
+<p>Caches are optional and cannot be the sole state authority. Cache keys include identity scope, authorization version, memory version, retrieval configuration, embedding version, and necessary context fingerprints. Corrections and deletions invalidate affected caches; process restarts do not compromise record integrity.</p>
+<p>Do not maintain separate authoritative facts in relational, vector, and graph databases. Add specialized retrieval services only when measured scale or retrieval needs justify them, using rebuildable projections while preserving the authoritative store and version interfaces.</p>
 </section>
 <section id="concurrency">
-<h2>10 · 时间、并发会话与分支</h2>
-<p>每轮读取一个明确快照，工作状态提交使用预期修订号检查。两个会话分别维护工作状态；共享的长期陈述通过来源与有效时间协调，不采用简单“最后写入者胜出”。</p>
-<p>事件时间与获知时间分开。用户今天讲述去年的经历，不应覆盖今天的当前状态；迟到消息按来源顺序和时间重新定位。自然语言日期无法唯一解析时保留区间或未知，不编造精确日期。</p>
-<p>会话分支保留共同祖先与分支标识。试验分支、模拟行动和真实执行结果分开；分支合并需显式说明接纳哪些事件，不能把两个互斥假设都写成现实经历。重试与编辑也不是新发生一次同样的事件。</p>
-<p>prepare 与 commit 之间发生更正或删除时，通过记忆世代检测过期上下文。完整适配器在发送回复前检查并重算或中止；只能提供工具的宿主可能无法中止已开始的生成，必须在能力声明中暴露这个限制。</p>
-<p>索引积压时，prepare 补读已提交但未索引的尾部。在尾部也超出预算时，返回覆盖限制与积压状态，不能无上限拼接，也不能把不可见部分当作不存在。</p>
+<h2>10 · Time, concurrent conversations, and branches</h2>
+<p>Each turn reads an explicit snapshot; working-state commits check the expected revision. Conversations maintain separate working states. Shared long-term assertions reconcile through provenance and valid time, rather than simple last-write-wins.</p>
+<p>Event time and learned time are separate. A user describing last year's experience today must not overwrite today's state. Reposition late messages using source order and time. If a natural-language date cannot be resolved uniquely, preserve an interval or unknown rather than inventing precision.</p>
+<p>Conversation branches retain common ancestry and branch identity. Experimental branches, simulated actions, and actual execution results remain separate. Branch merging explicitly identifies accepted events; mutually exclusive hypotheses cannot both become real experiences. Retries and edits do not mean the same event happened again.</p>
+<p>Corrections or deletions between prepare and commit invalidate context through memory generations. Full adapters check before sending and recompute or abort. Tool-only hosts may not be able to interrupt generation already in progress and must expose that limitation in capability declarations.</p>
+<p>During indexing backlog, prepare supplements reads with the committed but unindexed tail. If that tail also exceeds budget, return coverage limits and backlog state. Do not concatenate without bound or treat unseen content as nonexistent.</p>
 </section>
 <section id="integration">
-<h2>11 · 通用接入契约</h2>
-<p>产品以初始化时绑定的宿主适配器接入 Agent，自动获得消息、推理和交付生命周期，并管理记忆上下文。适配器调用下列底层操作，业务代码与主 Agent 不承担每轮手动编排。认知控制器必须自行触发必要回忆；主 Agent 的主动工具调用属于补充能力。完整责任定义见 <a href="autonomous-runtime.contract.json">自主记忆运行契约</a>，该契约仍是待实现目标。</p>
-<div class="table-wrap"><table><thead><tr><th>操作</th><th>职责</th><th>主要约束</th></tr></thead><tbody>
-<tr><td><code>observe</code></td><td>接收真实消息、工具结果与附件引用</td><td>鉴权范围、幂等键、来源与投递状态</td></tr>
-<tr><td><code>prepare</code></td><td>准备本轮工作状态和记忆上下文</td><td>输入预算、快照、索引水位、模型能力</td></tr>
-<tr><td><code>recall</code></td><td>根据新线索检索与关联扩展</td><td>范围、时间、预算、搜索覆盖与停止原因</td></tr>
-<tr><td><code>inspect</code></td><td>展开原文、事件经过和版本</td><td>再次授权；仅返回当前允许访问的来源</td></tr>
-<tr><td><code>commit</code></td><td>提交本轮实际输出、结果与工作状态变化</td><td>预期修订号、输出状态、取消与送达区分</td></tr>
-<tr><td><code>checkpoint</code></td><td>压缩或中断前保存可恢复状态</td><td>不能替代原始记录持久化</td></tr>
-<tr><td><code>correct</code></td><td>更正解释、关系或当前陈述</td><td>保留依据；触发依赖失效与重建</td></tr>
-<tr><td><code>forget</code></td><td>应用保留政策或执行授权删除</td><td>明确淡出、细节降级与删除语义</td></tr>
-<tr><td><code>export / restore</code></td><td>导出、迁移和恢复</td><td>格式版本、来源完整性、删除清单、权限重新绑定</td></tr>
+<h2>11 · Universal integration contract</h2>
+<p>A host adapter bound at initialization integrates the product with an agent, automatically receiving message, inference, and delivery lifecycle events and managing memory context. The adapter invokes the operations below; business code and the primary agent do not manually orchestrate each turn. The cognitive controller must trigger necessary recall itself; primary-agent tool use is supplementary. The full responsibilities are defined in the <a href="autonomous-runtime.contract.json">autonomous memory runtime contract</a>, which remains an implementation target.</p>
+<div class="table-wrap"><table><thead><tr><th>Operation</th><th>Responsibility</th><th>Main constraints</th></tr></thead><tbody>
+<tr><td><code>observe</code></td><td>Receive actual messages, tool results, and attachment references</td><td>Authenticated scope, idempotency keys, provenance, and delivery state</td></tr>
+<tr><td><code>prepare</code></td><td>Prepare working state and memory context for the turn</td><td>Input budget, snapshot, indexing watermark, and model capabilities</td></tr>
+<tr><td><code>recall</code></td><td>Retrieve and expand associations from new cues</td><td>Scope, time, budget, search coverage, and stopping reason</td></tr>
+<tr><td><code>inspect</code></td><td>Expand source text, event sequence, and versions</td><td>Reauthorize; return only currently accessible sources</td></tr>
+<tr><td><code>commit</code></td><td>Commit actual output, outcomes, and working-state changes</td><td>Expected revision, output state, and distinction between cancellation and delivery</td></tr>
+<tr><td><code>checkpoint</code></td><td>Save recoverable state before compaction or interruption</td><td>Does not replace persistence of original records</td></tr>
+<tr><td><code>correct</code></td><td>Correct interpretations, relations, or current assertions</td><td>Retain evidence and trigger dependency invalidation and rebuilding</td></tr>
+<tr><td><code>forget</code></td><td>Apply retention policy or authorized deletion</td><td>Explicit fading, detail reduction, and deletion semantics</td></tr>
+<tr><td><code>export / restore</code></td><td>Export, migrate, and recover</td><td>Format versions, source integrity, deletion manifests, and permission rebinding</td></tr>
 </tbody></table></div>
-<p>完整 SDK 接入包括真实事件写入、回答前 prepare、必要时 recall、实际结果 commit 和受支持的 checkpoint。API 代理必须接收稳定的身份、会话、分支及请求标识；仅替换 URL 不代表这些语义自动存在。纯文本模型也能通过宿主注入 ContextPacket 使用记忆，但主动回忆循环由宿主承担。</p>
-<p>能力协商至少覆盖：自动事件捕获、回答前注入、工具调用、实际送达确认、分支与编辑事件、压缩交接、取消生成、稳定主体标识、tokenizer、流式输出和多模态输入。适配器发布前运行相同的契约测试。</p>
-<p>MCP 连接暴露主动回忆和记忆操作。MCP 自身不决定宿主如何管理上下文，也不会自动读取完整聊天；能力与诊断接口必须报告已验证的生命周期覆盖，不能从“已连接”推导完整自动化。只在模型请求上追加检索文本，也不满足完整记忆上下文管理的要求。</p>
+<p>Full SDK integration includes real event capture, prepare before responses, recall when needed, commit of actual outcomes, and supported checkpoints. API proxies must receive stable identity, conversation, branch, and request identifiers; replacing a URL alone does not create these semantics. Text-only models can use memory through host-injected ContextPacket data, but the host owns the active recall cycle.</p>
+<p>Capability negotiation covers at least automatic capture, pre-response injection, tool calling, actual delivery confirmation, branches and edits, compaction handoff, cancellation, stable principal identifiers, tokenizer support, streaming, and multimodal input. Adapters run the same contract tests before release.</p>
+<p>MCP exposes active recall and memory operations. MCP itself does not dictate host context management or automatically read complete conversations. Capability and diagnostic interfaces must report verified lifecycle coverage; being connected does not imply full automation. Merely appending retrieved text to a model request does not satisfy complete memory-context management.</p>
 </section>
 <section id="ownership">
-<h2>12 · 身份、隔离与数据生命周期</h2>
-<p>大脑身份与模型名称分离。租户拥有大脑，角色与参与者在大脑内有独立身份，关系记忆和渠道可见性显式建模。跨应用绑定身份需要经过验证；同名、同昵称或相似表达不构成自动合并依据。</p>
-<p>认证主体决定可用范围，模型传入的 brain 或 participant 参数只可缩小范围，不能扩大授权。候选检索、原文读取、附件、导出、异步任务与缓存均执行范围检查。PostgreSQL RLS 作为额外隔离，应用角色不能是超级用户或具有 BYPASSRLS 权限。</p>
-<p>读权限与披露范围要分别考虑。私聊来源即使可供拥有者查看，也不能自动出现在群聊上下文中。共享知识、Agent 自身配置和双方共同经历分别授权。</p>
-<p>删除先在事务中撤销可召回状态并推进删除世代，再清理原文、向量、摘要、关系、工作状态引用、缓存和后台任务。审计仅保留必要的不含内容的操作记录。事件溯源不构成拒绝用户删除的理由。</p>
-<p>备份有明确清除窗口。恢复环境在重新开放读取前应用独立维护的删除清单；导入包不恢复旧授权或服务密钥。处于生成中的旧上下文能否撤回，按适配器能力报告，不作无法执行的即时删除承诺。</p>
-<p>迁移包包含版本化对象、来源、状态与关联，可选择包含附件。向量属于可重建数据，模型与嵌入服务改变时重新生成；不同嵌入空间的向量不直接混用。更换模型后分别测试记忆利用和交流风格。</p>
+<h2>12 · Identity, isolation, and data lifecycle</h2>
+<p>Brain identity is separate from model names. Tenants own brains; roles and participants have distinct identities within a brain. Model relationship memory and channel visibility explicitly. Cross-application identity binding requires verification; matching names, nicknames, or expressions do not justify automatic merging.</p>
+<p>The authenticated principal determines available scope. Model-supplied brain or participant parameters can narrow scope but cannot expand authorization. Candidate retrieval, source reads, attachments, exports, asynchronous jobs, and caches all enforce scope. PostgreSQL RLS provides additional isolation; application roles must not be superusers or have BYPASSRLS.</p>
+<p>Read permission and disclosure scope are separate. A private-chat source visible to its owner must not automatically enter a group-chat context. Authorize shared knowledge, agent configuration, and shared experiences separately.</p>
+<p>Deletion first revokes recall eligibility and advances the deletion generation transactionally, then clears source text, vectors, summaries, relations, working-state references, caches, and background jobs. Audit keeps only necessary content-free operation records. Event sourcing is not a reason to refuse user deletion.</p>
+<p>Backups have explicit erasure windows. A restored environment applies an independently maintained deletion manifest before reopening reads. Imports do not restore old authorization or service keys. Report whether already-generating contexts can be withdrawn according to adapter capabilities; do not promise unenforceable immediate deletion.</p>
+<p>Migration packages contain versioned objects, sources, states, and associations, optionally including attachments. Vectors are rebuildable and regenerated when model or embedding services change; do not mix incompatible embedding spaces. Test memory use and communication style separately after changing models.</p>
 </section>
 <section id="product">
-<h2>13 · 无界面产品与必要的开发观测</h2>
-<p>交付物是可嵌入或独立部署的记忆运行时及宿主适配器。大脑身份、范围、处理模型和预算在绑定时配置；每轮的记忆行为由运行时承担。管理页面、时间线与可视化图谱都不是必需能力，现有工作台仅是可移除的开发辅助。</p>
-<p>状态接口报告就绪状态、生命周期覆盖、持久化与索引水位、巩固积压及失败。指标接口分别计量前台和后台的上下文、调用、费用与延迟。结构化运行日志按 trace_id 和 turn_id 连接本轮的输入、回忆、上下文选择、提交与后台更新。</p>
-<p>每次决策记录相关事件和记忆版本、使用的策略与处理器、选择或停止原因、预算消耗和结果。开发者能够追踪“为什么想起”“为什么没继续找”“哪条新证据改变了认识”。这些诊断依据可观测事件和策略输出，不要求或保存模型隐藏推理。</p>
-<p>日志默认不复制聊天正文；来源展开重新进行身份与范围校验，并遵守删除约束。内部审计和开发日志不得进入 Agent 的经历记忆。已有 dashboard 与部分召回轨迹不代表完整观测接口已经实现。</p>
-<p>本地存储与本地模型处理是独立设置，远程处理的数据流向通过配置和能力接口明确说明。托管、自托管与本地运行共享核心能力和迁移格式。开发观测不得成为用户正常交流或记忆运行的人工操作前提。</p>
+<h2>13 · Headless product and essential developer observability</h2>
+<p>The deliverable is an embeddable or independently deployed memory runtime with host adapters. Brain identity, scope, processing models, and budgets are configured at binding; the runtime handles per-turn memory behavior. Management pages, timelines, and visual graphs are not required. The existing workbench is removable development assistance.</p>
+<p>Status interfaces report readiness, lifecycle coverage, persistence and indexing watermarks, consolidation backlog, and failures. Metrics separately measure foreground and background context, calls, costs, and latency. Structured logs connect the turn's input, recall, context selection, commit, and background updates through trace_id and turn_id.</p>
+<p>Each decision records relevant event and memory versions, policies and processors, selection or stopping reasons, budget use, and outcomes. Developers can trace why a memory was recalled, why searching stopped, and which new evidence changed a belief. Diagnostics use observable events and policy outputs, without requesting or storing hidden model reasoning.</p>
+<p>Logs do not copy conversation text by default. Source expansion rechecks identity and scope and follows deletion constraints. Internal audit and development logs must not become the agent's episodic memory. An existing dashboard and partial recall traces do not mean complete observability interfaces are implemented.</p>
+<p>Local storage and local model processing are independent settings. Configuration and capability interfaces explicitly describe remote-processing data flows. Hosted, self-hosted, and local deployment share core capabilities and migration formats. Developer observability must not become a manual prerequisite for ordinary conversation or memory operation.</p>
 </section>
 <section id="cost">
-<h2>14 · 成本、容量与运行质量</h2>
-<p>每次请求接收 token、模型调用次数、候选读取量和截止时间预算。工作区分配必须扣除系统规则、工具 schema、当前输入与输出预留。tokenizer 不可用时只能声明估算，不能把字符数当作准确 token 数。</p>
-<p>总成本账包含经历提取、巩固、嵌入、重排、查询理解、主动回忆、回答、存储和备份。分别报告冷缓存与热缓存、前台延迟与后台处理延迟。复杂回顾允许多次读取，但仍受显式总预算约束。</p>
-<p>后台按租户配额、任务优先级与积压限流，避免一个大脑的历史导入阻塞其他人的即时写入。模型失败采用有界重试；无法整理时保留原文并显示积压，不静默丢弃。</p>
-<p>运行指标包括：事件确认失败率、索引水位差、任务重试、回忆状态分布、证据覆盖、上下文占用、总调用成本、P50/P95/P99 延迟、存储增长和恢复耗时。日志默认记录标识与统计，避免重复持久化聊天正文。</p>
-<p>性能、可用性、RPO 和 RTO 必须在明确的硬件、数据规模与模型配置下测量。设计不能预先宣称“毫秒级全量回忆”或“无限历史固定成本”。通过预算测试保证资源不会无限增长，通过质量测试观察预算收紧的损失。</p>
+<h2>14 · Cost, capacity, and operational quality</h2>
+<p>Each request accepts budgets for tokens, model calls, candidate reads, and deadlines. Workspace allocation must subtract system rules, tool schemas, current input, and output reserves. Without a tokenizer, report an estimate rather than treating character count as exact tokens.</p>
+<p>The total cost ledger includes episode extraction, consolidation, embeddings, reranking, query understanding, active recall, answers, storage, and backups. Report cold and warm caches, foreground latency, and background processing latency separately. Complex retrospection permits multiple reads within an explicit total budget.</p>
+<p>Rate-limit background work by tenant quotas, job priority, and backlog so one brain's history import does not block others' immediate writes. Model failures have bounded retries. If organization cannot finish, preserve original text and expose backlog rather than silently dropping it.</p>
+<p>Operational metrics include event-acknowledgment failures, indexing lag, job retries, recall-state distribution, evidence coverage, context usage, total call cost, P50/P95/P99 latency, storage growth, and recovery time. Logs record identifiers and statistics by default, avoiding duplicate persistence of conversation content.</p>
+<p>Measure performance, availability, RPO, and RTO under explicit hardware, data scale, and model configuration. The design cannot preclaim millisecond recall of all history or fixed-cost infinite history. Budget tests ensure bounded resources; quality tests measure what tighter budgets lose.</p>
 </section>
 <section id="verification">
-<h2>15 · 完整验收与实验协议</h2>
-<p>验收同时覆盖认知行为、协议语义和运行可靠性。每项认知模块应有移除该模块后的对照实验，验证它是否改善目标能力，避免用架构复杂度代替效果。</p>
-<div class="table-wrap"><table><thead><tr><th>类别</th><th>关键验收</th></tr></thead><tbody>
-<tr><td>自主运行</td><td>无管理页面、无主 Agent 记忆工具调用，仍自动记忆；适配器管理完整生命周期和上下文</td></tr>
-<tr><td>工作记忆</td><td>跨话题指代、中断恢复、多个未完事项、暂时需求过期</td></tr>
-<tr><td>提示唤回</td><td>无提示、模糊提示、明确提示下真实新增细节与错误细节的变化</td></tr>
-<tr><td>巩固与再解释</td><td>合理概括、例外保留、新反例修正、原始表达仍可查证</td></tr>
-<tr><td>时间与冲突</td><td>当前与历史分别回答、计划取消、更正旧陈述、迟到消息</td></tr>
-<tr><td>抗错误记忆</td><td>错误提示、模型自述、梦境、引用、角色扮演不污染真实经历</td></tr>
-<tr><td>遗忘</td><td>淡出后可被线索唤回；真删除后不可恢复；活跃度不改变可信度</td></tr>
-<tr><td>程序与前瞻记忆</td><td>验证过的方法才复用；失效条件可识别；约定不自动授权行动</td></tr>
-<tr><td>元记忆</td><td>部分、歧义、冲突、积压和故障正确分类；不过度拒答</td></tr>
-<tr><td>生命周期</td><td>重启、重复投递、崩溃重放、分支、并发、更正、删除后恢复</td></tr>
-<tr><td>接入与隔离</td><td>MCP、SDK 和代理遵守同一契约；多用户、私聊群聊和角色无串用</td></tr>
-<tr><td>迁移</td><td>导出恢复、索引重建、模型和嵌入替换、旧格式升级</td></tr>
-<tr><td>资源边界</td><td>前台与后台预算均生效；超限返回清楚状态；积压和大输入不失控</td></tr>
+<h2>15 · Complete acceptance and experimental protocol</h2>
+<p>Acceptance covers cognitive behavior, protocol semantics, and operational reliability together. Each cognitive module needs an ablation without that module to establish whether it improves its target capability. Architectural complexity is not a substitute for effectiveness.</p>
+<div class="table-wrap"><table><thead><tr><th>Category</th><th>Key acceptance checks</th></tr></thead><tbody>
+<tr><td>Autonomous operation</td><td>Automatic memory without a management page or primary-agent memory tool calls; adapter management of the full lifecycle and context</td></tr>
+<tr><td>Working memory</td><td>References across topics, interruption recovery, multiple unfinished matters, and expiration of temporary needs</td></tr>
+<tr><td>Cued recall</td><td>Changes in genuine recovered details and errors with absent, vague, and explicit cues</td></tr>
+<tr><td>Consolidation and reinterpretation</td><td>Sound generalizations, retained exceptions, updates after counterexamples, and verifiable original expressions</td></tr>
+<tr><td>Time and conflict</td><td>Separate current and historical answers, cancelled plans, corrected statements, and late messages</td></tr>
+<tr><td>False-memory resistance</td><td>False cues, model claims, dreams, quotations, and roleplay do not contaminate real experiences</td></tr>
+<tr><td>Forgetting</td><td>Faded content is cue-recoverable; truly deleted content is not; activation does not change credibility</td></tr>
+<tr><td>Procedural and prospective memory</td><td>Reuse only validated methods; recognize invalidating conditions; commitments do not authorize actions</td></tr>
+<tr><td>Metamemory</td><td>Correctly classify partial evidence, ambiguity, conflict, backlog, and failure without excessive refusal</td></tr>
+<tr><td>Lifecycle</td><td>Restarts, duplicate delivery, crash replay, branches, concurrency, corrections, and recovery after deletion</td></tr>
+<tr><td>Integration and isolation</td><td>MCP, SDK, and proxies follow one contract; no mixing between users, private/group chats, or roles</td></tr>
+<tr><td>Migration</td><td>Export/restore, index rebuilding, model and embedding replacement, and older-format upgrades</td></tr>
+<tr><td>Resource boundaries</td><td>Foreground and background budgets hold; exceeded limits return clear states; backlogs and large inputs remain bounded</td></tr>
 </tbody></table></div>
-<p>按时间逐条回放对话；建索引不得接触未来消息、测试题、答案和证据标签。开发集与测试集按完整历史或人物划分，同一问题的改写放在同一组。公开基准之外，加入未公开的中文口语、暗示、群聊与长期变化场景。</p>
-<p>在相同回答模型、人格、输入与输出预算下，比较最近窗口、滚动摘要、原文混合检索和完整系统；全历史作为另行计费的参考。多次运行，按历史聚类报告不确定性；人类盲审与自动指标结合，不让单个模型裁判独占结论。</p>
-<p>质量指标包括证据召回与完整证据覆盖、回答正确性、当前事实错误率、无依据回忆率、适当澄清与过度拒答、隐含利用效果。需要同时报告普通细节与置顶记忆，不能只测系统事先认定重要的内容。</p>
-<div class="note">验收门槛的制定原则：确定性语义（隔离、去重、版本、删除、预算）必须通过对应断言；统计性质量需要对最强基线有可重复的改善，并单独检查关键类别退步。具体数值阈值需依据应用风险和样本规模确定，未运行实验前不写成已达到的能力。</div>
+<p>Replay conversations chronologically. Indexing must not see future messages, test questions, answers, or evidence labels. Split development and test data by complete histories or people, keeping paraphrases of one question together. Alongside public benchmarks, include unpublished Chinese conversational language, implicit cues, group chats, and long-term changes.</p>
+<p>With the same answering model, persona, and input/output budgets, compare a recent window, rolling summaries, hybrid source retrieval, and the complete system. Treat full-history context as a separately costed reference. Repeat runs, report uncertainty clustered by history, and combine blinded human review with automated metrics rather than letting one model judge determine all conclusions.</p>
+<p>Quality metrics include evidence recall, complete evidence coverage, answer correctness, current-fact errors, unsupported recall, appropriate clarification, excessive refusal, and implicit memory use. Report ordinary details as well as pinned memories; do not test only content the system already labeled important.</p>
+<div class="note">Acceptance thresholds follow two principles: deterministic semantics such as isolation, deduplication, versions, deletion, and budgets must satisfy their assertions; statistical quality must show reproducible improvement over the strongest baseline, with separate checks for regressions in key categories. Set numerical thresholds by application risk and sample size; do not describe unrun experiments as achieved capabilities.</div>
 </section>
 <section id="decisions">
-<h2>16 · 已确定的架构决策与必须验证的选择</h2>
-<p><a href="implementation-blueprint.html">认知记忆实施蓝图</a>对照当前源码确定数据复用、推理生命周期、语义巩固、混合回忆、持久任务、宿主接管及验收依赖。它是实现方案，不代表新增机制已经完成。</p>
-<p><strong>架构决策：</strong>采用独立记忆运行时；认知模块分离；原始事件与理解分离；关系型事实存储加可重建索引；快写入与慢巩固；宿主生命周期与主动工具并存；正交管理保留、激活、证据和范围；部署方式共享核心与格式。</p>
-<p><strong>通过实验决定：</strong>经历边界算法、嵌入与重排模型、激活和衰减参数、关联传播深度、上下文选择策略、巩固触发条件、冲突检测与语义支持判断，以及不同语言和 Agent 类型所需的预算。</p>
-<p><strong>通过适配验证决定：</strong>各宿主可捕获哪些事件，能否在回答前注入、在输出前检查版本、取得送达状态、区分分支、保存压缩交接。兼容性按已验证能力报告，不能从“支持 MCP”推导出完整支持。</p>
-<p><strong>实现组织：</strong>领域对象与策略、应用流程、持久化与模型端口、HTTP/MCP 适配器、宿主连接器、worker、控制台和评测相互分离。基础模型提供商、嵌入提供商和图检索策略可替换；数据库事务、授权与删除语义不能交给模型决定。</p>
-<p>本规范没有把完整目标拆成演示版本。工程实施仍需按依赖关系推进，最终是否完成以所有约定能力与验收结果判断。没有实现或没有验证的部分，在状态报告中保持明确。</p>
+<h2>16 · Architectural decisions and choices requiring validation</h2>
+<p>The <a href="implementation-blueprint.html">cognitive memory implementation blueprint</a> maps current source code to data reuse, inference lifecycle, semantic consolidation, hybrid recall, durable jobs, host control, and acceptance dependencies. It is an implementation design, not evidence that the new mechanisms are complete.</p>
+<p><strong>Architectural decisions:</strong> an independent memory runtime; separate cognitive modules; original events distinct from interpretation; relational authoritative storage with rebuildable indexes; fast writes and slower consolidation; host lifecycle integration alongside active tools; orthogonal retention, activation, evidence, and scope; common core and formats across deployments.</p>
+<p><strong>Decide through experiments:</strong> episode boundary algorithms, embedding and reranking models, activation and decay parameters, association depth, context selection, consolidation triggers, conflict detection, semantic support judgments, and budgets for different languages and agent types.</p>
+<p><strong>Decide through adapter validation:</strong> which events each host captures; whether it supports pre-response injection, pre-output version checks, delivery states, branches, and compaction handoff. Report verified compatibility rather than inferring full support from MCP support.</p>
+<p><strong>Implementation organization:</strong> separate domain objects and policies, application flows, persistence and model ports, HTTP/MCP adapters, host connectors, workers, console, and evaluation. Base-model providers, embedding providers, and graph retrieval policies are replaceable. Database transactions, authorization, and deletion semantics are not delegated to models.</p>
+<p>This specification does not divide the complete goal into demo releases. Implementation still follows dependencies, and completion is judged against every agreed capability and acceptance result. Status reports must clearly identify work that is not implemented or not validated.</p>
 </section>
 <section id="sources">
-<h2>17 · 研究与技术依据</h2>
-<p>以下来源支持功能启发或技术约束。它们并未验证本规范提出的完整系统。</p>
-<p><a href="research/human-memory-2026-10-23.html">2026-10-23 研究补充：25 篇论文、九项认知机制与架构推论</a>进一步说明事件分段、情境恢复、条件认识、共同模式与个体差异、选择性复查及方法学习，并列出证据限制和待执行的对照实验。补充文档是设计建议，不代表这些能力已实现。</p>
+<h2>17 · Research and technical foundations</h2>
+<p>The following sources support functional inspiration or technical constraints. They do not validate the complete system proposed here.</p>
+<p>The <a href="research/human-memory-2026-10-23.html">2026-10-23 research supplement: 25 papers, nine cognitive mechanisms, and architectural implications</a> expands on event segmentation, context reinstatement, conditional beliefs, shared patterns and individual differences, selective review, and procedural learning, including evidence limits and proposed controlled experiments. It presents design recommendations, not implemented capabilities.</p>
 <ol>
-<li><a href="https://pubmed.ncbi.nlm.nih.gov/7624455/">McClelland、McNaughton、O’Reilly（1995）：互补学习系统</a>。支持快速经历学习与较慢规律学习的功能分工。</li>
-<li><a href="https://pubmed.ncbi.nlm.nih.gov/11058819/">Baddeley（2000）：情景缓冲区</a>。有限容量工作区整合当前信息与长期记忆的理论启发。</li>
-<li><a href="https://support.pstnet.com/hc/en-us/article_attachments/360082710954">Tulving 与 Pearlstone（1966）：可保留与可提取的区别</a>。提示能够改善部分原本无法自由回忆的内容，不支持所有遗忘均可恢复。</li>
-<li><a href="https://act-r.psy.cmu.edu/actr7.x/reference-manual.pdf">ACT-R 官方参考手册</a>。激活与认知模型的参考，不作为本系统参数的生物有效性证明。</li>
-<li><a href="https://pubmed.ncbi.nlm.nih.gov/18685148/">Hupbach 等（2008）：情境依赖的记忆更新</a>。回忆与更新存在实验条件，不能普遍外推为每次回忆都会重写历史。</li>
-<li><a href="https://arxiv.org/abs/2310.08560">MemGPT</a>。有限上下文与外部记忆的主动管理。</li>
-<li><a href="https://arxiv.org/abs/2304.03442">Generative Agents</a>。经历、反思、检索与行为，以及漏检与编造的限制。</li>
-<li><a href="https://arxiv.org/abs/2410.10813">LongMemEval</a>。长期记忆的提取、跨会话推理、时间更新与不确定时不作答。</li>
-<li><a href="https://arxiv.org/abs/2609.03467">LoCoMo-Conv</a>。隐含线索、组合回忆与不必显式复述的记忆利用。</li>
-<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture">MCP 官方架构</a>。宿主、客户端和服务器的职责与上下文边界。</li>
-<li><a href="https://github.com/pgvector/pgvector">pgvector 官方仓库</a>。同库向量存储，精确与近似检索的不同性质。</li>
-<li><a href="https://www.postgresql.org/docs/current/ddl-rowsecurity.html">PostgreSQL 行级安全</a>。范围隔离及超级用户、BYPASSRLS、表所有者的绕过行为。</li>
+<li><a href="https://pubmed.ncbi.nlm.nih.gov/7624455/">McClelland, McNaughton, and O’Reilly (1995): complementary learning systems</a>. Supports a functional division between rapid learning of experiences and slower learning of regularities.</li>
+<li><a href="https://pubmed.ncbi.nlm.nih.gov/11058819/">Baddeley (2000): the episodic buffer</a>. Theoretical inspiration for integrating current information and long-term memory within a limited workspace.</li>
+<li><a href="https://support.pstnet.com/hc/en-us/article_attachments/360082710954">Tulving and Pearlstone (1966): availability versus accessibility</a>. Cues can improve recall of some content unavailable to free recall; this does not mean all forgetting is reversible.</li>
+<li><a href="https://act-r.psy.cmu.edu/actr7.x/reference-manual.pdf">Official ACT-R reference manual</a>. A reference for activation and cognitive modeling, not proof that this system's parameters are biologically valid.</li>
+<li><a href="https://pubmed.ncbi.nlm.nih.gov/18685148/">Hupbach et al. (2008): context-dependent memory updating</a>. Recall and updating depend on experimental conditions; not every retrieval rewrites history.</li>
+<li><a href="https://arxiv.org/abs/2310.08560">MemGPT</a>. Active management of limited context and external memory.</li>
+<li><a href="https://arxiv.org/abs/2304.03442">Generative Agents</a>. Experiences, reflection, retrieval, behavior, and limitations involving missed retrieval and fabrication.</li>
+<li><a href="https://arxiv.org/abs/2410.10813">LongMemEval</a>. Long-term information extraction, cross-session reasoning, temporal updates, and abstention under uncertainty.</li>
+<li><a href="https://arxiv.org/abs/2609.03467">LoCoMo-Conv</a>. Implicit cues, compositional recall, and memory use without explicit restatement.</li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture">Official MCP architecture</a>. Responsibilities and context boundaries of hosts, clients, and servers.</li>
+<li><a href="https://github.com/pgvector/pgvector">Official pgvector repository</a>. Vector storage in the same database and the differences between exact and approximate retrieval.</li>
+<li><a href="https://www.postgresql.org/docs/current/ddl-rowsecurity.html">PostgreSQL row security</a>. Scope isolation and bypass behavior for superusers, BYPASSRLS, and table owners.</li>
 </ol>
 </section>
-<footer>文档状态：架构规范。未执行产品性能、记忆质量或生产兼容性测试。配套接口与验收文件与本文件一同评审。</footer>
+<footer>Document status: architecture specification. Product performance, memory quality, and production compatibility tests have not been run for this specification. Review the accompanying interface and acceptance files together with this document.</footer>
 </article></main>
 </body></html>

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:agent-memory:contract:1.0.0-draft",
   "title": "Agent Memory Contract — Architecture Specification",
-  "description": "设计规范，不表示服务、协议适配或任何验收已实现。结构校验只覆盖 JSON 层；身份绑定、权限、来源真实性、引用存在、时间一致性、跨字段预算与恢复删除约束必须由运行时和验收验证。",
+  "description": "Design specification; it does not establish that the service, protocol adapters, or acceptance requirements have been implemented. Structural validation covers JSON only. Identity binding, permissions, source authenticity, reference existence, temporal consistency, cross-field budgets, and deletion constraints during recovery require runtime enforcement and acceptance testing.",
   "x-design-status": "target_specification",
   "x-fixed-actions": [
     "observe",
@@ -75,7 +75,7 @@
         "basis"
       ],
       "additionalProperties": false,
-      "description": "事件发生或陈述有效的时间范围；未知边界使用 null，不以录入时间冒充发生时间。非空 end 不得早于 start，需运行时验证。"
+      "description": "The time range in which an event occurred or a statement was valid. Use null for unknown boundaries; ingestion time must not stand in for occurrence time. A non-null end must not precede start, which requires runtime validation."
     },
     "SystemTime": {
       "type": "object",
@@ -97,7 +97,7 @@
         "superseded_at"
       ],
       "additionalProperties": false,
-      "description": "服务器记录和取代该版本的时间，与现实世界的有效时间分离。"
+      "description": "The times at which the server recorded and superseded this version, separate from its validity in the real world."
     },
     "ScopeSelector": {
       "type": "object",
@@ -124,7 +124,7 @@
         "brain_ref"
       ],
       "additionalProperties": false,
-      "description": "客户端请求的目标范围，不是身份声明。服务端必须将其与已认证 principal 的许可相交；不得从客户端 user_id、tenant_id 或脑内文本取得权限。"
+      "description": "The target scope requested by the client, not an identity claim. The server must intersect it with the authenticated principal's permissions. Client user_id, tenant_id, and text stored in the brain must not grant permissions."
     },
     "BoundScope": {
       "type": "object",
@@ -182,7 +182,7 @@
         "scope_generation"
       ],
       "additionalProperties": false,
-      "description": "仅服务器生成的授权上下文。身份、策略和可见范围不能由语言模型填写后生效；导入时重新绑定。"
+      "description": "Authorization context generated exclusively by the server. Model-supplied identity, policy, or visibility fields must not confer authority. Rebind this context on import."
     },
     "EvidenceRef": {
       "type": "object",
@@ -237,7 +237,7 @@
         "relationship"
       ],
       "additionalProperties": false,
-      "description": "指向已经存在且调用方有权读取的事件版本。span 需在来源长度内；end 大于 start。引用有效性、授权和哈希须运行时校验，引用不等于来源陈述已被证实。"
+      "description": "A reference to an existing event version that the caller is authorized to read. The span must fit within the source, with end greater than start. Reference validity, authorization, and hashes require runtime validation. A reference does not establish that the source's statement is true."
     },
     "EventContent": {
       "type": "object",
@@ -418,7 +418,7 @@
         "delivery_state"
       ],
       "additionalProperties": false,
-      "description": "宿主提交实际接收、生成或交付的记录。producer 和 actor 必须与已授权适配器映射校验；客户端标签只是声明，不授予真实事件或权威事实地位。相同幂等键且内容不同必须冲突。"
+      "description": "A host-submitted record of actual receipt, generation, or delivery. Validate producer and actor against the authorized adapter mapping. Client labels are claims only; they do not establish a real event or authoritative fact. Reusing an idempotency key with different content must produce a conflict."
     },
     "Event": {
       "type": "object",
@@ -496,7 +496,7 @@
         "utterance_segments"
       ],
       "additionalProperties": false,
-      "description": "服务器认可的记录：确认谁提交了什么，不自动确认内容客观真实。草稿、取消输出与已经送达的消息必须区分；事件的删除由专门擦除流程处理。 utterance_segments 是可修正的来源解释，不是客观事实认证；混合提问和陈述需按区段解释，模型及适配器的提示不能直接授予确认地位。"
+      "description": "A server-accepted record establishes who submitted what, not whether its content is objectively true. Distinguish drafts, cancelled outputs, and delivered messages. Event deletion uses the dedicated erasure workflow. utterance_segments are revisable interpretations of sources, not certifications of objective facts. Interpret mixed questions and statements by segment; model and adapter hints cannot directly confer confirmed status."
     },
     "MemoryDynamics": {
       "type": "object",
@@ -568,7 +568,7 @@
         "reasons"
       ],
       "additionalProperties": false,
-      "description": "活跃度、保留价值、细节程度分别控制；数值均非真实性概率。模型复述自己的陈述不能增加证据强度；用户删除优先于置顶。 candidate_hit 不增真实性或保留价值；context_selected、quoted、background_influence 至多影响短期活跃度。只有经独立来源验证的外部反馈才可触发重新评估，且提及次数不能代替证据。"
+      "description": "Control activation, retention value, and detail level separately; none of these values is a truth probability. A model repeating its own statement cannot strengthen evidence. User deletion takes precedence over pinning. candidate_hit increases neither truth confidence nor retention value; context_selected, quoted, and background_influence can affect at most short-term activation. Only external feedback verified against independent sources may trigger reassessment; mention counts cannot replace evidence."
     },
     "MemoryAssertion": {
       "type": "object",
@@ -848,7 +848,7 @@
         "disclosure_basis"
       ],
       "additionalProperties": false,
-      "description": "从事件形成的可修正陈述，与 Event 严格分离。supported_report 只表示有据可查的陈述，不是客观事实认证；未知认识可无证据。 每个派生版本还需通过 disclosure_basis 验证实际支持路径的权限；文字概括、图关系和向量命中均不能扩大来源可披露范围。",
+      "description": "A revisable statement derived from events, strictly separate from Event. supported_report means a traceable report, not certified objective truth; an unknown belief may have no evidence. Each derived version must also validate permissions along its actual support paths through disclosure_basis. Text summaries, graph relationships, and vector matches must not broaden what the sources may disclose.",
       "allOf": [
         {
           "if": {
@@ -941,7 +941,7 @@
         "updated_at"
       ],
       "additionalProperties": false,
-      "description": "工作记忆可表达当前主题、指代、交流需求或未知值；只有可依据既有数据的状态才附证据。unknown 不应伪造引用。",
+      "description": "Working memory may express the current topic, referents, communication needs, or unknown values. Attach evidence only to states grounded in existing data. unknown must not fabricate references.",
       "allOf": [
         {
           "if": {
@@ -1022,7 +1022,7 @@
         "last_updated_at"
       ],
       "additionalProperties": false,
-      "description": "意图、计划和实际完成分开表示；到期不自动转成已发生。未知状态允许空证据。",
+      "description": "Represent intentions, plans, and actual completion separately. Passing a due date does not establish that an event occurred. Unknown states may have empty evidence.",
       "allOf": [
         {
           "if": {
@@ -1090,7 +1090,7 @@
         "updated_at"
       ],
       "additionalProperties": false,
-      "description": "会话分支局部的工作状态；空 items 和 open_loops 是合法初始状态。修订必须用 compare-and-swap 防止并发覆盖。"
+      "description": "Working state local to a conversation branch. Empty items and open_loops are valid initial states. Revisions must use compare-and-swap to prevent concurrent overwrites."
     },
     "Budget": {
       "type": "object",
@@ -1149,7 +1149,7 @@
         "tokenizer_id"
       ],
       "additionalProperties": false,
-      "description": "调用方上限与租户上限取更严者。成本包括本次触发的模型、嵌入及后台工作预留；未知计价不得声明低于预算。没有目标 tokenizer 时明确采用保守估计。"
+      "description": "Apply the stricter of caller and tenant limits. Costs include reservations for model, embedding, and background work triggered by this request. Unknown pricing must not be reported as within budget. Explicitly use a conservative estimate when the target tokenizer is unavailable."
     },
     "Usage": {
       "type": "object",
@@ -1263,7 +1263,7 @@
         "snapshot_revision"
       ],
       "additionalProperties": false,
-      "description": "若所需序列未覆盖，返回 indexing 或 degraded，并报告实际覆盖；不能静默给出完整成功。"
+      "description": "If the required sequence is not covered, return indexing or degraded and report actual coverage. Do not silently report complete success."
     },
     "Coverage": {
       "type": "object",
@@ -1334,7 +1334,7 @@
         "rebuilding"
       ],
       "additionalProperties": false,
-      "description": "覆盖范围说明。无命中不意味着用户从未说过；向量近似检索默认不得宣称穷尽全部档案。 dependency_generation 为已提交的当前依赖代际，projection_generation 为实际使用投影的代际。rebuilding 只表示本请求所需覆盖仍在重建，返回 partial；即使 worker 停止，旧代际投影也不得继续作为有效事实被读取。直接来源已充分覆盖的请求可不受重建影响。"
+      "description": "Coverage information. No match does not mean the user never said something. Approximate vector retrieval must not claim exhaustive archive coverage by default. dependency_generation is the current committed dependency generation; projection_generation is the generation of the projection actually used. rebuilding means only that coverage required by this request is still rebuilding, so return partial. Even with workers stopped, projections from old generations must not remain readable as valid facts. Requests fully covered by direct sources may be unaffected by rebuilding."
     },
     "RecallRequest": {
       "type": "object",
@@ -1429,7 +1429,7 @@
         "budget"
       ],
       "additionalProperties": false,
-      "description": "检索必须结合授权范围和当前会话；新线索可以唤回旧依据，不能把提醒中新说出的内容冒充找回的旧记忆。 evidence_mode 和 evidence_cutoff 可省略；普通检索可使用当前合法输入。服务端检测历史记忆断言时应自动建立证据边界，不能因客户端省略模式而允许提示污染。"
+      "description": "Retrieval must respect authorization scope and the current conversation. New cues may recover old evidence; newly supplied details in a reminder must not masquerade as recovered memories. evidence_mode and evidence_cutoff are optional; ordinary retrieval may use valid current input. When detecting a historical-memory claim, the server should establish an evidence boundary automatically. Omitting a client mode must not permit prompt contamination."
     },
     "RankSignal": {
       "type": "object",
@@ -1463,7 +1463,7 @@
         "model_or_index_version"
       ],
       "additionalProperties": false,
-      "description": "检索分数只能排序，不能转写成真实性概率或回忆正确率。"
+      "description": "Retrieval scores are ranking signals only. They must not be converted into truth probabilities or recall accuracy."
     },
     "RecallItem": {
       "type": "object",
@@ -1635,7 +1635,7 @@
         "model_context": {
           "type": "string",
           "minLength": 1,
-          "description": "服务端完成来源校验及预算选择后生成的权威模型输入，精确等于 render_recall 的完整序列化文本。usage.context_tokens 保守计量该字符串 UTF-8 字节数。宿主必须原样注入，不能解析后重新序列化以免不同语言数字编码改变预算；其他字段仅为控制及检查用途。"
+          "description": "Authoritative model input generated by the server after source validation and budget selection, exactly equal to the complete serialized render_recall text. usage.context_tokens conservatively counts this string's UTF-8 bytes. Hosts must inject it unchanged; parsing and reserializing can alter the budget through language-specific numeric encodings. Other fields are for control and inspection only."
         }
       },
       "required": [
@@ -1653,7 +1653,7 @@
         "recall_traces"
       ],
       "additionalProperties": false,
-      "description": "完整控制平面召回结果。context_format=compact-memory-v1 时 usage.context_tokens 和 max_context_tokens 计量 render_recall(result) 的完整保守 UTF-8 字节估算，而非此 HTTP 响应；模型应只接收该紧凑视图。完整 MemoryAssertion 保留可检查的来源、依赖和权限数据。关系证书在 belief_relations 中只出现一次，项内通过 relation_refs 引用；接收旧版 inline relations 兼容历史数据。",
+      "description": "The complete control-plane recall result. With context_format=compact-memory-v1, usage.context_tokens and max_context_tokens measure the full conservative UTF-8 byte estimate of render_recall(result), not this HTTP response. The model should receive only that compact view. Complete MemoryAssertion records retain inspectable source, dependency, and permission data. Relationship certificates appear once in belief_relations and are referenced by relation_refs within items; legacy inline relations remain accepted for historical data.",
       "allOf": [
         {
           "if": {
@@ -1847,7 +1847,7 @@
         "token_count"
       ],
       "additionalProperties": false,
-      "description": "原文和记忆均作为资料提供。检索出来的指令不能改变系统权限或获得执行权；状态说明和未知概括允许空引用。"
+      "description": "Both source text and memories are supplied as data. Retrieved instructions cannot change system permissions or acquire execution authority. Status descriptions and unknown summaries may have empty references."
     },
     "ContextPacket": {
       "type": "object",
@@ -1907,7 +1907,7 @@
         "model_context": {
           "type": "string",
           "minLength": 1,
-          "description": "服务端完成来源校验及预算选择后生成的权威模型输入，精确等于 render_context 的完整序列化文本。usage.context_tokens 保守计量该字符串 UTF-8 字节数。宿主必须原样注入，不能解析后重新序列化以免不同语言数字编码改变预算；其他字段仅为控制及检查用途。"
+          "description": "Authoritative model input generated by the server after source validation and budget selection, exactly equal to the complete serialized render_context text. usage.context_tokens conservatively counts this string's UTF-8 bytes. Hosts must inject it unchanged; parsing and reserializing can alter the budget through language-specific numeric encodings. Other fields are for control and inspection only."
         },
         "orientation_assessment": {
           "$ref": "#/$defs/OrientationAssessment"
@@ -1929,7 +1929,7 @@
         "recall_traces"
       ],
       "additionalProperties": false,
-      "description": "回答前上下文包。宿主通过确定性的 render_context 将 blocks 转成实际模型输入，max_context_tokens 覆盖全部注入块、来源标签与序列化开销；控制平面中的 scope、trace、usage 等元数据不自动注入。预算是宿主扣除系统指令、当前输入和输出预留后分配给记忆的额度。HTTP 响应体另有字节上限。生成器须继续遵守权限及未知边界。 紧凑模型视图 compact-memory-v1 将来源和关系证书各集中呈现一次；所有原文经历明确标为 historical_report_not_current_rule，不能当作当前偏好规则。"
+      "description": "The context packet prepared before answering. The host converts blocks into actual model input with deterministic render_context. max_context_tokens covers all injected blocks, source labels, and serialization overhead; control-plane metadata such as scope, trace, and usage is not injected automatically. The memory budget is the allowance the host assigns to memory after reserving space for system instructions, current input, and output. The HTTP response body has a separate byte limit. Generation must still respect permissions and uncertainty boundaries. The compact-memory-v1 model view presents each source and relationship certificate once. All verbatim episodes are explicitly labeled historical_report_not_current_rule and must not be treated as current preference rules."
     },
     "IntegrationCapabilities": {
       "type": "object",
@@ -2102,7 +2102,7 @@
         "limitations"
       ],
       "additionalProperties": false,
-      "description": "适配器能力声明；连接测试确认后才能标为 verified。MCP 可用不推出自动观察和上下文接管；代理不知道身份和分支时必须降级。",
+      "description": "Declared adapter capabilities. Mark them verified only after connection tests confirm them. An available MCP connection does not imply automatic observation or context control. Proxies without known identities and branches must report reduced capabilities.",
       "allOf": [
         {
           "if": {
@@ -2233,7 +2233,7 @@
         "proposal_reason"
       ],
       "additionalProperties": false,
-      "description": "模型或适配器的提议，不是已确认记忆；必须经服务端来源、范围和世界状态验证才能形成 MemoryAssertion。无来源推测只能作为明确假设或未知。"
+      "description": "A model or adapter proposal, not a confirmed memory. It must pass server validation of sources, scope, and world status before becoming a MemoryAssertion. Unsupported speculation may only be represented as an explicit hypothesis or unknown."
     },
     "ObservationReceipt": {
       "type": "object",
@@ -2281,7 +2281,7 @@
         "scope_generation"
       ],
       "additionalProperties": false,
-      "description": "仅在配置的持久化策略确认后应答 accepted。该回执不表示巩固完成。"
+      "description": "Return accepted only after the configured durability policy confirms persistence. This receipt does not mean consolidation is complete."
     },
     "CheckpointReceipt": {
       "type": "object",
@@ -2321,7 +2321,7 @@
         "created_at"
       ],
       "additionalProperties": false,
-      "description": "只有原始事件持久化、工作状态已提交且恢复路径覆盖所需序列，才能标记压缩交接安全。",
+      "description": "Mark a compaction handoff safe only when original events are durable, working state is committed, and the recovery path covers the required sequence.",
       "allOf": [
         {
           "if": {
@@ -2448,7 +2448,7 @@
         "affected_object_count"
       ],
       "additionalProperties": false,
-      "description": "删除回执不宣称所有历史备份即时物理擦除。恢复必须先应用当前删除清单；erase_content 清除原文与派生内容，suppress_recall 只限制召回并须明确展示区别。"
+      "description": "A deletion receipt does not claim immediate physical erasure from all historical backups. Recovery must apply the current deletion manifest first. erase_content clears original and derived content; suppress_recall only limits retrieval, and this distinction must be explicit."
     },
     "PortableArchive": {
       "type": "object",
@@ -2521,7 +2521,7 @@
         "job"
       ],
       "additionalProperties": false,
-      "description": "可迁移档案包含原文、来源、状态和删除记录；不以向量作为唯一可移植记忆。不导出密钥、认证令牌或其他租户权限。"
+      "description": "A portable archive includes original text, sources, state, and deletion records. Vectors must not be the only portable form of memory. Do not export secrets, authentication tokens, or permissions belonging to other tenants."
     },
     "RuntimeError": {
       "type": "object",
@@ -2568,7 +2568,7 @@
         "retryable"
       ],
       "additionalProperties": false,
-      "description": "错误必须可区分且不泄露无权主体或记录的存在。"
+      "description": "Errors must be distinguishable without revealing the existence of unauthorized principals or records."
     },
     "ObservePayload": {
       "type": "object",
@@ -2647,7 +2647,7 @@
         "capabilities"
       ],
       "additionalProperties": false,
-      "description": "客户端能力报告仅供协商；服务端应查验已绑定适配器的连接测试记录，不能信任客户端自称 verified 或 full_lifecycle。 evidence_mode 和 evidence_cutoff 可省略；普通检索可使用当前合法输入。服务端检测历史记忆断言时应自动建立证据边界，不能因客户端省略模式而允许提示污染。",
+      "description": "Client capability reports are for negotiation only. The server should check connection-test records for the bound adapter rather than trust a client claiming verified or full_lifecycle. evidence_mode and evidence_cutoff are optional; ordinary retrieval may use valid current input. When detecting a historical-memory claim, the server should establish an evidence boundary automatically. Omitting a client mode must not permit prompt contamination.",
       "allOf": [
         {
           "if": {
@@ -2784,7 +2784,7 @@
         "assertion_proposals"
       ],
       "additionalProperties": false,
-      "description": "已交付事件必须先 observe；本动作提交分支工作状态及提议。服务端不得把尚未交付草稿或模型自述当成用户事实。"
+      "description": "Delivered events must first be submitted through observe. This action commits branch working state and proposals. The server must not treat undelivered drafts or a model's self-reports as facts about the user."
     },
     "CheckpointPayload": {
       "type": "object",
@@ -2879,7 +2879,7 @@
           }
         }
       ],
-      "description": "纠正必须受版本与依赖代际约束。成功表示事务已记录纠正并阻断旧支持路径；不表示异步重建已完成。"
+      "description": "Corrections must be constrained by version and dependency generation. Success means the transaction recorded the correction and blocked old support paths; it does not mean asynchronous rebuilding is complete."
     },
     "ForgetPayload": {
       "type": "object",
@@ -3041,7 +3041,7 @@
         "budget"
       ],
       "additionalProperties": false,
-      "description": "导入先验证格式、哈希和引用，重新绑定权限，隔离未验证来源。先应用删除清单再开放查询；不能信任档案里的 principal。"
+      "description": "Import must first validate format, hashes, and references, rebind permissions, and quarantine unverified sources. Apply the deletion manifest before enabling queries. Do not trust the principal stored in the archive."
     },
     "ObserveResult": {
       "$ref": "#/$defs/ObservationReceipt"
@@ -3256,7 +3256,7 @@
         "payload"
       ],
       "additionalProperties": false,
-      "description": "授权身份来自认证通道而非 JSON 字段。schema 结构校验不替代服务端的授权、引用、时间范围和预算校验。",
+      "description": "Authorized identity comes from the authentication channel, not JSON fields. Schema validation does not replace server checks for authorization, references, time ranges, or budgets.",
       "allOf": [
         {
           "if": {
@@ -3767,7 +3767,7 @@
         "act"
       ],
       "additionalProperties": false,
-      "description": "按内容区段区分直接陈述、询问与预设。询问“你还记得我们去过海边吗”只证明有人这样问过，不能独立证明去过海边；未知分类不能按直接陈述处理。非文本事件可使用 not_applicable。"
+      "description": "Distinguish direct statements, inquiries, and presuppositions by content segment. Asking 'Do you remember when we went to the beach?' establishes only that the question was asked, not independently that the trip happened. An unknown classification must not be treated as a direct statement. Non-text events may use not_applicable."
     },
     "EvidenceCutoff": {
       "type": "object",
@@ -3822,7 +3822,7 @@
           }
         }
       ],
-      "description": "仅对检查“此前是否已经记得/记录”使用的历史证据上界。依据服务端观察序列或已持久化事件 ID，不依据用户自报时间。服务端解析并夹紧到查询前合法边界；普通上下文检索无需固定截止。"
+      "description": "An upper bound on historical evidence used only to check whether something had already been remembered or recorded. It is based on the server's observation sequence or a persisted event ID, not a user-reported time. The server resolves and clamps it to a valid pre-query boundary. Ordinary contextual retrieval does not require a fixed cutoff."
     },
     "RetrievalSnapshot": {
       "type": "object",
@@ -3949,7 +3949,7 @@
           }
         }
       ],
-      "description": "服务器固定本次读取的观察序列、权限代际和依赖代际。历史回忆必须排除当前查询、同一误提示链及其派生物作为“以前已经记录”的独立证据；这些内容仍可用作检索线索。新的用户确认可成为当前报告，但不反向证明过去已记得。not_requested 不设历史证据上界；unavailable 须明确限制。"
+      "description": "The server fixes the observation sequence, permission generation, and dependency generation for this read. Historical recall must exclude the current query, the same misleading-cue chain, and their derivatives as independent evidence that something was previously recorded; they may still serve as retrieval cues. A new user confirmation can become a current report but cannot retroactively prove prior memory. not_requested sets no historical evidence bound; unavailable must disclose the limitation."
     },
     "SupportPath": {
       "type": "object",
@@ -4013,7 +4013,7 @@
         "independently_supports_complete_statement"
       ],
       "additionalProperties": false,
-      "description": "一条能够独立支持完整陈述的实际来源路径。permitted_scope 不能超过该路径全部必需来源权限的交集；引用和中间记忆同样计入。不同路径是否独立需追溯最终原始事件，模型重复与受限摘要不构成独立公开证据。"
+      "description": "An actual source path that can independently support the entire statement. permitted_scope must not exceed the intersection of permissions for all sources required by that path, including references and intermediate memories. Determining independence requires tracing paths to original events. Model repetition and restricted summaries are not independent public evidence."
     },
     "DisclosureBasis": {
       "type": "object",
@@ -4111,7 +4111,7 @@
           }
         }
       ],
-      "description": "服务器验证每个待披露陈述的完整支持路径；输出 scope 不得宽于选中有效路径的 permitted_scope。独立合法公开证据可以生成单独共享版本，但不能夹带私有细节、受限来源 ID 或由私有来源推出的关系。来源删除或更正后同步使相关支持路径失效，再重算；其他真正独立路径仍可支持单独版本。"
+      "description": "The server validates complete support paths for every statement to be disclosed. Output scope must not be broader than the selected valid path's permitted_scope. Independent, authorized public evidence may support a separate shared version, but must not carry private details, restricted source IDs, or relationships inferred from private sources. Deleting or correcting a source synchronously invalidates affected support paths before recomputation; genuinely independent paths may still support separate versions."
     },
     "CorrectionCommit": {
       "type": "object",
@@ -4157,7 +4157,7 @@
         "stale_projection_reads_blocked"
       ],
       "additionalProperties": false,
-      "description": "同一事务持久化纠正记录、更新当前陈述、推进依赖代际并使旧投影及缓存失效，事务完成后才返回成功。实际代际必须严格递增；完整重建可以异步，旧读不能等待 worker 才失效。原始用户纠正消息可预先 observe，本事务仍必须保存可审计的纠正事实及其来源。"
+      "description": "In a single transaction, persist the correction, update the current statement, advance the dependency generation, and invalidate old projections and caches. Return success only after commit. The generation must strictly increase. Full rebuilding may be asynchronous, but old reads must become invalid without waiting for a worker. The original user correction message may have been submitted through observe earlier; this transaction must still persist an auditable correction record and its sources."
     },
     "RecallTrace": {
       "type": "object",
@@ -4379,7 +4379,7 @@
           }
         }
       ],
-      "description": "区分召回、选择、引用、模型估计的背景影响与外部反馈。外部重新提起也必须结合 speech act 判断：问句预设不是确认。external_reassessment 仅允许重新检查证据和保留策略，不自动增加真实性或保留价值；模型估计与内部检索不构成外部确认。"
+      "description": "Distinguish retrieval, selection, quotation, model-estimated background influence, and external feedback. External reintroduction must also be interpreted by speech act: a question's presupposition is not confirmation. external_reassessment permits only reevaluating evidence and retention policy; it does not automatically increase truth confidence or retention value. Model estimates and internal retrieval are not external confirmation."
     },
     "RecallFeedbackInput": {
       "type": "object",
@@ -4426,7 +4426,7 @@
         "evidence_refs"
       ],
       "additionalProperties": false,
-      "description": "客户端提出的反馈，不是可信 RecallTrace。服务端从已认证来源、交付记录和 speech act 验证类型；模型只能报告 background_influence 估计，不能自报 user_confirmed 或 observed_outcome 后获得外部确认资格。"
+      "description": "Client-proposed feedback, not a trusted RecallTrace. The server validates its type against authenticated sources, delivery records, and speech acts. Models may report only estimated background_influence; claiming user_confirmed or observed_outcome must not confer eligibility as external confirmation."
     },
     "RecallPlan": {
       "type": "object",
@@ -5759,12 +5759,12 @@
     }
   },
   "x-runtime-invariants": [
-    "历史已记录断言使用服务端证据截止与检索快照；当前提示链及其派生物不能独立证明以前已记录。普通上下文检索不强制固定历史截止。",
-    "询问、预设、直接报告、纠正、确认必须按实际内容区段解释；分类不确定不得自动升格为确认。",
-    "correct 事务同步持久化纠正、严格推进依赖代际并阻断旧投影，重建异步；请求受重建影响时使用 partial 和 coverage.rebuilding。",
-    "派生内容的可披露范围受完整支持路径限制；公开独立来源须生成不夹带私有内容的单独版本。删除和纠正同步使支持路径失效。",
-    "RecallTrace 区分内部检索、上下文选择、引用、模型估计、用户反馈和已观察结果；模型估计与后台重复召回不增加真实性或保留价值。",
-    "JSON Schema 不能验证引用存在、原始来源独立性、权限集合包含关系、代际单调性、实际读一致性或反馈来源；须由运行时和验收测试验证。"
+    "Claims of prior recording use a server-resolved evidence cutoff and retrieval snapshot. The current cue chain and its derivatives cannot independently prove prior recording. Ordinary contextual retrieval does not require a fixed historical cutoff.",
+    "Interpret inquiries, presuppositions, direct reports, corrections, and confirmations by their actual content segments. Uncertain classification must not be promoted automatically to confirmation.",
+    "The correct transaction synchronously persists the correction, strictly advances the dependency generation, and blocks old projections. Rebuilding is asynchronous. Requests affected by rebuilding use partial and coverage.rebuilding.",
+    "The disclosure scope of derived content is constrained by complete support paths. Independent public sources must produce separate versions without private content. Deletion and correction synchronously invalidate support paths.",
+    "RecallTrace distinguishes internal retrieval, context selection, quotation, model estimates, user feedback, and observed outcomes. Model estimates and repeated background retrieval do not increase truth confidence or retention value.",
+    "JSON Schema cannot verify reference existence, independence of original sources, permission-set inclusion, generation monotonicity, actual read consistency, or feedback provenance. Runtime enforcement and acceptance tests must verify these properties."
   ],
   "x-cognitive-revision": "cognitive-views-v1"
 }

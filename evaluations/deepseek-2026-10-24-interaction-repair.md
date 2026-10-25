@@ -1,68 +1,68 @@
-# 当前请求、经历组织与记忆消费实测：2026-10-24
+# Current requests, episode organization, and memory consumption: 2026-10-24
 
-本轮完成了当前请求的来源绑定、经历组织命题与完整来源核验、归档兼容，以及记忆消费协议。真实测试确认：三个提问回合的请求均正确进入宿主，两次长期偏好及经历实际发布，跨会话回忆确实使用了历史语义版本。但宿主仍会把未知适用性的“最新记录”说成当前安排，**尚未通过完整验收**。首次评审后暂缓发布，用户随后明确要求将当前实现与失败报告一并提交，验收结果保持原判。
+This work added source binding for current requests, episode-organization claims with whole-source verification, archive compatibility, and a memory-consumption protocol. Live testing confirmed that all three question turns reached the host correctly, both long-term preferences and episodes were actually published, and cross-conversation recall used historical semantic versions. However, the host still described the latest record with unknown applicability as the current arrangement. **Complete acceptance has not passed.** Publication was initially paused after review; the user subsequently explicitly requested delivery of the current implementation together with the failure report. Evaluation verdicts remain unchanged.
 
-[结构化报告](deepseek-2026-10-24-interaction-repair.json) 保留原始五轮实验、独立诊断、后续三项对照、调用账本及独立开发审阅。原始报告的状态、失败和待审阅字段没有被改写；结论另存于 `developer_review`。审阅由开发 Agent 核对完整来源、模型输入输出和状态完成，不是独立人工基准，也不是关键词判分。
+The [structured report](deepseek-2026-10-24-interaction-repair.json) preserves the original five-turn experiment, independent diagnostic, three subsequent controls, call ledger, and independent developer review. Original statuses, failures, and pending-review fields were not rewritten; conclusions are stored separately under `developer_review`. A developer agent reviewed complete sources, model inputs and outputs, and state. This was not an independent human benchmark or keyword scoring.
 
-## 本轮实现
+## Implementation
 
-- `current_request` 只描述当前用户实际提出的问题或请求。服务端绑定真实 turn/job 和精确输入版本，分别核验完整命题、请求含义及每条来源；发布、快照恢复和结果复用再次检查。问题预设不能因此变成历史事实，后台巩固也不能取得这份权限。
-- 新经历提议必须给出 `organization_statement`，说明交互记录如何组成分组或发生边界变化。核验包含完整新旧成员、精确旧版本、来源角色与变更后的分组，最多 32 条来源。旧记录继续兼容。
-- 归档严格支持新组织字段，恢复正确映射来源事件版本。`organization_source_version` 只是转换前身份的审计记录，不承诺归档含有旧组织快照，也不充当独立证据；上传档案仍隔离。
-- 有反证或认识状态未定的内容不会再标为可直接采用的当前规则。固定解释协议进入宿主提示、输入预算及生成指纹。其 v2 明确要求阅读当前原话、不能用摘要遗漏否定明确自述、不能自造日期推翻运行时适用性，并用自然语言表达。
+- `current_request` describes only a question or request actually made by the current user. The server binds it to the real turn/job and exact input versions, separately verifies the whole claim, request intent, and each source, and rechecks publication, snapshot recovery, and result reuse. Question presuppositions do not become historical facts, and background consolidation does not gain this authority.
+- New episode proposals must provide an `organization_statement` explaining how interaction records form a group or change its boundaries. Verification includes all old and new members, exact old versions, source roles, and the resulting grouping, with at most 32 sources. Old records remain compatible.
+- Archives strictly support the new organization fields and restore source-event version mappings correctly. `organization_source_version` is only an audit record of identity before conversion. It neither promises that an archive contains an old organization snapshot nor serves as independent evidence. Uploaded archives remain quarantined.
+- Content with counterevidence or unsettled belief state is no longer labeled a directly usable current rule. The fixed interpretation protocol enters the host prompt, input budget, and generation fingerprint. Its v2 explicitly requires reading the current original message, forbids using a summary's omission to negate an explicit self-report or inventing dates to override runtime applicability, and asks for natural-language expression.
 
-## 五轮真实对话：3/5 流程全过，回答另行判断
+## Five live turns: 3/5 passed all pipeline checks; answers assessed separately
 
-仍使用 DeepSeek-V4-Pro 思考模式、本机 TCP HTTP、PostgreSQL 和本地持久投递。各轮重建服务、客户端与 runtime，切换会话，关闭近期对话补充；没有 embedding、语义召回控制器、隐藏聊天记录或标准答案。只在 learn/change 执行各一个后台整理窗口。
+The experiment again used DeepSeek-V4-Pro thinking mode, local TCP HTTP, PostgreSQL, and local persistent delivery. Each turn rebuilt the service, client, and runtime and changed conversations, with recent-conversation supplementation disabled. There were no embeddings, semantic recall controller, hidden chat history, or reference answers. Only learn/change executed one background consolidation window each.
 
-| 阶段 | 全部流程检查 | 回答目标 | 主要结果 |
+| Stage | All pipeline checks | Answer objective | Main result |
 | --- | --- | --- | --- |
-| learn | 通过 | 未通过 | 长期记忆发布正确，但回答忽略用户当轮明确说的“长期偏好” |
-| recall | 通过 | 未通过 | 名称与顺序找回成功，但自造当前日期，否定已判定生效的安排 |
-| change | 未通过 | 通过 | 当前陈述误标为请求而被拒；后台正确发布新偏好、替代关系和经历 |
-| recall_change | 未通过 | 通过 | 请求理解正确，回答正确；额外经历命题缺少完整支持而被拒 |
-| empty_control | 通过 | 通过 | 承认没有历史资料，没有猜测名称、顺序或饮料 |
+| learn | Passed | Failed | Long-term memory was published correctly, but the answer ignored the user's explicit current statement that this was a long-term preference |
+| recall | Passed | Failed | Recovered the name and order but invented the current date and denied an arrangement already evaluated as applicable |
+| change | Failed | Passed | A current statement was misclassified as a request and rejected; background learning correctly published the new preference, superseding relation, and episode |
+| recall_change | Failed | Passed | Correct request interpretation and answer; an extra episode claim lacked complete support and was rejected |
+| empty_control | Passed | Passed | Acknowledged missing history without guessing a name, order, or drink |
 
-learn 的回答把派生情境摘要当成全部材料，称其中未直接使用“长期偏好”，忽略了最后一条原始 user 消息中的明确表述。数据库里的偏好本身完整保留了名称、顺序、起点、长期偏好及无预定结束日期。
+The learn answer treated the derived situation summary as all available material and said it did not directly state a long-term preference, ignoring the explicit wording in the final original user message. The database preference itself fully preserved the name, order, start, long-term intent, and lack of a scheduled end.
 
-recall 的语义记忆为 `applicability=true`，轮次时间为 2026-10-24；回答却自行声称当前是 2026-05-07，并说安排尚未生效。这是宿主使用信息时的错误，不能据此否认历史语义链已真实到达模型。
+The recall semantic memory had `applicability=true`, and the turn date was 2026-10-24. The answer instead invented 2026-05-07 as the current date and said the arrangement had not started. This was a host information-use error; it does not negate that the historical semantic chain reached the model.
 
-change 中，模型将偏好陈述写成 `current_request`；独立核验对请求、完整命题及来源均给出 unknown，系统拒绝了它。不能为取得全绿而把自述自动当成请求。
+In change, the model represented a preference statement as `current_request`. Independent verification returned unknown for the request, whole claim, and sources, and the system rejected it. Self-reports must not automatically become requests to obtain an all-green result.
 
-recall_change 的额外经历命题提到了“折纸灯”，但它唯一引用的当前提问没有这个名称。名称存在于其他历史记录，却未进入该提案的成员证据。这是可定位的支持缺口，不代表我们知道核验模型返回 unknown 的私有原因。该拒绝保留原判。
+The extra recall_change episode claim mentioned “Origami Lamp” (original Chinese: “折纸灯”), but its sole cited member, the current question, did not contain that name. The name existed elsewhere in history but was not in this proposal's member evidence. This is a specific support gap, not knowledge of the verifier's private reason for returning unknown. The rejection retains its original verdict.
 
-三轮提问均独立核对了完整问题含义、来源版本和哈希、turn/job 绑定、请求/命题/来源核验，以及真正发送给宿主的区块。海边约定始终只是待确认的预设，没有由提问产生历史 claim。
+All three question turns were independently checked for complete question meaning, source versions and hashes, turn/job binding, request/claim/source verification, and the block actually sent to the host. The beach agreement remained an unconfirmed presupposition; no historical claim was created from the question.
 
-只读数据库审计确认 learn/change 的两个开放经历实际存在，组织命题、成员及来源与已接受提议一致。核验请求的完整原始载荷未被捕获；其组织上下文按冻结代码和保存来源重建，不能夸大为逐字核验请求审计。
+Read-only database auditing confirmed that both open episodes from learn/change actually existed, with organization statements, members, and sources matching accepted proposals. The complete original verification-request payload was not captured. Its organization context was reconstructed from frozen code and saved sources, which must not be described as a byte-for-byte audit of that request.
 
-## 原未知诊断未完成；v2 对照仍有一项失败
+## The original unknown-state diagnostic was incomplete; one v2 control still failed
 
-五轮后另加一个冻结旧上下文的宿主诊断，只插入 v1 通用协议。第 20 次调用耗尽 4,096 输出 token，返回 `incomplete_response`，没有完整答案。因此原实验顶层实际为 **interrupted**；该诊断的语义结果不可评价，不能改称通过或一次有完整答案的语义失败。
+After the five turns, a separate host diagnostic froze old context and inserted only the v1 generic protocol. Call 20 exhausted its 4,096-output-token limit and returned `incomplete_response`, without a complete answer. The original experiment's top-level state was therefore **interrupted**. Its semantic result cannot be assessed; it is neither a pass nor a semantic failure with a complete answer.
 
-根据已经观察到的两个回答缺陷，随后把协议修正为 v2，预先固定三项独立对照：原 learn、原 recall，以及原未知诊断的相同输入。只替换协议 system 消息；记忆、问题、原宿主说明、模型、思考模式及 4,096 输出上限都保持不变。旧答案和评审标准未发送给模型。没有重跑五轮，没有把诊断回答写入数据库、交付或学习。
+Following the two observed answer defects, the protocol was revised to v2 and three independent controls were fixed in advance: the original learn input, recall input, and unknown-state diagnostic input. Only the protocol system message changed. Memory, questions, original host instructions, model, thinking mode, and the 4,096 output cap stayed the same. Old answers and review rubrics were not sent to the model. The five turns were not rerun, and diagnostic answers were not written to the database, delivered, or learned from.
 
-三个调用均完成，目标语义 **2/3 通过**：
+All three calls completed; **2/3 semantic objectives passed**:
 
-- learn 正确承接当前用户的长期偏好。回答中的“我记下了”不能作为这次独立诊断完成持久化的证明，措辞仍有歧义。
-- recall 正确回忆名称、顺序与长期偏好，对饮料只说没找到；不再编造当前日期。
-- 未知诊断仍未通过。回答先说无法确认当前是否已到生效点，随后却说：“但按记录中的最新约定，‘现在’的顺序是：先看教材，再散步。”这仍将最新陈述升级为当前适用，与两条记忆的 unknown 及旧认识的 uncertain 状态冲突。前面的不确定措辞不能抵消后面的确定结论。
+- learn correctly acknowledged the current user's long-term preference. Its wording “我记下了” (original Chinese; “I've noted it”) is not evidence that this independent diagnostic persisted anything, and remains ambiguous.
+- recall correctly recovered the name, order, and long-term preference, saying only that it could not find a drink agreement. It no longer invented the current date.
+- The unknown-state diagnostic still failed. It first said it could not confirm whether the effective time had arrived, then stated, in the original Chinese: “但按记录中的最新约定，‘现在’的顺序是：先看教材，再散步。” English translation: “But according to the latest recorded arrangement, the order ‘now’ is: read the textbook first, then take a walk.” This still promotes the latest statement to current applicability, contradicting both memories' unknown applicability and the old belief's uncertain state. An initial hedge does not cancel a later definite conclusion.
 
-这证明两个具体退化样本有所改善，不能证明宿主已可靠遵守不确定性协议。最后保留这一失败，没有继续加调用或提高输出上限寻求全绿。
+These results show improvement on two specific regression samples, not reliable host compliance with the uncertainty protocol. The final failure was retained, without further calls or a larger output cap to seek all-green results.
 
-## 用量与延迟
+## Usage and latency
 
-五轮加原独立诊断共 **20 次调用**：输入 151,083、输出 81,733，合计 232,816 token。后续三个宿主对照另用输入 7,849、输出 2,317，合计 10,166 token。
+The five turns and original independent diagnostic made **20 calls**, using 151,083 input and 81,733 output tokens: 232,816 total. The three later host controls used another 7,849 input and 2,317 output tokens: 10,166 total.
 
-本轮累计 **23 次调用、242,982 token**；23 次用量均已确认。预留输出上限累计 266,240 token，与实际输出 84,050 不同。未把后续账本当成原用量归零，也没有把 token 数当成账单金额。
+This batch totaled **23 calls and 242,982 tokens**, with all 23 usage records confirmed. Reserved output caps totaled 266,240 tokens, distinct from actual output of 84,050. The follow-up ledger did not reset earlier usage, and token counts are not billing amounts.
 
-原五轮的前台两次认知调用加一次回答，提供方累计耗时分别约 **62、66、159、64、41 秒**。这些是请求计量耗时，尚未包含完整端到端开销。使用强思考模型的这套配置仍不适合即时聊天速度，前台理解和后台整理的职责及预算还需优化。
+For the original five turns, the two foreground cognitive calls plus one answer call accumulated approximately **62, 66, 159, 64, and 41 seconds** of provider time. These are metered request durations, excluding complete end-to-end overhead. This strong thinking-model configuration is still unsuitable for instant-chat speed; the roles and budgets of foreground interpretation and background consolidation need further optimization.
 
-## 复现、验证与交付状态
+## Reproduction, validation, and delivery status
 
-`examples/evaluate_interaction_repair.py` 的 `--plan / --live / --resume` 对应原 20 次实验；`examples/evaluate_consumption_repair.py` 对应额外三项对照。后者只接受完整已知用量的来源，或本次“前五轮完成、只有末次冻结诊断触及输出上限”的精确失败状态；它不会泛化放行其他中断。两者已有输出目录均拒绝再次付费运行，`--resume` 只读。
+`examples/evaluate_interaction_repair.py` provides `--plan / --live / --resume` for the original 20-call experiment. `examples/evaluate_consumption_repair.py` runs the three additional controls. The latter accepts only a source with complete known usage, or the exact failure state here: all five turns complete, with only the final frozen diagnostic hitting its output cap. It does not generally allow other interrupted runs. Both reject repeat paid execution when the output directory already exists; `--resume` is read-only.
 
-原报告 SHA-256 为 `553bb310ff2f992ddae91eb8985e78dc290ff75abb3cadf5a774a71b7531f1ca`，后续报告为 `afde0cbf0c5ded7a3083da0fd65d308b1037d04404a5f0da5d8acc534abade3e`。完整五轮运行使用 v1；最终生产代码只有 runtime 协议改成 v2，其他原实验中的生产代码指纹保持一致。v2 没有重新执行完整五轮。
+The original report's SHA-256 is `553bb310ff2f992ddae91eb8985e78dc290ff75abb3cadf5a774a71b7531f1ca`; the follow-up's is `afde0cbf0c5ded7a3083da0fd65d308b1037d04404a5f0da5d8acc534abade3e`. The full five turns used v1. In the final production code, only the runtime protocol changed to v2; all other production-code fingerprints from the original experiment remained identical. The full five turns were not rerun with v2.
 
-最终 Python 全套 **2,010 项通过**，115.90 秒；Ruff、包构建、差异检查通过。初次归档回归已修复；此前并行测试期间出现的数据库断连未能确证根因，串行完整测试不再复现。TypeScript 未修改，本轮未重复测试。没有新增或触发云 CI，也没有以 Codex／Claude 订阅作为被测模型。
+The final full Python run had **2,010 passing tests** in 115.90 seconds. Ruff, package build, and diff checks passed. The initial archive regression was fixed. Database disconnections during earlier parallel testing had no confirmed root cause and did not recur in the serial full run. TypeScript was unchanged and its tests were not repeated. No cloud CI was added or triggered, and Codex/Claude subscriptions were not used as models under test.
 
-当前留下的主要问题是宿主仍可能越过未知状态、情境提议分类和经历支持不够稳定，以及真实前台延迟较大。原评审时按用户“验证失败先报告”的仓库要求暂缓提交和推送；用户随后明确要求先发布本地代码，因此当前实现与全部证据一并交付。结构化报告保留原评审时的交付状态，另记后续发布决定；不能将通过的工程回归或代码发布等同于完整产品验收通过。
+Remaining issues include hosts potentially overriding unknown states, unstable situation classification and episode support, and high real foreground latency. Under the user's repository rule to report validation failures first, commit and push were initially paused. The user subsequently explicitly requested publication of the local code, so the implementation and all evidence were delivered together. The structured report preserves delivery status at the original review and records the later publication decision separately. Passing engineering regressions or publishing code does not constitute complete product acceptance.
