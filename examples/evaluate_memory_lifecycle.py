@@ -1,4 +1,4 @@
-"""Opt-in full runtime smoke and frozen long-history comparisons; resume never spends."""
+"""Opt-in lifecycle smoke, repair diagnostics, and frozen long-history comparisons; resume never spends."""
 
 from __future__ import annotations
 
@@ -32,6 +32,16 @@ from examples import evaluate_conversation as conversation
 from examples.evaluate_deepseek import save
 from examples.evaluation_host import ChatCompletionsHost, loopback_server
 from examples.evaluation_support import MeteredTransport
+from examples.lifecycle_learning import (
+    PHASE_POLICY,
+    PhaseLearning,
+    execution_failure,
+    phase_checks,
+    repair_selection,
+    scoped_windows,
+    semantic_allowance,
+    window_metadata,
+)
 from examples.memory_benchmark_cases import DEFAULT_SEED, long_history, validate_dataset
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,30 +70,34 @@ LIMITATIONS = [
 
 
 def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_policy="always"):
-    if profile not in {"smoke", "long"}:
+    if profile not in {"smoke", "long", "repair"}:
         raise ValueError("Unknown experiment profile")
     dataset = long_history(seed, history_turns) if profile == "long" else None
-    fixtures = copy.deepcopy(list(conversation.FIXTURES)) if profile == "smoke" else dataset["history"]
+    diagnostic = None
+    if profile == "repair":
+        fixtures, diagnostic = repair_selection(seed)
+    else:
+        fixtures = copy.deepcopy(list(conversation.FIXTURES)) if profile == "smoke" else dataset["history"]
     turns = len(fixtures) + (len(dataset["probes"]) if dataset else 0)
     learning_turns = sum(item["learn"] for item in fixtures)
-    semantic_calls = 2 * (turns + learning_turns)
+    allowance = semantic_allowance(turns, learning_turns, conversation.SEMANTIC_POLICY)
+    semantic_calls = allowance["max_model_calls"]
     calls = {"semantic": semantic_calls, "host": turns, "answer_review": turns}
     outputs = {"semantic": semantic_calls * conversation.SEMANTIC_POLICY.max_output_tokens,
                "host": turns * HOST_OUTPUT_TOKENS, "answer_review": turns * REVIEW_OUTPUT_TOKENS}
     files = sorted(set(conversation.fingerprints()) | {
-        "examples/evaluate_memory_lifecycle.py", "examples/memory_benchmark_cases.py",
+        "examples/evaluate_memory_lifecycle.py", "examples/memory_benchmark_cases.py", "examples/lifecycle_learning.py",
     } | {str(path.relative_to(ROOT)) for path in (ROOT / "src/agent_memory").glob("*.py")})
     return {
-        "version": "memory-lifecycle-evaluation-v1", "profile": profile, "model": conversation.MODEL,
+        "version": "memory-lifecycle-evaluation-v2", "profile": profile, "model": conversation.MODEL,
         "provider_base_url": "https://api.deepseek.com",
         "thinking": "enabled", "instructions": conversation.INSTRUCTIONS,
         "memory_protocol": MEMORY_CONSUMPTION_INSTRUCTIONS,
         "arms": list(ARMS if dataset else ("memory",)), "fixtures": fixtures, "dataset": dataset,
+        "repair_diagnostic": diagnostic, "learning_phase_policy": copy.deepcopy(PHASE_POLICY),
         "semantic_policy": asdict(conversation.SEMANTIC_POLICY),
         "service_configuration": "configured_service-v1; only the provider HTTP transport is instrumented",
-        "server_budget_policy": ({"window_seconds": 2_592_000, "max_model_calls": semantic_calls,
-                                  "max_input_bytes": (turns + learning_turns)
-                                  * conversation.SEMANTIC_POLICY.max_input_bytes} if dataset else None),
+        "server_budget_policy": ({"window_seconds": 2_592_000, **allowance} if profile != "smoke" else None),
         "runtime_policy": asdict(conversation.runtime_policy(orientation_policy)),
         "orientation_evaluation": "A persisted safe skip is a routing outcome, not successful semantic orientation. "
                                   "Both policies retain the same ceiling, answer review and source/delivery checks.",
@@ -96,19 +110,23 @@ def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_p
                     "input": "Previous summary and this arm's actual delivered exchange only"},
         "per_arm_max_calls": sum(calls.values()), "per_arm_max_reserved_output_tokens": sum(outputs.values()),
         "memory_arm_call_allocation": calls, "memory_arm_output_allocation": outputs,
-        "baseline_call_allocation": {"rolling_summary": {"host": turns, "answer_review": turns,
-                                                         "summary": len(fixtures)},
-                                     "no_memory": {"host": turns, "answer_review": turns}},
+        "baseline_call_allocation": ({"rolling_summary": {"host": turns, "answer_review": turns,
+                                                          "summary": len(fixtures)},
+                                      "no_memory": {"host": turns, "answer_review": turns}} if dataset else {}),
         "budget_comparison": "Equal ceilings per arm; unused capacity cannot be transferred between arms.",
         "context_budget_unit": "UTF-8 bytes, conservatively named tokens by the runtime; not an exact tokenizer count",
         "probe_isolation": "Each memory probe restores the same trusted local archive into a new brain; "
                            "baseline probes use the same frozen summary or empty memory in separate brains.",
-        "stopping": "No retries or repair loop. Unknown usage, incomplete runtime execution, and provider or "
+        "stopping": "No retries or paid repair loop. Encoding and history share four calls per fresh root, "
+                    "with two per phase; continuation never adds authority. At most eight untouched ready "
+                    "history jobs are dispatched per stage, with retained open debt reported separately. "
+                    "Unknown usage, incomplete runtime execution, and provider or "
                     "quota failures stop first. A learning job with sampling.publication_restricted=true or "
                     "learning_window.processing_succeeded=false stops as learning_processing_incomplete; "
                     "other valid partial outcomes remain nonfatal. An output-root STOP marker stops as "
                     "operator_stop at safe boundaries before environment/provider setup, history/probe "
-                    "stages, and summary updates. An active stage finishes before the marker takes effect; "
+                    "stages, summary updates, and each learning job. An active foreground turn or learning "
+                    "job finishes before the marker takes effect; "
                     "known failures take precedence. No stop authorizes paid continuation.",
         "recovery": "--resume only reads saved evidence; it never continues paid work or resets usage.",
         "code_fingerprints": {name: digest((ROOT / name).read_text()) for name in files},
@@ -162,6 +180,10 @@ def validate_frozen_plan(report):
         raise ValueError("Frozen experiment plan changed")
     if planned.get("dataset") is not None:
         validate_dataset(planned["dataset"])
+    if planned.get("profile") == "repair":
+        fixtures, diagnostic = repair_selection(planned["repair_diagnostic"]["seed"])
+        if planned["fixtures"] != fixtures or planned["repair_diagnostic"] != diagnostic or planned["arms"] != ["memory"]:
+            raise ValueError("Frozen repair diagnostic selection changed")
     for name, expected in planned["code_fingerprints"].items():
         if digest((ROOT / name).read_text()) != expected:
             raise ValueError("Frozen experiment code changed: " + name)
@@ -210,6 +232,8 @@ def performance_metrics(stage):
             "provider_elapsed_seconds": {
                 name: round(sum(call.get("elapsed_seconds", 0) for call in calls), 6)
                 for name, calls in grouped.items()},
+            "learning_phase_calls": {name: sum(call.get("learning_phase") == name for call in cognitive)
+                                     for name in ("encoding", "history_integration")},
             "usage_delta": copy.deepcopy(stage.get("usage_delta", {})),
             "comparison": "Foreground runtime includes answer review and delivery; learning is measured separately. "
                           "Routing speed and whole-answer correctness require separate assessment."}
@@ -219,10 +243,12 @@ def learning_queue_audit(stage, windows):
     inputs = stage.get("sources", {}).get("input_events", [])
     return {"windows": copy.deepcopy(windows), "checks": {
         "current_input_has_consolidation_window": bool(inputs) and all(any(
-            type(window.get("from_sequence")) is int and type(window.get("through_sequence")) is int
+            window.get("learning_phase") == "encoding"
+            and type(window.get("from_sequence")) is int and type(window.get("through_sequence")) is int
             and window["from_sequence"] <= source["sequence"] <= window["through_sequence"]
             for window in windows) for source in inputs)},
-        "meaning": "Enqueued source coverage only; it does not establish successful learning or publication."}
+        "meaning": "Exact encoding-window source coverage across the full scope; historical integration cannot "
+                   "cover current encoding. Enqueueing does not establish assessment or publication."}
 
 
 def archive_graph(document, *, restored=False):
@@ -339,6 +365,7 @@ class LifecycleTrial(conversation.ConversationTrial):
         self.summary = ""
         self.cognition_settings, self.meter_factory = cognition_settings, meter_factory
         self._configured_service = None
+        self.learning_call_context = None
         super().__init__(output, report, database, provider, host, meter,
                          runtime_factory=self.make_runtime, service_factory=self.make_service, source_limit=512)
 
@@ -426,6 +453,8 @@ class LifecycleTrial(conversation.ConversationTrial):
         recorded["messages"] = copy.deepcopy(list(request.messages))
         record = {"request": recorded, "state": "started", "usage_before": self.meter.summary(),
                   "role": self.role if category == "cognitive_calls" else category}
+        if category == "cognitive_calls" and self.learning_call_context is not None:
+            record.update(self.learning_call_context)
         calls.append(record)
         self.save()
         started = time.monotonic()
@@ -482,6 +511,20 @@ class LifecycleTrial(conversation.ConversationTrial):
         self.save()
         return receipt
 
+    def learn(self, service, brain_id, previous_job_ids):
+        if self.current["runtime"].get("orientation_job_id"):
+            self.current["orientation"] = conversation.Trial(service, self.principal, brain_id).job_result(
+                self.current["runtime"]["orientation_job_id"])
+        drain = PhaseLearning(self, service, brain_id, boundary=lambda: stage_boundary(
+            self.output.parent, self.meter, self.current))
+        try:
+            drain.run()
+        except EvaluationStopped as error:
+            self.current["learning_stopped_reason"] = error.reason
+            self.save()
+        finally:
+            drain.capture()
+
     def run_stage(self, fixture):
         actual = copy.deepcopy(fixture)
         if self.arm != "memory":
@@ -500,6 +543,10 @@ class LifecycleTrial(conversation.ConversationTrial):
                 self.save()
         stage = self.current
         stage["source_fixture"] = copy.deepcopy(fixture)
+        if actual["learn"]:
+            for name in ("one_new_consolidation_job_executed", "learning_completed_without_rejections"):
+                stage["checks"].pop(name, None)
+            stage["checks"].update(phase_checks(stage))
         if self.arm != "memory":
             stage["memory_checks_not_applicable"] = {
                 key: stage["checks"].pop(key) for key in tuple(stage["checks"])
@@ -522,14 +569,9 @@ class LifecycleTrial(conversation.ConversationTrial):
                     "SELECT document FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
                     "AND is_current AND NOT invalidated AND NOT deleted ORDER BY id",
                     (self.principal.tenant_id, self.principal.principal_id, stage["brain_id"]))]
-                windows = [dict(row) for row in conn.execute(
-                    "SELECT id,state,(payload->>'from_sequence')::bigint AS from_sequence,"
-                    "(payload->>'through_sequence')::bigint AS through_sequence FROM memory_jobs "
-                    "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='consolidate' "
-                    "AND payload #>> '{target,conversation_ref}'=%s AND payload #>> '{target,branch_ref}'=%s "
-                    "ORDER BY id LIMIT 8", (self.principal.tenant_id, self.principal.principal_id,
-                                           stage["brain_id"], stage.get("runtime", {}).get("conversation_id"),
-                                           stage.get("runtime", {}).get("branch_id")))]
+            if stage.get("runtime", {}).get("conversation_id") and stage.get("runtime", {}).get("branch_id"):
+                windows = [window_metadata(row) for row in scoped_windows(
+                    MemoryService(self.database), self.principal, stage["brain_id"], stage)]
                 stage["learning_queue_audit"] = learning_queue_audit(stage, windows)
                 stage["checks"].update(stage["learning_queue_audit"]["checks"])
             jobs = conversation.JobStore(self.database)
@@ -639,6 +681,9 @@ class LifecycleTrial(conversation.ConversationTrial):
 def stop_reason(stage, meter):
     if meter.summary()["usage_unknown_calls"]:
         return "unknown_provider_usage"
+    learning_failure = execution_failure(stage)
+    if learning_failure == "unknown_provider_usage":
+        return learning_failure
     if stage.get("error") or stage.get("runtime", {}).get("stage") != "completed":
         return "runtime_not_completed"
     statuses = [stage.get("orientation", {}).get("result", {}).get("status")]
@@ -646,12 +691,7 @@ def stop_reason(stage, meter):
     if any(status in {"budget_exhausted", "provider_unavailable", "invalid_response", "verification_unavailable"}
            for status in statuses):
         return "cognitive_processing_unavailable"
-    for job in stage.get("learning_jobs", []):
-        result = job.get("result", {})
-        if (result.get("sampling", {}).get("publication_restricted") is True
-                or result.get("learning_window", {}).get("processing_succeeded") is False):
-            return "learning_processing_incomplete"
-    return None
+    return learning_failure or stage.get("learning_stopped_reason")
 
 
 class EvaluationStopped(Exception):
@@ -679,7 +719,7 @@ def stage_boundary(output, meter=None, stage=None):
 
 def run_arm(output, planned, arm, database, key):
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
-    report = {"version": 1, "state": "started", "arm": arm, "plan": planned,
+    report = {"version": 2, "state": "started", "arm": arm, "plan": planned,
               "plan_sha256": digest(planned), "principal": asdict(Principal(uid(), uid())),
               "brains": {}, "stages": [], "limitations": LIMITATIONS}
     save(output / "report.json", report)
@@ -765,9 +805,10 @@ def main():
     modes = parser.add_mutually_exclusive_group(required=True)
     for mode in ("plan", "live", "resume"):
         modes.add_argument("--" + mode, action="store_true")
-    parser.add_argument("--profile", choices=("smoke", "long"), default="smoke")
+    parser.add_argument("--profile", choices=("smoke", "long", "repair"), default="smoke")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--history-turns", type=int, default=104)
+    parser.add_argument("--history-turns", type=int, default=104,
+                        help="Long profile only (100–128); repair always uses the first 16 turns of a 100-turn source")
     parser.add_argument("--orientation-policy", choices=("always", "on_demand"), default="always")
     parser.add_argument("--output", type=Path, default=Path(".local/deepseek-memory-lifecycle"))
     args = parser.parse_args()

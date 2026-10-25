@@ -15,6 +15,7 @@ from test_semantic_provider import completion
 from agent_memory import desktop_cli, semantic_provider
 from agent_memory.api import create_app
 from agent_memory.client import MemoryClient
+from agent_memory.cognition_config import CognitionPolicyConfiguration, save_cognition_policy
 from agent_memory.config import configured_service
 from agent_memory.helpers import uid
 from agent_memory.jobs import JobStore
@@ -48,8 +49,9 @@ def execute(service, harness, job_id=None):
     return job["id"]
 
 
+@pytest.mark.parametrize("restart_after_freeze", [False, True])
 def test_public_policy_restart_and_bounded_recovery_repairs_timeout_without_database_edits(
-    learning, tmp_path, monkeypatch, capsys,
+    learning, tmp_path, monkeypatch, capsys, restart_after_freeze,
 ):
     requests = []
     original = semantic_provider.ChatCompletionsSemanticProvider
@@ -101,7 +103,23 @@ def test_public_policy_restart_and_bounded_recovery_repairs_timeout_without_data
         child = runtime.retry_learning(parent_id, request_id="explicit-timeout-recovery", expected_fence=parent["fence"])
         assert (child["max_model_calls"], child["max_input_bytes"]) == (2, 196608)
         assert len(requests) == 1
-        assert execute(service, learning, child["id"]) == child["id"]
+        if restart_after_freeze:
+            selected = JobStore(service.database).claim(learning.principal, learning.brain, worker_id=uid(),
+                                                         kinds=["consolidate"], job_id=child["id"])
+            _, frozen_child = LearningEngine(service)._snapshot(learning.principal, learning.brain, selected)
+            saved = learning.job(child["id"])
+            assert saved["model_calls"] == 0 and len(requests) == 1
+            assert frozen_child["source_snapshot"] == learning.job(parent_id)["result"]["source_snapshot"]
+            assert saved["payload"]["allocation_input_fingerprint"] != learning.job(parent_id)["payload"]["allocation_input_fingerprint"]
+            save_cognition_policy(CognitionPolicyConfiguration(), profile.directory)
+            with restarted(load_profile(profile.directory), learning) as (new_service, _):
+                assert new_service.semantic_processor.policy.max_wall_time_ms == 30000
+                resumed, resumed_snapshot = LearningEngine(new_service)._snapshot(learning.principal, learning.brain, selected)
+                assert resumed_snapshot == frozen_child
+                assert resumed.sources
+                LearningEngine(new_service)._execute(learning.principal, learning.brain, selected)
+        else:
+            assert execute(service, learning, child["id"]) == child["id"]
         completed = runtime.job(child["id"])
         assert completed["state"] == "completed" and completed["model_calls"] == 2
         assert completed["learning_summary"]["published_counts"]["claims"] == 1

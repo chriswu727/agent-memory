@@ -14,6 +14,7 @@ from test_semantic import encoded, proposals, reference
 from agent_memory.helpers import DomainError, digest, uid
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine, validate_snapshot
+from agent_memory.learning_allocations import CONTRACT_VERSION
 from agent_memory.learning_windows import (
     SAMPLING_RESERVE_BYTES,
     enqueue_window,
@@ -212,7 +213,11 @@ def test_continuation_creation_and_old_worker_completion_are_idempotent(learning
     with learning.database.transaction(learning.principal) as conn:
         brain = learning.service._brain(conn, learning.principal, learning.brain)
         child = enqueue_window(conn, learning.service, learning.principal, brain,
-                               selected["payload"]["target"], 9, 10, origin=selected["id"])
+                               selected["payload"]["target"], 9, 10, origin=selected["id"],
+                               learning_contract_version=CONTRACT_VERSION)
+        with pytest.raises(DomainError, match="contract"):
+            enqueue_window(conn, learning.service, learning.principal, brain,
+                           selected["payload"]["target"], 9, 10, origin=selected["id"])
     assert child == completed["payload"]["continuation_job_id"]
     assert len(jobs(learning)) == 2
     with pytest.raises(DomainError, match="lease"):
@@ -314,8 +319,11 @@ def test_valid_proposal_rejected_by_verifier_finishes_assessment_without_publish
     assert completed["result"]["learning_window"]["processed_through_sequence"] == 1
 
 
-def test_retry_preserves_frozen_input_and_cumulative_configured_budget(learning):
+def test_legacy_retry_preserves_frozen_input_and_cumulative_configured_budget(learning):
+    from test_learning_recovery import seed_legacy_window
+
     observations(learning, 8)
+    seed_legacy_window(learning)
 
     def fail(request):
         learning.calls.append(request.phase)
@@ -349,7 +357,10 @@ def test_fixed_request_budget_exhaustion_does_not_retry_the_same_oversized_snaps
 
 
 def test_legacy_expired_lease_reclaims_the_same_snapshot_and_keeps_unknown_call_charged(learning):
+    from test_learning_recovery import seed_legacy_window
+
     observations(learning, 8)
+    seed_legacy_window(learning)
     learning.service.semantic_processor = SemanticProcessor(
         learning.propose, learning.verify, policy=replace(SemanticPolicy(), max_model_calls=4),
     )
@@ -504,18 +515,32 @@ def test_invalidated_running_window_recovers_pending_tail_without_resurrecting_s
     learning.during_proposal = mutate
     with pytest.raises(DomainError):
         execute(learning, selected)
-    assert learning.job(selected["id"])["state"] == "superseded"
+    before = learning.job(selected["id"])
+    assert before["state"] == "superseded" and before["result"] is None
+    assert before["payload"]["encoding_window_snapshot"]["attempted_through_sequence"] == 8
     drain(learning)
     refs = processed_refs(learning)
     assert (original, 1) not in refs
-    assert set((receipt["accepted_event_ids"][0], 1) for receipt in receipts[1:]).issubset(refs)
-    assert learning.job(selected["id"])["payload"]["recovery_job_id"]
+    assert set((receipt["accepted_event_ids"][0], 1) for receipt in receipts[8:]).issubset(refs)
+    assert not set((receipt["accepted_event_ids"][0], 1) for receipt in receipts[1:8]).intersection(refs)
+    parent = learning.job(selected["id"])
+    child = learning.job(parent["payload"]["continuation_job_id"])
+    assert "recovery_job_id" not in parent["payload"]
+    assert parent["model_calls"] == before["model_calls"] == 1
+    assert parent["input_bytes"] == before["input_bytes"]
+    assert parent["payload"].get("processed_through_sequence", 0) == 0
+    assert (child["payload"]["from_sequence"], child["payload"]["through_sequence"]) == (9, 16)
+    assert child["payload"]["authorization_root_job_id"] == child["id"]
+    assert child["payload"]["continuation_parent_job_id"] == parent["id"]
+    progress = JobStore(learning.database).learning_progress(learning.principal, learning.brain, configured=True)
+    assert progress["counts_complete"] is True and progress["blocked_count"] == 1
+    assert progress["oldest_pending_window"]["from_sequence"] == 1
     count = len(jobs(learning))
     drain(learning)
     assert len(jobs(learning)) == count
 
 
-def test_completed_batch_repair_preserves_separate_continuation_range_and_new_revision(learning):
+def test_invalidated_completed_prefix_preserves_tail_without_refunding_paid_inputs(learning):
     receipts = observations(learning, 16)
     original = receipts[0]["accepted_event_ids"][0]
     first = execute(learning)
@@ -526,10 +551,12 @@ def test_completed_batch_repair_preserves_separate_continuation_range_and_new_re
     assert (queued["payload"]["from_sequence"], queued["payload"]["through_sequence"]) == (9, 17)
     drain(learning)
     repaired_parent = learning.job(first["id"])
-    replacement = learning.job(repaired_parent["payload"]["recovery_job_id"])
-    assert (replacement["payload"]["from_sequence"], replacement["payload"]["through_sequence"]) == (1, 8)
+    assert "recovery_job_id" not in repaired_parent["payload"]
+    assert repaired_parent["payload"]["continuation_job_id"] == child
+    assert repaired_parent["model_calls"] == first["model_calls"] == 2
+    assert repaired_parent["payload"]["processed_through_sequence"] == 8
     assert Counter(processed_refs(learning)) == Counter(
-        [(receipt["accepted_event_ids"][0], 1) for receipt in receipts[1:]] + [(original, 2)])
+        [(receipt["accepted_event_ids"][0], 1) for receipt in receipts[8:]] + [(original, 2)])
 
 
 def test_dependency_generation_change_invalidates_frozen_snapshot_but_legacy_remains_compatible(learning):

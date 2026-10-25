@@ -7,13 +7,25 @@ from psycopg.types.json import Jsonb
 
 from . import cognition
 from .contracts import validate
+from .episode_semantics import episode_fidelity_supported
 from .helpers import DomainError, digest, now
+from .history_semantics import integration_coverage, validate_decisions, validate_manifest
+from .local_semantics import (
+    BOUNDED_MODES,
+    HISTORY_INTEGRATION_MODE,
+    bounded_assessment_supported,
+    validate_bounded_batch,
+    validate_bounded_proposal,
+)
 from .semantic import (
+    EPISODE_FIDELITY_INPUT_VERSION,
     PROPOSAL_SCHEMA,
     CognitiveBatch,
     SemanticProcessor,
     SemanticResult,
     check_result_mode,
+    proposal_schema,
+    validate_input_contract,
 )
 
 
@@ -114,10 +126,40 @@ def validate_batch(conn, service, principal, brain, batch: CognitiveBatch,
 
 def _check_result(batch, result, snapshot, *, current_input_refs=()):
     check_result_mode(batch.proposal_mode, asdict(result))
+    validate_bounded_batch(batch)
+    try:
+        validate_input_contract(batch.input_contract_version)
+    except ValueError as error:
+        raise DomainError("invalid_evidence", "Unknown cognitive input contract") from error
+    if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version != EPISODE_FIDELITY_INPUT_VERSION:
+        raise DomainError("invalid_evidence", "Bounded learning input contract changed")
+    if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
+        validate_manifest(batch.integration_manifest, events=snapshot["events"], assertions=snapshot["assertions"])
+        expected = integration_coverage(batch.integration_manifest, result.integration_decisions,
+                                        result.belief_links, assessed=result.status in {"completed", "partial"}
+                                        and not any(item["reason"] == "invalid_proposal" for item in result.rejected))
+        if expected != result.history_integration:
+            raise DomainError("invalid_evidence", "Historical integration assessment changed")
     if result.status not in {"completed", "partial"}:
         if result.claims or result.situation_updates or result.episode_actions or result.belief_links:
             raise DomainError("invalid_evidence", "Unverified cognitive result cannot be published")
         return
+    if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
+        try:
+            validate_decisions(batch.integration_manifest, {
+                "integration_decisions": list(result.integration_decisions),
+                "belief_links": list(result.integration_proposal_links),
+            })
+            known = {item["proposal_id"] for item in (*result.belief_links, *result.rejected)}
+            if any(link["proposal_id"] not in known for link in result.integration_proposal_links):
+                raise ValueError("Historical link has no retained outcome")
+            fields = set(PROPOSAL_SCHEMA["properties"]["belief_links"]["items"]["properties"])
+            originals = {item["proposal_id"]: item for item in result.integration_proposal_links}
+            if any({key: value for key, value in item.items() if key in fields} != originals.get(item["proposal_id"])
+                   for item in result.belief_links):
+                raise ValueError("Historical link differs from its retained proposal")
+        except (ValueError, KeyError, TypeError) as error:
+            raise DomainError("invalid_evidence", "Historical integration decisions are unsupported") from error
     episodes = {episode["episode_id"]: episode for episode in batch.episodes}
     ids, changed_episodes = set(), set()
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
@@ -153,6 +195,10 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
             if group == "situation_updates" and final.get("current_only") is not True:
                 raise DomainError("invalid_evidence", "Situation updates are current context only")
             try:
+                validate_bounded_proposal(
+                    batch.proposal_mode, group, item, schema=proposal_schema(batch.proposal_mode),
+                    events=snapshot["events"], learning_input_refs=batch.learning_input_refs, links=result.belief_links,
+                )
                 references = SemanticProcessor._validate_proposal(
                     group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims,
                     abstraction_parents=abstraction_parents.get(item["proposal_id"], ()),
@@ -160,6 +206,27 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
+            if batch.proposal_mode in BOUNDED_MODES:
+                assessments = [entry for entry in result.verification_assessments
+                               if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
+                evidence = references
+                abstract = group == "belief_links" and item["kind"] == "abstracts"
+                if item["proposal_id"] in abstraction_parents:
+                    selections = [entry for entry in result.evidence_selections
+                                  if entry.get("proposal_id") == item["proposal_id"]]
+                    if len(selections) != 1:
+                        raise DomainError("invalid_evidence", "Historical abstraction assessment is incomplete")
+                    evidence = selections[0]["original_evidence_refs"] + item.get("counterexamples", [])
+                    abstract = True
+                if len(assessments) != 1 or not bounded_assessment_supported(
+                        assessments[0], item["proposal_id"], evidence, link=group == "belief_links", abstract=abstract):
+                    raise DomainError("invalid_evidence", "Bounded learning assessment is unsupported")
+            if group == "episode_actions" and batch.input_contract_version == EPISODE_FIDELITY_INPUT_VERSION:
+                assessments = [entry for entry in result.verification_assessments
+                               if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
+                if (len(assessments) != 1
+                        or not episode_fidelity_supported(assessments[0], item["proposal_id"], references)):
+                    raise DomainError("invalid_evidence", "Episode fidelity assessment is unsupported")
             if item.get("evidence_use") == "current_request":
                 if final.get("request_verification") != {
                     "state": "supported_request", "method": "semantic_model", "not_a_truth_certificate": True,

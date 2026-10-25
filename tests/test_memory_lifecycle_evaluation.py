@@ -36,9 +36,9 @@ def test_smoke_plan_freezes_review_budget_and_whole_chain_without_live_access(ev
     evaluation.main()
     planned = json.loads(capsys.readouterr().out)
     assert planned["arms"] == ["memory"]
-    assert planned["per_arm_max_calls"] == 24
-    assert planned["per_arm_max_reserved_output_tokens"] == 290816
-    assert planned["memory_arm_call_allocation"] == {"semantic": 14, "host": 5, "answer_review": 5}
+    assert planned["per_arm_max_calls"] == 28
+    assert planned["per_arm_max_reserved_output_tokens"] == 356352
+    assert planned["memory_arm_call_allocation"] == {"semantic": 18, "host": 5, "answer_review": 5}
     assert planned["review_policy"]["max_output_tokens"] == 8192
     assert planned["runtime_policy"]["orientation_policy"] == "always"
     assert [x["name"] for x in planned["fixtures"]] == ["learn", "recall", "change", "recall_change", "empty_control"]
@@ -79,7 +79,8 @@ def test_performance_separates_paid_foreground_work_from_learning_and_keeps_fail
 
 def test_learning_queue_audit_requires_exact_source_sequence_coverage_not_success(evaluation):
     stage = {"sources": {"input_events": [{"event_id": "current", "sequence": 17}]}}
-    window = {"id": "job", "state": "cancelled", "from_sequence": 17, "through_sequence": 18}
+    window = {"id": "job", "state": "cancelled", "learning_phase": "encoding",
+              "from_sequence": 17, "through_sequence": 18}
     audited = evaluation.learning_queue_audit(stage, [window])
     assert audited["checks"]["current_input_has_consolidation_window"]
     assert audited["windows"][0]["state"] == "cancelled"
@@ -121,10 +122,10 @@ def test_long_plan_has_reproducible_hidden_probes_and_equal_nontransferable_caps
     assert dataset != other["dataset"]
     assert len(dataset["history"]) == 104 and len(dataset["probes"]) == 6
     assert len({x["name"] for x in dataset["history"] + dataset["probes"]}) == 110
-    assert planned["per_arm_max_calls"] == 648
+    assert planned["per_arm_max_calls"] == 856
     assert planned["server_budget_policy"] == {
-        "window_seconds": 2_592_000, "max_model_calls": 428,
-        "max_input_bytes": 214 * planned["semantic_policy"]["max_input_bytes"],
+        "window_seconds": 2_592_000, "max_model_calls": 636,
+        "max_input_bytes": 318 * planned["semantic_policy"]["max_input_bytes"],
     }
     assert planned["arms"] == ["memory", "rolling_summary", "no_memory"]
     assert all(sum(values.values()) <= planned["per_arm_max_calls"]

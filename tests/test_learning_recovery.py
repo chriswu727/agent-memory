@@ -15,6 +15,7 @@ from test_semantic import encoded, proposals
 from agent_memory.helpers import DomainError, Principal, digest, uid
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine
+from agent_memory.learning_windows import enqueue_window, recover_windows
 from agent_memory.semantic import SemanticPolicy, SemanticProcessor
 
 pytestmark = pytest.mark.integration
@@ -28,8 +29,22 @@ def fail_provider(harness):
     harness.service.semantic_processor = SemanticProcessor(fail, harness.verify)
 
 
-def stopped_window(harness, count=1):
+def seed_legacy_window(harness):
+    pending = jobs(harness)
+    assert len(pending) == 1 and pending[0]["state"] == "queued" and pending[0]["model_calls"] == 0
+    parent = pending[0]
+    with harness.database.transaction(harness.principal) as conn:
+        brain = harness.service._brain(conn, harness.principal, harness.brain)
+        conn.execute("DELETE FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                     (*harness.service._params(harness.principal, harness.brain), parent["id"]))
+        enqueue_window(conn, harness.service, harness.principal, brain, parent["payload"]["target"],
+                       parent["payload"]["from_sequence"], parent["payload"]["through_sequence"])
+
+
+def stopped_window(harness, count=1, *, legacy=False):
     receipts = observations(harness, count)
+    if legacy:
+        seed_legacy_window(harness)
     fail_provider(harness)
     parent = execute(harness)
     assert parent["state"] == "cancelled"
@@ -188,7 +203,7 @@ def test_failed_recovery_does_not_automatically_authorize_another_paid_attempt(l
 
 @pytest.mark.parametrize("mutation", ["edit", "delete"])
 def test_recovery_reads_current_sources_without_resurrecting_old_versions(learning, mutation):
-    parent, receipts = stopped_window(learning, 2)
+    parent, receipts = stopped_window(learning, 2, legacy=True)
     old = receipts[0]["accepted_event_ids"][0]
     if mutation == "edit":
         learning.observe("A corrected observation outside the original range.", source_key="input-1", revision=2)
@@ -205,6 +220,7 @@ def test_recovery_reads_current_sources_without_resurrecting_old_versions(learni
 
 def test_completed_partial_range_requires_absent_continuation_and_recovers_only_tail(learning):
     observations(learning, 10)
+    seed_legacy_window(learning)
     parent = execute(learning)
     with pytest.raises(DomainError) as error:
         retry(learning, parent)
@@ -326,7 +342,7 @@ def test_large_configured_policy_splits_recovery_into_fitting_bounded_batches(le
 
 @pytest.mark.parametrize("processed", [0, -1, True, "invalid", 3])
 def test_source_recovery_handles_unprocessed_or_malformed_prefix_without_stalling(learning, processed):
-    parent, _ = stopped_window(learning, 2)
+    parent, _ = stopped_window(learning, 2, legacy=True)
     payload = {**parent["payload"], "processed_through_sequence": processed}
     update(learning, parent["id"], payload=payload, state="superseded")
     learning.service.semantic_processor = SemanticProcessor(learning.propose, learning.verify)
@@ -337,3 +353,24 @@ def test_source_recovery_handles_unprocessed_or_malformed_prefix_without_stallin
         assert (replacement["payload"]["from_sequence"], replacement["payload"]["through_sequence"]) == (1, 2)
     else:
         assert "recovery_job_id" not in retained["payload"]
+
+
+@pytest.mark.parametrize("mutation", ["edit", "delete"])
+def test_new_phase_paid_failure_cannot_replan_or_retry_erased_source_identity(learning, mutation):
+    parent, receipts = stopped_window(learning, 2)
+    before = operation_rows(learning)
+    if mutation == "edit":
+        learning.observe("A separately authorized corrected report.", source_key="input-1", revision=2)
+    else:
+        learning.memory.forget([receipts[0]["accepted_event_ids"][0]], kind="events", mode="erase_content",
+                               expected_scope_generation=1)
+    retained = learning.job(parent["id"])
+    assert retained["result"] is None and retained["model_calls"] == 1
+    with pytest.raises(DomainError) as error:
+        retry(learning, retained)
+    assert error.value.code == "context_stale"
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        recover_windows(conn, learning.service, learning.principal, brain)
+    assert "recovery_job_id" not in learning.job(parent["id"])["payload"]
+    assert operation_rows(learning) == before

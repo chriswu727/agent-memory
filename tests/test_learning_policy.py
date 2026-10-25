@@ -5,6 +5,7 @@ from dataclasses import asdict
 import pytest
 from psycopg.types.json import Jsonb
 from test_learning import learning as learning
+from test_learning_recovery import seed_legacy_window
 from test_learning_windows import claim
 from test_semantic import encoded, proposals
 
@@ -42,10 +43,12 @@ def test_absent_legacy_policy_does_not_infer_historical_configuration():
     assert _snapshot_policy({"semantic_policy": saved_policy()}) == ORIGINAL
 
 
-def prepare(learning, monkeypatch, mode):
+def prepare(learning, monkeypatch, mode, *, legacy=False):
     engine = LearningEngine(learning.service)
     if mode == "learning":
         learning.observe("I chose a blue mug for the pottery class.")
+        if legacy:
+            seed_legacy_window(learning)
         job = claim(learning)
         _, snapshot = engine._snapshot(learning.principal, learning.brain, job)
         return job, snapshot
@@ -114,7 +117,7 @@ def test_existing_snapshot_without_policy_keeps_legacy_service_behavior(learning
         return encoded({"situation_updates": []} if mode == "orientation" else proposals())
 
     learning.service.semantic_processor = SemanticProcessor(propose, policy=ORIGINAL)
-    job, snapshot = prepare(learning, monkeypatch, mode)
+    job, snapshot = prepare(learning, monkeypatch, mode, legacy=True)
     del snapshot["semantic_policy"]
     save_snapshot(learning, job, snapshot)
     learning.service.semantic_processor.policy = SemanticPolicy(max_output_tokens=1000)
@@ -126,6 +129,21 @@ def test_existing_snapshot_without_policy_keeps_legacy_service_behavior(learning
     assert completed["state"] == "completed"
     assert "semantic_policy" not in completed["result"]
     assert calls[0].max_output_tokens == 1000 and calls[0].timeout_seconds <= 30
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("field", [
+    "semantic_policy", "operation_settlement_policy", "input_contract_version", "learning_input_refs",
+])
+def test_new_phase_cannot_be_downgraded_by_removing_frozen_metadata(learning, monkeypatch, field):
+    learning.service.semantic_processor = SemanticProcessor(lambda _: pytest.fail("No model call authorized"))
+    job, snapshot = prepare(learning, monkeypatch, "learning")
+    del snapshot[field]
+    save_snapshot(learning, job, snapshot)
+    with pytest.raises(DomainError) as error:
+        LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, job)
+    assert error.value.code == "idempotency_conflict"
+    assert learning.job(job["id"])["model_calls"] == 0
 
 
 @pytest.mark.integration

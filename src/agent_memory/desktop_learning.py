@@ -30,7 +30,13 @@ def run(args):
                 return runtime.retry_learning(
                     args.job_id, request_id=args.request_id, expected_fence=args.expected_fence,
                 )
-            return runtime.job(args.job) if args.job else runtime.learning_progress()
+            result = runtime.job(args.job) if args.job else runtime.learning_progress()
+            if args.job:
+                from .desktop_chat_monitor import _notice, phase_notice
+
+                if (notice := phase_notice(result)) is not None:
+                    _notice(notice)
+            return result
     except httpx.HTTPStatusError as error:
         messages = {
             401: "Check the saved local service credentials.",

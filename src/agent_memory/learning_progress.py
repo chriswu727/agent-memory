@@ -2,16 +2,31 @@ from collections import Counter, deque
 from datetime import UTC, datetime
 
 from .jobs import FAILURE_CODES, LEARNING_OUTCOMES, PROCESSING_STATUSES, REJECTION_REASONS
+from .learning_phase_monitor import (
+    DEFERRED_REASON,
+    HISTORY_PHASE,
+    PHASE_FIELDS,
+    annotate_phases,
+    assessed_history,
+    classify,
+    projection,
+    sanitize_phase_counts,
+    summarize_phases,
+    unassessed_history,
+    unprocessed_encoding_tail,
+    valid_phase_edge,
+)
 
 _MAX_INTEGER = 2**63 - 1
 _EXAMPLE_LIMIT = 8
 _MAX_ATTEMPTS = 3
-_STATES = frozenset({"queued", "running", "failed", "cancelled", "superseded", "completed"})
+_STATES = frozenset({"queued", "running", "failed", "cancelled", "superseded", "completed", "deferred"})
 _LIMITATIONS = frozenset({
     "invalid_window", "invalid_schedule", "invalid_lineage", "missing_lineage", "lineage_cycle",
     "invalid_metadata", "invalid_summary",
 })
-_REASONS = FAILURE_CODES | {"attempts_exhausted", "missing_continuation", "terminal_window"}
+_REASONS = FAILURE_CODES | {"attempts_exhausted", "missing_continuation", "terminal_window", DEFERRED_REASON,
+                           "history_integration_unassessed"}
 _COUNTS = (
     "window_count", "open_window_count", "runnable_count", "waiting_retry_count", "running_count",
     "blocked_count", "unknown_count",
@@ -48,7 +63,7 @@ def _safe_outcome_example(value):
     return {**result, "fence": value["fence"], **{key: value[key] for key, _ in enums}}
 
 
-def _sanitize_outcomes(value, job_count):
+def _sanitize_outcomes(value, job_count, *, with_phases=True):
     value = value if isinstance(value, dict) else {}
     complete = value.get("counts_complete") is True and value.get("basis") == "retained_latest_job_results"
     result = {"basis": "retained_latest_job_results"}
@@ -84,6 +99,19 @@ def _sanitize_outcomes(value, job_count):
     result["counts_complete"] = bool(complete)
     if not complete and not result["limitation_counts"]:
         result["limitation_counts"] = {"invalid_summary": 1}
+    if with_phases and "by_phase" in value:
+        phases = value["by_phase"] if isinstance(value["by_phase"], dict) else {}
+        result["by_phase"] = {
+            name: _sanitize_outcomes(phases.get(name), phases.get(name, {}).get("job_count", 0)
+                                    if isinstance(phases.get(name), dict) else 0, with_phases=False)
+            for name in ("encoding", "history_integration", "legacy", "unknown")
+        }
+        if (set(phases) != set(result["by_phase"])
+                or sum(item["job_count"] for item in result["by_phase"].values()) != result["job_count"]
+                or any(not item["counts_complete"] for item in result["by_phase"].values())):
+            result["counts_complete"] = False
+            if not result["limitation_counts"]:
+                result["limitation_counts"] = {"invalid_summary": 1}
     return result
 
 
@@ -187,6 +215,8 @@ def sanitize_learning_progress(value):
     if not complete and not result["limitation_counts"]:
         result["limitation_counts"] = {"invalid_summary": 1}
     result["semantic_outcomes"] = _sanitize_outcomes(value.get("semantic_outcomes"), result["window_count"])
+    result["learning_phases"] = sanitize_phase_counts(value.get("learning_phases"))
+    result["counts_complete"] = result["counts_complete"] and result["learning_phases"]["counts_complete"]
     return result
 
 
@@ -342,8 +372,13 @@ def _summary(rows, *, configured):
     for raw in rows:
         row = dict(raw)
         row["issues"] = set()
+        row["learning_phase"] = classify(row.get("phase_payload", {}))
+        if row["learning_phase"] == "unknown":
+            row["issues"].add("invalid_metadata")
         start, end = row["window_start"], row["window_end"]
         processed = row["processed"] if row["has_processed"] else (start - 1 if _integer(start, 1) else None)
+        if row["learning_phase"] == HISTORY_PHASE and assessed_history(row):
+            processed = end
         row["processed"] = processed
         if not (_integer(start, 1) and _integer(end, 1) and start <= end and _integer(processed)
                 and start - 1 <= processed <= end):
@@ -372,14 +407,15 @@ def _summary(rows, *, configured):
             row["issues"].add("invalid_window")
         windows[row["id"]] = row
 
+    annotate_phases(windows)
     edges = {identifier: [] for identifier in windows}
     delegated = {identifier: [] for identifier in windows}
     parents = {identifier: [] for identifier in windows}
     for identifier, row in windows.items():
         if row["issues"]:
             continue
-        for relation in ("continuation", "recovery"):
-            child_id = row[relation + "_id"]
+        for relation in ("continuation", "recovery", "integration"):
+            child_id = row.get(relation + "_id")
             if child_id is None:
                 if row.get("has_" + relation) is True:
                     row["issues"].add("invalid_lineage")
@@ -389,29 +425,37 @@ def _summary(rows, *, configured):
                 continue
             child = windows[child_id]
             start, end, processed = row["window_start"], row["window_end"], row["processed"]
-            if relation == "recovery" and row["invalidated"]:
+            unprocessed_tail = unprocessed_encoding_tail(row, child) if relation == "continuation" else None
+            if row["learning_phase"] == HISTORY_PHASE:
+                required = (start, end)
+            elif unprocessed_tail is not None:
+                required = unprocessed_tail
+            elif relation == "recovery" and row["invalidated"]:
                 required = (start, processed if processed >= start else end)
             else:
                 required = (processed + 1, end)
-            back_reference = child[relation + "_parent"]
+            back_reference = child.get(relation + "_parent")
             if (child["issues"] or required[0] > required[1]
-                    or (relation == "continuation" and not row["has_processed"])
+                    or not valid_phase_edge(row, child, relation)
+                    or (relation == "continuation" and not row["has_processed"] and unprocessed_tail is None)
                     or (back_reference is not None and back_reference != identifier)
+                    or (relation == "integration" and back_reference != identifier)
                     or (child["conversation"], child["branch"]) != (row["conversation"], row["branch"])
                     or child["window_start"] != required[0] or child["window_end"] < required[1]
-                    or (relation == "recovery" and child["window_end"] != required[1])):
+                    or (relation in {"recovery", "integration"} and child["window_end"] != required[1])):
                 row["issues"].add("invalid_lineage")
                 continue
             if any(not (required[1] < low or required[0] > high) for low, high in delegated[identifier]):
                 row["issues"].add("invalid_lineage")
             edges[identifier].append(child_id)
             parents[child_id].append(identifier)
-            delegated[identifier].append(required)
-        for relation in ("continuation", "recovery"):
-            parent_id = row[relation + "_parent"]
+            if relation != "integration" or not unassessed_history(row):
+                delegated[identifier].append(required)
+        for relation in ("continuation", "recovery", "integration"):
+            parent_id = row.get(relation + "_parent")
             if parent_id is not None and (
                 not _identifier(parent_id) or parent_id not in windows
-                or windows[parent_id][relation + "_id"] != identifier
+                or windows[parent_id].get(relation + "_id") != identifier
             ):
                 row["issues"].add("invalid_lineage")
     for identifier in _cycles(edges):
@@ -426,6 +470,16 @@ def _summary(rows, *, configured):
                 windows[parent]["issues"].add("invalid_lineage")
                 invalid.append(parent)
 
+    pending = deque(identifier for identifier, row in windows.items()
+                    if row["learning_phase"] == HISTORY_PHASE and not row["issues"] and not parents[identifier])
+    while pending:
+        identifier = pending.popleft()
+        row = windows[identifier]
+        for child in edges[identifier]:
+            windows[child]["pending_created_at"] = min(
+                windows[child]["created_at"], row.get("pending_created_at", row["created_at"]))
+            pending.append(child)
+
     result = {key: 0 for key in _COUNTS}
     result.update(provider_state="configured" if configured else "not_configured",
                   window_count=len(windows), counts_complete=True, oldest_pending_window=None,
@@ -433,24 +487,30 @@ def _summary(rows, *, configured):
     reasons, limitations = Counter(), Counter()
     oldest, blocked = [], []
     for identifier, row in windows.items():
+        row["remaining_ranges"] = _subtract(row["ranges"], delegated[identifier])
+        limitations.update(row["phase_issues"])
         if row["issues"]:
             result["unknown_count"] += 1
             result["open_window_count"] += 1
             limitations.update(row["issues"])
             continue
-        ranges = _subtract(row["ranges"], delegated[identifier])
+        ranges = row["remaining_ranges"]
         if not ranges:
             continue
         result["open_window_count"] += 1
+        created = row.get("pending_created_at", row["created_at"])
         window = {"job_id": identifier, "from_sequence": ranges[0][0], "through_sequence": ranges[-1][1],
-                  "processed_through_sequence": ranges[0][0] - 1, "created_at": row["created_at"].isoformat()}
-        oldest.append((window["from_sequence"], row["created_at"], identifier, window))
+                  "processed_through_sequence": ranges[0][0] - 1, "created_at": created.isoformat()}
+        oldest.append((window["from_sequence"], created, identifier, window))
         reason = None
         if row["state"] == "running" and row["lease_expires_at"] > row["observed_at"]:
             category = "running_count"
+        elif row["state"] == "deferred":
+            category, reason = "blocked_count", DEFERRED_REASON
         elif row["state"] in {"cancelled", "superseded", "completed"}:
             category = "blocked_count"
-            reason = row["last_error"] or ("missing_continuation" if row["state"] == "completed" else "terminal_window")
+            reason = ("history_integration_unassessed" if unassessed_history(row) else row["last_error"]
+                      or ("missing_continuation" if row["state"] == "completed" else "terminal_window"))
         elif row["attempts"] >= _MAX_ATTEMPTS:
             category, reason = "blocked_count", "attempts_exhausted"
         elif row["available_at"] > row["observed_at"]:
@@ -462,7 +522,7 @@ def _summary(rows, *, configured):
         result[category] += 1
         if reason is not None:
             reasons[reason] += 1
-            blocked.append((window["from_sequence"], row["created_at"], identifier, {
+            blocked.append((window["from_sequence"], created, identifier, {
                 **{key: value for key, value in window.items() if key != "created_at"},
                 "fence": row["fence"], "last_error": row["last_error"], "reason": reason,
             }))
@@ -470,8 +530,14 @@ def _summary(rows, *, configured):
         result["oldest_pending_window"] = min(oldest, key=lambda item: item[:3])[3]
     result["blocked_examples"] = [item[3] for item in sorted(blocked, key=lambda item: item[:3])[:_EXAMPLE_LIMIT]]
     result["blocked_examples_truncated"] = len(blocked) > _EXAMPLE_LIMIT
+    outcomes = _outcomes(windows)
+    outcomes["by_phase"] = {
+        name: _outcomes({identifier: row for identifier, row in windows.items()
+                         if (row["learning_phase"] or "legacy") == name})
+        for name in ("encoding", "history_integration", "legacy", "unknown")
+    }
     result.update(blocked_reason_counts=dict(reasons), limitation_counts=dict(limitations),
-                  semantic_outcomes=_outcomes(windows))
+                  semantic_outcomes=outcomes, learning_phases=summarize_phases(windows, edges))
     return sanitize_learning_progress(result)
 
 
@@ -493,9 +559,9 @@ def learning_progress(connection, principal, brain_id, *, configured: bool):
         "payload->'continuation_job_id' AS continuation_id,payload->'recovery_job_id' AS recovery_id,"
         "payload ? 'continuation_job_id' AS has_continuation,payload ? 'recovery_job_id' AS has_recovery,"
         "payload->'continuation_parent_job_id' AS continuation_parent,"
-        "payload->'recovery_parent_job_id' AS recovery_parent," + _outcome_projection() + " "
+        "payload->'recovery_parent_job_id' AS recovery_parent," + _outcome_projection() + "," + projection() + " "
         "FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='consolidate' "
-        "AND payload ? 'from_sequence'",
+        "AND (payload ? 'from_sequence' OR payload ?| ARRAY[" + ",".join(repr(key) for key in PHASE_FIELDS) + "])",
         (principal.tenant_id, principal.principal_id, brain_id),
     )
     return _summary(rows, configured=configured)

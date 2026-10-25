@@ -27,15 +27,33 @@ from .consolidation_planning import (
 )
 from .contracts import validate
 from .episode_semantics import (
+    EPISODE_FIDELITY_INSTRUCTIONS,
+    EPISODE_FIDELITY_VERIFY_INSTRUCTIONS,
     EPISODE_INSTRUCTIONS,
     EPISODE_VERIFY_INSTRUCTIONS,
     ORGANIZATION_STATEMENT_SCHEMA,
     episode_assessment,
+    episode_fidelity_schema,
+    episode_fidelity_supported,
 )
 from .episode_semantics import (
     _reference as episode_reference,
 )
 from .helpers import DomainError, digest
+from .history_semantics import integration_coverage, validate_decisions, validate_manifest
+from .local_semantics import (
+    BOUNDED_MODES,
+    HISTORY_INTEGRATION_MODE,
+    INTEGRATION_INSTRUCTIONS,
+    INTEGRATION_VERIFY_INSTRUCTIONS,
+    LOCAL_INSTRUCTIONS,
+    LOCAL_OBSERVATION_MODE,
+    LOCAL_VERIFY_INSTRUCTIONS,
+    bounded_proposal_schema,
+    bounded_verification_context,
+    validate_bounded_batch,
+    validate_bounded_proposal,
+)
 from .ontology import CORE_REGISTRY
 from .temporal import validate_valid_during
 
@@ -147,6 +165,8 @@ GENERAL_PROPOSAL_MODE = "general-v1"
 ORIENT_PROPOSAL_MODE = "orient-v1"
 EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
+EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
+LATEST_INPUT_CONTRACT_VERSION = EPISODE_FIDELITY_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -391,7 +411,7 @@ def _episode_members(sources, scope):
 
 def proposal_data(sources, assertions, working_state, episodes, sampling, belief_relations, consolidation_plan=None,
                   *, current_input_refs=(), proposal_mode=GENERAL_PROPOSAL_MODE, scope=None, learning_input_refs=(),
-                  input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
+                  input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION, integration_manifest=None):
     sources, assertions, belief_relations = list(sources), list(assertions), list(belief_relations)
     proposal_schema(proposal_mode)
     validate_input_contract(input_contract_version)
@@ -402,30 +422,47 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
     else:
         plan = (plan_consolidation(sources, assertions, belief_relations, sampling)
                 if consolidation_plan is None else consolidation_plan)
+        if proposal_mode == HISTORY_INTEGRATION_MODE:
+            plan = {**plan, "objectives": []}
         data = {"sources": sources, "existing_assertions": assertions,
                 "working_state": working_state, "episodes": list(episodes), "sampling": sampling,
                 "registry": CORE_REGISTRY.to_dict(), "belief_relations": belief_relations, "consolidation_plan": plan,
                 "current_input_refs": list(current_input_refs)}
-        if input_contract_version in (EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION):
+        if input_contract_version in (
+            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION,
+        ):
             scope = scope if scope is not None else working_state.get("scope")
             data.update(learning_input_refs=copy.deepcopy(list(learning_input_refs)),
                         episode_operation_scope=copy.deepcopy(scope),
                         episode_eligible_member_refs=_episode_members(sources, scope))
-    if input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION:
+    if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION):
         data["communication_intent_contract"] = {
             "version": COMMUNICATION_INTENT_INPUT_VERSION,
             "current_input_citations_authorized": bool(current_input_refs),
             "reference_semantics": "citation_authority_not_request_evidence",
         }
+    if proposal_mode == LOCAL_OBSERVATION_MODE:
+        data["local_observation_contract"] = {
+            "version": LOCAL_OBSERVATION_MODE, "history_intentionally_withheld": True,
+            "historical_integration": "pending", "claims_are_attributed_reports": True,
+        }
+    elif proposal_mode == HISTORY_INTEGRATION_MODE:
+        data["integration_manifest"] = copy.deepcopy(integration_manifest)
     return data
 
 
 def validate_input_contract(version):
-    if version not in (None, EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION):
+    if version not in (
+        None, EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION,
+    ):
         raise ValueError("Unknown cognitive input contract")
 
 
 def proposal_schema(mode):
+    if not isinstance(mode, str):
+        raise ValueError("Unknown cognitive proposal mode")
+    if mode in BOUNDED_MODES:
+        return bounded_proposal_schema(mode, PROPOSAL_SCHEMA)
     if mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):
         raise ValueError("Unknown cognitive proposal mode")
     return ORIENT_PROPOSAL_SCHEMA if mode == ORIENT_PROPOSAL_MODE else PROPOSAL_SCHEMA
@@ -440,12 +477,19 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
     else:
         instructions = _INSTRUCTIONS if phase == "proposal" else _VERIFY_INSTRUCTIONS
         if phase == "proposal" and input_contract_version in (
-            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION,
+            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION,
         ):
             instructions += " " + _EPISODE_SCOPE_INSTRUCTIONS
-    if input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION:
+    if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION):
         instructions += " " + (_COMMUNICATION_INTENT_INSTRUCTIONS if phase == "proposal"
                                else _COMMUNICATION_INTENT_VERIFY_INSTRUCTIONS)
+    if input_contract_version == EPISODE_FIDELITY_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+        instructions += " " + (EPISODE_FIDELITY_INSTRUCTIONS if phase == "proposal"
+                               else EPISODE_FIDELITY_VERIFY_INSTRUCTIONS)
+    if proposal_mode == LOCAL_OBSERVATION_MODE:
+        instructions += " " + (LOCAL_INSTRUCTIONS if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
+    elif proposal_mode == HISTORY_INTEGRATION_MODE:
+        instructions += " " + (INTEGRATION_INSTRUCTIONS if phase == "proposal" else INTEGRATION_VERIFY_INSTRUCTIONS)
     messages = ({"role": "system", "content": instructions + "\nResponse JSON schema:\n" + _json(schema)},
                 {"role": "user", "content": _json(data)})
     size = len(_json({"messages": messages, "response_schema": schema,
@@ -550,6 +594,7 @@ class CognitiveBatch:
     proposal_mode: str = GENERAL_PROPOSAL_MODE
     learning_input_refs: tuple[dict, ...] = field(default=(), repr=False)
     input_contract_version: str | None = COMMUNICATION_INTENT_INPUT_VERSION
+    integration_manifest: dict | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -577,6 +622,9 @@ class SemanticResult:
     consolidation: dict = field(default_factory=dict, repr=False)
     verification_assessments: tuple[dict, ...] = field(default=(), repr=False)
     evidence_selections: tuple[dict, ...] = field(default=(), repr=False)
+    integration_decisions: tuple[dict, ...] = field(default=(), repr=False)
+    integration_proposal_links: tuple[dict, ...] = field(default=(), repr=False)
+    history_integration: dict = field(default_factory=dict, repr=False)
 
 
 def check_result_mode(mode, result):
@@ -584,6 +632,12 @@ def check_result_mode(mode, result):
         proposal_schema(mode)
     except ValueError:
         raise DomainError("invalid_evidence", "Unknown cognitive proposal mode") from None
+    if mode in BOUNDED_MODES:
+        forbidden = ("situation_updates", "belief_links") if mode == LOCAL_OBSERVATION_MODE else (
+            "situation_updates", "episode_actions",
+        )
+        if any(result.get(group) for group in forbidden):
+            raise DomainError("invalid_evidence", "Result exceeds its bounded learning mode.")
     if mode == ORIENT_PROPOSAL_MODE and (
         any(result.get(group) for group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"))
         or not isinstance(result.get("consolidation", {}), dict)
@@ -858,6 +912,9 @@ class SemanticProcessor:
             raise ValueError("A batch identifier is required")
         if not isinstance(batch.working_state, dict):
             raise DomainError("validation_failed", "Working state must be an object")
+        if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version != EPISODE_FIDELITY_INPUT_VERSION:
+            raise DomainError("validation_failed", "Bounded learning requires its frozen input contract")
+        validate_bounded_batch(batch)
         if (len(batch.sources) > policy.max_sources or len(batch.existing_assertions) > policy.max_assertions
                 or len(batch.episodes) > policy.max_episodes):
             raise DomainError("budget_exceeded", "Cognitive input count exceeds its budget")
@@ -891,7 +948,8 @@ class SemanticProcessor:
             and source["observed"]["event_kind"] not in ("source_correction", "delivery_receipt")
         }
         if (len(set(learning_keys)) != len(learning_keys) or not set(learning_keys) <= eligible_learning
-                or learning_keys and (batch.proposal_mode != GENERAL_PROPOSAL_MODE or batch.current_input_refs
+                or learning_keys and (batch.proposal_mode not in (GENERAL_PROPOSAL_MODE, LOCAL_OBSERVATION_MODE)
+                                      or batch.current_input_refs
                                       or batch.input_contract_version is None)):
             raise DomainError("invalid_evidence", "Learning inputs must be distinct local background sources")
         for memory in batch.existing_assertions:
@@ -950,17 +1008,28 @@ class SemanticProcessor:
         started = time.monotonic()
         plan = (plan_consolidation(events.values(), assertions.values(), batch.belief_relations, batch.sampling)
                 if batch.consolidation_plan is None else copy.deepcopy(batch.consolidation_plan))
-        if batch.proposal_mode == ORIENT_PROPOSAL_MODE:
+        if batch.proposal_mode in (ORIENT_PROPOSAL_MODE, HISTORY_INTEGRATION_MODE):
             if batch.consolidation_plan is None:
                 plan["objectives"] = []
             elif isinstance(plan, dict) and plan.get("objectives"):
-                raise DomainError("validation_failed", "Orientation cannot carry consolidation objectives")
+                raise DomainError("validation_failed", "This mode cannot carry consolidation objectives")
+        if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
+            try:
+                validate_manifest(batch.integration_manifest, events=events, assertions=assertions)
+                if not 1 <= len(batch.integration_manifest["objectives"]) <= 3:
+                    raise ValueError("A historical package needs bounded objectives")
+            except (ValueError, TypeError, KeyError) as error:
+                raise DomainError("validation_failed", "Invalid historical integration manifest") from error
+        elif batch.integration_manifest is not None:
+            raise DomainError("validation_failed", "Integration manifest is unavailable in this mode")
         try:
             validate_consolidation_plan(plan, events.values(), assertions.values(), batch.belief_relations, batch.sampling)
         except (ValueError, TypeError, KeyError):
             raise DomainError("validation_failed", "Invalid consolidation plan") from None
         decisions, proposal_attempted, verified_objective_ids = [], False, set()
         verification_assessments, evidence_selections = [], []
+        integration_decisions = []
+        integration_proposal_links = []
 
         def result(status, **accepted):
             count = sum(len(items) for items in accepted.values())
@@ -971,6 +1040,12 @@ class SemanticProcessor:
                                   learning_outcome=outcome,
                                   verification_assessments=tuple(copy.deepcopy(verification_assessments)),
                                   evidence_selections=tuple(copy.deepcopy(evidence_selections)),
+                                  integration_decisions=tuple(copy.deepcopy(integration_decisions)),
+                                  integration_proposal_links=tuple(copy.deepcopy(integration_proposal_links)),
+                                  history_integration=integration_coverage(
+                                      batch.integration_manifest, integration_decisions, accepted.get("belief_links", ()),
+                                      assessed=status in {"completed", "partial"} and proposal_attempted
+                                      and not any(item["reason"] == "invalid_proposal" for item in rejected)),
                                   consolidation=consolidation_coverage(
                                       plan, decisions, accepted.get("belief_links", ()), attempted=proposal_attempted,
                                       verified_objective_ids=verified_objective_ids),
@@ -1037,7 +1112,8 @@ class SemanticProcessor:
                              episodes.values(), copy.deepcopy(batch.sampling), copy.deepcopy(batch.belief_relations), plan,
                              current_input_refs=copy.deepcopy(batch.current_input_refs), proposal_mode=batch.proposal_mode,
                              scope=batch.scope, learning_input_refs=batch.learning_input_refs,
-                             input_contract_version=batch.input_contract_version)
+                             input_contract_version=batch.input_contract_version,
+                             integration_manifest=batch.integration_manifest)
         try:
             _bounded_tree(data, max_depth=24, max_nodes=32768)
             if len(_json(data).encode()) > policy.max_request_bytes:
@@ -1047,6 +1123,12 @@ class SemanticProcessor:
         proposed, error = invoke("proposal", data, output_schema, self.propose)
         if error:
             return result(error)
+        if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
+            try:
+                integration_decisions = validate_decisions(batch.integration_manifest, proposed)
+                integration_proposal_links = copy.deepcopy(proposed.get("belief_links", []))
+            except (ValueError, TypeError, KeyError):
+                return result("invalid_response")
         decisions = proposed.get("consolidation_decisions", [])
         objective_ids = {item["objective_id"] for item in plan["objectives"]}
         if (len({item["objective_id"] for item in decisions}) != len(decisions)
@@ -1099,6 +1181,10 @@ class SemanticProcessor:
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "incomplete_history_package"})
                 continue
             try:
+                validate_bounded_proposal(
+                    batch.proposal_mode, group, item, schema=output_schema, events=events,
+                    learning_input_refs=batch.learning_input_refs, links=proposed.get("belief_links", []),
+                )
                 references = self._validate_proposal(group, item, batch.scope, events, assertions, episodes,
                                                      proposed_claims,
                                                      current_input_refs=batch.current_input_refs,
@@ -1118,9 +1204,11 @@ class SemanticProcessor:
             numbered = []
             for index, ref in enumerate(references):
                 source = events[(ref["event_id"], ref["event_revision"])]
-                numbered.append({"evidence_index": index, "reference": ref,
-                                 "source": source, "excerpt": cognition._content_text(
-                                     source["observed"]["content"])[ref["span"]["start"]:ref["span"]["end"]]})
+                source_data = ({"source_ref": {"event_id": source["event_id"], "revision": source["revision"]}}
+                               if batch.proposal_mode in BOUNDED_MODES else {"source": source})
+                numbered.append({"evidence_index": index, "reference": ref, **source_data,
+                                 "excerpt": cognition._content_text(source["observed"]["content"])[
+                                     ref["span"]["start"]:ref["span"]["end"]]})
             entry = {"group": group, "proposal": item, "evidence": numbered}
             if group == "situation_updates" and item.get("evidence_use") == "current_request":
                 entry["current_input_refs"] = copy.deepcopy(list(batch.current_input_refs))
@@ -1142,9 +1230,19 @@ class SemanticProcessor:
                         excerpt["role"] = ("shared_claim_candidate" if _evidence_identity(excerpt["reference"]) in shared
                                            else "retained_endpoint_context")
             evidence.append(entry)
+            if group == "belief_links" and batch.proposal_mode == HISTORY_INTEGRATION_MODE:
+                entry["target_assertion_refs"] = copy.deepcopy(item["target_memory_versions"])
+                del entry["target_assertions"]
         verification_schema = (ORIENT_VERIFICATION_SCHEMA if batch.proposal_mode == ORIENT_PROPOSAL_MODE
                                else VERIFICATION_SCHEMA)
-        verified, error = invoke("verification", {"proposals": evidence}, verification_schema, self.verify)
+        if batch.input_contract_version == EPISODE_FIDELITY_INPUT_VERSION:
+            verification_schema = episode_fidelity_schema(
+                verification_schema, [item["proposal_id"] for group, item, _ in eligible if group == "episode_actions"])
+        verification_data = {"proposals": evidence, **bounded_verification_context(
+            batch.proposal_mode, events.values(), assertions.values(), batch.belief_relations,
+            input_refs=batch.learning_input_refs, manifest=batch.integration_manifest,
+        )}
+        verified, error = invoke("verification", verification_data, verification_schema, self.verify)
         if error:
             return result(error)
         assessments = verified["assessments"]
@@ -1193,6 +1291,10 @@ class SemanticProcessor:
         accepted = {group: [] for group in groups}
         for group, item, references in eligible:
             assessment = lookup[item["proposal_id"]]
+            if (group == "episode_actions" and batch.input_contract_version == EPISODE_FIDELITY_INPUT_VERSION
+                    and not episode_fidelity_supported(assessment, item["proposal_id"], references)):
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "semantic_support_unconfirmed"})
+                continue
             if item["proposal_id"] in request_ids and assessment.get("request_verdict") != "supports":
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "request_intent_unconfirmed"})
                 continue
@@ -1278,6 +1380,11 @@ class SemanticProcessor:
             if group == "belief_links":
                 final["condition_registry_fingerprint"] = CORE_REGISTRY.fingerprint
             accepted[group].append(final)
+        if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
+            linked_ids = {link["claim_proposal_id"] for link in accepted["belief_links"]}
+            rejected.extend({"proposal_id": claim["proposal_id"], "reason": "relation_support_unconfirmed"}
+                            for claim in accepted["claims"] if claim["proposal_id"] not in linked_ids)
+            accepted["claims"] = [claim for claim in accepted["claims"] if claim["proposal_id"] in linked_ids]
         return result("partial" if rejected else "completed", **{k: tuple(v) for k, v in accepted.items()})
 
     @staticmethod

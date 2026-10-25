@@ -38,6 +38,74 @@ EPISODE_VERIFY_INSTRUCTIONS = (
     "unknown or contradicts if its organizing proposition or transition is unsupported, even when "
     "every source is authentic. Do not repair the proposition or replace unknown with supports."
 )
+EPISODE_FIDELITY_INSTRUCTIONS = (
+    "Episode organization fidelity (episode-fidelity-v1): preserve each contribution's speaker and "
+    "epistemic scope. Uncertainty about whether something happened is not a statement that it did not "
+    "happen; an explicit negative remains negative. Keep reported, questioned, proposed, hypothetical "
+    "and completed acts distinct. Preserve the source's level of specificity: do not add an unstated "
+    "domain, purpose, place, time, cause or outcome. A broader description does not support a narrower "
+    "one merely because it is plausible. Describe only the supported interaction grouping or boundary, "
+    "without converting a provisional group into a completed external event."
+)
+EPISODE_FIDELITY_VERIFY_INSTRUCTIONS = (
+    "For every episode_actions assessment, return organization_fidelity with exactly four verdicts, "
+    "each supports, contradicts or unknown: attribution checks who reported, asked or delivered each "
+    "contribution and whether it is adopted as fact; modality checks negation, uncertainty and "
+    "reported, questioned, proposed or hypothetical scope; specificity checks that no unsupported "
+    "domain, purpose, place, time, cause or outcome narrows the original meaning; boundary checks "
+    "the proposed grouping and transition without inferring external completion. Compare the complete "
+    "organization_statement against ALL numbered member sources, including qualifying clauses. "
+    "Cannot confirm an event is different from confirming its absence; preserve explicit negatives "
+    "as well. For create, boundary supports only an evidenced provisional grouping, not an external "
+    "event beginning or ending. A plausible more-specific interpretation is not source support. "
+    "Authentic citations and a positive whole-proposal verdict do not substitute for these checks. "
+    "Return unknown when a facet cannot be established, contradicts when the proposed meaning "
+    "conflicts with the sources, and supports only when it is supported. Do not repair the proposal. "
+    "Do not return organization_fidelity for other proposal groups."
+)
+ORGANIZATION_FIDELITY_SCHEMA = {
+    "type": "object",
+    "properties": {key: {"enum": ["supports", "contradicts", "unknown"]}
+                   for key in ("attribution", "modality", "specificity", "boundary")},
+    "required": ["attribution", "modality", "specificity", "boundary"],
+    "additionalProperties": False,
+}
+
+
+def episode_fidelity_schema(base_schema, episode_proposal_ids):
+    schema = copy.deepcopy(base_schema)
+    identifiers = sorted(set(episode_proposal_ids))
+    if identifiers:
+        assessment = schema["properties"]["assessments"]["items"]
+        assessment["properties"]["organization_fidelity"] = copy.deepcopy(ORGANIZATION_FIDELITY_SCHEMA)
+        assessment.setdefault("allOf", []).append({
+            "if": {"properties": {"proposal_id": {"enum": identifiers}}},
+            "then": {"required": ["organization_fidelity"]},
+            "else": {"not": {"required": ["organization_fidelity"]}},
+        })
+    return schema
+
+
+def episode_fidelity_supported(assessment, proposal_id, references):
+    if (not isinstance(assessment, dict)
+            or set(assessment) != {"proposal_id", "proposal_verdict", "link_verdict", "relations",
+                                   "organization_fidelity"}
+            or assessment["proposal_id"] != proposal_id or assessment["proposal_verdict"] != "supports"
+            or assessment["link_verdict"] is not None):
+        return False
+    fidelity = assessment["organization_fidelity"]
+    if (not isinstance(fidelity, dict) or set(fidelity) != set(ORGANIZATION_FIDELITY_SCHEMA["required"])
+            or any(value != "supports" for value in fidelity.values())):
+        return False
+    relations = assessment["relations"]
+    return (
+        bool(references) and isinstance(relations, list) and len(relations) == len(references)
+        and all(isinstance(relation, dict) and set(relation) == {"evidence_index", "verdict"}
+                and type(relation["evidence_index"]) is int and relation["verdict"] == "supports"
+                for relation in relations)
+        and {relation["evidence_index"] for relation in relations} == set(range(len(references)))
+        and all(reference.get("relationship") == "supports" for reference in references)
+    )
 
 
 def _member_keys(refs):

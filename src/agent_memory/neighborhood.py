@@ -74,11 +74,13 @@ class _Selector:
         if missing:
             found = self.service._events(self.conn, self.principal, self.brain,
                                          event_ids=missing, limit=self.policy.max_sources)
-            blocked = {ref["event_id"] for ref in self.service._superseded_evidence(
+            blocked = {(ref["event_id"], ref["event_revision"], ref["source_content_sha256"])
+                       for ref in self.service._superseded_evidence(
                 self.conn, self.principal, self.brain, missing)}
             self.source_cache.update({identifier: None for identifier in missing})
             for event in found:
-                if (event["event_id"] not in blocked and event["sequence"] <= self.through
+                if ((event["event_id"], event["revision"], event["content_sha256"]) not in blocked
+                        and event["sequence"] <= self.through
                         and cognition._scope_allows(event["scope"], self.scope)
                         and event["content_sha256"] == digest(event["observed"]["content"])
                         and event["observed"]["delivery_state"] in {"received", "delivered", "partially_delivered"}):
@@ -265,16 +267,25 @@ class _Selector:
         if relevant:
             self.sampling["publication_restricted"] = True
 
-    def candidates(self, cue):
+    def candidates(self, cue, *, excluded_versions=(), independent_of_event_ids=()):
         from .lexical_candidates import lexical_rows
         from .source_candidates import source_candidates
 
         if not cue.strip():
             return []
-        rows, truncated = lexical_rows(
+        support_filter = ({"independent_of_event_ids": independent_of_event_ids}
+                          if independent_of_event_ids else {})
+        seed_rows, seed_truncated = lexical_rows(
             self.conn, self.params, self.target, cue,
             limit=self.sampling["candidate_scan_limit"], through_sequence=self.through,
+            **support_filter,
         )
+        rows, truncated = (lexical_rows(
+            self.conn, self.params, self.target, cue,
+            limit=self.sampling["candidate_scan_limit"], through_sequence=self.through,
+            excluded_versions=excluded_versions,
+            **support_filter,
+        ) if excluded_versions else (seed_rows, seed_truncated))
         if truncated:
             self.reasons.add("candidate_scan_limit")
         ranked = [(cognition._lexical_score(cue, row["document"]["statement"]), row)
@@ -282,11 +293,23 @@ class _Selector:
         ranked = [(score, row) for score, row in ranked if score > 0]
         ranked.sort(key=lambda item: (-item[0], -bool(item[1]["document"].get("counterexamples")),
                                       *_key(item[1]["document"])))
+        seeds = ranked
+        if excluded_versions:
+            if seed_truncated:
+                self.reasons.add("source_candidate_limit")
+            seed_lookup = {_key(row["document"]): row for row in (*seed_rows, *rows)}
+            seeds = [(cognition._lexical_score(cue, row["document"]["statement"]), row)
+                     for row in seed_lookup.values()]
+            seeds = sorted((item for item in seeds if item[0] > 0),
+                           key=lambda item: (-item[0], -bool(item[1]["document"].get("counterexamples")),
+                                             *_key(item[1]["document"])))
         bridged, truncated = source_candidates(
             self.conn, self.service, self.principal, self.brain, self.target, cue,
-            [self.bind(row["document"]) for _, row in ranked[:self.policy.max_assertions]],
+            [self.bind(row["document"]) for _, row in (seeds if excluded_versions else seeds[:self.policy.max_assertions])],
             source_limit=min(64, self.policy.max_sources), scan_limit=self.sampling["candidate_scan_limit"],
             through_sequence=self.through,
+            **({"excluded_versions": excluded_versions} if excluded_versions else {}),
+            **support_filter,
         )
         if truncated:
             self.reasons.add("source_candidate_limit")

@@ -9,10 +9,15 @@ from .consolidation_planning import plan_consolidation
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
 from .jobs import NO_UNSETTLED_RETRY_POLICY, JobStore
+from .learning_allocations import ENCODING_PHASE, HISTORY_PHASE, freeze_input, phase
+from .learning_packages import empty_working, local_neighborhood, snapshot_fingerprint
+from .learning_recovery import POLICY_REFRESH_VERSION
 from .learning_windows import bounds, record_progress, recover_windows, select_window
+from .local_semantics import BOUNDED_MODES, HISTORY_INTEGRATION_MODE, LOCAL_OBSERVATION_MODE
 from .semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     GENERAL_PROPOSAL_MODE,
+    LATEST_INPUT_CONTRACT_VERSION,
     ORIENT_PROPOSAL_MODE,
     CognitiveBatch,
     SemanticPolicy,
@@ -40,8 +45,9 @@ def _snapshot_policy(snapshot, default=None):
 
 def _snapshot_proposal_mode(snapshot, kind=None):
     mode = snapshot.get("proposal_mode", GENERAL_PROPOSAL_MODE)
-    if (mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE)
-            or kind is not None and kind != "orient" and mode == ORIENT_PROPOSAL_MODE):
+    if (mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE, *BOUNDED_MODES)
+            or kind is not None and (kind != "orient" and mode == ORIENT_PROPOSAL_MODE
+                                     or kind != "consolidate" and mode in BOUNDED_MODES)):
         raise DomainError("context_stale", "Cognitive proposal mode is unavailable for this task.")
     return mode
 
@@ -103,7 +109,8 @@ def _learning_inputs(snapshot, job, events):
         validate("BoundScope", scope)
         start, end = bounds(payload)
         attempted = _integer(window["attempted_through_sequence"], 1)
-        if (job["kind"] != "consolidate" or _snapshot_proposal_mode(snapshot) != GENERAL_PROPOSAL_MODE
+        if (job["kind"] != "consolidate"
+                or _snapshot_proposal_mode(snapshot) not in (GENERAL_PROPOSAL_MODE, LOCAL_OBSERVATION_MODE)
                 or snapshot.get("current_input_refs") or snapshot.get("current_input_binding") is not None
                 or bounds(window) != (start, end) or not start <= attempted <= end
                 or _integer(window["input_count"]) != len(refs)
@@ -180,7 +187,10 @@ def _validated_snapshot(conn, service, principal, brain, result):
                 or not cognition._scope_allows(event["scope"], scope)):
             raise DomainError("source_unavailable", "Cognitive source changed.")
     _validate_current_input_binding(conn, service, principal, brain, result, lookup)
-    if service._superseded_evidence(conn, principal, brain, [r["event_id"] for r in refs]):
+    superseded = service._superseded_evidence(conn, principal, brain, [r["event_id"] for r in refs])
+    if any((ref["event_id"], ref["event_revision"]) in lookup
+           and lookup[(ref["event_id"], ref["event_revision"])]["content_sha256"] == ref["source_content_sha256"]
+           for ref in superseded):
         raise DomainError("context_stale", "Cognitive source was corrected.")
     references = result.get("memory_snapshot", [])
     memories = _snapshot_documents(conn, service, principal, brain, references, "memory_assertions", "memory_id",
@@ -277,7 +287,15 @@ class LearningEngine:
     def _resume_snapshot(self, conn, principal, brain, job, snapshot):
         service = self.service
         mode = _snapshot_proposal_mode(snapshot, job["kind"])
+        learning_phase = phase(job.get("payload", {}))
+        if (mode == LOCAL_OBSERVATION_MODE and learning_phase != ENCODING_PHASE
+                or mode == HISTORY_INTEGRATION_MODE and learning_phase != HISTORY_PHASE):
+            raise DomainError("context_stale", "Bounded learning phase changed.")
         events, loaded = _validated_snapshot(conn, service, principal, brain, snapshot)
+        if learning_phase is not None:
+            snapshot = self._refresh_recovery_policy(conn, principal, brain, job, snapshot)
+            freeze_input(conn, service._params(principal, brain["id"]), job["id"],
+                         input_fingerprint=snapshot_fingerprint(snapshot), window=snapshot.get("learning_window"))
         if job["kind"] == "orient":
             current = service._working(conn, principal, brain, job["payload"]["target"], None)
             if current["revision"] != snapshot["working_revision"]:
@@ -294,7 +312,37 @@ class LearningEngine:
             proposal_mode=mode,
             learning_input_refs=_learning_inputs(snapshot, job, events),
             input_contract_version=_snapshot_input_contract(snapshot),
+            integration_manifest=copy.deepcopy(snapshot.get("integration_manifest")),
         ), snapshot
+
+    def _refresh_recovery_policy(self, conn, principal, brain, job, snapshot):
+        params = self.service._params(principal, brain["id"])
+        current = conn.execute(
+            "SELECT payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s FOR UPDATE",
+            (*params, job["id"]),
+        ).fetchone()["payload"]
+        if "recovery_policy_refresh" not in current or "allocation_input_fingerprint" in current:
+            return snapshot
+        parent = conn.execute(
+            "SELECT payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+            (*params, current.get("recovery_parent_job_id")),
+        ).fetchone()
+        if (current["recovery_policy_refresh"] != POLICY_REFRESH_VERSION or parent is None
+                or current.get("authorization_root_job_id") != job["id"]
+                or current.get("allocation_policy") != "explicit-phase-recovery-budget-v1"
+                or parent["payload"].get("recovery_job_id") != job["id"]
+                or current.get("recovery_input_fingerprint") != parent["payload"].get("allocation_input_fingerprint")
+                or snapshot_fingerprint(snapshot) != current.get("recovery_input_fingerprint")
+                or any(current.get(key) != parent["payload"].get(key) for key in (
+                    "learning_phase", "learning_contract_version", "target", "from_sequence", "through_sequence"))):
+            raise DomainError("context_stale", "Explicit recovery no longer matches its original input plan.")
+        snapshot = {**snapshot, "semantic_policy": {
+            "version": "semantic-policy-v1", "limits": asdict(self.service.semantic_processor.policy)}}
+        conn.execute(
+            "UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+            (Jsonb(snapshot), *params, job["id"]),
+        )
+        return snapshot
 
     def _snapshot(self, principal, brain_id, job):
         service = self.service
@@ -302,27 +350,37 @@ class LearningEngine:
             brain = service._brain(conn, principal, brain_id)
             params = service._params(principal, brain_id)
             payload = job["payload"]
+            learning_phase = phase(payload)
             prior = conn.execute("SELECT result FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                                  (*params, job["id"])).fetchone()["result"]
+            if (learning_phase is not None and any(key in payload for key in (
+                    "allocation_input_fingerprint", "recovery_input_fingerprint", "recovery_policy_refresh"))
+                    and (not isinstance(prior, dict) or "working_snapshot" not in prior)):
+                raise DomainError("context_stale", "The frozen learning input plan is no longer available.")
             if prior:
                 _current_input_authorization(prior)
             policy = _snapshot_policy(prior or {}, service.semantic_processor.policy)
             mode = (_snapshot_proposal_mode(prior, job["kind"]) if prior else
                     ORIENT_PROPOSAL_MODE if job["kind"] == "orient" else GENERAL_PROPOSAL_MODE)
-            input_contract = _snapshot_input_contract(prior) if prior else COMMUNICATION_INTENT_INPUT_VERSION
-            windowed = job["kind"] == "consolidate" and "from_sequence" in payload
+            input_contract = (_snapshot_input_contract(prior) if prior and "working_snapshot" in prior else
+                              LATEST_INPUT_CONTRACT_VERSION if learning_phase else COMMUNICATION_INTENT_INPUT_VERSION)
+            windowed = (job["kind"] == "consolidate" and "from_sequence" in payload
+                        and learning_phase != HISTORY_PHASE)
             frozen_orientation = job["kind"] == "orient" and mode == ORIENT_PROPOSAL_MODE
-            if (windowed or frozen_orientation) and prior and "working_snapshot" in prior:
+            if (windowed or frozen_orientation or learning_phase == HISTORY_PHASE) and prior and "working_snapshot" in prior:
                 snapshot = {key: copy.deepcopy(value) for key, value in prior.items() if key in {
                     "scope", "source_snapshot", "memory_snapshot", "episode_snapshot", "working_revision",
                     "working_snapshot", "sampling", "learning_window", "learning_input_refs", "dependency_generation",
                     "belief_relations", "belief_relation_snapshot", "consolidation_plan",
                     "current_input_refs", "current_input_binding", "proposal_mode", "input_contract_version",
                     "operation_settlement_policy", "semantic_policy",
+                    "history_sampling", "integration_manifest", "remaining_manifest",
                 }}
                 if windowed and (snapshot.get("current_input_refs") or snapshot.get("current_input_binding")):
                     raise DomainError("context_stale", "Consolidation cannot authorize current input.")
                 return self._resume_snapshot(conn, principal, brain, job, snapshot)
+            if learning_phase == HISTORY_PHASE:
+                raise DomainError("dependency_unavailable", "Historical integration has no ready frozen package.")
             if "event_id" in payload:
                 source = service._events(conn, principal, brain, event_ids=[payload["event_id"]], limit=1)
                 if not source or source[0]["revision"] != payload["revision"]:
@@ -364,12 +422,23 @@ class LearningEngine:
                 learning_input_refs=required if window is not None and input_contract is not None else (),
                 input_contract_version=input_contract,
             ) if required or not windowed else Neighborhood((), (), (), {"source_count": 0}))
+            history_sampling = None
+            if (learning_phase == ENCODING_PHASE and prior is None and required
+                    and neighborhood.sampling.get("publication_restricted")):
+                history_sampling = copy.deepcopy(neighborhood.sampling)
+                mode = LOCAL_OBSERVATION_MODE
+                neighborhood = local_neighborhood(
+                    conn, service, principal, brain, target, through_sequence=through,
+                    required_event_refs=required, policy=selection_policy, input_contract_version=input_contract,
+                )
             sources, assertion_documents, episode_documents = (
                 neighborhood.sources, neighborhood.assertions, neighborhood.episodes,
             )
             source_ids = [event["event_id"] for event in sources]
             assertions = tuple(service._rebind(document, principal, brain) for document in assertion_documents)
             working = service._working(conn, principal, brain, target, sources)
+            if mode == LOCAL_OBSERVATION_MODE:
+                working = empty_working(working)
             episodes = tuple(service._rebind(document, principal, brain) for document in episode_documents)
             snapshot = {"scope": scope, "dependency_generation": brain["dependency_generation"], "source_snapshot": [
                 {"event_id": e["event_id"], "revision": e["revision"], "content_sha256": e["content_sha256"]}
@@ -396,6 +465,8 @@ class LearningEngine:
                 snapshot["semantic_policy"] = copy.deepcopy(prior["semantic_policy"])
             if input_contract is not None or prior and "input_contract_version" in prior:
                 snapshot["input_contract_version"] = input_contract
+            if history_sampling is not None:
+                snapshot["history_sampling"] = history_sampling
             if frozen_orientation:
                 snapshot["working_snapshot"] = copy.deepcopy(working)
             if current_input_refs:
@@ -450,6 +521,9 @@ class LearningEngine:
                 if sampling_identity(prior["sampling"]) != sampling_identity(snapshot["sampling"]):
                     raise DomainError("context_stale", "Cognitive retry sampling changed.")
                 snapshot["sampling"] = prior["sampling"]
+            if learning_phase is not None:
+                freeze_input(conn, params, job["id"], input_fingerprint=snapshot_fingerprint(snapshot),
+                             window=snapshot.get("learning_window"))
             conn.execute(
                 "UPDATE memory_jobs SET result=%s,source_event_ids=%s,source_memory_ids=%s "
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s AND fence=%s AND state='running'",
@@ -526,6 +600,10 @@ class LearningEngine:
         succeeded = (result.status in {"completed", "partial"} and not only_invalid_proposals
                      and not batch.sampling.get("publication_restricted")
                      or window is not None and not snapshot["learning_input_refs"] and result.status == "no_sources")
+        if phase(job["payload"]) == HISTORY_PHASE and not succeeded:
+            from .learning_integration import fail_integration
+
+            return fail_integration(service, principal, brain_id, job, snapshot, result)
 
         def publish(conn, _):
             brain = service._brain(conn, principal, brain_id)
@@ -546,10 +624,22 @@ class LearningEngine:
 
                 publication = publish_semantic(conn, service, principal, brain, batch, result, job_id=job["id"])
             data = {**snapshot, **asdict(result), "publication": publication}
+            if batch.proposal_mode == LOCAL_OBSERVATION_MODE and succeeded:
+                from .learning_integration import enqueue_integration
+
+                data.update(enqueue_integration(conn, service, principal, brain, job, snapshot, policy))
+            elif phase(job["payload"]) == HISTORY_PHASE:
+                from .learning_integration import finish_integration
+
+                data.update(finish_integration(conn, service, principal, brain, job, snapshot, result, policy))
             if window is not None:
                 data["learning_window"] = record_progress(
                     conn, service, principal, brain, job, window, succeeded=succeeded,
                 )
+            if phase(job["payload"]) == ENCODING_PHASE and succeeded:
+                from .learning_integration import notify_encoding_complete
+
+                notify_encoding_complete(conn, service, principal, brain)
             conn.execute("UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                          (Jsonb(data), *service._params(principal, brain_id), job["id"]))
             return data
@@ -692,6 +782,9 @@ class LearningEngine:
             with self.service.database.transaction(principal) as conn:
                 brain = self.service._brain(conn, principal, brain_id)
                 recover_windows(conn, self.service, principal, brain)
+                from .learning_integration import reconsider
+
+                reconsider(conn, self.service, principal, brain)
             kinds.append("consolidate")
         if self.service.embedding_provider:
             kinds.append("embed")

@@ -1,7 +1,6 @@
 import json
 
 import pytest
-from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_learning_windows import claim as claim_job
 from test_learning_windows import drain, jobs
@@ -99,18 +98,17 @@ def test_completed_v3_comparison_is_not_reauthorized_by_v4_ranking_upgrade(learn
     assert sum(job["model_calls"] for job in jobs(learning)) == 4
 
 
-def test_frozen_v3_comparison_survives_restart_under_v4_default(learning):
+def test_frozen_v3_comparison_survives_restart_under_v4_default(learning, monkeypatch):
     install_instance_learning(learning)
     learning.observe("I recalled those two study sessions.")
     selected = claim_job(learning)
     engine = LearningEngine(learning.service)
-    batch, snapshot = engine._snapshot(learning.principal, learning.brain, selected)
-    old_plan = plan_consolidation(batch.sources, batch.existing_assertions, batch.belief_relations,
-                                 batch.sampling, planner_version="independent-instance-comparison-v3")
-    snapshot["consolidation_plan"] = old_plan
-    with learning.database.transaction(learning.principal) as conn:
-        conn.execute("UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                     (Jsonb(snapshot), *learning.service._params(learning.principal, learning.brain), selected["id"]))
+    with monkeypatch.context() as patch:
+        patch.setattr(learning_module, "plan_consolidation", lambda *args, **kwargs:
+                      plan_consolidation(*args, **kwargs, planner_version="independent-instance-comparison-v3"))
+        _, snapshot = engine._snapshot(learning.principal, learning.brain, selected)
+    old_plan = snapshot["consolidation_plan"]
+    assert old_plan["planner_version"] == "independent-instance-comparison-v3"
     resumed, frozen = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, selected)
     assert resumed.consolidation_plan == old_plan and frozen == snapshot
     engine._execute(learning.principal, learning.brain, selected)

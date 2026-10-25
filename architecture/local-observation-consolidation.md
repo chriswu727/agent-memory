@@ -1,6 +1,6 @@
 # Local observation encoding and historical integration
 
-Status: proposed implementation contract, 2026-10-25. The behavior described below is **not implemented**. This document records the next engineering decision; it does not change the stopped evaluation, existing jobs, or published memories.
+Status: implemented with integrated local verification, 2026-10-25. Local encoding, finite phase allocations, complete comparison packaging, deferred scheduling, episode fidelity, phase diagnostics, and recovery passed the 4,249-test integrated run, including Docker and installed-wheel flows. New real-model acceptance remains pending. See the [verification report](../evaluations/v1-bounded-learning-2026-10-25.md). This contract does not change the stopped evaluation, old frozen jobs, or published memories.
 
 ## Evidence and failure boundary
 
@@ -8,7 +8,7 @@ The stopped on-demand long evaluation preserved its original requests, responses
 
 Nevertheless, the job rejected all four proposals as `incomplete_history_package` before verification. Its sampling report contained `request_bytes_budget`, eight selected sources, eleven assertions, six omitted packages, and `publication_restricted=true`. The job became `cancelled` with `dependency_unavailable`. An offline replay using the recorded payload and response produced byte-identical proposal messages and the same rejection, without a provider call. Completed stages 003 through 009 showed the same blockage. This is a learning failure; source persistence, literal captures, and answer delivery remained available.
 
-The relevant current boundaries are:
+The boundaries observed in the failed revision were:
 
 - [neighborhood.py](../src/agent_memory/neighborhood.py): omitting a relevant historical package sets a global publication restriction.
 - [semantic.py](../src/agent_memory/semantic.py): that restriction rejects every non-situation proposal, including independently sourced new reports.
@@ -17,7 +17,7 @@ The relevant current boundaries are:
 
 The last rule is conservative provenance protection, not permission to drop roots. A model that saw historical context may have depended on it even when its citations omit it. Removing the global guard, deleting contextual roots after generation, or increasing the context budget alone would not establish safe independent learning.
 
-## Recommended decision
+## Encoding and integration boundary
 
 Separate **encoding observed communication** from **integrating it with historical memory**. A source-grounded report can remain useful when a historical comparison cannot fit. Its publication must not assert that comparison has happened.
 
@@ -33,7 +33,7 @@ The minimal durable implementation reuses `memory_jobs` with `kind='consolidate'
 
 ## Finite autonomous allocation
 
-Recommend a new, explicit `encoding-integration-budget-v1` policy for fresh batches: at most two calls and 196,608 input bytes for encoding, plus at most one integration proposal/verification pair with the same limits. The shared cumulative ceiling is therefore four calls and 393,216 input bytes for one finite encoding batch and its authorized integration phase. Each phase is further limited by its frozen `SemanticPolicy`; the configured per-brain rolling budget applies to every reservation across both phases.
+Fresh batches declare the explicit `encoding-integration-budget-v1` policy: at most two calls and 196,608 input bytes for encoding, plus at most one integration proposal/verification pair with the same limits. The shared cumulative ceiling is therefore four calls and 393,216 input bytes for one finite encoding batch and its authorized integration phase. Each phase is further limited by its frozen `SemanticPolicy`; the configured per-brain rolling budget applies to every reservation across both phases.
 
 This is an engineering choice to permit up to twice the old per-batch ceiling, not a claim that the cost is unchanged. The complete-history path still needs at most its existing two calls and creates no second paid phase. The extra pair is available only to the declared local-encoding/integration path. It is a ceiling, not a requirement to spend: absent complete useful comparisons, no call occurs. Per-brain defaults and user-configured rolling limits do not increase. A lower phase policy can only reduce this allocation.
 
@@ -74,7 +74,7 @@ When restricted encoding publishes successfully, the **same database transaction
 
 If any step fails, none of these changes commits. A deterministic integration identifier derived from the encoding job, attempted range, and source-set fingerprint makes retries idempotent. An integration obligation covers one finite encoding batch, not the entire ever-growing conversation.
 
-The integration job has the following proposed metadata. Identifiers and fingerprints are private bounded metadata, not copied conversation text:
+The integration job carries the following metadata. Identifiers and fingerprints are private bounded metadata, not copied conversation text:
 
 ```json
 {
@@ -140,15 +140,33 @@ Before any integration provider reservation, build and persist a finite comparis
 
 If even one required objective closure does not fit, retain that objective as deferred with a fixed budget/dependency reason and make no call for it. Other independent complete objectives may progress; they cannot close the incomplete objective. If discovery itself was truncated or some intended comparisons could not be enumerated, retain an explicit unresolved discovery marker. It must not become an empty manifest interpreted as complete.
 
-When every enumerated objective is assessed and no discovery marker remains, label the obligation `assessed_bounded_manifest`. This means the declared finite work was assessed, not that the whole brain's history was searched exhaustively. A legitimate empty manifest must retain a valid completed discovery assessment; missing or malformed manifests are unknown. Publish counts and no-change counts remain separate.
+When every enumerated objective is assessed and no discovery marker remains, the final job is `completed` with explicit bounded coverage. `assessed_bounded_manifest` describes that meaning; it is not a scheduler state. This means the declared finite work was assessed, not that the whole brain's history was searched exhaustively. A legitimate empty manifest must retain a valid completed discovery assessment; missing or malformed manifests are unknown. Publish counts and no-change counts remain separate.
 
 This resolves the current budget dead end through bounded comparison packages, rather than increasing an input limit until the entire history happens to fit. The first implementation must demonstrate automatic local encoding followed by later integration when complete evidence and capacity become available, with no user job-management step. Shipping only the local fallback and a permanently inert label is incomplete.
+
+## Packaging and discovery implementation
+
+Comparison identities use the existing stable assertion fingerprint, which retains semantic content, evidence, and scope while excluding access dynamics and authority-generation bookkeeping. Actual frozen execution snapshots still check exact durable documents and the current scope/dependency generations. An unrelated generation change must not manufacture a new semantic comparison identity.
+
+Required source and ancestor closure includes exceptions attached to every recursively visited parent. Both proposal and verification receive the complete selected closure. In the new bounded modes, verification stores each complete source once and resolves numbered `source_ref`, historical `target_assertion_refs`, and `local_input_refs` against those shared records. Excerpts do not replace complete context. Old general-purpose requests remain byte-compatible.
+
+Packaging preflights the proposal and the known minimum complete verification context, with bounded metadata headroom. It cannot guarantee that arbitrary generated proposals fit; an oversized actual verification request fails before its provider reservation and cannot publish unchecked output. Model output is never repaired by dropping counterevidence or source context.
+
+Historical candidate routes exclude previously attempted exact endpoints and assertions supported only by the current inputs before their SQL limits. Source bridges retain seed access while excluding exhausted endpoint results. Missing bridge seeds beyond the finite scan retain `source_candidate_limit`: this implementation does not promise exhaustive history enumeration or silently close an empty truncated search. Database filtering may inspect more rows than the bounded result count.
 
 ## Source changes, recovery, and compatibility
 
 Validate exact input/source identities before every reservation and publication. Correcting a source, deleting it, changing an authoritative scope, or restoring into quarantine cannot reuse an old proposal, verification, or manifest. Preserve the failed attempt and its usage. Any replacement must have a new identity bound to the new source set and a link to the superseded obligation.
 
 Source correction can create a replacement deferred obligation under existing invalidation handling. It may use remaining unspent allocation, or a genuinely new correction input's declared integration phase, only with a newly frozen source identity before reservation. It cannot reset spent or uncertain allocation. If all required sources have been erased, retire the obligation as source unavailable, not semantically assessed; apply existing erasure/redaction rules to its stored metadata and results. No recovery path may reconstruct deleted text from a prior model response.
+
+Unreserved stale encoding can create a strict same-root successor only while the entire allocation has no durable provider reservation. Unreserved stale history can likewise repackage its exact saved obligation under the original root, provided no history operation was reserved and its exact inputs and endpoints remain available. Compact private manifests retain identifiers, versions, and hashes rather than source text; deleting content still prevents reconstruction. Replanning does not replenish the allocation.
+
+Encoding also freezes an immutable attempted-range marker before the first reservation. If source invalidation terminates a paid prefix before its larger input window finishes, a continuation can process only the untouched suffix after that marker. The original attempted prefix remains blocked and charged; creating the suffix does not advance its processed position. Missing, malformed, or inconsistent markers cannot authorize a replacement range. Migration 021 prevents changing or removing an existing marker.
+
+An explicitly authorized phase retry preserves the original source and comparison plan but freezes the current service policy once before its first call. It has a separate two-call recovery allocation; its parent's policy and charges remain unchanged. Restarting after that freeze cannot refresh the policy again. If deletion or correction destroys the copied plan before the first freeze, neither another explicit retry nor automatic zero-call replanning may substitute a new source plan.
+
+A structured historical failure retains the selected paid comparisons on its parent and may delegate only untouched remaining comparisons. A verified published relation can coexist with an unassessed overall comparison; publication and assessment remain separate. Opaque failures that never reach structured finalization stay blocked. Explicit retry of a parent that already delegated a tail is currently rejected to prevent duplicate ownership; targeted recovery of only that parent's failed selected comparisons is not implemented. These limits remain visible and cannot be described as complete recovery support.
 
 Keep old snapshot semantics exact. Snapshots with no phase/version fields continue to use their original general mode, global publication guard, policy behavior, and retry contract. Existing failed jobs are not migrated into successful local encoding. A user can explicitly authorize a fresh recovery child using the new contract; its old parent's usage and failure remain visible. Frozen old proposal/schema bytes, request identities, policy snapshots, and comparison identities must remain reproducible across the change.
 

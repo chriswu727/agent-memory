@@ -1,6 +1,20 @@
 from psycopg.types.json import Jsonb
 
 from .helpers import DomainError, digest
+from .learning_allocations import (
+    AUTHORITY_FIELDS,
+    CONTRACT_VERSION,
+    ENCODING_PHASE,
+    ENCODING_REPLAN_VERSION,
+    PHASE_BYTES,
+    PHASE_CALLS,
+    RECOVERY_POLICY,
+    allocation_metadata,
+    allocation_root,
+    encoding_window,
+    phase,
+    unreserved_encoding_root,
+)
 from .semantic import COMMUNICATION_INTENT_INPUT_VERSION
 from .turns import _identifier
 
@@ -23,11 +37,22 @@ def pending_window(payload):
 
 
 def enqueue_window(conn, service, principal, brain, target, start, end, *, coalesce=False, origin=None,
-                   lineage=None):
+                   lineage=None, learning_contract_version=None):
+    if learning_contract_version not in (None, CONTRACT_VERSION):
+        raise DomainError("dependency_unavailable", "Learning contract version is unsupported.")
+    if any(key in (lineage or {}) for key in AUTHORITY_FIELDS):
+        raise DomainError("dependency_unavailable", "Encoding allocation must be created from its own window.")
     payload = {"target": {key: target[key] for key in ("conversation_ref", "branch_ref")},
                "from_sequence": start, "through_sequence": end, **(lineage or {})}
     bounds(payload)
     params = service._params(principal, brain["id"])
+    if isinstance(origin, str):
+        parent = conn.execute(
+            "SELECT payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+            (*params, origin),
+        ).fetchone()
+        if parent and phase(parent["payload"]) != (ENCODING_PHASE if learning_contract_version else None):
+            raise DomainError("stage_conflict", "Encoding continuation cannot change its learning contract.")
     if coalesce:
         rows = conn.execute(
             "SELECT id,payload,state,attempts FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
@@ -37,7 +62,9 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
             (*params, target["conversation_ref"], target["branch_ref"]),
         ).fetchone()
         if (rows and rows["state"] == "queued" and rows["attempts"] == 0
-                and not any(key in rows["payload"] for key in ("recovery_parent_job_id", "recovery_root_job_id"))):
+                and not any(key in rows["payload"] for key in (
+                    "recovery_parent_job_id", "recovery_root_job_id", "allocation_input_fingerprint"))
+                and phase(rows["payload"]) == (ENCODING_PHASE if learning_contract_version else None)):
             previous = rows["payload"]
             payload = {**previous, **payload}
             payload["from_sequence"] = min(previous.get("from_sequence", previous["through_sequence"]), start)
@@ -50,7 +77,12 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
             return rows["id"]
     identity = {key: payload[key] for key in ("target", "from_sequence", "through_sequence")}
     identifier = "consolidate:" + digest([brain["id"], identity, origin])
+    if learning_contract_version is not None:
+        identifier = "consolidate:" + digest([brain["id"], identity, origin, learning_contract_version])
+        payload.update(allocation_metadata(identifier, recovery="recovery_budget" in payload))
     budget = payload.get("recovery_budget", {})
+    if learning_contract_version is not None:
+        budget = {"max_model_calls": PHASE_CALLS, "max_input_bytes": PHASE_BYTES}
     conn.execute(
         "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,payload,state,max_model_calls,max_input_bytes) "
         "VALUES(%s,%s,%s,%s,'consolidate',%s,'queued',%s,%s) ON CONFLICT DO NOTHING",
@@ -77,11 +109,12 @@ def select_window(conn, service, principal, brain, payload, *, policy,
          start, end, count + 1),
     ).fetchall()
     selected = rows[:count]
-    blocked = {reference["event_id"] for reference in service._superseded_evidence(
+    blocked = {(reference["event_id"], reference["event_revision"], reference["source_content_sha256"])
+               for reference in service._superseded_evidence(
         conn, principal, brain, [row["id"] for row in selected])}
     events = []
     for index, row in enumerate(selected):
-        if row["id"] in blocked:
+        if (row["id"], row["revision"], row["document"]["content_sha256"]) in blocked:
             continue
         events.append(service._rebind(row["document"], principal, brain))
         working = service._working(conn, principal, brain, target, events)
@@ -95,7 +128,8 @@ def select_window(conn, service, principal, brain, payload, *, policy,
             selected = selected[:index if len(events) > 1 else index + 1]
             break
     through = selected[-1]["sequence"] if len(rows) > len(selected) else end
-    available = [row for row in selected if row["id"] not in blocked]
+    available = [row for row in selected
+                 if (row["id"], row["revision"], row["document"]["content_sha256"]) not in blocked]
     window = {**pending_window(payload), "attempted_through_sequence": through,
               "input_count": len(available), "skipped_unavailable_count": len(selected) - len(available),
               "status": "attempting"}
@@ -104,13 +138,23 @@ def select_window(conn, service, principal, brain, payload, *, policy,
 
 
 def record_progress(conn, service, principal, brain, job, window, *, succeeded):
+    selected_phase = phase(job["payload"])
+    if selected_phase not in (None, ENCODING_PHASE):
+        raise DomainError("stage_conflict", "History integration does not advance an encoding window.")
     window = {**window, "processing_succeeded": succeeded,
               "status": "processed" if succeeded else "deferred"}
     if succeeded:
         window["processed_through_sequence"] = window["attempted_through_sequence"]
     window["has_more"] = window["processed_through_sequence"] < window["through_sequence"]
     if succeeded:
-        payload = {**job["payload"], "processed_through_sequence": window["processed_through_sequence"]}
+        saved = conn.execute(
+            "SELECT payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s FOR UPDATE",
+            (*service._params(principal, brain["id"]), job["id"]),
+        ).fetchone()
+        if (saved is None or phase(saved["payload"]) != selected_phase
+                or bounds(saved["payload"]) != bounds(job["payload"])):
+            raise DomainError("context_stale", "Encoding progress no longer matches its input window.")
+        payload = {**saved["payload"], "processed_through_sequence": window["processed_through_sequence"]}
         if window["has_more"]:
             lineage = {"continuation_parent_job_id": job["id"]}
             if "recovery_root_job_id" in payload:
@@ -121,6 +165,7 @@ def record_progress(conn, service, principal, brain, job, window, *, succeeded):
                 conn, service, principal, brain, payload["target"],
                 window["processed_through_sequence"] + 1, window["through_sequence"], origin=job["id"],
                 lineage=lineage,
+                learning_contract_version=CONTRACT_VERSION if selected_phase else None,
             )
         conn.execute(
             "UPDATE memory_jobs SET payload=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
@@ -130,16 +175,19 @@ def record_progress(conn, service, principal, brain, job, window, *, succeeded):
 
 
 def recover_windows(conn, service, principal, brain):
+    _replan_unreserved_encoding(conn, service, principal, brain)
+    _continue_invalidated_encoding(conn, service, principal, brain)
     params = service._params(principal, brain["id"])
     rows = conn.execute(
         "SELECT id,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND kind='consolidate' AND payload ? 'from_sequence' AND NOT payload ? 'recovery_job_id' "
+        "AND NOT payload ?| %s::text[] "
         "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
         "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
         "AND q.object_kind='job' AND q.object_id=memory_jobs.id) "
         "AND (state='superseded' OR (state='cancelled' AND last_error IN ('source_unavailable','context_stale'))) "
         "ORDER BY created_at,id LIMIT 8 FOR UPDATE",
-        params,
+        (*params, list(AUTHORITY_FIELDS)),
     ).fetchall()
     for row in rows:
         payload = row["payload"]
@@ -172,3 +220,96 @@ def recover_windows(conn, service, principal, brain):
             "UPDATE memory_jobs SET payload=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
             (Jsonb({**payload, "recovery_job_id": replacement}), *params, row["id"]),
         )
+
+
+def _continue_invalidated_encoding(conn, service, principal, brain):
+    params = service._params(principal, brain["id"])
+    rows = conn.execute(
+        "SELECT id,kind,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND kind='consolidate' AND payload->>'learning_contract_version'=%s "
+        "AND payload->>'learning_phase'='encoding' AND payload ? 'encoding_window_snapshot' "
+        "AND NOT payload ?| ARRAY['recovery_job_id','continuation_job_id'] "
+        "AND (state='superseded' OR state='cancelled' AND last_error IN ('source_unavailable','context_stale')) "
+        "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
+        "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
+        "AND q.object_kind='job' AND q.object_id=memory_jobs.id) ORDER BY created_at,id LIMIT 8 FOR UPDATE",
+        (*params, CONTRACT_VERSION),
+    ).fetchall()
+    for row in rows:
+        payload = row["payload"]
+        try:
+            allocation_root(conn, params, row)
+            marker = encoding_window(payload)
+            start, end = bounds(payload)
+            attempted = marker["attempted_through_sequence"]
+            processed = payload.get("processed_through_sequence", start - 1)
+            target = {key: _identifier(payload["target"][key]) for key in ("conversation_ref", "branch_ref")}
+            if (type(processed) is not int or processed not in {start - 1, attempted}
+                    or "allocation_input_fingerprint" not in payload or attempted >= end):
+                continue
+            if processed < start and not conn.execute(
+                "SELECT 1 FROM memory_cognitive_operations WHERE tenant_id=%s AND owner_id=%s "
+                "AND brain_id=%s AND job_id=%s LIMIT 1", (*params, row["id"]),
+            ).fetchone():
+                continue
+            lineage = {"continuation_parent_job_id": row["id"]}
+            if "recovery_budget" in payload:
+                lineage["recovery_budget"] = payload["recovery_budget"]
+                lineage["recovery_root_job_id"] = payload["recovery_root_job_id"]
+            child = enqueue_window(
+                conn, service, principal, brain, target, attempted + 1, end,
+                origin=row["id"], lineage=lineage, learning_contract_version=CONTRACT_VERSION,
+            )
+            conn.execute(
+                "UPDATE memory_jobs SET payload=payload || %s "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                (Jsonb({"continuation_job_id": child}), *params, row["id"]),
+            )
+        except (DomainError, KeyError, TypeError, ValueError):
+            continue
+
+
+def _replan_unreserved_encoding(conn, service, principal, brain):
+    params = service._params(principal, brain["id"])
+    rows = conn.execute(
+        "SELECT * FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND kind='consolidate' AND payload->>'learning_contract_version'=%s "
+        "AND payload->>'learning_phase'='encoding' AND model_calls=0 AND input_bytes=0 "
+        "AND NOT payload ?| ARRAY['recovery_job_id','continuation_job_id','recovery_input_fingerprint',"
+        "'recovery_policy_refresh'] "
+        "AND (state='superseded' OR state='cancelled' AND last_error IN ('source_unavailable','context_stale')) "
+        "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
+        "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
+        "AND q.object_kind='job' AND q.object_id=memory_jobs.id) ORDER BY created_at,id LIMIT 8 FOR UPDATE",
+        (*params, CONTRACT_VERSION),
+    ).fetchall()
+    for old in rows:
+        payload = old["payload"]
+        try:
+            if phase(payload) != ENCODING_PHASE:
+                continue
+            start, end = bounds(payload)
+            processed = payload.get("processed_through_sequence", start - 1)
+            if type(processed) is not int or processed != start - 1:
+                continue
+            root = unreserved_encoding_root(conn, params, old)
+            if root is None:
+                continue
+            root_id = root["id"]
+            replacement = "consolidate:" + digest([ENCODING_REPLAN_VERSION, old["id"], root_id])
+            metadata = {"target": payload["target"], "from_sequence": start, "through_sequence": end,
+                        "encoding_replan_version": ENCODING_REPLAN_VERSION, "recovery_parent_job_id": old["id"],
+                        **allocation_metadata(replacement, root_job_id=root_id,
+                                              recovery=payload["allocation_policy"] == RECOVERY_POLICY)}
+            conn.execute(
+                "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,state,payload,max_model_calls,max_input_bytes) "
+                "VALUES(%s,%s,%s,%s,'consolidate','queued',%s,%s,%s) ON CONFLICT DO NOTHING",
+                (*params, replacement, Jsonb(metadata), PHASE_CALLS, PHASE_BYTES),
+            )
+            conn.execute(
+                "UPDATE memory_jobs SET payload=payload || %s "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                (Jsonb({"recovery_job_id": replacement}), *params, old["id"]),
+            )
+        except (DomainError, KeyError, TypeError, ValueError):
+            continue

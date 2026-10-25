@@ -5,6 +5,7 @@ from threading import Barrier
 import pytest
 from psycopg.types.json import Jsonb
 from test_learning import learning as learning
+from test_learning_recovery import seed_legacy_window
 from test_learning_windows import claim, execute, observations
 
 from agent_memory.helpers import DomainError, Principal, digest, uid
@@ -117,6 +118,8 @@ def test_crash_after_provider_response_blocks_reclaim_and_preserves_ledger(learn
 @pytest.mark.parametrize("settlement", [None, "completed", "uncertain"])
 def test_reclaim_without_unsettled_operations_preserves_snapshot_policy(learning, legacy, settlement):
     observations(learning, 1)
+    if legacy:
+        seed_legacy_window(learning)
     selected = claim(learning)
     engine = LearningEngine(learning.service)
     _, snapshot = engine._snapshot(learning.principal, learning.brain, selected)

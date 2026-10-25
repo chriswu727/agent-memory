@@ -4,7 +4,16 @@ MAX_QUERY_TERMS = 128
 MAX_TERM_LENGTH = 256
 
 
-def lexical_rows(conn, params, target, text, *, limit, through_sequence=None):
+def historical_support_filter(input_event_ids):
+    if not input_event_ids:
+        return "", ()
+    return ("AND EXISTS (SELECT 1 FROM jsonb_array_elements(a.document->'evidence_refs') support "
+            "WHERE support->>'relationship'='supports' AND NOT (support->>'event_id'=ANY(%s::text[]))) ",
+            (list(input_event_ids),))
+
+
+def lexical_rows(conn, params, target, text, *, limit, through_sequence=None, excluded_versions=(),
+                 independent_of_event_ids=()):
     from .candidates import _eligible, _scope_clause
     from .service import _vector
 
@@ -12,6 +21,12 @@ def lexical_rows(conn, params, target, text, *, limit, through_sequence=None):
     where = _eligible() + clause
     where += "AND a.embedding_model='lexical-feature-hash' AND a.embedding_version='v1-d256-blake2s' "
     values = (*params, *scope_params)
+    support_clause, support_params = historical_support_filter(independent_of_event_ids)
+    where += support_clause
+    values += support_params
+    if excluded_versions:
+        where += "AND (a.id,a.revision) NOT IN (SELECT * FROM unnest(%s::text[],%s::bigint[])) "
+        values += ([key[0] for key in excluded_versions], [key[1] for key in excluded_versions])
     if through_sequence is not None:
         where += (
             "AND NOT EXISTS (SELECT 1 FROM memory_events future WHERE future.tenant_id=a.tenant_id "

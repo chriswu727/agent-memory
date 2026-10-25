@@ -339,10 +339,11 @@ class MemoryService:
         if (self.semantic_processor and target.get("conversation_ref") and target.get("branch_ref")
                 and incoming["delivery_state"] in ("received", "delivered", "partially_delivered")
                 and incoming["event_kind"] not in ("source_correction", "delivery_receipt")):
+            from .learning_allocations import CONTRACT_VERSION
             from .learning_windows import enqueue_window
 
             enqueue_window(conn, self, principal, brain, target, document["sequence"],
-                           document["sequence"], coalesce=True)
+                           document["sequence"], coalesce=True, learning_contract_version=CONTRACT_VERSION)
         return document["event_id"], False, job["job_id"]
 
     def _observe(self, conn, principal, brain, request):

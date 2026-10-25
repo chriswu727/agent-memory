@@ -8,6 +8,7 @@ import pytest
 from psycopg.types.json import Jsonb
 from test_cognition import event, scope
 from test_learning import learning as learning
+from test_learning_recovery import seed_legacy_window
 from test_learning_windows import claim as claim_job
 from test_semantic import batch, encoded, episode, proposals, run, situation, verifier
 
@@ -17,6 +18,7 @@ from agent_memory.learning_windows import SAMPLING_RESERVE_BYTES, select_window
 from agent_memory.neighborhood import _Incomplete, _Selector
 from agent_memory.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
+    EPISODE_FIDELITY_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,
     ORIENT_PROPOSAL_MODE,
     PROPOSAL_SCHEMA,
@@ -310,7 +312,14 @@ def test_mixed_empty_and_nonempty_window_finishes_without_losing_either_record(l
         source = next(source for source in body["sources"] if source["observed"]["content"]["text"])
         return encoded(proposals(episodes=[episode(source)]))
 
-    learning.service.semantic_processor = SemanticProcessor(propose, verifier)
+    def verify(request):
+        response = json.loads(verifier(request))
+        for item in response["assessments"]:
+            item["organization_fidelity"] = dict.fromkeys(
+                ("attribution", "modality", "specificity", "boundary"), "supports")
+        return encoded(response)
+
+    learning.service.semantic_processor = SemanticProcessor(propose, verify)
     selected = claim_job(learning)
     LearningEngine(learning.service)._execute(learning.principal, learning.brain, selected)
     job = learning.job(selected["id"])
@@ -334,7 +343,7 @@ def test_learning_window_freezes_new_metadata_and_request_across_resume(learning
         selected = claim_job(learning)
     engine = LearningEngine(learning.service)
     first, snapshot = engine._snapshot(learning.principal, learning.brain, selected)
-    assert snapshot["input_contract_version"] == COMMUNICATION_INTENT_INPUT_VERSION
+    assert snapshot["input_contract_version"] == EPISODE_FIDELITY_INPUT_VERSION
     assert first.learning_input_refs == ({"event_id": receipt["accepted_event_ids"][0], "revision": 1},)
     assert first.current_input_refs == ()
     learning.observe("后续输入不能加入冻结窗口。")
@@ -349,6 +358,7 @@ def test_learning_window_freezes_new_metadata_and_request_across_resume(learning
 @pytest.mark.parametrize("keep_internal_refs", [False, True])
 def test_old_window_snapshot_keeps_legacy_wire_contract_on_resume(learning, keep_internal_refs):
     learning.observe("旧任务的冻结输入。")
+    seed_legacy_window(learning)
     selected = claim_job(learning)
     engine = LearningEngine(learning.service)
     _, snapshot = engine._snapshot(learning.principal, learning.brain, selected)

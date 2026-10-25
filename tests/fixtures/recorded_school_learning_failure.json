@@ -1,0 +1,379 @@
+{
+  "version": "recorded-school-learning-failure-v1",
+  "provenance": {
+    "archive": "evaluations/deepseek-2026-10-25-long-history-stopped.evidence.tar.gz",
+    "archive_sha256": "8ba5ddda25fb7a9090d16d8530a74c0ac7d97d1096b4b8fda6cbaa68f4c3d11b",
+    "report_member": "run/memory/report.json",
+    "report_sha256": "a3054fb6778b398caeda15dceed5749043cd8fb6cb718acc89bcbbf25bc5e4db",
+    "stage_name": "history-003",
+    "stage_index": 3,
+    "frozen_git_commit": "019ec6ad4b50d22ef309d88f199d1fab99dddf6b",
+    "input_language": "original Chinese",
+    "scope": "Synthetic evaluation evidence; exact local sources and original response, not a new model result."
+  },
+  "scope": {
+    "access_policy_id": "owner:cbd56300-8599-4850-8244-7271d22cb9e3",
+    "brain_id": "cbd56300-8599-4850-8244-7271d22cb9e3",
+    "branch_id": "main",
+    "conversation_id": "conversation-history-003",
+    "policy_revision": 1,
+    "principal_binding_id": "e21d9449-6e6d-4f56-9abf-bbcdf3856bd5",
+    "scope_generation": 1,
+    "tenant_id": "51543b58-d35c-4ee8-9910-6e127f2fa4ba",
+    "visibility": "private"
+  },
+  "learning_input_refs": [
+    {
+      "event_id": "7676b548-58b9-4131-9672-5ca7c816ead5",
+      "revision": 1
+    },
+    {
+      "event_id": "1b4ecd0c-9f4d-4bef-8388-0a6f4f84a9ee",
+      "revision": 2
+    }
+  ],
+  "local_sources": [
+    {
+      "content_sha256": "55215fe1e8c13e792ae39077e4e795132acc7eeac94600fc4e556ed43309f6fc",
+      "event_id": "7676b548-58b9-4131-9672-5ca7c816ead5",
+      "observed": {
+        "actor_ref": "user",
+        "actor_role": "user",
+        "content": {
+          "media_type": "text/plain",
+          "text": "我小时候就读的学校叫‘纸湾小学’，校门旁有一棵银杏树。我没有告诉你学校所在的城市。"
+        },
+        "delivery_state": "received",
+        "event_kind": "message",
+        "interpretation_hint": "unknown",
+        "occurred_time": {
+          "basis": "unknown",
+          "end": null,
+          "precision": "unknown",
+          "start": null
+        },
+        "parent_source_event_keys": [],
+        "producer_ref": "brain-runtime",
+        "source_event_key": "turn-24e3c778916c8bd775f1fe436019cde9db658bcc:input",
+        "source_revision": 1,
+        "speech_act_hint": "unknown"
+      },
+      "origin": "user_statement",
+      "origin_verification": "unknown",
+      "previous_revision": null,
+      "revision": 1,
+      "scope": {
+        "access_policy_id": "owner:cbd56300-8599-4850-8244-7271d22cb9e3",
+        "brain_id": "cbd56300-8599-4850-8244-7271d22cb9e3",
+        "branch_id": "main",
+        "conversation_id": "conversation-history-003",
+        "policy_revision": 1,
+        "principal_binding_id": "e21d9449-6e6d-4f56-9abf-bbcdf3856bd5",
+        "scope_generation": 1,
+        "tenant_id": "51543b58-d35c-4ee8-9910-6e127f2fa4ba",
+        "visibility": "private"
+      },
+      "sequence": 10,
+      "system_time": {
+        "recorded_at": "2026-10-25T13:34:21.565207Z",
+        "superseded_at": null
+      },
+      "utterance_segments": [
+        {
+          "act": "direct_statement",
+          "span": {
+            "end": 27,
+            "start": 0,
+            "unit": "unicode_code_point"
+          }
+        },
+        {
+          "act": "direct_statement",
+          "span": {
+            "end": 41,
+            "start": 27,
+            "unit": "unicode_code_point"
+          }
+        }
+      ]
+    },
+    {
+      "content_sha256": "0279f9dfbde5c175bed6f58add376f6d1f67ad353e88c1e370afc9ed8ff4c898",
+      "event_id": "1b4ecd0c-9f4d-4bef-8388-0a6f4f84a9ee",
+      "observed": {
+        "actor_ref": "assistant",
+        "actor_role": "assistant",
+        "content": {
+          "media_type": "text/plain",
+          "text": "收到。按你现在的说明：你小时候就读的学校叫“纸湾小学”，校门旁有一棵银杏树；你未提供学校所在城市，我也不会猜测。我目前没有可确认的相关既有记忆，以上仅按你当前的陈述理解。"
+        },
+        "delivery_state": "delivered",
+        "event_kind": "message",
+        "interpretation_hint": "unknown",
+        "occurred_time": {
+          "basis": "unknown",
+          "end": null,
+          "precision": "unknown",
+          "start": null
+        },
+        "parent_source_event_keys": [],
+        "producer_ref": "brain-runtime",
+        "source_event_key": "runtime-output:944172a86f77677e2fa494a8c2932e45f231af63a74b95b3abe3c33bf80b2ac9",
+        "source_revision": 2,
+        "speech_act_hint": "unknown"
+      },
+      "origin": "assistant_output",
+      "origin_verification": "unknown",
+      "previous_revision": 1,
+      "revision": 2,
+      "scope": {
+        "access_policy_id": "owner:cbd56300-8599-4850-8244-7271d22cb9e3",
+        "brain_id": "cbd56300-8599-4850-8244-7271d22cb9e3",
+        "branch_id": "main",
+        "conversation_id": "conversation-history-003",
+        "policy_revision": 1,
+        "principal_binding_id": "e21d9449-6e6d-4f56-9abf-bbcdf3856bd5",
+        "scope_generation": 1,
+        "tenant_id": "51543b58-d35c-4ee8-9910-6e127f2fa4ba",
+        "visibility": "private"
+      },
+      "sequence": 12,
+      "system_time": {
+        "recorded_at": "2026-10-25T13:34:34.881435Z",
+        "superseded_at": null
+      },
+      "utterance_segments": [
+        {
+          "act": "direct_statement",
+          "span": {
+            "end": 3,
+            "start": 0,
+            "unit": "unicode_code_point"
+          }
+        },
+        {
+          "act": "direct_statement",
+          "span": {
+            "end": 56,
+            "start": 3,
+            "unit": "unicode_code_point"
+          }
+        },
+        {
+          "act": "direct_statement",
+          "span": {
+            "end": 85,
+            "start": 56,
+            "unit": "unicode_code_point"
+          }
+        }
+      ]
+    }
+  ],
+  "recorded_general": {
+    "input_contract_version": "communication-intent-v1",
+    "sampling": {
+      "assertion_count": 11,
+      "association_depth": 1,
+      "candidate_count": 22,
+      "candidate_limit": 32,
+      "candidate_scan_limit": 128,
+      "dependency_depth": 8,
+      "episode_count": 0,
+      "indexed_through_sequence": 12,
+      "limitations": [
+        "request_bytes_budget"
+      ],
+      "limits": {
+        "assertions": 32,
+        "episodes": 16,
+        "sources": 32
+      },
+      "omitted_packages": 6,
+      "publication_restricted": true,
+      "recent_window_limit": 24,
+      "redundant_literal_assertions": 5,
+      "search_exhaustive": false,
+      "selected_max_sequence": 12,
+      "selected_min_sequence": 1,
+      "source_candidate_count": 5,
+      "source_count": 8,
+      "strategy": "bounded-cue-neighborhood-v1",
+      "through_sequence": 12
+    },
+    "proposal": {
+      "claims": [
+        {
+          "proposal_id": "prop-claim-7676-school-name",
+          "statement": "用户陈述：其小时候就读的学校叫“纸湾小学”，校门旁有一棵银杏树。",
+          "memory_kind": "self_model",
+          "representation": "semantic_anchor",
+          "claim_kind": "reported_fact",
+          "world": "real_world",
+          "conditions": {
+            "op": "always"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "7676b548-58b9-4131-9672-5ca7c816ead5",
+              "event_revision": 1,
+              "relationship": "supports",
+              "source_content_sha256": "55215fe1e8c13e792ae39077e4e795132acc7eeac94600fc4e556ed43309f6fc",
+              "span": {
+                "start": 0,
+                "end": 27,
+                "unit": "unicode_code_point"
+              }
+            }
+          ],
+          "counterexamples": [],
+          "source_memory_versions": [],
+          "valid_time": {
+            "basis": "unknown",
+            "start": null,
+            "end": null,
+            "precision": "unknown"
+          },
+          "valid_during": {
+            "kind": "unknown"
+          },
+          "procedure": null
+        },
+        {
+          "proposal_id": "prop-claim-7676-city-not-provided",
+          "statement": "用户表示其未提供学校所在城市。",
+          "memory_kind": "episodic",
+          "representation": "semantic_anchor",
+          "claim_kind": "reported_fact",
+          "world": "real_world",
+          "conditions": {
+            "op": "always"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "7676b548-58b9-4131-9672-5ca7c816ead5",
+              "event_revision": 1,
+              "relationship": "supports",
+              "source_content_sha256": "55215fe1e8c13e792ae39077e4e795132acc7eeac94600fc4e556ed43309f6fc",
+              "span": {
+                "start": 27,
+                "end": 41,
+                "unit": "unicode_code_point"
+              }
+            }
+          ],
+          "counterexamples": [],
+          "source_memory_versions": [],
+          "valid_time": {
+            "basis": "unknown",
+            "start": null,
+            "end": null,
+            "precision": "unknown"
+          },
+          "valid_during": {
+            "kind": "unknown"
+          },
+          "procedure": null
+        },
+        {
+          "proposal_id": "prop-claim-1b4-assistant-reply",
+          "statement": "助手回复：收到。按你现在的说明：你小时候就读的学校叫“纸湾小学”，校门旁有一棵银杏树；你未提供学校所在城市，我也不会猜测。我目前没有可确认的相关既有记忆，以上仅按你当前的陈述理解。",
+          "memory_kind": "episodic",
+          "representation": "episode_fragment",
+          "claim_kind": "agent_said",
+          "world": "real_world",
+          "conditions": {
+            "op": "always"
+          },
+          "evidence_refs": [
+            {
+              "event_id": "1b4ecd0c-9f4d-4bef-8388-0a6f4f84a9ee",
+              "event_revision": 2,
+              "relationship": "supports",
+              "source_content_sha256": "0279f9dfbde5c175bed6f58add376f6d1f67ad353e88c1e370afc9ed8ff4c898",
+              "span": {
+                "start": 0,
+                "end": 3,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "event_id": "1b4ecd0c-9f4d-4bef-8388-0a6f4f84a9ee",
+              "event_revision": 2,
+              "relationship": "supports",
+              "source_content_sha256": "0279f9dfbde5c175bed6f58add376f6d1f67ad353e88c1e370afc9ed8ff4c898",
+              "span": {
+                "start": 3,
+                "end": 56,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "event_id": "1b4ecd0c-9f4d-4bef-8388-0a6f4f84a9ee",
+              "event_revision": 2,
+              "relationship": "supports",
+              "source_content_sha256": "0279f9dfbde5c175bed6f58add376f6d1f67ad353e88c1e370afc9ed8ff4c898",
+              "span": {
+                "start": 56,
+                "end": 85,
+                "unit": "unicode_code_point"
+              }
+            }
+          ],
+          "counterexamples": [],
+          "source_memory_versions": [],
+          "valid_time": {
+            "basis": "unknown",
+            "start": null,
+            "end": null,
+            "precision": "unknown"
+          },
+          "valid_during": {
+            "kind": "unknown"
+          },
+          "procedure": null
+        }
+      ],
+      "situation_updates": [],
+      "episode_actions": [
+        {
+          "proposal_id": "prop-episode-003-school-report",
+          "action": "create",
+          "organization_statement": "用户报告其小时候就读的学校为“纸湾小学”，校门旁有银杏树，并说明未提供学校所在城市；助手回复仅按当前陈述理解、不猜测城市。",
+          "episode_id": null,
+          "expected_revision": null,
+          "member_refs": [
+            {
+              "event_id": "7676b548-58b9-4131-9672-5ca7c816ead5",
+              "revision": 1
+            },
+            {
+              "event_id": "1b4ecd0c-9f4d-4bef-8388-0a6f4f84a9ee",
+              "revision": 2
+            }
+          ],
+          "boundary_ref": null
+        }
+      ]
+    },
+    "rejected": [
+      {
+        "reason": "incomplete_history_package",
+        "proposal_id": "prop-claim-7676-school-name"
+      },
+      {
+        "reason": "incomplete_history_package",
+        "proposal_id": "prop-claim-7676-city-not-provided"
+      },
+      {
+        "reason": "incomplete_history_package",
+        "proposal_id": "prop-claim-1b4-assistant-reply"
+      },
+      {
+        "reason": "incomplete_history_package",
+        "proposal_id": "prop-episode-003-school-report"
+      }
+    ],
+    "status": "partial"
+  }
+}

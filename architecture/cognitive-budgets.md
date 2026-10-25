@@ -35,7 +35,7 @@ agent-memory desktop configure-budget \
   --window-seconds 3600 --max-model-calls 200 --max-input-bytes 4000000
 ```
 
-Use the actual revision from `desktop budget`. The numbers above are an explicit example, not new defaults. Both commands accept `--directory`. Configuration takes effect for subsequent reservations without a restart; it does not itself enqueue learning, revive a blocked job, or send anything to a provider. Inspect learning progress and use the separate bounded recovery operation when a previously blocked job needs attention.
+Use the actual revision from `desktop budget`. The numbers above are an explicit example, not new defaults. Both commands accept `--directory`. Configuration takes effect for subsequent reservations without a restart; the configuration call does not itself invoke a provider or replenish an existing allocation. The worker can reconsider never-attempted deferred historical comparisons after capacity changes. Failed or uncertain paid attempts require the separate bounded recovery operation; inspect learning progress before choosing recovery.
 
 ## SDKs
 

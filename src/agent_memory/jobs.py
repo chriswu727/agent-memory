@@ -82,6 +82,8 @@ def _monitor_window(value):
 def sanitize_learning_summary(summary):
     if not isinstance(summary, dict):
         return None
+    from .learning_phase_monitor import sanitize_phase_metadata
+
     result = {
         "processing_status": _monitor_enum(summary.get("processing_status"), PROCESSING_STATUSES),
         "learning_outcome": _monitor_enum(summary.get("learning_outcome"), LEARNING_OUTCOMES),
@@ -139,6 +141,7 @@ def sanitize_learning_summary(summary):
                 name: count for name in sorted(allowed)
                 if isinstance(values, dict) and (count := _monitor_count(values.get(name))) is not None
             }
+    result.update(sanitize_phase_metadata(summary))
     return result
 
 
@@ -231,7 +234,7 @@ class JobStore:
                 or not row["lease_expires_at"] or row["lease_expires_at"] <= row["db_now"]):
             raise DomainError("lease_conflict", "Job lease is missing, expired, or fenced.")
 
-    def _public(self, row):
+    def _public(self, row, *, connection=None):
         result = {key: row[key] for key in PUBLIC_FIELDS}
         result["lease_active"] = bool(row["state"] == "running" and row["lease_expires_at"]
                                       and row["lease_expires_at"] > row["db_now"])
@@ -241,8 +244,16 @@ class JobStore:
             if result[key] is not None:
                 result[key] = result[key].isoformat()
         if row["kind"] in {"orient", "consolidate"}:
+            from .learning_phase_monitor import (
+                ENCODING_PHASE,
+                classify,
+                job_phase_metadata,
+                resolve_history_status,
+            )
+
             learning = row.get("result")
-            if row["kind"] == "consolidate" and isinstance(row.get("payload"), dict) and "from_sequence" in row["payload"]:
+            if (row["kind"] == "consolidate" and isinstance(row.get("payload"), dict)
+                    and "from_sequence" in row["payload"] and classify(row["payload"]) in (None, ENCODING_PHASE)):
                 from .learning_windows import pending_window
 
                 try:
@@ -252,13 +263,18 @@ class JobStore:
                 if window is not None:
                     learning = {"learning_window": window, **(learning if isinstance(learning, dict) else {})}
             summary = summarize_learning(learning)
+            if row["kind"] == "consolidate":
+                phase_summary = (resolve_history_status(connection, row) if connection is not None
+                                 else job_phase_metadata(row))
+                if phase_summary:
+                    summary = {**(summary or sanitize_learning_summary({})), **phase_summary}
             if summary is not None:
                 result["learning_summary"] = summary
         return result
 
     def get(self, principal, brain_id, job_id):
         with self._transaction(principal, brain_id) as conn:
-            return self._public(self._row(conn, principal, brain_id, job_id))
+            return self._public(self._row(conn, principal, brain_id, job_id), connection=conn)
 
     def retry_learning(self, principal, brain_id, job_id, *, request_id, expected_fence):
         from .learning_recovery import retry_learning
@@ -380,6 +396,7 @@ class JobStore:
                           request_fingerprint, input_bytes, max_model_calls, max_input_bytes,
                           window_seconds=3600, window_max_model_calls=100, window_max_input_bytes=2_000_000):
         from .cognitive_budget import reservation_policy, window_usage
+        from .learning_allocations import check_reservation
 
         _identifier(operation_id)
         _hash(request_fingerprint)
@@ -403,6 +420,7 @@ class JobStore:
             byte_limit = min(max_input_bytes, row["max_input_bytes"]) if row["max_input_bytes"] is not None else max_input_bytes
             if row["model_calls"] + 1 > call_limit or row["input_bytes"] + input_bytes > byte_limit:
                 raise DomainError("budget_exceeded", "Durable job budget is exhausted.")
+            check_reservation(conn, params, row, input_bytes=input_bytes)
             budget = reservation_policy(
                 conn, principal, brain_id, window_seconds=window_seconds,
                 max_model_calls=window_max_model_calls, max_input_bytes=window_max_input_bytes,

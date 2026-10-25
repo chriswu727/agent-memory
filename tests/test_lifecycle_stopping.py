@@ -13,7 +13,7 @@ from agent_memory.runtime import ModelRequest
 
 def completed_stage(result=None):
     return {"runtime": {"stage": "completed"},
-            "learning_jobs": [{"result": result}] if result is not None else []}
+            "learning_jobs": [{"state": "completed", "result": result}] if result is not None else []}
 
 
 @pytest.mark.parametrize("result", [
