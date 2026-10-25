@@ -13,6 +13,19 @@
     "identity": "大脑身份跨模型与进程保持稳定；参与者、关系、任务与分支有独立范围",
     "mcp_role": "补充主动探索、诊断、更正和授权删除；不作为自动记忆运行的必要触发器"
   },
+  "integration_independence": {
+    "status": "architecture_requirement_not_adapter_acceptance",
+    "primary_audience": "通过 API key 使用模型的 Agent；直接接入与第三方宿主共享核心",
+    "third_party_bot_framework_required": false,
+    "dependency_direction": "host_adapter -> public_api_or_sdk -> memory_core",
+    "core_ownership": "持久记忆、来源、身份与范围、回忆、学习、衰减及恢复规则",
+    "adapter_responsibility": "转换真实事件、映射稳定身份、接入生命周期和报告真实交付结果；不直连数据库或维护另一份权威记忆",
+    "packaging": "第三方专用依赖放在可选适配包中；核心不导入聊天框架",
+    "turn_ownership": "每轮只有一个生命周期编排者；插件与模型代理不能重复捕获、注入或生成",
+    "continuity": "更换模型或适配器时可授权绑定原大脑；卸载适配器不删除核心数据",
+    "identity_mapping": "跨平台参与者及会话只通过可信配置显式关联；不得按昵称或模型推测合并，不自动跨越私聊和群聊范围",
+    "current_boundary": "核心与同步文本运行时无 QQ 框架依赖；独立聊天入口、模型兼容网关及 QQ 适配插件尚未交付"
+  },
   "full_integration_requirements": [
     "认证后的稳定 Agent、参与者、会话、分支与消息标识",
     "自动接收输入、消息修订、工具结果和生成取消事件",
@@ -121,6 +134,8 @@
     "failure_policy": "诊断写入失败必须可见；诊断服务不替代持久化确认，也不修改记忆事务结果"
   },
   "acceptance_invariants": [
+    "不安装任何第三方聊天框架时，直接接入仍能自动形成、使用并恢复记忆",
+    "经授权更换模型或宿主适配器后沿用原大脑；重试不重复捕获或发送，送达不确定时停止并核对，更正删除与范围隔离仍有效",
     "关闭全部页面与主 Agent 的记忆工具，仍能自动形成并使用记忆",
     "业务层不逐轮手写记忆操作；宿主适配器保证生命周期覆盖",
     "不给用户历史聊天窗口，重启后仍可恢复有关状态并正确使用旧来源",
