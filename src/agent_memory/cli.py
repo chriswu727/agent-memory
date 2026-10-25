@@ -44,7 +44,7 @@ def initialize(directory: Path) -> None:
     print(f"Created configuration in {directory}; API key is in .local/access-token")
 
 
-def bootstrap(settings: Settings) -> None:
+def bootstrap(settings: Settings, *, app_password: str | None = None) -> None:
     import psycopg
     from psycopg import sql
 
@@ -52,7 +52,7 @@ def bootstrap(settings: Settings) -> None:
 
     if not settings.migration_database_url:
         raise SystemExit("MEMORY_MIGRATION_DATABASE_URL is required for migration")
-    app_password = os.environ.get("MEMORY_DATABASE_APP_PASSWORD")
+    app_password = app_password or os.environ.get("MEMORY_DATABASE_APP_PASSWORD")
     if not app_password:
         raise SystemExit("MEMORY_DATABASE_APP_PASSWORD is required for local role provisioning")
     with psycopg.connect(settings.migration_database_url) as connection:
@@ -98,8 +98,13 @@ def main() -> None:
     worker = commands.add_parser("worker", help="Process durable background jobs")
     worker.add_argument("--once", action="store_true")
     commands.add_parser("mcp", help="Run the MCP stdio bridge")
+    from .desktop_cli import add_commands
+    add_commands(commands)
     args = parser.parse_args()
-    if args.command == "init":
+    if args.command == "desktop":
+        from .desktop_cli import dispatch
+        dispatch(args)
+    elif args.command == "init":
         initialize(args.directory)
     elif args.command == "mcp":
         from .mcp_server import main as mcp_main

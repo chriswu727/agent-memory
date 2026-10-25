@@ -102,6 +102,19 @@ class MemoryService:
                 (principal.tenant_id, principal.principal_id),
             )]
 
+    def ensure_brain(self, principal, brain_id, name):
+        if not isinstance(brain_id, str) or not brain_id.strip() or len(brain_id) > 256:
+            raise DomainError("validation_failed", "A stable brain identity is required.")
+        if not isinstance(name, str) or not name.strip() or len(name) > 200:
+            raise DomainError("validation_failed", "Brain name must contain 1 to 200 characters.")
+        with self.database.transaction(principal) as conn:
+            conn.execute(
+                "INSERT INTO memory_brains(id,tenant_id,owner_id,name) VALUES (%s,%s,%s,%s) "
+                "ON CONFLICT DO NOTHING",
+                (brain_id, principal.tenant_id, principal.principal_id, name.strip()),
+            )
+            return self._public_brain(self._brain(conn, principal, brain_id))
+
     def handle(self, principal, request):
         action = request.get("action", "observe")
         envelope = {

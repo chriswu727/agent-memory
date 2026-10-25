@@ -120,6 +120,7 @@ class MemoryClient:
         *,
         timeout: float = 30.0,
         transport: httpx.BaseTransport | None = None,
+        trust_env: bool = True,
     ):
         if not api_key:
             raise ValueError("api_key must not be empty")
@@ -129,6 +130,7 @@ class MemoryClient:
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=timeout,
             transport=transport,
+            trust_env=trust_env,
             follow_redirects=False,
         )
 

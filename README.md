@@ -18,9 +18,57 @@
 
 产品无需管理页面。开发诊断通过经过鉴权的状态、指标和结构化运行日志接口提供：能追踪本轮使用了哪些记忆及其来源、为何继续或停止回忆、发生了什么版本变化、成本与失败原因。日志默认不复制聊天正文，也不记录模型隐藏推理。现有本地工作台只是可移除的开发辅助，不是产品入口或验收前提。
 
-## 本地运行
+## 电脑版使用
 
-需要 Python 3.12、[uv](https://docs.astral.sh/uv/) 和可运行的 Docker。数据库使用项目独立的数据卷，不连接或修改其他项目的数据库。
+先安装 [uv](https://docs.astral.sh/uv/)，并启动 Docker Desktop，然后执行：
+
+```sh
+uv tool install --python 3.12 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
+agent-memory desktop setup
+```
+
+此安装方式不需要 Git 或克隆项目，也不需要分别启动数据库、API 和 worker。如果安装提示命令目录不在 `PATH`，执行 `uv tool update-shell` 后重新打开终端。首次设置会询问用于记忆学习的模型服务地址、模型名称和 API key；输入密钥时不回显。当前支持兼容 Chat Completions 的提供方。模型名称和端点由用户提供，不默认使用任何订阅或调用模型试探配置。暂时跳过模型配置也可运行持久存储和词面回忆，但不会启用模型驱动的语义学习；状态中会标记 `cognition: not_configured`。
+
+设置会创建固定大脑身份及本机凭据，准备专属数据库，完成迁移，并在后台启动记忆服务和任务处理器。重复执行不会重新创建大脑或清空记忆。API 默认使用 `127.0.0.1:8788`，数据库默认使用 `127.0.0.1:55433`；首次设置遇到端口占用时选择空闲端口并保存。已有安装遇到端口冲突会报告问题，不停止其他进程或悄悄换到另一个大脑。
+
+完成后，设置结果会给出不含密钥的 MCP 配置，并将它保存到本机配置目录的 `mcp.json`。也可以重新获取：
+
+```sh
+agent-memory desktop mcp-config
+```
+
+将这份配置添加到支持 stdio MCP 的宿主即可连接记忆工具。不同宿主的配置入口不同，当前不会自动修改外部客户端配置。宿主启动这条 MCP 连接时会自动启动或连接本机服务；退出 MCP 连接后，服务继续在后台处理任务。电脑重启后，下次 MCP 连接或 SDK 的 `open_client()` 会重新启动服务并沿用原大脑，不必重新设置。
+
+**MCP 连接仍是 `tools_only`。** 它不会自动读取宿主全部聊天、接管 compact 或确认消息送达。需要自动记忆的 Agent 应使用下文的 Python 运行时，并由宿主提供消息生命周期。安装成功、认知模型已配置和宿主已自动接入是三个不同状态。
+
+### 本机状态与配置
+
+```sh
+agent-memory desktop status
+agent-memory desktop logs
+agent-memory desktop stop
+agent-memory desktop start
+agent-memory desktop restart
+```
+
+`status` 检查认证后的服务、数据库、大脑身份和后台处理器；模型配置存在不代表已验证提供方可用或记忆质量。`logs` 返回有界的结构化服务事件，不包含聊天正文和 API key。`stop` 和 `restart` 保留数据库卷及配置，不删除记忆。停止通过已认证的服务实例完成，不根据遗留 PID 杀进程。使用 `setup` 更新认知配置时，会自动重启需要更新的服务；指定 `--no-start` 则只保存配置，稍后执行 `restart` 应用。更新安装的程序后，也应执行 `desktop restart`，让后台实例加载新代码。
+
+配置默认位于 macOS 的 `~/Library/Application Support/Agent Memory`、Windows 的 `%LOCALAPPDATA%\Agent Memory`，或 Linux 的 `$XDG_DATA_HOME/agent-memory`（未设置时为 `~/.local/share/agent-memory`）。所有桌面子命令都接受 `--directory <绝对目录>`；同一安装应始终使用同一目录。目录内包含本机凭据，记忆正文则持久存放在该安装的 Docker 数据卷中，复制配置目录不等于备份数据库。
+
+自动部署可以先只保存配置，稍后启动：
+
+```sh
+agent-memory desktop setup --non-interactive --no-start
+agent-memory desktop start
+```
+
+需要非交互配置认知模型时，用 `--base-url`、`--model` 和 `--api-key-env` 指定服务地址、模型及**已设置的密钥环境变量名称**；不要将密钥值写进命令参数。可选的 `--thinking enabled|disabled` 仅用于支持该参数的提供方。桌面服务使用自己的配置，不自动读取仓库 `.env`，也不会把原开发数据库里的大脑迁移到新安装。
+
+当前交付是本机命令行安装和服务管理，仍需要 uv 和 Docker Desktop；尚无原生一键安装包或特定宿主的完整生命周期适配。实现包含 Windows、Linux 的路径与进程处理，当前桌面端到端验收以 macOS 为范围，其他系统尚未实机验收。具体覆盖与限制见[桌面安装与恢复验收](evaluations/desktop-2026-10-24.md)。
+
+### 开发方式
+
+已有开发环境可继续使用以下路径。需要 Python 3.12、uv 和可运行的 Docker；在克隆的仓库目录执行。开发数据库使用项目独立的数据卷，与上述桌面安装分开。
 
 ```sh
 uv sync --frozen
@@ -38,13 +86,25 @@ uv run agent-memory worker
 
 服务地址为 <http://127.0.0.1:8787>，访问密钥保存在 `.local/access-token`。当前开发工作台也在此地址，可用于手工检查底层行为；目标产品不要求打开它。`init` 只运行一次；配置存在时不会覆盖。`.env` 与 `.local/` 包含本机凭据，已排除在版本管理之外。
 
+`init` 只生成配置。开发接入还需要在 API 启动后创建一个大脑，并持久保存返回的 `id`；以后始终绑定这个 ID，不能每次启动都创建新大脑。例如首次创建：
+
+```python
+from pathlib import Path
+from agent_memory.client import MemoryClient
+
+with MemoryClient("http://127.0.0.1:8787", Path(".local/access-token").read_text().strip()) as memory:
+    brain = memory.create_brain("My Agent")
+    Path(".local/brain-id").write_text(brain["id"] + "\n")
+```
+
 数据库默认绑定 `127.0.0.1:55432`，HTTP 服务绑定 `127.0.0.1:8787`。工作台、API 与后台处理器共用一个内核。可用 `uv run agent-memory worker --once` 手动处理每个大脑的一项待处理工作。`docker compose down` 停止数据库而保留数据卷；不要使用 `down -v`，除非确实要删除整个数据库。
 
 ## 自动接入
 
-Python 的 `BrainRuntime` 接管同步文本轮次。宿主初始化一次，提供模型生成函数和实际发送函数；业务层只提交收到的消息，不调用记忆工具或逐轮编排存取：
+Python 的 `BrainRuntime` 接管同步文本轮次。宿主初始化一次，提供模型生成函数和实际发送函数；业务层只提交收到的消息，不调用记忆工具或逐轮编排存取。下例面向宿主开发者，其 Python 环境也需安装 `agent-memory-runtime`（可使用同一源码 URL）；`uv tool install` 安装的命令行工具有独立环境，不会修改宿主的 Python 依赖。接入代码可以直接读取本机配置并连接固定大脑：
 
 ```python
+from agent_memory.desktop_connection import open_client
 from agent_memory.runtime import BrainRuntime, DeliveryReceipt
 
 def generate(request):
@@ -54,11 +114,14 @@ def deliver(request):
     channel.send(request.text)
     return DeliveryReceipt("delivered")
 
-runtime = BrainRuntime(memory, generate, deliver=deliver, instructions=agent_instructions)
-result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
+with open_client() as memory:
+    runtime = BrainRuntime(memory, generate, deliver=deliver, instructions=agent_instructions)
+    result = runtime.respond(text, message_id=message_id, conversation_id=conversation_id)
 ```
 
-上例的 `memory` 是绑定固定 `brain_id` 的 `MemoryClient`；`model`、`channel` 和身份来自宿主。生成函数必须使用运行时提供的 `messages`，其中保留宿主系统指令，加入有来源和预算的记忆资料及当前输入。`message_id` 是宿主收到消息时持久分配的标识，重试必须不变；新进程使用同一个大脑身份即可重新接入。可运行的无模型示例见 [examples/autonomous.py](examples/autonomous.py)。
+`open_client()` 自动启动或连接本机服务，返回绑定固定 `brain_id` 的 `MemoryClient`；可传 `directory=Path(...)` 选择安装目录，或用 `start_service=False` 仅连接已运行的服务。它不要求复制访问密钥，也不读取当前工作目录的 `.env`。开发部署仍可手动构造 `MemoryClient`，沿用原数据库中的大脑。
+
+上例的 `model`、`channel` 和消息身份来自宿主；`open_client()` 本身不捕获宿主消息。生成函数必须使用运行时提供的 `messages`，其中保留宿主系统指令，加入有来源和预算的记忆资料及当前输入。`message_id` 是宿主收到消息时持久分配的标识，重试必须不变；新进程使用同一个大脑身份即可重新接入。可运行的无模型示例见 [examples/autonomous.py](examples/autonomous.py)。
 
 运行时自动执行输入落盘、回答前回忆、草稿保存、交付确认、有效工作状态保留与 checkpoint。每轮使用租约和修订检查；草稿写入和阶段推进、交付记录和阶段推进各自在同一事务中。`runtime.resume(turn_id)` 从持久阶段继续，完成过的轮次直接返回已交付结果，不重新生成或发送。配置认知处理器后，回答前还会理解当前情境；实际交付后才把经过来源检查的情境推断合入工作状态，推断不会被标为已证实事实。
 
@@ -293,7 +356,7 @@ Python 客户端位于 `agent_memory.client`，底层流程示例是 [examples/c
 
 ### MCP
 
-MCP 使用官方 Python SDK 1.x 的 stdio 协议，版本由 `uv.lock` 固定。客户端配置示例：
+MCP 使用官方 Python SDK 1.x 的 stdio 协议，版本由 `uv.lock` 固定。桌面安装直接使用 `agent-memory desktop mcp-config` 生成的无密钥配置。下面是开发部署的手动客户端配置示例：
 
 ```json
 {
@@ -327,6 +390,7 @@ MCP 允许模型主动回忆和提交有来源标记的笔记。它不会拦截�
 | 更正与删除 | 版本更新、同步失效、派生依赖清理、档案恢复时检查删除记录 |
 | 隔离 | 服务端身份绑定、应用查询过滤、PostgreSQL 强制行级隔离 |
 | 接入 | Python 同步文本自动运行时；HTTP、Python、TypeScript、MCP 底层操作 |
+| 桌面运行 | 固定本机 profile、大脑与凭据，自动启动数据库/API/worker，MCP 与 SDK 自动连接，停止保留数据 |
 | 开发辅助 | 鉴权状态、轮次与阶段日志、认知任务、回忆停止原因与额度、独立来源展开；可移除的本地工作台 |
 
 条件触发的主动提醒、经过校准的衰减与关联传播、多模态理解、完整工具循环与流式宿主适配、云端账号与共享权限仍需实现和验证。程序性候选只是有来源的步骤与条件，不会自行执行或证明任务成功。当前仅支持拥有者私有范围；共享集合请求会明确拒绝。未配置语义 embedding 时，已有词法特征哈希不会被当成语义向量；配置后只在模型、版本、维度和内容哈希一致时使用对应向量。
@@ -354,6 +418,7 @@ MCP 允许模型主动回忆和提交有来源标记的笔记。它不会拦截�
 - `src/agent_memory/storage.py`、`migrations/`：PostgreSQL 数据模型与隔离。
 - `src/agent_memory/api.py`、`web/`：认证、HTTP 与本地工作台。
 - `src/agent_memory/client.py`、`mcp_server.py`、`sdk/typescript/`：宿主接入。
+- `src/agent_memory/local_profile.py`、`desktop.py`、`desktop_connection.py`：本机配置、服务生命周期与自动连接。
 - `architecture/`：完整目标、机器可读契约和 52 个系统验收场景。
 
 ## 验证

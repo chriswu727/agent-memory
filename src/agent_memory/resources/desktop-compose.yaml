@@ -1,0 +1,24 @@
+services:
+  database:
+    image: pgvector/pgvector:pg17
+    ports:
+      - "127.0.0.1:${MEMORY_DESKTOP_DATABASE_PORT:?}:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${MEMORY_DESKTOP_ADMIN_PASSWORD:?}
+      POSTGRES_DB: agent_memory
+    volumes:
+      - memory_database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_memory"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+volumes:
+  memory_database:
