@@ -6,13 +6,13 @@
 
 完整目标见 [架构与验收规范](architecture/architecture.html)，产品边界与宿主责任见 [自主记忆运行契约](architecture/autonomous-runtime.contract.json)。当前已实现底层记忆服务、同步文本自动生命周期，以及可选的情境理解、语义巩固和语义回忆：结合最近对话判断当前目标，生成有来源的认识与经历结构，按预算查找并选择记忆。完整宿主接入与长期记忆效果仍需验证，当前不能视为完整自主大脑。
 
-第一版按[有限验收与停止标准](architecture/v1-acceptance.md)收尾，范围包含安装、连续性、隔离、用量、真实记忆和性能；这些验收目前尚未全部通过。
+第一版按[有限验收与停止标准](architecture/v1-acceptance.md)收尾。记忆质量改为通过[长线使用评估](architecture/longitudinal-memory-evaluation.md)验证：模拟真实用户在多个会话中的日常生活与持续任务，检查记忆能否保持连续性、是否实际帮助用户。模拟故事时间与实际运行经过的时间必须分别报告。新的测试执行器尚未实现或启动，第一版验收仍未全部通过。
 
-本批学习修复加入了[从来源推导的关系能力限制](architecture/relation-capabilities.md)、[每个新输入根任务最多接纳三项历史比较](architecture/history-comparison-attention.md)，以及[在既有额度内跨私有会话继续未尝试的工作](architecture/cross-conversation-learning-funding.md)。未选中的机会、已接纳的待处理工作、评估后无需修改与实际发布会分别记录。[本地验收记录](evaluations/v1-2026-10-25-local-acceptance.md)保留了安装、回归与性能证据。这些修改仍需通过限定的真实记忆验收，不能据此宣称已达到人类的回忆准确度。
+本批学习修复加入了[从来源推导的关系能力限制](architecture/relation-capabilities.md)、[每个新输入根任务最多接纳三项历史比较](architecture/history-comparison-attention.md)，以及[在既有额度内跨私有会话继续未尝试的工作](architecture/cross-conversation-learning-funding.md)。未选中的机会、已接纳的待处理工作、评估后无需修改与实际发布会分别记录。[本地验收记录](evaluations/v1-2026-10-25-local-acceptance.md)保留了安装、回归与性能证据。这些修改仍需通过修订后的长线使用验收，不能据此宣称已达到人类的回忆准确度。
 
-[首次有限真实记忆验收](evaluations/v1-2026-10-25-acceptance-attempt-1.md)在完成十二轮实际交付、47 次用量已确认的调用后停止，原因是历史提议对自身关系覆盖情况的描述相互矛盾。运行时正确阻止了这次发布。[新版覆盖计算协议](architecture/history-link-coverage.md)从精确的关系端点推导覆盖情况，保留来源检查和语义核验；百轮历史与十二项隔离探针的验收仍未通过。
+[首次合成场景测试](evaluations/v1-2026-10-25-acceptance-attempt-1.md)在完成十二轮实际交付、47 次用量已确认的调用后停止，原因是历史提议对自身关系覆盖情况的描述相互矛盾。运行时正确阻止了这次发布。[新版覆盖计算协议](architecture/history-link-coverage.md)从精确的关系端点推导覆盖情况，保留来源检查和语义核验。原百轮历史与十二项探针方案及其失败记录继续作为回归证据保留，但该方案不再作为产品成熟的门槛。
 
-[唯一获准的完整补测](evaluations/v1-2026-10-25-acceptance-attempt-2.md)通过了十六轮的来源、用量与重建恢复检查点，随后在第二十三轮因提供方响应超时、用量未知而停止。二十三轮新输入均已编码，最后一次历史比较与全部十二项探针仍未完成。共计 90 次调用用量已知、1 次用量未知。后续付费测试已停止，转为离线复核；超时暴露的监控问题已[完成本地修复验证](evaluations/v1-2026-10-25-timeout-monitoring.md)，与保留的原失败结果分别记录。
+[原方案下唯一获准的完整补测](evaluations/v1-2026-10-25-acceptance-attempt-2.md)通过了十六轮的来源、用量与重建恢复检查点，随后在第二十三轮因提供方响应超时、用量未知而停止。二十三轮新输入均已编码，最后一次历史比较与全部十二项探针仍未完成。共计 90 次调用用量已知、1 次用量未知。后续付费测试已停止，转为离线复核；超时暴露的监控问题已[完成本地修复验证](evaluations/v1-2026-10-25-timeout-monitoring.md)，与保留的原失败结果分别记录。
 
 后续认知内核的具体改造、实施依赖和行为评估见[认知记忆架构实施计划](architecture/cognitive-memory-plan.md)。计划中的新增能力仍待实现，不代表当前运行状态。
 
