@@ -28,7 +28,7 @@ LEARNING_LIMITATIONS = frozenset({
     "index_lag", "source_budget", "source_unavailable", "source_version_mismatch",
     "exception_budget", "exception_unavailable", "assertion_budget", "dependency_incomplete",
     "unsupported_assertion", "assertion_retracted", "candidate_scan_limit", "candidate_limit",
-    "episode_limit", "episode_source_changed", "episode_scope", "recent_window_limit",
+    "episode_limit", "episode_source_changed", "episode_scope", "episode_source_view_unavailable", "recent_window_limit",
     "cue_limit", "recent_assertion_limit", "belief_relation_incomplete", "belief_relation_budget", "request_bytes_budget",
     "source_candidate_limit",
 })

@@ -30,11 +30,14 @@ from .episode_semantics import (
     EPISODE_FIDELITY_INSTRUCTIONS,
     EPISODE_FIDELITY_VERIFY_INSTRUCTIONS,
     EPISODE_INSTRUCTIONS,
+    EPISODE_SOURCE_VIEW_INPUT_VERSION,
+    EPISODE_SOURCE_VIEW_INSTRUCTIONS,
     EPISODE_VERIFY_INSTRUCTIONS,
     ORGANIZATION_STATEMENT_SCHEMA,
     episode_assessment,
     episode_fidelity_schema,
     episode_fidelity_supported,
+    episode_navigation_view,
 )
 from .episode_semantics import (
     _reference as episode_reference,
@@ -166,7 +169,8 @@ ORIENT_PROPOSAL_MODE = "orient-v1"
 EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
-LATEST_INPUT_CONTRACT_VERSION = EPISODE_FIDELITY_INPUT_VERSION
+EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, EPISODE_SOURCE_VIEW_INPUT_VERSION)
+LATEST_INPUT_CONTRACT_VERSION = EPISODE_SOURCE_VIEW_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -420,22 +424,27 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
                 "working_state": working_state, "sampling": sampling, "registry": CORE_REGISTRY.to_dict(),
                 "belief_relations": belief_relations, "current_input_refs": list(current_input_refs)}
     else:
+        episodes = list(episodes)
+        if input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+            scope = scope if scope is not None else working_state.get("scope")
+            events = {(source["event_id"], source["revision"]): source for source in sources}
+            episodes = [episode_navigation_view(episode, scope, events) for episode in episodes]
         plan = (plan_consolidation(sources, assertions, belief_relations, sampling)
                 if consolidation_plan is None else consolidation_plan)
         if proposal_mode == HISTORY_INTEGRATION_MODE:
             plan = {**plan, "objectives": []}
         data = {"sources": sources, "existing_assertions": assertions,
-                "working_state": working_state, "episodes": list(episodes), "sampling": sampling,
+                "working_state": working_state, "episodes": episodes, "sampling": sampling,
                 "registry": CORE_REGISTRY.to_dict(), "belief_relations": belief_relations, "consolidation_plan": plan,
                 "current_input_refs": list(current_input_refs)}
         if input_contract_version in (
-            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION,
+            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS,
         ):
             scope = scope if scope is not None else working_state.get("scope")
             data.update(learning_input_refs=copy.deepcopy(list(learning_input_refs)),
                         episode_operation_scope=copy.deepcopy(scope),
                         episode_eligible_member_refs=_episode_members(sources, scope))
-    if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION):
+    if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS):
         data["communication_intent_contract"] = {
             "version": COMMUNICATION_INTENT_INPUT_VERSION,
             "current_input_citations_authorized": bool(current_input_refs),
@@ -453,7 +462,7 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
 
 def validate_input_contract(version):
     if version not in (
-        None, EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION,
+        None, EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS,
     ):
         raise ValueError("Unknown cognitive input contract")
 
@@ -477,15 +486,17 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
     else:
         instructions = _INSTRUCTIONS if phase == "proposal" else _VERIFY_INSTRUCTIONS
         if phase == "proposal" and input_contract_version in (
-            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION,
+            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS,
         ):
             instructions += " " + _EPISODE_SCOPE_INSTRUCTIONS
-    if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, EPISODE_FIDELITY_INPUT_VERSION):
+    if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS):
         instructions += " " + (_COMMUNICATION_INTENT_INSTRUCTIONS if phase == "proposal"
                                else _COMMUNICATION_INTENT_VERIFY_INSTRUCTIONS)
-    if input_contract_version == EPISODE_FIDELITY_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+    if input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + (EPISODE_FIDELITY_INSTRUCTIONS if phase == "proposal"
                                else EPISODE_FIDELITY_VERIFY_INSTRUCTIONS)
+    if input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+        instructions += " " + EPISODE_SOURCE_VIEW_INSTRUCTIONS
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         instructions += " " + (LOCAL_INSTRUCTIONS if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
     elif proposal_mode == HISTORY_INTEGRATION_MODE:
@@ -912,7 +923,7 @@ class SemanticProcessor:
             raise ValueError("A batch identifier is required")
         if not isinstance(batch.working_state, dict):
             raise DomainError("validation_failed", "Working state must be an object")
-        if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version != EPISODE_FIDELITY_INPUT_VERSION:
+        if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version not in EPISODE_FIDELITY_INPUT_VERSIONS:
             raise DomainError("validation_failed", "Bounded learning requires its frozen input contract")
         validate_bounded_batch(batch)
         if (len(batch.sources) > policy.max_sources or len(batch.existing_assertions) > policy.max_assertions
@@ -968,6 +979,11 @@ class SemanticProcessor:
                         or any(episode["scope"][key] != batch.scope[key]
                                for key in ("conversation_id", "branch_id"))):
                     raise DomainError("invalid_evidence", "Episode snapshot is out of scope")
+            if batch.input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+                try:
+                    episode_navigation_view(episode, batch.scope, events)
+                except (ValueError, KeyError, TypeError) as error:
+                    raise DomainError("invalid_evidence", "Episode source view is unavailable") from error
             episodes[episode["episode_id"]] = copy.deepcopy(episode)
         if len(batch.belief_relations) > policy.max_assertions:
             raise DomainError("budget_exceeded", "Cognitive belief relations exceed their budget")
@@ -1188,6 +1204,7 @@ class SemanticProcessor:
                 references = self._validate_proposal(group, item, batch.scope, events, assertions, episodes,
                                                      proposed_claims,
                                                      current_input_refs=batch.current_input_refs,
+                                                     input_contract_version=batch.input_contract_version,
                                                      abstraction_parents=abstraction_parents.get(item["proposal_id"], ()))
             except (ValueError, DomainError, KeyError, TypeError):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "invalid_proposal"})
@@ -1213,7 +1230,8 @@ class SemanticProcessor:
             if group == "situation_updates" and item.get("evidence_use") == "current_request":
                 entry["current_input_refs"] = copy.deepcopy(list(batch.current_input_refs))
             if group == "episode_actions":
-                entry["episode_context"] = episode_assessment(item, batch.scope, events, episodes)["context"]
+                entry["episode_context"] = episode_assessment(
+                    item, batch.scope, events, episodes, input_contract_version=batch.input_contract_version)["context"]
             if item["proposal_id"] in abstraction_parents:
                 entry["evidence_selection"] = "minimal_shared_support"
                 for excerpt in numbered:
@@ -1235,7 +1253,7 @@ class SemanticProcessor:
                 del entry["target_assertions"]
         verification_schema = (ORIENT_VERIFICATION_SCHEMA if batch.proposal_mode == ORIENT_PROPOSAL_MODE
                                else VERIFICATION_SCHEMA)
-        if batch.input_contract_version == EPISODE_FIDELITY_INPUT_VERSION:
+        if batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS:
             verification_schema = episode_fidelity_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible if group == "episode_actions"])
         verification_data = {"proposals": evidence, **bounded_verification_context(
@@ -1291,7 +1309,7 @@ class SemanticProcessor:
         accepted = {group: [] for group in groups}
         for group, item, references in eligible:
             assessment = lookup[item["proposal_id"]]
-            if (group == "episode_actions" and batch.input_contract_version == EPISODE_FIDELITY_INPUT_VERSION
+            if (group == "episode_actions" and batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS
                     and not episode_fidelity_supported(assessment, item["proposal_id"], references)):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "semantic_support_unconfirmed"})
                 continue
@@ -1389,11 +1407,12 @@ class SemanticProcessor:
 
     @staticmethod
     def _validate_proposal(group, item, scope, events, assertions, episodes, claims=None, *, abstraction_parents=(),
-                           current_input_refs=()):
+                           current_input_refs=(), input_contract_version=None):
         if group == "belief_links":
             return _validate_belief_link(item, scope, events, assertions, episodes, claims or {})
         if group == "episode_actions":
-            return episode_assessment(item, scope, events, episodes)["references"]
+            return episode_assessment(item, scope, events, episodes,
+                                      input_contract_version=input_contract_version)["references"]
         validate_new_condition(item["conditions"])
         if group == "situation_updates" and item.get("evidence_use") == "current_request":
             _check_current_request(item, events, scope, current_input_refs)

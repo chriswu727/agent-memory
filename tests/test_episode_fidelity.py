@@ -22,6 +22,7 @@ from agent_memory.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_FIDELITY_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,
+    EPISODE_SOURCE_VIEW_INPUT_VERSION,
     GENERAL_PROPOSAL_MODE,
     LATEST_INPUT_CONTRACT_VERSION,
     ORIENT_PROPOSAL_MODE,
@@ -257,7 +258,7 @@ def test_legacy_episode_assessments_remain_accepted_without_new_labels(version):
 
 def test_new_version_is_explicit_and_preserves_existing_default_and_current_request_contract():
     source = event("Could you explain the routine?")
-    assert LATEST_INPUT_CONTRACT_VERSION == EPISODE_FIDELITY_INPUT_VERSION
+    assert LATEST_INPUT_CONTRACT_VERSION == EPISODE_SOURCE_VIEW_INPUT_VERSION
     assert batch(source).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     for mode in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):
         old = proposal_data([source], [], {}, [], {}, [], scope=scope(), proposal_mode=mode)
@@ -270,7 +271,7 @@ def test_new_version_is_explicit_and_preserves_existing_default_and_current_requ
                               input_contract_version=EPISODE_FIDELITY_INPUT_VERSION)
         assert new == old
     assert _snapshot_input_contract({}) is None
-    for version in (*LEGACY_VERSIONS, EPISODE_FIDELITY_INPUT_VERSION):
+    for version in (*LEGACY_VERSIONS, EPISODE_FIDELITY_INPUT_VERSION, EPISODE_SOURCE_VIEW_INPUT_VERSION):
         assert _snapshot_input_contract({"input_contract_version": version}) == version
 
 

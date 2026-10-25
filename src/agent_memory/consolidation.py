@@ -7,7 +7,11 @@ from psycopg.types.json import Jsonb
 
 from . import cognition
 from .contracts import validate
-from .episode_semantics import episode_fidelity_supported
+from .episode_semantics import (
+    EPISODE_SOURCE_VIEW_INPUT_VERSION,
+    episode_fidelity_supported,
+    episode_navigation_view,
+)
 from .helpers import DomainError, digest, now
 from .history_semantics import integration_coverage, validate_decisions, validate_manifest
 from .local_semantics import (
@@ -18,7 +22,7 @@ from .local_semantics import (
     validate_bounded_proposal,
 )
 from .semantic import (
-    EPISODE_FIDELITY_INPUT_VERSION,
+    EPISODE_FIDELITY_INPUT_VERSIONS,
     PROPOSAL_SCHEMA,
     CognitiveBatch,
     SemanticProcessor,
@@ -131,8 +135,14 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
         validate_input_contract(batch.input_contract_version)
     except ValueError as error:
         raise DomainError("invalid_evidence", "Unknown cognitive input contract") from error
-    if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version != EPISODE_FIDELITY_INPUT_VERSION:
+    if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version not in EPISODE_FIDELITY_INPUT_VERSIONS:
         raise DomainError("invalid_evidence", "Bounded learning input contract changed")
+    if batch.input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+        try:
+            for episode in batch.episodes:
+                episode_navigation_view(episode, batch.scope, snapshot["events"])
+        except (ValueError, KeyError, TypeError) as error:
+            raise DomainError("invalid_evidence", "Episode source view is unavailable") from error
     if batch.proposal_mode == HISTORY_INTEGRATION_MODE:
         validate_manifest(batch.integration_manifest, events=snapshot["events"], assertions=snapshot["assertions"])
         expected = integration_coverage(batch.integration_manifest, result.integration_decisions,
@@ -203,6 +213,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                     group, item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims,
                     abstraction_parents=abstraction_parents.get(item["proposal_id"], ()),
                     current_input_refs=current_input_refs,
+                    input_contract_version=batch.input_contract_version,
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
@@ -221,7 +232,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 if len(assessments) != 1 or not bounded_assessment_supported(
                         assessments[0], item["proposal_id"], evidence, link=group == "belief_links", abstract=abstract):
                     raise DomainError("invalid_evidence", "Bounded learning assessment is unsupported")
-            if group == "episode_actions" and batch.input_contract_version == EPISODE_FIDELITY_INPUT_VERSION:
+            if group == "episode_actions" and batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS:
                 assessments = [entry for entry in result.verification_assessments
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
                 if (len(assessments) != 1

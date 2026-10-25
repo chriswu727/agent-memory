@@ -5,6 +5,14 @@ import copy
 from . import cognition
 
 MAX_EPISODE_EVIDENCE = 32
+EPISODE_SOURCE_VIEW_INPUT_VERSION = "episode-source-view-v1"
+EPISODE_SOURCE_VIEW_INSTRUCTIONS = (
+    "Existing episodes are source-backed navigation views, not factual propositions or independent "
+    "evidence. Their membership and boundaries are fallible inferred organization, even when closed. "
+    "Read every member's complete original source, including qualifiers, before proposing any "
+    "connection or transition. A shared group does not establish a shared external event, causal "
+    "relationship, agreement or completion. Only exact source contributions can support those claims."
+)
 ORGANIZATION_STATEMENT_SCHEMA = {
     "type": "string", "minLength": 1, "maxLength": 2048, "pattern": r"\S",
 }
@@ -136,7 +144,47 @@ def _reference(event, scope):
     return reference
 
 
-def episode_assessment(action, scope, events, episodes):
+def episode_navigation_view(episode, scope, events):
+    if (not isinstance(episode, dict)
+            or not isinstance(episode.get("episode_id"), str) or not 1 <= len(episode["episode_id"]) <= 256
+            or type(episode.get("revision")) is not int or episode["revision"] < 1
+            or not isinstance(scope, dict) or episode.get("scope") != scope
+            or episode.get("state") not in {"open", "closed"}):
+        raise ValueError("Invalid episode navigation identity")
+    keys = _member_keys(episode.get("member_refs"))
+    if len(keys) > MAX_EPISODE_EVIDENCE or not set(keys) <= events.keys():
+        raise ValueError("Episode source closure is incomplete or exceeds its limit")
+    references = []
+    sequences = []
+    for key in keys:
+        source = events[key]
+        if (source["event_id"], source["revision"]) != key:
+            raise ValueError("Episode source version mismatch")
+        references.append(_reference(source, scope))
+        sequence = source["sequence"]
+        if type(sequence) is not int or sequence < 1:
+            raise ValueError("Invalid episode source sequence")
+        sequences.append(sequence)
+    if sequences != sorted(set(sequences)):
+        raise ValueError("Episode members are not ordered")
+    boundary = episode.get("boundary_ref")
+    if boundary is not None and _member_keys([boundary])[0] not in keys:
+        raise ValueError("Unknown episode boundary source")
+    return {
+        "view_version": EPISODE_SOURCE_VIEW_INPUT_VERSION,
+        "use": "fallible_interaction_group_not_factual_evidence",
+        "grouping_status": "inferred", "external_completion": "not_established",
+        "episode_id": episode["episode_id"], "revision": episode["revision"],
+        "scope": copy.deepcopy(scope), "state": episode["state"],
+        "member_refs": copy.deepcopy(episode["member_refs"]), "boundary_ref": copy.deepcopy(boundary),
+        "member_source_refs": [
+            {"event_id": ref["event_id"], "revision": ref["event_revision"],
+             "content_sha256": ref["source_content_sha256"]} for ref in references
+        ],
+    }
+
+
+def episode_assessment(action, scope, events, episodes, *, input_contract_version=None):
     statement = action.get("organization_statement")
     if not isinstance(statement, str) or not statement.strip() or len(statement) > 2048:
         raise ValueError("Episode organization statement is required")
@@ -205,7 +253,9 @@ def episode_assessment(action, scope, events, episodes):
     context = {
         "version": "episode-organization-v1",
         "interpretation": "observed_interaction_records_not_external_event_truth",
-        "existing_episode": previous,
+        "existing_episode": (episode_navigation_view(previous, scope, events)
+                             if previous is not None and input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION
+                             else previous),
         "prior_member_refs": previous["member_refs"] if previous is not None else [],
         "proposed_member_refs": action["member_refs"], "effective_member_refs": ordered,
         "transition": {"action": operation, "before_state": previous["state"] if previous else None,

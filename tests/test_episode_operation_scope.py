@@ -18,8 +18,8 @@ from agent_memory.learning_windows import SAMPLING_RESERVE_BYTES, select_window
 from agent_memory.neighborhood import _Incomplete, _Selector
 from agent_memory.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
-    EPISODE_FIDELITY_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,
+    EPISODE_SOURCE_VIEW_INPUT_VERSION,
     ORIENT_PROPOSAL_MODE,
     PROPOSAL_SCHEMA,
     SemanticPolicy,
@@ -343,7 +343,7 @@ def test_learning_window_freezes_new_metadata_and_request_across_resume(learning
         selected = claim_job(learning)
     engine = LearningEngine(learning.service)
     first, snapshot = engine._snapshot(learning.principal, learning.brain, selected)
-    assert snapshot["input_contract_version"] == EPISODE_FIDELITY_INPUT_VERSION
+    assert snapshot["input_contract_version"] == EPISODE_SOURCE_VIEW_INPUT_VERSION
     assert first.learning_input_refs == ({"event_id": receipt["accepted_event_ids"][0], "revision": 1},)
     assert first.current_input_refs == ()
     learning.observe("后续输入不能加入冻结窗口。")
