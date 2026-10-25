@@ -1,0 +1,848 @@
+{
+  "version": "continuous-learning-repair-review-v1",
+  "date": "2026-10-25",
+  "implementation_revision": "4f1a41d0c595b7f4693c7089cf5febf7c368019e",
+  "state": "stopped",
+  "stop_reason": "learning_processing_incomplete",
+  "overall_acceptance": "failed; historical integration failed at history-007 and semantic label issues remain",
+  "review_method": "Developer agents reviewed complete source/answer/publication pairs and exact frozen requests. Root reviewed remaining stages006-007. Neither fully blinded human assessment nor statistical accuracy estimate.",
+  "new_input_encoding": {
+    "completed_stages": 8,
+    "new_claim_count": 18,
+    "new_episode_count": 8,
+    "caveat": "history-000 has one rejected extra claim; processing success does not mean every candidate was accepted or correct"
+  },
+  "history_integration": {
+    "completed_jobs": 4,
+    "failed_jobs": 1,
+    "assessed_no_change_objectives": 12,
+    "failed_selected_objectives_not_assessed": 3,
+    "relations_published": 0,
+    "remaining_objectives_by_root": [
+      11,
+      17,
+      19,
+      27,
+      29
+    ],
+    "broader_discovery": "unresolved discovery remains separate from these explicit counts"
+  },
+  "semantic_findings": [
+    {
+      "stage": "history-000",
+      "type": "speech_event_vs_content_world_false_rejection",
+      "proposal_id": "claim-3",
+      "first_guard": "world_mismatch",
+      "assessment": "The faithfully attributed conditional invitation is rejected because lexical content classification is hypothetical while its actual speech act is proposed as real_world. Exact two-call offline replay reproduces the rejection; no guard was changed."
+    },
+    {
+      "stage": "history-000",
+      "type": "organization_qualifier_loss",
+      "source_excerpt": "我目前没有可用的已保存记忆来确认这条安排已经存储。",
+      "episode_excerpt": "助手确认并说明暂无已存记忆",
+      "assessment": "The label drops the availability and confirmation-purpose qualifications, broadening the absence claim. The corresponding agent_said assertion preserves the qualification."
+    },
+    {
+      "stage": "history-007",
+      "type": "organization_unsupported_action_specificity",
+      "source_excerpt": "收到。按你现在的说明：第8条日常笔记——纸模型的标签是云井8229，放在第8页。",
+      "episode_excerpt": "助手回复确认按该说明记录",
+      "assessment": "The source acknowledges and repeats the report; the label adds ambiguous recording/confirmation specificity. This does not prove storage did or did not occur. The agent_said assertion preserves the actual reply."
+    }
+  ],
+  "failure": {
+    "stage": "history-007",
+    "rejected_proposals": [
+      "claim-schema-001",
+      "link-schema-001"
+    ],
+    "first_guard": "assistant_cannot_prove_claim",
+    "reason": "All four citations are delivered assistant messages, but the proposed claim kind is inferred_pattern. Exact offline replay reproduces both invalid_proposal outcomes before verification.",
+    "additional_incompatibilities": [
+      "Assistant endpoints do not meet source_actor abstraction eligibility",
+      "Two literal endpoints lack required independent-instance metadata"
+    ],
+    "preserved_behavior": "No guard was weakened, no paid retry occurred, and failed selected objectives were not converted to no_change."
+  },
+  "scope": {
+    "planned_history_turns": 16,
+    "completed_history_turns": 8,
+    "unrun": [
+      "history-008 through history-015",
+      "held-out probes",
+      "baseline arms",
+      "100-history acceptance"
+    ],
+    "same_conversation_or_cross_conversation_funding_verified": false,
+    "source_navigation_projection_included": false,
+    "migration_range": "001-021",
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "plan_sha256": "be9eb60feb37a19e04d0d7c4282bc40ae222a153ab7effc9ce4af50350cc699f",
+    "call_ceiling": 128,
+    "reserved_output_token_ceiling": 1769472
+  },
+  "observed_usage": {
+    "reserved_calls": 37,
+    "completed_calls": 37,
+    "reserved_output_tokens": 442368,
+    "usage_confirmed_calls": 37,
+    "usage_unknown_calls": 0,
+    "usage_totals": {
+      "prompt_tokens": 257106,
+      "completion_tokens": 110135,
+      "total_tokens": 367241,
+      "prompt_cache_hit_tokens": 70272,
+      "prompt_cache_miss_tokens": 186834
+    },
+    "roles": {
+      "host": 8,
+      "answer_review": 8,
+      "background_semantic": 21,
+      "foreground_orientation": 0
+    },
+    "currency_invoice": null
+  },
+  "timings_seconds": {
+    "runtime_seconds": {
+      "median": 16.114015,
+      "min": 9.546836,
+      "max": 29.503228
+    },
+    "learning_seconds": {
+      "median": 115.601414,
+      "min": 83.576965,
+      "max": 196.635991
+    },
+    "total_seconds": {
+      "median": 129.2602895,
+      "min": 106.857137,
+      "max": 212.694213
+    }
+  },
+  "offline_integrity": {
+    "original_reports_and_plan_unchanged": true,
+    "source_files_match_frozen_commit": true,
+    "plan_code_fingerprints_verified": 90,
+    "ledger_pairs_verified": 37,
+    "unknown_usage": 0,
+    "host_input_and_delivery_verified_stages": 8,
+    "source_versions_hash_checked": 16,
+    "shown_memory_versions_checked": 24,
+    "archive_byte_roundtrip": true,
+    "local_secret_scan": "passed without exposing values",
+    "hidden_reasoning_or_credentials": "absent; reasoning token counts and event/version authorization bindings are retained metadata"
+  },
+  "stages": [
+    {
+      "name": "history-000",
+      "input": "从2026年10月20日00:00 UTC起，我的长期复习安排叫‘石帆’：先散步，再看教材，没有预定结束日期。",
+      "delivered_answer": "收到，按你现在的说明：从 2026 年 10 月 20 日 00:00 UTC 起，你的长期复习安排叫“石帆”，内容是先散步、再看教材，没有预定结束日期。\n\n我目前没有可用的已保存记忆来确认这条安排已经存储。如果你需要我基于这个安排做计划或提醒，请告诉我。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:11b445de7b678fadad43fa8226186dbd98896057fc3276bfe5a3959effad2130",
+          "state": "completed",
+          "result_status": "partial",
+          "proposal_mode": "general-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [
+            {
+              "reason": "invalid_proposal",
+              "proposal_id": "claim-3"
+            }
+          ],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 14.402539,
+        "learning_seconds": 131.835382,
+        "total_seconds": 146.587871
+      },
+      "usage": {
+        "reserved_calls": 4,
+        "completed_calls": 4,
+        "reserved_output_tokens": 45056,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 16576,
+          "completion_tokens": 14416,
+          "total_tokens": 30992,
+          "prompt_cache_hit_tokens": 4736,
+          "prompt_cache_miss_tokens": 11840
+        }
+      }
+    },
+    {
+      "name": "history-001",
+      "input": "这是我的第2条日常笔记：纸模型的标签是云井7701，放在第2页。",
+      "delivered_answer": "好的，第2条日常笔记：纸模型的标签是云井7701，放在第2页。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:9523f7fc0e6b94b182fc5a2faf7f3a815a86a7aeadedbedc835d5fb2e668ba58",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "general-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 23.674433,
+        "learning_seconds": 83.576965,
+        "total_seconds": 107.522097
+      },
+      "usage": {
+        "reserved_calls": 4,
+        "completed_calls": 4,
+        "reserved_output_tokens": 45056,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 23235,
+          "completion_tokens": 10257,
+          "total_tokens": 33492,
+          "prompt_cache_hit_tokens": 4864,
+          "prompt_cache_miss_tokens": 18371
+        }
+      }
+    },
+    {
+      "name": "history-002",
+      "input": "这是我的第3条日常笔记：厨房清单的标签是云井6956，放在第3页。",
+      "delivered_answer": "明白。按你现在的说明：这是你的第3条日常笔记——厨房清单的标签是云井6956，放在第3页。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:628aa99645bb7486ebb104b8c1d57536dd7b79e793bb2acccfa1c9eee0ad721b",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "general-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 9.546836,
+        "learning_seconds": 99.367446,
+        "total_seconds": 109.227107
+      },
+      "usage": {
+        "reserved_calls": 4,
+        "completed_calls": 4,
+        "reserved_output_tokens": 45056,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 31381,
+          "completion_tokens": 10776,
+          "total_tokens": 42157,
+          "prompt_cache_hit_tokens": 8832,
+          "prompt_cache_miss_tokens": 22549
+        }
+      }
+    },
+    {
+      "name": "history-003",
+      "input": "我小时候就读的学校叫‘纸湾小学’，校门旁有一棵银杏树。我没有告诉你学校所在的城市。",
+      "delivered_answer": "收到。按你现在的说明：你小时候就读的学校叫“纸湾小学”，校门旁有一棵银杏树；学校所在城市你还没有告诉我。需要我记下这条信息吗？",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:5c3b22d09c1956da666212fdb77d061c4e1b52a77169567d613aab3fcfaa9198",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "local-observation-v1",
+          "model_calls": 2,
+          "new_claim_count": 4,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        },
+        {
+          "job_id": "integrate:04aca47f3f3b2a380308402f91e28a8c4a4c6170bb3c63678b38da1ca462a6db",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "history-integration-v1",
+          "model_calls": 1,
+          "new_claim_count": 0,
+          "new_episode_count": 0,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 11,
+          "remaining_unresolved_discovery": false
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 19.684578,
+        "learning_seconds": 135.080511,
+        "total_seconds": 155.090838
+      },
+      "usage": {
+        "reserved_calls": 5,
+        "completed_calls": 5,
+        "reserved_output_tokens": 61440,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 33939,
+          "completion_tokens": 15237,
+          "total_tokens": 49176,
+          "prompt_cache_hit_tokens": 6528,
+          "prompt_cache_miss_tokens": 27411
+        }
+      }
+    },
+    {
+      "name": "history-004",
+      "input": "这是我的第5条日常笔记：城市速写的标签是云井3213，放在第5页。",
+      "delivered_answer": "收到。按你现在的说明：这是你的第5条日常笔记——城市速写的标签是云井3213，放在第5页。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:a5e646e904f03da8e30035041686a9926bdbf87ea80742a4ff636ea1f4f96a91",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "local-observation-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        },
+        {
+          "job_id": "integrate:cd455cc75bbcaf837fe36379d5ba40f840ed8362a957fe405f5c40207609b220",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "history-integration-v1",
+          "model_calls": 1,
+          "new_claim_count": 0,
+          "new_episode_count": 0,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 17,
+          "remaining_unresolved_discovery": false
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 11.095825,
+        "learning_seconds": 95.463934,
+        "total_seconds": 106.857137
+      },
+      "usage": {
+        "reserved_calls": 5,
+        "completed_calls": 5,
+        "reserved_output_tokens": 61440,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 39186,
+          "completion_tokens": 10034,
+          "total_tokens": 49220,
+          "prompt_cache_hit_tokens": 6784,
+          "prompt_cache_miss_tokens": 32402
+        }
+      }
+    },
+    {
+      "name": "history-005",
+      "input": "这是我的第6条日常笔记：音乐笔记的标签是云井1841，放在第6页。",
+      "delivered_answer": "收到。这是你的第6条日常笔记：音乐笔记的标签是云井1841，放在第6页。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:d7dcc231b96e82a9021d3eedd650fb2ee87b7bc50b7bc73d29e819b606d5b24a",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "local-observation-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        },
+        {
+          "job_id": "integrate:48195357b5e80e4825352637f7ea61f979d8606626c35a69cdc044176c13643c",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "history-integration-v1",
+          "model_calls": 1,
+          "new_claim_count": 0,
+          "new_episode_count": 0,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 19,
+          "remaining_unresolved_discovery": false
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 16.579019,
+        "learning_seconds": 95.034806,
+        "total_seconds": 111.932708
+      },
+      "usage": {
+        "reserved_calls": 5,
+        "completed_calls": 5,
+        "reserved_output_tokens": 61440,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 37096,
+          "completion_tokens": 10508,
+          "total_tokens": 47604,
+          "prompt_cache_hit_tokens": 12800,
+          "prompt_cache_miss_tokens": 24296
+        }
+      }
+    },
+    {
+      "name": "history-006",
+      "input": "这是我的第7条日常笔记：植物观察的标签是云井6554，放在第7页。",
+      "delivered_answer": "收到。按你现在的说明：这是你的第7条日常笔记——植物观察的标签是云井6554，放在第7页。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:1190239f2eef440b27dde88e6845fcfc8fd7672b61e402ae415aa56fe78d8a71",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "local-observation-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        },
+        {
+          "job_id": "integrate:355cecd54b4883645c16c901ffac9514cc4b6f58b126f9fbfed92db0752cd09b",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "history-integration-v1",
+          "model_calls": 1,
+          "new_claim_count": 0,
+          "new_episode_count": 0,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 27,
+          "remaining_unresolved_discovery": false
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": true,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 15.649011,
+        "learning_seconds": 196.635991,
+        "total_seconds": 212.694213
+      },
+      "usage": {
+        "reserved_calls": 5,
+        "completed_calls": 5,
+        "reserved_output_tokens": 61440,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 37682,
+          "completion_tokens": 20033,
+          "total_tokens": 57715,
+          "prompt_cache_hit_tokens": 12800,
+          "prompt_cache_miss_tokens": 24882
+        }
+      }
+    },
+    {
+      "name": "history-007",
+      "input": "这是我的第8条日常笔记：纸模型的标签是云井8229，放在第8页。",
+      "delivered_answer": "收到。按你现在的说明：第8条日常笔记——纸模型的标签是云井8229，放在第8页。",
+      "current_input_acknowledgment_review": "faithful to the current report; not a historical recall probe",
+      "jobs": [
+        {
+          "job_id": "consolidate:4e1a15846a2f76d1e8761da20da62f50b3e61dcb8807131b867890cc3599713e",
+          "state": "completed",
+          "result_status": "completed",
+          "proposal_mode": "local-observation-v1",
+          "model_calls": 2,
+          "new_claim_count": 2,
+          "new_episode_count": 1,
+          "new_relation_count": 0,
+          "rejected": [],
+          "remaining_objective_count": 0,
+          "remaining_unresolved_discovery": null
+        },
+        {
+          "job_id": "integrate:104a13c77461ce56f65e87c2b720592d65ff0affc62ba3298abaf8db0567d645",
+          "state": "cancelled",
+          "result_status": "partial",
+          "proposal_mode": "history-integration-v1",
+          "model_calls": 1,
+          "new_claim_count": 0,
+          "new_episode_count": 0,
+          "new_relation_count": 0,
+          "rejected": [
+            {
+              "reason": "invalid_proposal",
+              "proposal_id": "claim-schema-001"
+            },
+            {
+              "reason": "invalid_proposal",
+              "proposal_id": "link-schema-001"
+            }
+          ],
+          "remaining_objective_count": 29,
+          "remaining_unresolved_discovery": true
+        }
+      ],
+      "checks": {
+        "host_called": true,
+        "only_runtime_messages_sent": true,
+        "no_recent_dialogue": true,
+        "current_input_not_historical": true,
+        "input_within_budget": true,
+        "memory_within_budget": true,
+        "turn_completed": true,
+        "input_persisted_exactly": true,
+        "model_answer_delivered_and_persisted": true,
+        "no_execution_error": true,
+        "orientation_route_matches_frozen_policy": true,
+        "orientation_route_schema_valid": true,
+        "orientation_skip_has_bound_server_assessment": true,
+        "orientation_skip_preflight_scope_matches_turn": true,
+        "orientation_skip_created_no_orientation_job_or_call": true,
+        "orientation_skip_used_no_model_recall_plan": true,
+        "user_semantic_memory_published": true,
+        "one_exact_encoding_allocation_executed": true,
+        "local_encoding_processed_successfully": true,
+        "phase_monitoring_complete": true,
+        "no_learning_execution_failure": false,
+        "one_independent_review_completed": true,
+        "review_saw_actual_host_prompt_and_draft": true,
+        "review_bound_to_persisted_draft": true,
+        "review_approved_before_delivery": true,
+        "durable_delivery_matches_host_output": true,
+        "current_input_has_consolidation_window": true
+      },
+      "timings_seconds": {
+        "runtime_seconds": 29.503228,
+        "learning_seconds": 159.549099,
+        "total_seconds": 189.552994
+      },
+      "usage": {
+        "reserved_calls": 5,
+        "completed_calls": 5,
+        "reserved_output_tokens": 61440,
+        "usage_unknown_calls": 0,
+        "usage_totals": {
+          "prompt_tokens": 38011,
+          "completion_tokens": 18874,
+          "total_tokens": 56885,
+          "prompt_cache_hit_tokens": 12928,
+          "prompt_cache_miss_tokens": 25083
+        }
+      }
+    }
+  ],
+  "evidence_archive": {
+    "file": "deepseek-2026-10-25-learning-repair-stopped.evidence.tar.gz",
+    "sha256": "d3d7c49a590c70f6f99036e75c8d80503c778b9818fc24ae7fa47dbf30023cbd",
+    "bytes": 575578,
+    "members": [
+      {
+        "path": "frozen-revision.json",
+        "sha256": "52808c46bf09f81d7a544d732acc2217d7af246793bd6023243a30170bc94057",
+        "bytes": 173
+      },
+      {
+        "path": "plan.json",
+        "sha256": "24b29302818ae1fe09048d11b202ded85ebbc87f636db2d12e1311d6984556ae",
+        "bytes": 23624
+      },
+      {
+        "path": "source-integrity-audit.json",
+        "sha256": "1465aeacd96439277b34784b7bce8996c4aeb979a8d74b27be993c133a7ebadb",
+        "bytes": 12327
+      },
+      {
+        "path": "run/report.json",
+        "sha256": "359ecc4a95daf5af914b889a9a7baf9e3133df1bd1cfb23567ab42d88d5b3bae",
+        "bytes": 25294
+      },
+      {
+        "path": "run/memory/report.json",
+        "sha256": "a2e979847c10f6e136aaed3f699dc379b2230cf182dc74a5cb6c2c9de65f85fe",
+        "bytes": 5238938
+      },
+      {
+        "path": "run/memory/calls.jsonl",
+        "sha256": "8e6f78936731ab7dd1265925fdfd1091ed0577397458aa7f7d08e187f560cf65",
+        "bytes": 26833
+      },
+      {
+        "path": "offline-capability-replay.json",
+        "sha256": "d76f81aeddbe5e58fc0b327520b8140a38331334f93ca481897a7bed3cec0f04",
+        "bytes": 3343
+      },
+      {
+        "path": "offline-speech-world-replay.json",
+        "sha256": "dd75c7108580f435dd92d2621479e47f9df48698a28563eb51d60f46467cb3ee",
+        "bytes": 2748
+      },
+      {
+        "path": "run/memory/deliveries/deliver-1562c307678c2ebe7d3f14341b48628a2a19c12f33689ead074f0d17b84b76f2.json",
+        "sha256": "aa9315777087563b537827d5207cd3326a8100011557e28ee411f6213b52c20b",
+        "bytes": 280
+      },
+      {
+        "path": "run/memory/deliveries/deliver-49f85329a557175b7d9e3b97d1d43553dabc88b6af28420b1b03ff5c81905d22.json",
+        "sha256": "cfbc4f7c09e452c100f556b55d463ff8f14ef0048482232f0d25a9ca60137f85",
+        "bytes": 295
+      },
+      {
+        "path": "run/memory/deliveries/deliver-4c18fe0982c0241b4b0481effe913f40624153ee129e2988ccc0888fb092dcd1.json",
+        "sha256": "debaa8b2fd36a80bbc0ef5685e90089ac52683063f4a45f04c154a5c43b1453d",
+        "bytes": 295
+      },
+      {
+        "path": "run/memory/deliveries/deliver-63d59c6ae5ebaa6e4781c620cb569839984d93aee5d1227e88c5493b008060d6.json",
+        "sha256": "a6f3aeee8a92656aa2dd2eb77991eda290db4125e71dc53ed3307dfc8e0e912e",
+        "bytes": 504
+      },
+      {
+        "path": "run/memory/deliveries/deliver-7ca3b3d8dfe7b0b7d4f1847d809504092edf3e94ad5733ba1c36d24ae05cbe2d.json",
+        "sha256": "967b1f927afb81ff6485b970632d05d391813c7e8ee52d26295dd66b245d4303",
+        "bytes": 361
+      },
+      {
+        "path": "run/memory/deliveries/deliver-8465faf60457e133397570fd8253132ab7b6e97db96590f6906bc3631b106188.json",
+        "sha256": "56f199016109e5bd4ed3339f1374fdb641880f617c7b264ef4e5393501ffee96",
+        "bytes": 295
+      },
+      {
+        "path": "run/memory/deliveries/deliver-96cdaf79507d8644c767f129e0c70d7f0f55f5942fbe6c3edeb37cefe4a214b1.json",
+        "sha256": "79ea72a1695d1b9af5ccc43c0a4421326651525729d4ca759eb93fb384660a10",
+        "bytes": 268
+      },
+      {
+        "path": "run/memory/deliveries/deliver-fd97b8ea35615c1556405df6c5285a614b167d0650345d3b4473dd402a55f404.json",
+        "sha256": "cdb65d75e5acf1a88133422b7c7ab537638a24562841b1204c00b8008a7a0ce8",
+        "bytes": 253
+      }
+    ]
+  }
+}
