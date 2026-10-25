@@ -1,0 +1,276 @@
+{
+  "version": 1,
+  "kind": "fixed_episode_verifier_diagnostic_review",
+  "date": "2026-10-25",
+  "implementation_revision": "4f1a41d0c595b7f4693c7089cf5febf7c368019e",
+  "protocol_state": "finished",
+  "semantic_acceptance": "failed",
+  "frozen_integrity_verified": true,
+  "review_method": {
+    "reviewer": "Codex developer agents, not a human or paid third-party reviewer",
+    "independence": "An independent agent assessed all eight complete source/proposal pairs before inspecting model responses. Its initial file read exposed the first developer expectation; subsequent input views excluded all expectations. Root reviewed complete pairs and responses. This is not fully blinded or independent human validation.",
+    "model_review_not_semantic_proof": true
+  },
+  "usage": {
+    "reserved_calls": 16,
+    "completed_calls": 16,
+    "reserved_output_tokens": 131072,
+    "usage_confirmed_calls": 16,
+    "usage_unknown_calls": 0,
+    "usage_totals": {
+      "prompt_tokens": 47554,
+      "completion_tokens": 28127,
+      "total_tokens": 75681,
+      "prompt_cache_hit_tokens": 27264,
+      "prompt_cache_miss_tokens": 20290
+    }
+  },
+  "plan_sha256": "bec5740e0a79152e4c8e7b132c7edb169c30d1af3d3e4c33ab5cfac8490077cc",
+  "cases": [
+    {
+      "case_id": "recorded_uncertain_save",
+      "expected": "reject",
+      "source_and_proposal_review": "Cannot confirm durable storage does not establish non-storage. The candidate changes uncertainty into a negative fact. Colloquial implication is insufficient for strict persisted memory; rejection does not prove storage occurred.",
+      "source_provenance": {
+        "file": "evaluations/deepseek-2026-10-25-long-history-stopped.evidence.tar.gz",
+        "file_sha256": "8ba5ddda25fb7a9090d16d8530a74c0ac7d97d1096b4b8fda6cbaa68f4c3d11b",
+        "member": "run/memory/report.json",
+        "member_sha256": "a3054fb6778b398caeda15dceed5749043cd8fb6cb718acc89bcbbf25bc5e4db",
+        "kind": "original_recorded_sources_and_proposal",
+        "stage": "history-000",
+        "proposal_id": "ep-1",
+        "original_proposal_request_sha256": "3eb735fd1291516bc341ce0afb4775a5edb46794a326c07f1173db5c8a1d8fff",
+        "source_events_sha256": "85d4781dc8d01384b9df89f3f837e4d2507619aa500dcf0bb8b2fcfa96497e57",
+        "proposal_sha256": "5534bbee410c12f9185bc5ee68bb7c4fd0d753b8d80c1a047c9b15a2b6913336",
+        "context_boundary": "Complete original episode member events; unrelated proposals and historical neighborhood are excluded. This is not a replay of the whole old batch."
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "accept",
+          "matches": false,
+          "request_sha256": "7f34dee96f368f2f53563ddc05d83e0105ac9f99325d14a6aefa48ff56480f4a",
+          "response_sha256": "858086f3de64dccb4cb30773cb2117cdccab889f01172c1f4404c87b21b52fe3"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "accept",
+          "matches": false,
+          "request_sha256": "a74c520b3e7085bcb73d018a73dbc97ce848c4632ff13f099fb5836a1ddd6ea6",
+          "response_sha256": "b23c36ae98628f4253b8a61ef14de7493f26f25d37e15eec34fd498db3257493"
+        }
+      }
+    },
+    {
+      "case_id": "faithful_uncertainty",
+      "expected": "accept",
+      "source_and_proposal_review": "Preserves assistant attribution and uncertainty; accepts an attributed interaction, not a storage outcome.",
+      "source_provenance": {
+        "kind": "controlled_synthetic_sources_and_proposal"
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "accept",
+          "matches": true,
+          "request_sha256": "1110ead4101350028a7b1e8eaa928d93fbaa2c150ae9754daf3729876427123d",
+          "response_sha256": "3609a10bd160564cd53fcc8942c11ae42d686eb9b3618dd0a436eaa8ddd96db3"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "accept",
+          "matches": true,
+          "request_sha256": "58106a2e2df7f19fc08605236ef1b4838b6cb102a233cdc087ec3a0c5c116cba",
+          "response_sha256": "d459449edcbf074a38afa76685f3ba59a6a28d0b8e847e8411f051e61553c6a1"
+        }
+      }
+    },
+    {
+      "case_id": "recorded_study_narrowing",
+      "expected": "reject",
+      "source_and_proposal_review": "The original Chinese reports studying/reviewing material, without an exam purpose. Exam preparation is a plausible but unsupported narrowing.",
+      "source_provenance": {
+        "file": "evaluations/deepseek-2026-10-25-lifecycle-smoke.json",
+        "file_sha256": "2e08ce7a3fa629290a53c1bb1950fb9e7c77cc7d5b5cbf0dc076a9de8af8d8ac",
+        "original_report_sha256": "5f44d2e359d2ec94fb6188fd8922d132aa8ff95dd23c55e750137b94997fec58",
+        "kind": "original_recorded_sources_and_proposal",
+        "stage": "learn",
+        "proposal_id": "episode-action-1",
+        "original_proposal_request_sha256": "eca64829683171fe091aeb30324c754edbb456c43d3a55bf91abdbe013c0d248",
+        "source_events_sha256": "b87d9502a5a4a695f559cd9861e62250965574dcee898017c671012284ca802a",
+        "proposal_sha256": "887c9a16839236296c62ea67e4ed795dbee7b0db9327dbc54a9335e819fe6aa1",
+        "context_boundary": "Complete original episode member events; unrelated proposals and historical neighborhood are excluded. This is not a replay of the whole old batch."
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "accept",
+          "matches": false,
+          "request_sha256": "5f67d6826516c067d03ed056a4e290c77d0f5aa8df7046eb8a0c6fe87e24de3a",
+          "response_sha256": "a9b042da524e741f5a6ef861444d8f7cefdfb332807783ebafc8a25d34bb9ae9"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "accept",
+          "matches": false,
+          "request_sha256": "440e951d2477a0051d6687d4134fbee153a45623265b90dd89a2d3b9e74700fe",
+          "response_sha256": "0e2dadf29b5ac557c30ed2c01c1f6133a9093aa194b8fc4872ac4ec946cd69a6"
+        }
+      }
+    },
+    {
+      "case_id": "supported_exam_preparation",
+      "expected": "accept",
+      "source_and_proposal_review": "The original source explicitly names exam preparation, the routine name and action order.",
+      "source_provenance": {
+        "kind": "controlled_synthetic_sources_and_proposal"
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "accept",
+          "matches": true,
+          "request_sha256": "3eca3e358fcccdb603282275b250483f9fe052b6fecc05bab5f02409211cea10",
+          "response_sha256": "32c9acee3b93a9ca2844afd98f8a497ca7b0a5a773f78c8c1179da0794c4b673"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "accept",
+          "matches": true,
+          "request_sha256": "c3b4f85c42f300bdf7bcba43cc308e7817241a7f5a19b9a7535c15b87ac26554",
+          "response_sha256": "d459449edcbf074a38afa76685f3ba59a6a28d0b8e847e8411f051e61553c6a1"
+        }
+      }
+    },
+    {
+      "case_id": "quoted_speaker",
+      "expected": "reject",
+      "source_and_proposal_review": "Fictional dialogue attributed to Ada is not a real action reported by the user.",
+      "source_provenance": {
+        "kind": "controlled_synthetic_sources_and_proposal"
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "reject",
+          "matches": true,
+          "request_sha256": "971eb13d55f7b0abfad7774bb25f21487385d779cfdcc922987ba850b84f7c05",
+          "response_sha256": "6279ef82426dc6683b53240e590f01819406f978a0a43286383f804c57ae487a"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "reject",
+          "matches": true,
+          "request_sha256": "61246936007c639ce07e8f80f7ff09aac7a12b9e0fe658f2701bd8d577bf08ef",
+          "response_sha256": "71f0c93624fa5ed857a5250fb29a28247b74caa08f6d16ec2d4514986ec05c5b"
+        }
+      }
+    },
+    {
+      "case_id": "unsupported_causality",
+      "expected": "reject",
+      "source_and_proposal_review": "Sequence plus an explicitly unknown cause does not support a causal report.",
+      "source_provenance": {
+        "kind": "controlled_synthetic_sources_and_proposal"
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "reject",
+          "matches": true,
+          "request_sha256": "bc86380961367b41a3ebee14fbab09f7559a30405a06d0ab2e4945afdd0cc2e3",
+          "response_sha256": "a8c9a90a36edf6d12f6a9719303668abcfa7de6cbdae6bd05eac5b1042d84daf"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "reject",
+          "matches": true,
+          "request_sha256": "e084d9e765b68ac7940a4f7f395ce4283def295638def3054e6a4d522a749ed4",
+          "response_sha256": "b410c56e379df8781bf0eed7fcd860ec0d88c58ff0ac36865aa8ac0eac98d653"
+        }
+      }
+    },
+    {
+      "case_id": "explicit_negative",
+      "expected": "accept",
+      "source_and_proposal_review": "The original source explicitly reports a negative. The candidate preserves user attribution, without independently establishing the world fact.",
+      "source_provenance": {
+        "kind": "controlled_synthetic_sources_and_proposal"
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "accept",
+          "matches": true,
+          "request_sha256": "39db7e02c789561c049a2571b9d624e172d1412c584dadad472d6ddd2765a670",
+          "response_sha256": "3609a10bd160564cd53fcc8942c11ae42d686eb9b3618dd0a436eaa8ddd96db3"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "accept",
+          "matches": true,
+          "request_sha256": "5a42fbd86a4fa639f3978de08e3d106120235eb50a1ffdaa11846a58e2427cb8",
+          "response_sha256": "d459449edcbf074a38afa76685f3ba59a6a28d0b8e847e8411f051e61553c6a1"
+        }
+      }
+    },
+    {
+      "case_id": "unperformed_action",
+      "expected": "reject",
+      "source_and_proposal_review": "The exchange discusses a possible reminder and explicitly denies scheduling. It does not complete the action.",
+      "source_provenance": {
+        "kind": "controlled_synthetic_sources_and_proposal"
+      },
+      "results": {
+        "communication-intent-v1": {
+          "gate_outcome": "reject",
+          "matches": true,
+          "request_sha256": "0c8f26a069161d11eef28bdfe9ab95563abf096f952c40ed4a6a0245d2484c24",
+          "response_sha256": "37f4036e04cd8c2063b4d9f300a5e64f743425807494c92498f4d7eb67ce54bf"
+        },
+        "episode-fidelity-v1": {
+          "gate_outcome": "reject",
+          "matches": true,
+          "request_sha256": "0926391195800f7566a60ac17dd1e8de0e627bd5c414d858b8ebec207224d71a",
+          "response_sha256": "842db70acc67ed0e6cc0b5617088c15a5bee8751827dba6fd949c46f326cd730"
+        }
+      }
+    }
+  ],
+  "by_contract": {
+    "communication-intent-v1": {
+      "cases": 8,
+      "agrees_with_source_review": 6,
+      "false_accepts": 2,
+      "false_rejections": 0
+    },
+    "episode-fidelity-v1": {
+      "cases": 8,
+      "agrees_with_source_review": 6,
+      "false_accepts": 2,
+      "false_rejections": 0
+    }
+  },
+  "evidence": {
+    "archive": "deepseek-2026-10-25-episode-fidelity.evidence.tar.gz",
+    "bytes": 75108,
+    "sha256": "50b7b3489910d1291c0eaddfece1e5713ad2ee941bfe31694c0794ae2535486b",
+    "members": {
+      "run/plan.json": {
+        "bytes": 11350,
+        "sha256": "7e28175251d8b5f3c5c7c2142cb80d3a626d075870ae86baa417d01972b45a60"
+      },
+      "run/inputs.json": {
+        "bytes": 347704,
+        "sha256": "6197bda474340c059fc37b2a297e5dda5b2032867d2af00e9e0fb0b21d634571"
+      },
+      "run/report.json": {
+        "bytes": 724814,
+        "sha256": "d4197f39fd08a57bbde31617fdf9dd37391ebfb73bcc4400153e8cbf7f35e690"
+      },
+      "run/calls.jsonl": {
+        "bytes": 11586,
+        "sha256": "4942c78ac70aae9c15bf26a50851904412093dc2640289c930a1a09bee46cf2d"
+      },
+      "frozen-revision.json": {
+        "bytes": 173,
+        "sha256": "52808c46bf09f81d7a544d732acc2217d7af246793bd6023243a30170bc94057"
+      }
+    },
+    "byte_exact_roundtrip": true,
+    "local_secret_value_scan_passed": true
+  },
+  "limitations": [
+    "Two recorded failure cases and six developer-controlled cases, one call per contract per case; no statistical quality estimate.",
+    "Verification only: no proposal generation, database mutation, publication, recall, host answer or delivery.",
+    "Recorded cases retain only complete original member events, not the complete historical proposal batch.",
+    "New fidelity facets are correlated judgments in one model call, not independent evidence.",
+    "No paid retries, no subscription calls, no CI."
+  ]
+}
