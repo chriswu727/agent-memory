@@ -6,6 +6,8 @@ A model-independent, headless memory runtime for agents. The goal is to let a ho
 
 See the [architecture and acceptance specification](architecture/architecture.html) for the complete target, and the [autonomous runtime contract](architecture/autonomous-runtime.contract.json) for product boundaries and host responsibilities. The current implementation provides the underlying memory service, an automatic synchronous text lifecycle, and optional situation understanding, semantic consolidation, and semantic recall: it uses recent conversation to identify the current goal, creates beliefs and episode structures with traceable sources, and searches and selects memories within a budget. Complete host integration and long-term memory quality still need validation. This is not yet a complete autonomous brain.
 
+First-release work is bounded by the [finite acceptance and stop criteria](architecture/v1-acceptance.md). Its installation, continuity, isolation, spending, real-memory and performance gates have not yet all passed.
+
 The [cognitive memory implementation plan](architecture/cognitive-memory-plan.md) describes proposed changes to the cognitive core, implementation dependencies, and behavioral evaluation. Its additional capabilities remain planned work, not a description of current behavior.
 
 ## Product and integration goals
