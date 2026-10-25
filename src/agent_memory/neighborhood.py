@@ -266,26 +266,19 @@ class _Selector:
             self.sampling["publication_restricted"] = True
 
     def candidates(self, cue):
-        from .service import _vector
+        from .lexical_candidates import lexical_rows
         from .source_candidates import source_candidates
 
         if not cue.strip():
             return []
-        clause, scope_params = _scope_clause("a", self.target)
-        rows = self.conn.execute(
-            "SELECT a.document,a.event_ids,a.is_current FROM memory_assertions a WHERE "
-            + _eligible() + clause
-            + "AND a.embedding_model='lexical-feature-hash' AND a.embedding_version='v1-d256-blake2s' "
-            "AND NOT EXISTS (SELECT 1 FROM memory_events future WHERE future.tenant_id=a.tenant_id "
-            "AND future.owner_id=a.owner_id AND future.brain_id=a.brain_id AND future.id=ANY(a.event_ids) "
-            "AND future.is_current AND future.sequence>%s) "
-            "ORDER BY a.embedding <=> %s::vector NULLS LAST,a.id,a.revision LIMIT %s",
-            (*self.params, *scope_params, self.through, _vector(cue), self.sampling["candidate_scan_limit"] + 1),
-        ).fetchall()
-        if len(rows) > self.sampling["candidate_scan_limit"]:
+        rows, truncated = lexical_rows(
+            self.conn, self.params, self.target, cue,
+            limit=self.sampling["candidate_scan_limit"], through_sequence=self.through,
+        )
+        if truncated:
             self.reasons.add("candidate_scan_limit")
         ranked = [(cognition._lexical_score(cue, row["document"]["statement"]), row)
-                  for row in rows[:self.sampling["candidate_scan_limit"]]]
+                  for row in rows]
         ranked = [(score, row) for score, row in ranked if score > 0]
         ranked.sort(key=lambda item: (-item[0], -bool(item[1]["document"].get("counterexamples")),
                                       *_key(item[1]["document"])))

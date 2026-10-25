@@ -7,7 +7,10 @@ from agent_memory.runtime import BrainRuntime, DeliveryReceipt
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Exercise automatic memory without calling a model.")
+    parser = argparse.ArgumentParser(description=(
+        "Exercise automatic memory with a fixed reply. Configured server-side cognition and embedding "
+        "providers can still make paid calls; use a service and worker with neither configured to avoid model calls."
+    ))
     parser.add_argument("--message-id", required=True)
     parser.add_argument("--conversation", default="autonomous-example")
     parser.add_argument("--message", required=True)

@@ -1,0 +1,1251 @@
+{
+  "version": "long-history-stopped-review-v1",
+  "evaluation_date": "2026-10-25",
+  "effective_run_state": "stopped_by_operator",
+  "raw_report_state_preserved": "started",
+  "authority_for_termination": "run/operator-stop.json in the byte-exact evidence archive",
+  "stop_process_detail": "The operator confirmed the process ended with exit 241 after SIGTERM; this process status is operator testimony, not a field invented in the raw report.",
+  "independent_developer_review": {
+    "overall_result": "fail: sustained background semantic learning stopped making progress after the first three exchanges",
+    "current_input_acknowledgments": {
+      "passed": 11,
+      "reviewed": 11
+    },
+    "stages_with_all_present_machine_checks_pass": 3,
+    "stage_check_caveat": "history-010 contains the completed base stage checks but lacks later wrapper enrichment checks; absent checks are not backfilled or counted as passes.",
+    "new_semantic_publication_stages": 3,
+    "consecutive_later_stages_without_new_claims_or_episodes": 8,
+    "first_blocked_stage": "history-003",
+    "last_completed_stage": "history-010",
+    "failure_mechanism": "Bounded neighborhood selection marked publication_restricted after omitting relevant historical packages under request_bytes_budget. The frozen semantic processor rejects every non-situation proposal under that flag as incomplete_history_package, including proposals supported by the complete new learning-input pair. Later stages also reported candidate_limit.",
+    "root_cause_boundary": "The rejection mechanism and recorded budget flags are directly evidenced. Choosing a safe finer-grained completeness policy and confirming its effect require separate implementation and tests; this record does not claim a repaired live run.",
+    "facts_preserved": "All 22 current source versions remain recorded. The final snapshot has 45 direct-capture memories and six aggregated semantic memories, with no relations. Three episodes were created in the first three learning jobs. Failed semantic publication does not mean raw text was erased.",
+    "response_quality_limit": "Repeated disclaimers about unconfirmed durable storage are factually cautious but add formulaic friction to routine note acknowledgments.",
+    "episode_qualifier_errors": [
+      {
+        "stage": "history-000",
+        "original_chinese_answer_excerpt": "不代表已保存为持久安排。",
+        "original_chinese_episode_excerpt": "说明未作为持久安排保存",
+        "english_explanation": "The answer does not establish that durable storage completed; the episode instead says the arrangement was not durably saved. Lack of confirmation was strengthened into a negative assertion."
+      },
+      {
+        "stage": "history-002",
+        "original_chinese_answer_excerpt": "不能确认已持久保存。",
+        "original_chinese_episode_excerpt": "声明未持久保存",
+        "english_explanation": "Cannot confirm persistence was changed into stated non-persistence. The full answer and agent_said claim retain the original uncertainty."
+      }
+    ],
+    "unrun": [
+      "history-011 through history-099",
+      "all six held-out probes",
+      "the trained-archive checkpoint and fresh-probe restores",
+      "rolling_summary arm",
+      "no_memory arm",
+      "three-arm comparison"
+    ],
+    "not_demonstrated": [
+      "100-history retention",
+      "changed-preference supersession in this run",
+      "conditional recall in this run",
+      "held-out false-premise resistance",
+      "rare-cue recall",
+      "cross-arm advantage",
+      "years of operation or biological forgetting calibration",
+      "OS restart recovery",
+      "QQ delivery"
+    ],
+    "stages": [
+      {
+        "name": "history-000",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "从2026年10月20日00:00 UTC起，我的长期复习安排叫‘石帆’：先散步，再看教材，没有预定结束日期。",
+        "original_delivered_answer": "收到。按你现在的说明：从2026年10月20日00:00 UTC起，你的长期复习安排叫“石帆”，先散步、再看教材，没有预定结束日期。我目前没有可确认的既有记忆记录，以上仅作为你当前的陈述理解，不代表已保存为持久安排。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "completed",
+        "background_result_status": "completed",
+        "new_semantic_claims": 2,
+        "new_episode_actions": 1,
+        "background_provider_calls": 2,
+        "rejected": [],
+        "sampling": {
+          "assertion_count": 0,
+          "association_depth": 1,
+          "candidate_count": 4,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 3,
+          "limitations": [],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 0,
+          "publication_restricted": false,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 4,
+          "search_exhaustive": false,
+          "selected_max_sequence": 3,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 0,
+          "source_count": 2,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 3
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": true,
+          "user_semantic_memory_published": true,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": true,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 17.388511,
+          "learning_seconds": 121.709207,
+          "total_seconds": 139.366405
+        }
+      },
+      {
+        "name": "history-001",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第2条日常笔记：纸模型的标签是云井7701，放在第2页。",
+        "original_delivered_answer": "收到。按你现在的说明，第2条日常笔记是：纸模型的标签是“云井7701”，放在第2页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "completed",
+        "background_result_status": "completed",
+        "new_semantic_claims": 2,
+        "new_episode_actions": 1,
+        "background_provider_calls": 2,
+        "rejected": [],
+        "sampling": {
+          "assertion_count": 6,
+          "association_depth": 1,
+          "candidate_count": 10,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 6,
+          "limitations": [],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 0,
+          "publication_restricted": false,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 4,
+          "search_exhaustive": false,
+          "selected_max_sequence": 6,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 2,
+          "source_count": 4,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 6
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": true,
+          "user_semantic_memory_published": true,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": true,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 15.913211,
+          "learning_seconds": 77.380595,
+          "total_seconds": 93.58563
+        }
+      },
+      {
+        "name": "history-002",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第3条日常笔记：厨房清单的标签是云井6956，放在第3页。",
+        "original_delivered_answer": "收到。按你现在的说明，第3条日常笔记是：厨房清单的标签是“云井6956”，放在第3页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "completed",
+        "background_result_status": "completed",
+        "new_semantic_claims": 2,
+        "new_episode_actions": 1,
+        "background_provider_calls": 2,
+        "rejected": [],
+        "sampling": {
+          "assertion_count": 12,
+          "association_depth": 1,
+          "candidate_count": 16,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 9,
+          "limitations": [],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 0,
+          "publication_restricted": false,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 4,
+          "search_exhaustive": false,
+          "selected_max_sequence": 9,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 4,
+          "source_count": 6,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 9
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": true,
+          "user_semantic_memory_published": true,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": true,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 19.859609,
+          "learning_seconds": 78.358035,
+          "total_seconds": 98.500393
+        }
+      },
+      {
+        "name": "history-003",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "我小时候就读的学校叫‘纸湾小学’，校门旁有一棵银杏树。我没有告诉你学校所在的城市。",
+        "original_delivered_answer": "收到。按你现在的说明：你小时候就读的学校叫“纸湾小学”，校门旁有一棵银杏树；你未提供学校所在城市，我也不会猜测。我目前没有可确认的相关既有记忆，以上仅按你当前的陈述理解。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 1,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "prop-claim-7676-school-name"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "prop-claim-7676-city-not-provided"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "prop-claim-1b4-assistant-reply"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "prop-episode-003-school-report"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 11,
+          "association_depth": 1,
+          "candidate_count": 22,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 12,
+          "limitations": [
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 6,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 5,
+          "search_exhaustive": false,
+          "selected_max_sequence": 12,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 5,
+          "source_count": 8,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 12
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 13.504428,
+          "learning_seconds": 94.392037,
+          "total_seconds": 108.220792
+        }
+      },
+      {
+        "name": "history-004",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第5条日常笔记：城市速写的标签是云井3213，放在第5页。",
+        "original_delivered_answer": "收到。按你现在的说明，第5条日常笔记是：城市速写的标签是“云井3213”，放在第5页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 2,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-note5-user-report-v1"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-note5-assistant-reply-v1"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "episode-create-conversation-004"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 11,
+          "association_depth": 1,
+          "candidate_count": 26,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 15,
+          "limitations": [
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 8,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 7,
+          "search_exhaustive": false,
+          "selected_max_sequence": 15,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 6,
+          "source_count": 9,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 15
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 22.487691,
+          "learning_seconds": 75.811873,
+          "total_seconds": 98.677936
+        }
+      },
+      {
+        "name": "history-005",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第6条日常笔记：音乐笔记的标签是云井1841，放在第6页。",
+        "original_delivered_answer": "收到。按你现在的说明，第6条日常笔记是：音乐笔记的标签是“云井1841”，放在第6页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 1,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-6-note-report"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-6-note-assistant-ack"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "episode-6-note-create"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 10,
+          "association_depth": 1,
+          "candidate_count": 30,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 18,
+          "limitations": [
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 9,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 11,
+          "search_exhaustive": false,
+          "selected_max_sequence": 18,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 6,
+          "source_count": 11,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 18
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 16.28282,
+          "learning_seconds": 39.389565,
+          "total_seconds": 56.029731
+        }
+      },
+      {
+        "name": "history-006",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第7条日常笔记：植物观察的标签是云井6554，放在第7页。",
+        "original_delivered_answer": "收到。按你现在的说明，第7条日常笔记是：植物观察的标签是“云井6554”，放在第7页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 1,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-user-note-7"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-assistant-ack-7"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "episode-create-006"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 9,
+          "association_depth": 1,
+          "candidate_count": 32,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 21,
+          "limitations": [
+            "candidate_limit",
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 8,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 15,
+          "search_exhaustive": false,
+          "selected_max_sequence": 21,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 6,
+          "source_count": 13,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 21
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 23.510554,
+          "learning_seconds": 40.860476,
+          "total_seconds": 64.809611
+        }
+      },
+      {
+        "name": "history-007",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第8条日常笔记：纸模型的标签是云井8229，放在第8页。",
+        "original_delivered_answer": "收到。按你现在的说明，第8条日常笔记是：纸模型的标签是“云井8229”，放在第8页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 1,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-note8-user"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-note8-assistant"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "episode-create-note8"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 9,
+          "association_depth": 1,
+          "candidate_count": 32,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 24,
+          "limitations": [
+            "candidate_limit",
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 9,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 14,
+          "search_exhaustive": false,
+          "selected_max_sequence": 24,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 6,
+          "source_count": 13,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 24
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 15.492118,
+          "learning_seconds": 54.005537,
+          "total_seconds": 69.990596
+        }
+      },
+      {
+        "name": "history-008",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第9条日常笔记：厨房清单的标签是云井7378，放在第9页。",
+        "original_delivered_answer": "收到。按你现在的说明，第9条日常笔记是：厨房清单的标签是“云井7378”，放在第9页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 1,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "proposal-claim-9note-user"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "proposal-claim-9note-assistant"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "proposal-episode-create-9note"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 9,
+          "association_depth": 1,
+          "candidate_count": 32,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 27,
+          "limitations": [
+            "candidate_limit",
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 11,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 13,
+          "search_exhaustive": false,
+          "selected_max_sequence": 27,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 6,
+          "source_count": 12,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 27
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 16.464757,
+          "learning_seconds": 39.958309,
+          "total_seconds": 56.960478
+        }
+      },
+      {
+        "name": "history-009",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第10条日常笔记：阅读索引的标签是云井2247，放在第1页。",
+        "original_delivered_answer": "收到。按你现在的说明，第10条日常笔记是：阅读索引的标签是“云井2247”，放在第1页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 2,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-note10-user"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-note10-assistant"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "episode-note10-interaction"
+          },
+          {
+            "reason": "semantic_support_unconfirmed",
+            "proposal_id": "situation-note10"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 8,
+          "association_depth": 1,
+          "candidate_count": 32,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 30,
+          "limitations": [
+            "candidate_limit",
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 10,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 15,
+          "search_exhaustive": false,
+          "selected_max_sequence": 30,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 6,
+          "source_count": 14,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 30
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false,
+          "one_independent_review_completed": true,
+          "review_saw_actual_host_prompt_and_draft": true,
+          "review_bound_to_persisted_draft": true,
+          "review_approved_before_delivery": true,
+          "durable_delivery_matches_host_output": true,
+          "current_input_has_consolidation_window": true
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": true,
+        "timings_seconds": {
+          "runtime_seconds": 20.758442,
+          "learning_seconds": 99.291851,
+          "total_seconds": 120.566285
+        }
+      },
+      {
+        "name": "history-010",
+        "raw_stage_state": "finished",
+        "current_input_acknowledgment": "pass",
+        "answer_review_basis": "Independent reading of the complete Chinese current input, complete delivered answer, and supplied compact memory; not inferred from automated verdicts.",
+        "original_input": "这是我的第11条日常笔记：城市速写的标签是云井6866，放在第2页。",
+        "original_delivered_answer": "收到。按你现在的说明，第11条日常笔记是：城市速写的标签是“云井6866”，放在第2页。我目前仅按你的当前陈述理解，不能确认已持久保存。",
+        "input_and_answer_language": "original Chinese",
+        "historical_retrieval_test": "not performed; this stage acknowledges current input",
+        "exact_host_prompt_and_delivery_audit": "pass",
+        "background_job_state": "cancelled",
+        "background_result_status": "partial",
+        "new_semantic_claims": 0,
+        "new_episode_actions": 0,
+        "background_provider_calls": 1,
+        "rejected": [
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-7d983615-rev1-user-note-11"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "claim-854131b1-rev2-assistant-ack-11"
+          },
+          {
+            "reason": "incomplete_history_package",
+            "proposal_id": "episode-proposal-010-notes-11"
+          }
+        ],
+        "sampling": {
+          "assertion_count": 8,
+          "association_depth": 1,
+          "candidate_count": 32,
+          "candidate_limit": 32,
+          "candidate_scan_limit": 128,
+          "dependency_depth": 8,
+          "episode_count": 0,
+          "indexed_through_sequence": 33,
+          "limitations": [
+            "candidate_limit",
+            "request_bytes_budget"
+          ],
+          "limits": {
+            "assertions": 32,
+            "episodes": 16,
+            "sources": 32
+          },
+          "omitted_packages": 8,
+          "publication_restricted": true,
+          "recent_window_limit": 24,
+          "redundant_literal_assertions": 17,
+          "search_exhaustive": false,
+          "selected_max_sequence": 33,
+          "selected_min_sequence": 1,
+          "source_candidate_count": 5,
+          "source_count": 15,
+          "strategy": "bounded-cue-neighborhood-v1",
+          "through_sequence": 33
+        },
+        "raw_machine_checks": {
+          "host_called": true,
+          "only_runtime_messages_sent": true,
+          "no_recent_dialogue": true,
+          "current_input_not_historical": true,
+          "input_within_budget": true,
+          "memory_within_budget": true,
+          "turn_completed": true,
+          "input_persisted_exactly": true,
+          "model_answer_delivered_and_persisted": true,
+          "no_execution_error": true,
+          "orientation_route_matches_frozen_policy": true,
+          "orientation_route_schema_valid": true,
+          "orientation_skip_has_bound_server_assessment": true,
+          "orientation_skip_preflight_scope_matches_turn": true,
+          "orientation_skip_created_no_orientation_job_or_call": true,
+          "orientation_skip_used_no_model_recall_plan": true,
+          "one_new_consolidation_job_executed": true,
+          "learning_completed_without_rejections": false,
+          "user_semantic_memory_published": false
+        },
+        "all_present_machine_checks_pass": false,
+        "wrapper_enrichment_complete": false,
+        "timings_seconds": {
+          "runtime_seconds": 44.413156,
+          "learning_seconds": 46.857373,
+          "total_seconds": 91.849406
+        }
+      }
+    ]
+  },
+  "frozen_configuration": {
+    "git_commit": "019ec6ad4b50d22ef309d88f199d1fab99dddf6b",
+    "migration_range": "001-017",
+    "retrieval_migration_018_included": false,
+    "source_manifest_sha256": "2f3f8caa149e5f9a0932f08b6d655bd47a29625e85941ee3361becd1a3a54459",
+    "plan_sha256_canonical": "7db4d1384b59b7f0c9ce085fe78e07b052c9164a2f455b3ff72159e8b063fd8d",
+    "model": "deepseek-v4-pro",
+    "provider_base_url": "https://api.deepseek.com",
+    "thinking": "enabled",
+    "runtime_policy": {
+      "memory_context_tokens": 16000,
+      "max_input_tokens": 24000,
+      "max_output_bytes": 64000,
+      "lease_seconds": 30,
+      "recent_context_events": 0,
+      "orientation_policy": "on_demand"
+    },
+    "semantic_policy": {
+      "max_sources": 32,
+      "max_assertions": 32,
+      "max_episodes": 16,
+      "max_proposals": 24,
+      "max_model_calls": 2,
+      "max_input_bytes": 196608,
+      "max_request_bytes": 98304,
+      "max_response_bytes": 65536,
+      "max_output_tokens": 16384,
+      "max_wall_time_ms": 240000
+    },
+    "service_configuration": "configured_service-v1; only the provider HTTP transport is instrumented",
+    "server_budget_policy": {
+      "window_seconds": 2592000,
+      "max_model_calls": 412,
+      "max_input_bytes": 40501248
+    },
+    "per_arm_max_calls": 624,
+    "per_arm_max_reserved_output_tokens": 8052736,
+    "memory_arm_call_allocation": {
+      "semantic": 412,
+      "host": 106,
+      "answer_review": 106
+    },
+    "host_max_output_tokens": 4096,
+    "review_policy": {
+      "max_input_bytes": 65536,
+      "max_output_tokens": 8192,
+      "max_response_bytes": 16384,
+      "timeout_seconds": 180
+    },
+    "delivery": "local deterministic sink through loopback HTTP and isolated PostgreSQL; not an external chat service",
+    "embeddings": "none"
+  },
+  "observed_usage": {
+    "reserved_calls": 38,
+    "completed_calls": 38,
+    "reserved_output_tokens": 397312,
+    "usage_confirmed_calls": 38,
+    "usage_unknown_calls": 0,
+    "usage_totals": {
+      "prompt_tokens": 374526,
+      "completion_tokens": 85508,
+      "total_tokens": 460034,
+      "prompt_cache_hit_tokens": 89344,
+      "prompt_cache_miss_tokens": 285182
+    },
+    "roles": {
+      "host": 11,
+      "answer_review": 11,
+      "background_semantic": 16,
+      "foreground_orientation": 0
+    },
+    "ledger_events": 76,
+    "all_reserved_calls_have_one_confirmed_completion": true,
+    "currency_cost": null
+  },
+  "timings_seconds": {
+    "sample_count": 11,
+    "basis": "All eleven completed base stages include timings; wrapper performance enrichment is absent only for history-010.",
+    "runtime_seconds": {
+      "median": 17.388511,
+      "min": 13.504428,
+      "max": 44.413156
+    },
+    "learning_seconds": {
+      "median": 75.811873,
+      "min": 39.389565,
+      "max": 121.709207
+    },
+    "total_seconds": {
+      "median": 93.58563,
+      "min": 56.029731,
+      "max": 139.366405
+    },
+    "interpretation": "Foreground includes host generation, the extra model answer review, and local runtime work. Learning is awaited separately by the harness. These are not isolated retrieval or normal desktop latency measurements."
+  },
+  "offline_archive_validation": {
+    "operator_raw_report_and_ledger_hashes_match": true,
+    "canonical_plan_hash_matches_frozen_plan": true,
+    "raw_bytes_roundtrip_unchanged": true,
+    "ledger_usage_recomputed_and_matches_operator_and_report": true,
+    "all_host_prompts_exactly_match_frozen_instructions_protocol_memory_current_input": true,
+    "all_actual_deliveries_match_host_output_and_reviewed_draft_hash": true,
+    "all_compact_source_versions_preexist_current_turn": true,
+    "all_shown_memory_statements_match_prior_persisted_memory_version": true,
+    "all_memory_evidence_source_hashes_and_spans_validate": true,
+    "unique_current_source_versions_hash_checked": 22,
+    "unique_host_shown_memory_versions_statement_checked": 16,
+    "actual_root_env_secret_value_scan": "passed without logging or publishing any secret value",
+    "hidden_reasoning_or_credential_fields": "none; provider reasoning-token counts are usage metadata, not hidden reasoning text",
+    "delivery_receipt_authorization_objects": "11 retained objects contain only draft event/version and context/revision fingerprints; these are audit bindings, not bearer credentials",
+    "tests_or_model_calls_for_this_archive_task": 0
+  },
+  "evidence_archive": {
+    "file": "deepseek-2026-10-25-long-history-stopped.evidence.tar.gz",
+    "format": "tar+gzip",
+    "sha256": "8ba5ddda25fb7a9090d16d8530a74c0ac7d97d1096b4b8fda6cbaa68f4c3d11b",
+    "bytes": 686540,
+    "raw_files_are_byte_exact": true,
+    "members": [
+      {
+        "path": "source-snapshot.json",
+        "sha256": "2f3f8caa149e5f9a0932f08b6d655bd47a29625e85941ee3361becd1a3a54459",
+        "bytes": 33327
+      },
+      {
+        "path": "planned-experiment.json",
+        "sha256": "e94002369949a5a500e6283e27f57d21782e60e4115c98be6ff16b819fe336ca",
+        "bytes": 82130
+      },
+      {
+        "path": "run/report.json",
+        "sha256": "13d77df1e8dabf34ec5c10cbbe57d7006fbe018a492628c7bb5a782c2b1f3482",
+        "bytes": 82217
+      },
+      {
+        "path": "run/operator-stop.json",
+        "sha256": "c9924c0917ff2c0b193e7964fed0d8f61dac108d41b4b3f49cbbb4ee56e0c127",
+        "bytes": 845
+      },
+      {
+        "path": "run/memory/report.json",
+        "sha256": "a3054fb6778b398caeda15dceed5749043cd8fb6cb718acc89bcbbf25bc5e4db",
+        "bytes": 7282559
+      },
+      {
+        "path": "run/memory/calls.jsonl",
+        "sha256": "1ff7930ad5dfe03ab618c10f65a7edf47fa8a42b5677f3ca24ccd68d521279e0",
+        "bytes": 27519
+      },
+      {
+        "path": "run/memory/deliveries/deliver-2ed103f438b249335492cb8a91833b10167c556070fdf3c46ad8e77fe2b291b0.json",
+        "sha256": "30e15b538e566482524107a07c5cbdd134a3496d45e031566b0b2978c83e075d",
+        "bytes": 358
+      },
+      {
+        "path": "run/memory/deliveries/deliver-3b0d1267849909424f7ac1894bd18c8d3be3d0ec1b689f3f4314bfb0b9d5b120.json",
+        "sha256": "ccb54e19dd6ff8f3be5219d260a14126a9da9bc86c8a84483c2bca2fab72e023",
+        "bytes": 361
+      },
+      {
+        "path": "run/memory/deliveries/deliver-6e9e5a0e49ba7f2e749bf6ce45c731658956094588b418cec88cdf1908a59fed.json",
+        "sha256": "285133af481f4b05c2a2062ea2d9b3a8a878e0b3842753d90c34fa6238127394",
+        "bytes": 361
+      },
+      {
+        "path": "run/memory/deliveries/deliver-76df473ef33ae4c6518b42152c3cc5d503046ba9bab2d9c5b75c1c41d363f9a2.json",
+        "sha256": "4bcf3d86a882ab5c1d33d45109c3e337a84e7569f8e323cab38d29eeb84a8090",
+        "bytes": 361
+      },
+      {
+        "path": "run/memory/deliveries/deliver-7aa1d1532719d134c2733ddee6513dcd75ba3b81c4901340414a304d58c9bc29.json",
+        "sha256": "a340f669f31769d48bcb88b3682af39a04e41442cf080a34dac0dbb9ba994d4c",
+        "bytes": 462
+      },
+      {
+        "path": "run/memory/deliveries/deliver-7b849e5636ae79472b7a595638712a982a90b0ccd19713b3fd52868e4be8d245.json",
+        "sha256": "e9e065180701ccdd2485504e4eca7dfee8bcd2fb7797e4bffcf3c3884ef22bce",
+        "bytes": 362
+      },
+      {
+        "path": "run/memory/deliveries/deliver-944172a86f77677e2fa494a8c2932e45f231af63a74b95b3abe3c33bf80b2ac9.json",
+        "sha256": "44a1674cac051741999b9977613b133a56fe768d9da7a36a19db7db63dc07e68",
+        "bytes": 427
+      },
+      {
+        "path": "run/memory/deliveries/deliver-9d1fae7d0821e236cfc9e649a3bbd6888f786cfc7b76a0fc63ec86f487eccb12.json",
+        "sha256": "c91503d0f30dfb3832d45c81a6c4b6053969b084aee4d4ce56479db0bfcf621d",
+        "bytes": 358
+      },
+      {
+        "path": "run/memory/deliveries/deliver-b1a40dda3cd933c539a29ed05c92904937ae1d1f47d81751f35d170b99aae4c3.json",
+        "sha256": "38b2aefeec767f9c741a6e7380ef229cd5322ae2c0d53ea4c77706a4ff8dd670",
+        "bytes": 362
+      },
+      {
+        "path": "run/memory/deliveries/deliver-e61f3f3841d06bab79e47a0a81ca1336b945cd9e6f250d29ae65d22d73404d63.json",
+        "sha256": "e6ecf07712cc90c925f7c8060a6b07ebcabe0043dae6e74ee72282849f76647e",
+        "bytes": 361
+      },
+      {
+        "path": "run/memory/deliveries/deliver-f775571ece8e7411a1f987ee55e1d42d83b0af2cf4d13d967b75581d7bfe61d2.json",
+        "sha256": "e6ad6c4ddfe912972b25c80b270d17a605a1dfa54a999a8117b0a4f58a4fcd36",
+        "bytes": 361
+      }
+    ]
+  }
+}

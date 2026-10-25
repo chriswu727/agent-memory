@@ -1,0 +1,488 @@
+{
+  "version": 1,
+  "git_commit": "019ec6ad4b50d22ef309d88f199d1fab99dddf6b",
+  "plan": {
+    "sizes": [
+      100,
+      1000,
+      10000
+    ],
+    "samples_per_size": 20,
+    "warmups": 2,
+    "seed": 20261025,
+    "context_budget_bytes": 16000,
+    "diagnostic_targets_ms": {
+      "median": 100,
+      "p95": 500
+    },
+    "scope": "Warm local PostgreSQL public recall of deterministic literal captures; no provider, HTTP, or host latency.",
+    "fixture_setup": "Public observation followed by direct deterministic publication; does not test worker throughput.",
+    "limitations": [
+      "Synthetic corpus, no production SLA.",
+      "No semantic inference, vectors, relation fanout, or long-lived deployment.",
+      "Concurrent isolated DeepSeek experiment shares the same host."
+    ]
+  },
+  "state": "finished",
+  "results": [
+    {
+      "records": 100,
+      "seed_seconds": 0.459,
+      "median_ms": 26.978,
+      "p95_ms": 35.412,
+      "max_ms": 39.3,
+      "samples": [
+        {
+          "query": "zeta00094",
+          "elapsed_ms": 39.3,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00041",
+          "elapsed_ms": 29.606,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00088",
+          "elapsed_ms": 27.86,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00035",
+          "elapsed_ms": 24.925,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00082",
+          "elapsed_ms": 23.961,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00029",
+          "elapsed_ms": 28.075,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00076",
+          "elapsed_ms": 26.327,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00023",
+          "elapsed_ms": 26.369,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00070",
+          "elapsed_ms": 26.791,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00017",
+          "elapsed_ms": 25.662,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00064",
+          "elapsed_ms": 23.572,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00011",
+          "elapsed_ms": 31.926,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00058",
+          "elapsed_ms": 32.182,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00005",
+          "elapsed_ms": 27.012,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00052",
+          "elapsed_ms": 26.795,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00099",
+          "elapsed_ms": 32.396,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00046",
+          "elapsed_ms": 26.944,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00093",
+          "elapsed_ms": 35.1,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00040",
+          "elapsed_ms": 25.996,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00087",
+          "elapsed_ms": 35.412,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        }
+      ],
+      "all_sources_found": true
+    },
+    {
+      "records": 1000,
+      "seed_seconds": 5.069,
+      "median_ms": 64.226,
+      "p95_ms": 67.294,
+      "max_ms": 85.78,
+      "samples": [
+        {
+          "query": "zeta00094",
+          "elapsed_ms": 58.572,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00141",
+          "elapsed_ms": 60.577,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00188",
+          "elapsed_ms": 64.206,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00235",
+          "elapsed_ms": 62.081,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00282",
+          "elapsed_ms": 65.838,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00329",
+          "elapsed_ms": 85.78,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00376",
+          "elapsed_ms": 65.213,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00423",
+          "elapsed_ms": 62.62,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00470",
+          "elapsed_ms": 63.728,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00517",
+          "elapsed_ms": 62.846,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00564",
+          "elapsed_ms": 65.824,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00611",
+          "elapsed_ms": 64.309,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00658",
+          "elapsed_ms": 64.423,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00705",
+          "elapsed_ms": 64.128,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00752",
+          "elapsed_ms": 63.086,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00799",
+          "elapsed_ms": 67.294,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00846",
+          "elapsed_ms": 63.656,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00893",
+          "elapsed_ms": 65.428,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00940",
+          "elapsed_ms": 66.715,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00987",
+          "elapsed_ms": 64.247,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        }
+      ],
+      "all_sources_found": true
+    },
+    {
+      "records": 10000,
+      "seed_seconds": 59.691,
+      "median_ms": 487.009,
+      "p95_ms": 503.284,
+      "max_ms": 523.786,
+      "samples": [
+        {
+          "query": "zeta00094",
+          "elapsed_ms": 490.333,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00141",
+          "elapsed_ms": 479.674,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00188",
+          "elapsed_ms": 483.684,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00235",
+          "elapsed_ms": 468.493,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00282",
+          "elapsed_ms": 469.747,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00329",
+          "elapsed_ms": 467.435,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00376",
+          "elapsed_ms": 465.325,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00423",
+          "elapsed_ms": 494.733,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00470",
+          "elapsed_ms": 523.786,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00517",
+          "elapsed_ms": 477.548,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00564",
+          "elapsed_ms": 496.747,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00611",
+          "elapsed_ms": 503.284,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00658",
+          "elapsed_ms": 493.261,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00705",
+          "elapsed_ms": 173.413,
+          "outcome": "completed",
+          "recall_status": "no_match",
+          "source_found": false
+        },
+        {
+          "query": "zeta00752",
+          "elapsed_ms": 494.594,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00799",
+          "elapsed_ms": 495.705,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00846",
+          "elapsed_ms": 496.739,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00893",
+          "elapsed_ms": 476.407,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        },
+        {
+          "query": "zeta00940",
+          "elapsed_ms": 174.595,
+          "outcome": "completed",
+          "recall_status": "no_match",
+          "source_found": false
+        },
+        {
+          "query": "zeta00987",
+          "elapsed_ms": 493.278,
+          "outcome": "completed",
+          "recall_status": "partial",
+          "source_found": true
+        }
+      ],
+      "all_sources_found": false
+    }
+  ],
+  "prior_attempt": {
+    "file": "storage-benchmark-20261025-a.json",
+    "limitation": "Missing explicit pre-query boundary made every historical recall unavailable; its timing is not successful recall latency."
+  },
+  "fixture_identity": {
+    "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+    "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+    "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+  }
+}

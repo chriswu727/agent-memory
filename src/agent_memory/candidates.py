@@ -11,11 +11,11 @@ from .retrieval import fuse_rankings, resolve_dependency_closure
 
 def _scope_clause(alias, target):
     return (
-        f"AND ({alias}.document #>> '{{scope,visibility}}'<>'conversation' "
-        f"OR {alias}.document #>> '{{scope,conversation_id}}' IS NOT DISTINCT FROM %s) "
-        f"AND ({alias}.document #>> '{{scope,branch_id}}' IS NULL "
-        f"OR {alias}.document #>> '{{scope,conversation_id}}' IS DISTINCT FROM %s "
-        f"OR {alias}.document #>> '{{scope,branch_id}}' IS NOT DISTINCT FROM %s) ",
+        f"AND ({alias}.scope_visibility<>'conversation' "
+        f"OR {alias}.scope_conversation_id IS NOT DISTINCT FROM %s) "
+        f"AND ({alias}.scope_branch_id IS NULL "
+        f"OR {alias}.scope_conversation_id IS DISTINCT FROM %s "
+        f"OR {alias}.scope_branch_id IS NOT DISTINCT FROM %s) ",
         (target.get("conversation_ref"), target.get("conversation_ref"), target.get("branch_ref")),
     )
 
@@ -46,8 +46,6 @@ def merge_belief_candidates(memories, candidate_state, package, *, selected=Fals
 
 def collect_candidates(conn, service, principal, brain, target, query, recall_plan=None,
                        query_embedding=None):
-    from .service import _vector
-
     params = service._params(principal, brain["id"])
     scope_sql, scope_params = _scope_clause("a", target)
     candidate_limit = min(128, max(4, query["budget"]["max_context_tokens"] // 512))
@@ -82,17 +80,12 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
         roots = [key for key in requested if key in documents]
         signals = {}
     else:
+        from .lexical_candidates import lexical_rows
         from .source_candidates import SOURCE_ROUTE_VERSION, source_candidates
 
-        lexical_rows = conn.execute(
-            "SELECT a.document FROM memory_assertions a WHERE " + _eligible() + scope_sql
-            + "AND a.embedding_model='lexical-feature-hash' AND a.embedding_version='v1-d256-blake2s' "
-            "ORDER BY a.embedding <=> %s::vector NULLS LAST,a.id LIMIT %s",
-            (*params, *scope_params, _vector(text), scan_limit + 1),
-        ).fetchall()
-        truncated = len(lexical_rows) > scan_limit
+        rows, truncated = lexical_rows(conn, params, target, text, limit=scan_limit)
         lexical = [(cognition._lexical_score(text, row["document"]["statement"]), row)
-                   for row in lexical_rows[:scan_limit]]
+                   for row in rows]
         lexical = [(score, row) for score, row in lexical if score > 0]
         lexical.sort(key=lambda value: (-value[0], value[1]["document"]["memory_id"]))
         bridged, source_truncated = source_candidates(

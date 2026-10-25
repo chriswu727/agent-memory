@@ -1,0 +1,424 @@
+{
+  "version": 1,
+  "git_commit": "019ec6ad4b50d22ef309d88f199d1fab99dddf6b",
+  "plan": {
+    "sizes": [
+      100,
+      1000,
+      10000
+    ],
+    "samples_per_size": 20,
+    "warmups": 2,
+    "seed": 20261025,
+    "context_budget_bytes": 16000,
+    "diagnostic_targets_ms": {
+      "median": 100,
+      "p95": 500
+    },
+    "scope": "Warm local PostgreSQL public recall of deterministic literal captures; no provider, HTTP, or host latency.",
+    "fixture_setup": "Public observation followed by direct deterministic publication; does not test worker throughput.",
+    "limitations": [
+      "Synthetic corpus, no production SLA.",
+      "No semantic inference, vectors, relation fanout, or long-lived deployment.",
+      "Concurrent isolated DeepSeek experiment shares the same host."
+    ]
+  },
+  "state": "finished",
+  "results": [
+    {
+      "records": 100,
+      "seed_seconds": 0.48,
+      "median_ms": 23.12,
+      "p95_ms": 27.91,
+      "max_ms": 37.594,
+      "samples": [
+        {
+          "query": "zeta00094",
+          "elapsed_ms": 37.594,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00041",
+          "elapsed_ms": 25.796,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00088",
+          "elapsed_ms": 26.514,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00035",
+          "elapsed_ms": 23.211,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00082",
+          "elapsed_ms": 24.64,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00029",
+          "elapsed_ms": 21.178,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00076",
+          "elapsed_ms": 24.113,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00023",
+          "elapsed_ms": 22.257,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00070",
+          "elapsed_ms": 26.08,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00017",
+          "elapsed_ms": 25.33,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00064",
+          "elapsed_ms": 27.91,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00011",
+          "elapsed_ms": 22.457,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00058",
+          "elapsed_ms": 21.47,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00005",
+          "elapsed_ms": 23.029,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00052",
+          "elapsed_ms": 22.083,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00099",
+          "elapsed_ms": 22.014,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00046",
+          "elapsed_ms": 20.236,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00093",
+          "elapsed_ms": 20.51,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00040",
+          "elapsed_ms": 22.648,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00087",
+          "elapsed_ms": 23.972,
+          "outcome": "completed",
+          "source_found": false
+        }
+      ],
+      "all_sources_found": false
+    },
+    {
+      "records": 1000,
+      "seed_seconds": 4.634,
+      "median_ms": 60.218,
+      "p95_ms": 62.534,
+      "max_ms": 62.84,
+      "samples": [
+        {
+          "query": "zeta00094",
+          "elapsed_ms": 58.393,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00141",
+          "elapsed_ms": 61.888,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00188",
+          "elapsed_ms": 60.507,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00235",
+          "elapsed_ms": 58.6,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00282",
+          "elapsed_ms": 57.945,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00329",
+          "elapsed_ms": 59.063,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00376",
+          "elapsed_ms": 59.598,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00423",
+          "elapsed_ms": 57.951,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00470",
+          "elapsed_ms": 58.455,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00517",
+          "elapsed_ms": 58.088,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00564",
+          "elapsed_ms": 60.034,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00611",
+          "elapsed_ms": 62.534,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00658",
+          "elapsed_ms": 61.031,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00705",
+          "elapsed_ms": 60.401,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00752",
+          "elapsed_ms": 62.84,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00799",
+          "elapsed_ms": 59.171,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00846",
+          "elapsed_ms": 62.053,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00893",
+          "elapsed_ms": 61.202,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00940",
+          "elapsed_ms": 60.856,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00987",
+          "elapsed_ms": 61.205,
+          "outcome": "completed",
+          "source_found": false
+        }
+      ],
+      "all_sources_found": false
+    },
+    {
+      "records": 10000,
+      "seed_seconds": 60.26,
+      "median_ms": 163.191,
+      "p95_ms": 173.192,
+      "max_ms": 173.46,
+      "samples": [
+        {
+          "query": "zeta00094",
+          "elapsed_ms": 162.414,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00141",
+          "elapsed_ms": 165.05,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00188",
+          "elapsed_ms": 159.222,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00235",
+          "elapsed_ms": 159.095,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00282",
+          "elapsed_ms": 159.622,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00329",
+          "elapsed_ms": 162.108,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00376",
+          "elapsed_ms": 159.467,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00423",
+          "elapsed_ms": 160.94,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00470",
+          "elapsed_ms": 173.46,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00517",
+          "elapsed_ms": 159.349,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00564",
+          "elapsed_ms": 166.623,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00611",
+          "elapsed_ms": 171.383,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00658",
+          "elapsed_ms": 172.798,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00705",
+          "elapsed_ms": 161.126,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00752",
+          "elapsed_ms": 169.431,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00799",
+          "elapsed_ms": 170.205,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00846",
+          "elapsed_ms": 173.192,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00893",
+          "elapsed_ms": 170.548,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00940",
+          "elapsed_ms": 155.6,
+          "outcome": "completed",
+          "source_found": false
+        },
+        {
+          "query": "zeta00987",
+          "elapsed_ms": 163.967,
+          "outcome": "completed",
+          "source_found": false
+        }
+      ],
+      "all_sources_found": false
+    }
+  ],
+  "fixture_identity": {
+    "tenant_id": "0d9c1442-66fa-40dd-8476-f9eec482f912",
+    "principal_id": "31b50c26-76bc-4234-87a7-376e848eac61",
+    "brain_id": "9fcd365c-c582-46f7-84b0-ff584860d72b"
+  }
+}

@@ -29,12 +29,14 @@ def add_commands(commands):
     from .desktop_cognition import add_commands as add_cognition_commands
     from .desktop_learning import add_commands as add_learning_commands
     from .desktop_recovery import add_commands as add_recovery_commands
+    from .desktop_turns import add_commands as add_turn_commands
 
     add_chat_commands(actions)
     add_learning_commands(actions)
     add_budget_commands(actions)
     add_cognition_commands(actions)
     add_recovery_commands(actions)
+    add_turn_commands(actions)
 
 
 def _setup(args):
@@ -153,6 +155,10 @@ def dispatch(args):
             from .desktop_learning import run as run_learning
 
             result = run_learning(args)
+        elif action == "turn-status":
+            from .desktop_turns import run as run_turns
+
+            result = run_turns(args)
         else:
             result = getattr(desktop, action)(args.directory)
         print(json.dumps(result, ensure_ascii=False, indent=2))

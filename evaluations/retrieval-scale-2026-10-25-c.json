@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "state": "finished",
+  "source": ".local/storage-benchmark-20261025-b.json",
+  "source_sha256": "87c2266ca0a09dd3dd8add7ab771d228ace47dacff40f78a81d144f60ec3788f",
+  "fixture_identity": {
+    "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+    "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+    "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+  },
+  "records": 10000,
+  "plan": {
+    "sizes": [
+      100,
+      1000,
+      10000
+    ],
+    "samples_per_size": 20,
+    "warmups": 2,
+    "seed": 20261025,
+    "context_budget_bytes": 16000,
+    "diagnostic_targets_ms": {
+      "median": 100,
+      "p95": 500
+    },
+    "scope": "Warm local PostgreSQL public recall of deterministic literal captures; no provider, HTTP, or host latency.",
+    "fixture_setup": "Public observation followed by direct deterministic publication; does not test worker throughput.",
+    "limitations": [
+      "Synthetic corpus, no production SLA.",
+      "No semantic inference, vectors, relation fanout, or long-lived deployment.",
+      "Concurrent isolated DeepSeek experiment shares the same host."
+    ]
+  },
+  "samples": [
+    {
+      "query": "zeta00094",
+      "elapsed_ms": 149.567,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00141",
+      "elapsed_ms": 75.495,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00188",
+      "elapsed_ms": 84.334,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00235",
+      "elapsed_ms": 82.159,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00282",
+      "elapsed_ms": 83.139,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00329",
+      "elapsed_ms": 103.293,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00376",
+      "elapsed_ms": 84.19,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00423",
+      "elapsed_ms": 87.705,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00470",
+      "elapsed_ms": 86.571,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00517",
+      "elapsed_ms": 88.701,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00564",
+      "elapsed_ms": 82.359,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00611",
+      "elapsed_ms": 86.712,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00658",
+      "elapsed_ms": 111.516,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00705",
+      "elapsed_ms": 102.519,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00752",
+      "elapsed_ms": 119.433,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00799",
+      "elapsed_ms": 97.659,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00846",
+      "elapsed_ms": 96.263,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00893",
+      "elapsed_ms": 96.957,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00940",
+      "elapsed_ms": 123.173,
+      "source_found": true,
+      "status": "partial"
+    },
+    {
+      "query": "zeta00987",
+      "elapsed_ms": 95.938,
+      "source_found": true,
+      "status": "partial"
+    }
+  ],
+  "all_sources_found": true,
+  "median_ms": 92.3195,
+  "p95_ms": 123.173,
+  "max_ms": 149.567
+}

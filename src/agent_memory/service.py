@@ -1380,6 +1380,8 @@ class MemoryService:
         return LearningEngine(self).work_once(principal, brain_id)
 
     def dashboard(self, principal, brain_id):
+        from .dynamics import DEFAULT_POLICY
+
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
             params = self._params(principal, brain_id)
@@ -1398,4 +1400,4 @@ class MemoryService:
                                "index_lag": brain["durable_sequence"] - brain["indexed_sequence"],
                                "extraction": "verified_semantic_proposals" if self.semantic_processor else "deterministic_source_capture",
                                "candidate_index": "hybrid-semantic-and-lexical" if self.embedding_provider else "lexical-and-structural-cues",
-                               "access_policy": "contextual-access-v1"}}
+                               "access_policy": DEFAULT_POLICY.version}}

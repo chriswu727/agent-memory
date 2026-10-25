@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import httpx
 
+from .desktop_chat_monitor import _notice
 from .runtime import DeliveryReceipt, RuntimeBlocked, RuntimePolicy
 
 
@@ -96,25 +97,70 @@ def _deliver(request):
     return DeliveryReceipt("delivered")
 
 
-def _call(operation):
+def _recovery_notice(error, agent, args):
+    try:
+        pending = agent.pending
+        if pending is not None:
+            turn_id = pending.get("turn_id") if isinstance(pending, dict) else None
+            if not isinstance(turn_id, str) or not re.fullmatch(r"turn-[0-9a-f]{40}", turn_id):
+                raise ValueError
+            _notice(f"Local pending turn: {turn_id}. Keep this ID for explicit recovery. "
+                    "Use desktop turn-status with the same conversation and branch to inspect remote state.")
+    except Exception:
+        _notice("Local pending state could not be inspected; it was not changed.")
+    if getattr(error, "code", None) == "scope_conflict":
+        from .desktop_turns import inspect_scope
+
+        try:
+            row = inspect_scope(args.directory, args.conversation, args.branch)["turn"]
+            if row is None:
+                _notice("No unfinished turn was found; the scope may have changed since rejection. No input was retried.")
+            else:
+                _notice(f"Unfinished turn in this scope: {row['turn_id']} ({row['stage']}). "
+                        "Resolve it through the host that owns it; this command did not resume or cancel it.")
+        except Exception:
+            _notice("Scope inspection unavailable; use desktop turn-status with the same conversation and branch. "
+                    "The conflicting turn is unknown.")
+
+
+def _call(operation, recovery=None):
     from .agent_session import SessionError
     from .chat_provider import ChatProviderError
 
     try:
         return operation()
     except (SessionError, RuntimeBlocked, ChatProviderError) as error:
-        turn_id = getattr(error, "turn_id", None)
-        print(error.code + (f": turn {turn_id}" if turn_id else ""), file=sys.stderr)
+        _notice(error.code)
+        if isinstance(error, ChatProviderError) and error.status_code is not None:
+            advice = {
+                401: "Check the reply provider API key with desktop configure-chat.",
+                403: "Check the reply provider permissions and model access.",
+                404: "Check the reply provider endpoint and model in desktop configure-chat.",
+                429: "The provider reported a rate or quota limit; check its limits before another attempt.",
+            }.get(error.status_code, "Check the reply provider configuration and availability.")
+            _notice(f"Model provider HTTP {error.status_code}. {advice}")
+        elif isinstance(error, ChatProviderError) and error.code in {"timeout", "transport_error"}:
+            _notice("The provider outcome may be unknown; a timeout does not prove the request was not processed.")
         if error.code != "no_pending_turn":
-            print("Check the turn state before retrying. Unknown generation or delivery is not retried automatically.", file=sys.stderr)
+            _notice("Check the turn state before retrying. Unknown generation or delivery is not retried automatically.")
+            if recovery is not None:
+                try:
+                    recovery(error)
+                except Exception:
+                    _notice("Recovery diagnostics unavailable; the original operation was not retried.")
         return None
-    except httpx.HTTPError:
-        print("memory_service_unavailable: Check desktop status and the turn state before retrying.", file=sys.stderr)
+    except httpx.HTTPError as error:
+        _notice("memory_service_unavailable: Check desktop status and the turn state before retrying.")
+        if recovery is not None:
+            try:
+                recovery(error)
+            except Exception:
+                _notice("Recovery diagnostics unavailable; the original operation was not retried.")
         return None
 
 
-def _perform(operation, monitor=None):
-    result = _call(operation)
+def _perform(operation, monitor=None, recovery=None):
+    result = _call(operation, recovery)
     if result is None:
         return False
     if result.replayed:
@@ -126,8 +172,8 @@ def _perform(operation, monitor=None):
     return result.stage == "completed"
 
 
-def _cancel(agent, turn_id, acknowledge_uncertain):
-    result = _call(lambda: agent.cancel(turn_id=turn_id, acknowledge_uncertain=acknowledge_uncertain))
+def _cancel(agent, turn_id, acknowledge_uncertain, recovery=None):
+    result = _call(lambda: agent.cancel(turn_id=turn_id, acknowledge_uncertain=acknowledge_uncertain), recovery)
     if result is None:
         return False
     print(f"Turn {result['turn_id']} is {result['stage']}; no answer was generated or sent by cancellation.", file=sys.stderr)
@@ -176,15 +222,18 @@ def run(args):
                     policy=RuntimePolicy(orientation_policy=args.orientation)) as agent, learning_monitor(
                         args.directory, enabled=profile.cognition is not None and args.cancel is None, startup=interactive,
                     ) as monitor:
+        def recovery(error):
+            _recovery_notice(error, agent, args)
+
         if profile.cognition is None:
             print("Memory learning is not configured; persistent sources and lexical recall are available.", file=sys.stderr)
         if not interactive:
             if args.cancel is not None:
-                if not _cancel(agent, args.cancel, args.acknowledge_uncertain):
+                if not _cancel(agent, args.cancel, args.acknowledge_uncertain, recovery):
                     raise SystemExit(1)
                 return
             operation = agent.resume if args.resume else lambda: agent.respond(args.message, message_id=args.message_id)
-            if not _perform(operation, monitor):
+            if not _perform(operation, monitor, recovery):
                 raise SystemExit(1)
             return
         print("Local memory chat. Commands: /quit, /resume, /retry <original input>, /cancel <turn-id>.", file=sys.stderr)
@@ -202,23 +251,23 @@ def run(args):
             if command == "/quit":
                 return
             if command == "/resume":
-                _perform(agent.resume, monitor)
+                _perform(agent.resume, monitor, recovery)
             elif command == "/retry":
                 print("Specify the exact original input after /retry followed by a space.", file=sys.stderr)
             elif command in ("/cancel", "/cancel-uncertain"):
                 print("Specify the exact pending turn ID after the command.", file=sys.stderr)
             elif command.startswith("/cancel ") or command.startswith("/cancel-uncertain "):
                 name, turn_id = command.split(" ", 1)
-                _cancel(agent, turn_id, name == "/cancel-uncertain")
+                _cancel(agent, turn_id, name == "/cancel-uncertain", recovery)
             elif text.lstrip().startswith("/retry "):
                 pending = agent.pending
                 if not pending:
                     print("no_pending_turn", file=sys.stderr)
                     continue
-                _perform(lambda: agent.respond(text.lstrip()[len("/retry "):], message_id=pending["message_id"]), monitor)
+                _perform(lambda: agent.respond(text.lstrip()[len("/retry "):], message_id=pending["message_id"]), monitor, recovery)
             elif command_name in (
                 "/quit", "/resume", "/retry", "/cancel", "/cancel-uncertain",
             ):
                 print("Invalid command arguments; no message was sent.", file=sys.stderr)
             elif text.strip():
-                _perform(lambda: agent.respond(text, message_id=str(uuid4())), monitor)
+                _perform(lambda: agent.respond(text, message_id=str(uuid4())), monitor, recovery)
