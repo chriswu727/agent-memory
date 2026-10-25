@@ -9,6 +9,7 @@ from test_semantic import claim, encoded, proposals, run, verifier
 
 from agent_memory.consolidation_planning import (
     MAX_OBJECTIVES,
+    PLANNER_VERSION,
     plan_consolidation,
     validate_consolidation_plan,
 )
@@ -265,7 +266,7 @@ def text_instances(texts):
 def test_long_instances_with_small_substantive_overlap_get_one_exploration_slot(texts):
     data = text_instances(texts)
     planned = plan(data)
-    assert planned["planner_version"] == "independent-instance-comparison-v3"
+    assert planned["planner_version"] == PLANNER_VERSION
     assert planned["candidate_count"] == 1
     assert len(planned["objectives"]) == 1
     assert planned["objectives"][0]["selection_basis"] == "weak_lexical_exploration"
@@ -327,13 +328,14 @@ def test_weak_exploration_does_not_include_completely_unrelated_long_instances()
     assert planned["candidate_count"] == 0 and planned["objectives"] == []
 
 
-@pytest.mark.parametrize("planner_version", ["independent-instance-comparison-v1", "independent-instance-comparison-v2"])
+@pytest.mark.parametrize("planner_version", ["independent-instance-comparison-v1", "independent-instance-comparison-v2",
+                                            "independent-instance-comparison-v3"])
 def test_frozen_legacy_plan_retains_its_identity_and_is_still_validated(planner_version):
     data, response = instances()
     legacy = plan_consolidation(data.sources, data.existing_assertions,
                                planner_version=planner_version)
-    assert ("selection_basis" in legacy["objectives"][0]) == planner_version.endswith("v2")
-    assert "comparison_policy" not in legacy["objectives"][0]
+    assert ("selection_basis" in legacy["objectives"][0]) == (not planner_version.endswith("v1"))
+    assert ("comparison_policy" in legacy["objectives"][0]) == planner_version.endswith("v3")
     response["consolidation_decisions"][0]["objective_id"] = legacy["objectives"][0]["objective_id"]
     result = run(replace(data, consolidation_plan=legacy), response, verify=link_verifier)
     assert result.status == "completed" and result.consolidation["satisfied_count"] == 1
@@ -343,6 +345,7 @@ def test_frozen_legacy_plan_retains_its_identity_and_is_still_validated(planner_
 @pytest.mark.parametrize(("planner_version", "fingerprint"), [
     ("independent-instance-comparison-v1", "2778d8f87d28490aa4f6bbfef0d9e3d59c5d76286d3d203605d9874304fcd9ed"),
     ("independent-instance-comparison-v2", "fa6806f4382f2bd3788befc7a4b40ec7b89573a257491aa5d1e0f4712bde2cbe"),
+    ("independent-instance-comparison-v3", "d95b8975ded7f1934e809db555e081671db9fe314f9ad5aafac112e290760699"),
 ])
 def test_frozen_legacy_planners_keep_exact_candidate_identity_and_selection(planner_version, fingerprint):
     strong = ("A cedar grows near the garden fence.", "A cedar grows beside the garden fence.",

@@ -113,7 +113,7 @@ def _call(operation):
         return None
 
 
-def _perform(operation):
+def _perform(operation, monitor=None):
     result = _call(operation)
     if result is None:
         return False
@@ -121,6 +121,8 @@ def _perform(operation):
         print(f"Turn {result.turn_id} was already completed; its answer was not sent again.", file=sys.stderr)
     elif result.stage != "completed":
         print(f"Turn {result.turn_id} remains at {result.stage}.", file=sys.stderr)
+    if result.stage == "completed" and monitor is not None:
+        monitor.completed(result.turn_id)
     return result.stage == "completed"
 
 
@@ -136,6 +138,7 @@ def _cancel(agent, turn_id, acknowledge_uncertain):
 
 def run(args):
     from .agent_session import open_agent
+    from .desktop_chat_monitor import learning_monitor
     from .local_profile import load_profile
 
     if (args.message is None) != (args.message_id is None):
@@ -167,10 +170,12 @@ def run(args):
             instructions = contents.decode("utf-8")
         except UnicodeDecodeError:
             raise ValueError("The instructions file must contain UTF-8 text.") from None
+    profile = load_profile(args.directory)
     with open_agent(args.directory, conversation_id=args.conversation, branch_id=args.branch,
                     deliver=_deliver, instructions=instructions,
-                    policy=RuntimePolicy(orientation_policy=args.orientation)) as agent:
-        profile = load_profile(args.directory)
+                    policy=RuntimePolicy(orientation_policy=args.orientation)) as agent, learning_monitor(
+                        args.directory, enabled=profile.cognition is not None and args.cancel is None, startup=interactive,
+                    ) as monitor:
         if profile.cognition is None:
             print("Memory learning is not configured; persistent sources and lexical recall are available.", file=sys.stderr)
         if not interactive:
@@ -179,7 +184,7 @@ def run(args):
                     raise SystemExit(1)
                 return
             operation = agent.resume if args.resume else lambda: agent.respond(args.message, message_id=args.message_id)
-            if not _perform(operation):
+            if not _perform(operation, monitor):
                 raise SystemExit(1)
             return
         print("Local memory chat. Commands: /quit, /resume, /retry <original input>, /cancel <turn-id>.", file=sys.stderr)
@@ -197,7 +202,7 @@ def run(args):
             if command == "/quit":
                 return
             if command == "/resume":
-                _perform(agent.resume)
+                _perform(agent.resume, monitor)
             elif command == "/retry":
                 print("Specify the exact original input after /retry followed by a space.", file=sys.stderr)
             elif command in ("/cancel", "/cancel-uncertain"):
@@ -210,10 +215,10 @@ def run(args):
                 if not pending:
                     print("no_pending_turn", file=sys.stderr)
                     continue
-                _perform(lambda: agent.respond(text.lstrip()[len("/retry "):], message_id=pending["message_id"]))
+                _perform(lambda: agent.respond(text.lstrip()[len("/retry "):], message_id=pending["message_id"]), monitor)
             elif command_name in (
                 "/quit", "/resume", "/retry", "/cancel", "/cancel-uncertain",
             ):
                 print("Invalid command arguments; no message was sent.", file=sys.stderr)
             elif text.strip():
-                _perform(lambda: agent.respond(text, message_id=str(uuid4())))
+                _perform(lambda: agent.respond(text, message_id=str(uuid4())), monitor)

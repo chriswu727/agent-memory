@@ -203,11 +203,14 @@ class JobStore:
             conn.execute("SELECT set_config('statement_timeout','5000',true)")
             conn.execute("SELECT set_config('lock_timeout','2000',true)")
             brain = conn.execute(
-                "SELECT id FROM memory_brains WHERE tenant_id=%s AND owner_id=%s AND id=%s FOR UPDATE",
+                "SELECT * FROM memory_brains WHERE tenant_id=%s AND owner_id=%s AND id=%s FOR UPDATE",
                 self._params(principal, brain_id),
             ).fetchone()
             if brain is None:
                 raise DomainError("not_found_or_forbidden", "Brain is unavailable.")
+            from .recovery_authority import reconcile_brain
+
+            reconcile_brain(self.database, conn, principal, brain)
             yield conn
 
     def _row(self, conn, principal, brain_id, job_id):
@@ -270,6 +273,20 @@ class JobStore:
         with self._transaction(principal, brain_id) as conn:
             return cognitive_usage(conn, principal, brain_id)
 
+    def cognitive_budget(self, principal, brain_id):
+        from .cognitive_budget import cognitive_budget
+
+        with self._transaction(principal, brain_id) as conn:
+            return cognitive_budget(conn, principal, brain_id)
+
+    def configure_cognitive_budget(self, principal, brain_id, *, request_id, expected_revision, policy):
+        from .cognitive_budget import configure_cognitive_budget
+
+        with self._transaction(principal, brain_id) as conn:
+            return configure_cognitive_budget(
+                conn, principal, brain_id, request_id=request_id, expected_revision=expected_revision, policy=policy,
+            )
+
     def learning_progress(self, principal, brain_id, *, configured):
         from .learning_progress import learning_progress
 
@@ -303,6 +320,9 @@ class JobStore:
                 "SELECT * FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
                 "AND attempts<%s AND available_at<=clock_timestamp() "
                 "AND NOT payload ? 'recovery_job_id' "
+                "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
+                "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
+                "AND q.object_kind='job' AND q.object_id=memory_jobs.id) "
                 "AND (state IN ('queued','failed') OR (state='running' AND lease_expires_at<=clock_timestamp())) "
                 "AND (%s::text[] IS NULL OR kind=ANY(%s::text[])) "
                 "AND (%s::text IS NULL OR id=%s) "
@@ -359,6 +379,8 @@ class JobStore:
     def reserve_operation(self, principal, brain_id, job_id, *, lease_token, fence, operation_id,
                           request_fingerprint, input_bytes, max_model_calls, max_input_bytes,
                           window_seconds=3600, window_max_model_calls=100, window_max_input_bytes=2_000_000):
+        from .cognitive_budget import reservation_policy, window_usage
+
         _identifier(operation_id)
         _hash(request_fingerprint)
         for value in (input_bytes, max_model_calls, max_input_bytes, window_max_model_calls, window_max_input_bytes):
@@ -381,22 +403,13 @@ class JobStore:
             byte_limit = min(max_input_bytes, row["max_input_bytes"]) if row["max_input_bytes"] is not None else max_input_bytes
             if row["model_calls"] + 1 > call_limit or row["input_bytes"] + input_bytes > byte_limit:
                 raise DomainError("budget_exceeded", "Durable job budget is exhausted.")
-            budget = conn.execute(
-                "INSERT INTO memory_cognitive_budgets(tenant_id,owner_id,brain_id,window_seconds,max_model_calls,max_input_bytes) "
-                "VALUES(%s,%s,%s,%s,%s,%s) ON CONFLICT (tenant_id,brain_id) DO UPDATE SET "
-                "window_seconds=greatest(memory_cognitive_budgets.window_seconds,excluded.window_seconds),"
-                "max_model_calls=least(memory_cognitive_budgets.max_model_calls,excluded.max_model_calls),"
-                "max_input_bytes=least(memory_cognitive_budgets.max_input_bytes,excluded.max_input_bytes) RETURNING *",
-                (*params, window_seconds, window_max_model_calls, window_max_input_bytes),
-            ).fetchone()
-            usage = conn.execute(
-                "SELECT count(*) AS calls,coalesce(sum(input_bytes),0) AS bytes FROM memory_cognitive_operations "
-                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND created_at>clock_timestamp()-make_interval(secs=>%s)",
-                (*params, budget["window_seconds"]),
-            ).fetchone()
-            if (usage["calls"] + 1 > budget["max_model_calls"]
-                    or usage["bytes"] + input_bytes > budget["max_input_bytes"]):
+            budget = reservation_policy(
+                conn, principal, brain_id, window_seconds=window_seconds,
+                max_model_calls=window_max_model_calls, max_input_bytes=window_max_input_bytes,
+            )
+            usage = window_usage(conn, principal, brain_id, budget["window_seconds"])
+            if (usage["model_calls"] + 1 > budget["max_model_calls"]
+                    or usage["input_bytes"] + input_bytes > budget["max_input_bytes"]):
                 raise DomainError("budget_exceeded", "Brain background budget window is exhausted.", retryable=True)
             operation = conn.execute(
                 "INSERT INTO memory_cognitive_operations(tenant_id,owner_id,brain_id,job_id,operation_id,"

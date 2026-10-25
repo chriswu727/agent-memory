@@ -5,7 +5,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 from urllib.parse import quote
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 
@@ -118,16 +118,22 @@ class MemoryClient:
         api_key: str,
         brain_id: str | None = None,
         *,
-        timeout: float = 30.0,
+        timeout: float | httpx.Timeout = 30.0,
         transport: httpx.BaseTransport | None = None,
         trust_env: bool = True,
+        recovery_epoch: str | None = None,
     ):
         if not api_key:
             raise ValueError("api_key must not be empty")
         self.brain_id = brain_id
+        headers = {"Authorization": f"Bearer {api_key}"}
+        if recovery_epoch is not None:
+            if not isinstance(recovery_epoch, str) or str(UUID(recovery_epoch)) != recovery_epoch:
+                raise ValueError("recovery_epoch must be a canonical UUID")
+            headers["X-Memory-Recovery-Epoch"] = recovery_epoch
         self._http = httpx.Client(
             base_url=base_url.rstrip("/") + "/",
-            headers={"Authorization": f"Bearer {api_key}"},
+            headers=headers,
             timeout=timeout,
             transport=transport,
             trust_env=trust_env,
@@ -203,6 +209,9 @@ class MemoryClient:
 
     def capabilities(self) -> JsonObject:
         return self._request("GET", "v1/capabilities")
+
+    def recovery(self) -> JsonObject:
+        return self._request("GET", "v1/recovery")
 
     def download_archive(self, archive_id: str) -> JsonObject:
         return self._request("GET", f"v1/archives/{quote(archive_id, safe='')}")

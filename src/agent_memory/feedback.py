@@ -1,14 +1,33 @@
+import re
 from datetime import datetime
 
 from psycopg.types.json import Jsonb
 
 from . import cognition
 from .delivery_receipts import recorded_delivery_receipt
-from .helpers import digest
+from .helpers import digest, now, uid
+from .prepared_selection import selection_for_turn, text_hash
 from .retrieval import resolve_dependency_closure
 
 ATTRIBUTION_VERSION = "sole-exact-statement-v1"
 ACCESS_VERSION = "contextual-access-v2"
+CONFIRMATION = re.compile(r"\s*(yes|correct|confirmed|对|是的|没错|确认)[。.!！\s]*", re.I)
+CORRECTION = re.compile(r"\s*(不是|不对|错了|incorrect|wrong)[。.!！\s]*", re.I)
+
+
+def feedback_kind(event, *, allow_unknown=False):
+    observed = event["observed"]
+    text = observed["content"].get("text")
+    if (event["origin"] != "user_statement" or event["origin_verification"] == "unverified_import"
+            or observed["actor_role"] != "user" or observed["delivery_state"] != "received"
+            or observed["interpretation_hint"] not in ({"real_world_report", "unknown"} if allow_unknown
+                                                       else {"real_world_report"})
+            or not isinstance(text, str) or event["content_sha256"] != digest(observed["content"])
+            or cognition._world(observed, text) != "real_world" or not event["utterance_segments"]
+            or any(segment["act"] not in {"direct_statement", "confirmation", "correction"}
+                   for segment in event["utterance_segments"])):
+        return None
+    return "user_confirmed" if CONFIRMATION.fullmatch(text) else "user_corrected" if CORRECTION.fullmatch(text) else None
 
 
 def _source_proof(conn, service, principal, brain, target, memory):
@@ -108,8 +127,89 @@ def _single_prepared_selection(conn, params, turn, selected, delivered_at):
         item["id"] for item in selected}
 
 
+def _latest_delivery(conn, params, target, event):
+    output = conn.execute(
+        "SELECT id,revision,sequence,document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND conversation_id=%s AND branch_id=%s AND sequence<%s AND is_current AND NOT retired AND NOT suppressed "
+        "AND NOT deleted AND document #>> '{observed,actor_role}'='assistant' "
+        "AND document #>> '{observed,delivery_state}' IN ('delivered','partially_delivered') "
+        "ORDER BY sequence DESC LIMIT 1",
+        (*params, target.get("conversation_ref"), target.get("branch_ref"), event["sequence"]),
+    ).fetchone()
+    if output is None:
+        return None
+    turns = conn.execute(
+        "SELECT * FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND conversation_id=%s AND branch_id=%s AND output_event_refs=%s LIMIT 2",
+        (*params, target.get("conversation_ref"), target.get("branch_ref"),
+         Jsonb([{"event_id": output["id"], "revision": output["revision"]}])),
+    ).fetchall()
+    if len(turns) != 1:
+        return None
+    turn = turns[0]
+    if turn["stage"] not in {"delivered", "committed", "completed"} and not recorded_delivery_receipt(turn):
+        return None
+    return turn, output
+
+
+def _statement_hashes(text):
+    if not isinstance(text, str):
+        return set()
+    text = text.strip()
+    candidates = {text}
+    for start, end in (('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’"), ("「", "」"), ("『", "』")):
+        if len(text) > 2 and text.startswith(start) and text.endswith(end):
+            candidates.add(text[1:-1])
+    return {text_hash(value) for value in candidates}
+
+
+def _bound_delivered_use(conn, service, principal, brain, target, memory, proposal, event, turn, preceding):
+    selection = selection_for_turn(turn)
+    if selection is None:
+        return None
+    output = preceding["document"]
+    matches = [item for item in selection["memories"]
+               if item["statement_sha256"] in _statement_hashes(output["observed"]["content"].get("text"))]
+    if (len(matches) != 1 or matches[0]["memory_id"] != memory["memory_id"]
+            or matches[0]["memory_revision"] != memory["revision"]
+            or matches[0]["statement_sha256"] != text_hash(memory["statement"])
+            or matches[0]["recall_id"] != proposal["recall_id"]
+            or output["origin"] != "assistant_output" or output["origin_verification"] == "unverified_import"
+            or output["content_sha256"] != digest(output["observed"]["content"])
+            or not _sole_statement(output["observed"]["content"].get("text"), memory["statement"])):
+        return None
+    params = service._params(principal, brain["id"])
+    if conn.execute(
+        "SELECT 1 FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND conversation_id=%s AND branch_id=%s AND sequence>%s AND sequence<%s AND is_current "
+        "AND NOT retired AND NOT deleted AND NOT suppressed AND document #>> '{observed,delivery_state}'='received' "
+        "AND document #>> '{observed,actor_role}' IN ('user','external','operator') LIMIT 1",
+        (*params, target.get("conversation_ref"), target.get("branch_ref"), preceding["sequence"], event["sequence"]),
+    ).fetchone():
+        return None
+    bound_events = {item["event_id"]: item for item in service._events(
+        conn, principal, brain, event_ids=[ref["event_id"] for ref in selection["source_event_refs"]], limit=64,
+    )}
+    for reference in selection["source_event_refs"]:
+        source = bound_events.get(reference["event_id"])
+        if (source is None or source["revision"] != reference["revision"]
+                or source["content_sha256"] != reference["content_sha256"]
+                or not cognition._scope_allows(source["scope"], service._scope(principal, brain, target))):
+            return None
+    sources = _source_proof(conn, service, principal, brain, target, memory)
+    if sources is None:
+        return None
+    sources["events"].extend(bound_events.values())
+    chosen = matches[0]
+    return {"selection": {"id": chosen["trace_id"], "document": {"turn_id": turn["turn_id"]}},
+            "output": output, **sources}
+
+
 def _delivered_use(conn, service, principal, brain, target, memory, proposal, event):
     params = service._params(principal, brain["id"])
+    latest = _latest_delivery(conn, params, target, event)
+    if latest is not None and latest[0].get("prepared_memory_selection") is not None:
+        return _bound_delivered_use(conn, service, principal, brain, target, memory, proposal, event, *latest)
     selected = conn.execute(
         "SELECT id,document FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND document->>'recall_id'=%s AND document->>'kind' IN ('context_selected','quoted') "
@@ -246,3 +346,42 @@ def invalidate_contributions(conn, params, *, event_ids=(), memory_ids=()):
         (*params, list(event_ids), list(memory_ids)),
     ).fetchall()
     recompute_access(conn, params, [(row["memory_id"], row["memory_revision"]) for row in rows])
+
+
+def observe_feedback(conn, service, principal, brain, target, event_id):
+    events = service._events(conn, principal, brain, event_ids=[event_id], limit=1)
+    if len(events) != 1 or (kind := feedback_kind(events[0], allow_unknown=True)) is None:
+        return
+    event = events[0]
+    params = service._params(principal, brain["id"])
+    latest = _latest_delivery(conn, params, target, event)
+    if latest is None or (selection := selection_for_turn(latest[0])) is None:
+        return
+    turn, output = latest
+    matches = [item for item in selection["memories"]
+               if item["statement_sha256"] in _statement_hashes(output["document"]["observed"]["content"].get("text"))]
+    if len(matches) != 1:
+        return
+    chosen = matches[0]
+    proposal = {"memory_id": chosen["memory_id"], "recall_id": chosen["recall_id"], "kind": kind}
+    row = conn.execute(
+        "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+        "AND id=%s AND revision=%s AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed",
+        (*params, chosen["memory_id"], chosen["memory_revision"]),
+    ).fetchone()
+    applied = row is not None and record_feedback(
+        conn, service, principal, brain, target, service._rebind(row["document"], principal, brain), proposal, event,
+    )
+    trace = {
+        "trace_id": uid(), "recall_id": chosen["recall_id"],
+        "retrieval_snapshot_id": "feedback:" + chosen["recall_id"], "scope": service._scope(principal, brain, target),
+        "turn_id": turn["turn_id"], "memory_id": chosen["memory_id"], "memory_revision": chosen["memory_revision"],
+        "kind": kind, "source": "user_message", "feedback_event_id": event_id,
+        "evidence_refs": [{"event_id": event_id, "event_revision": event["revision"],
+                           "source_content_sha256": event["content_sha256"], "relationship": "supports"}],
+        "recorded_at": now(), "allowed_effect": "external_reassessment",
+    }
+    service._save_traces(conn, principal, brain, [trace])
+    if applied:
+        conn.execute("UPDATE memory_traces SET applied_at=now() WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                     (*params, trace["trace_id"]))

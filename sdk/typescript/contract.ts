@@ -30,6 +30,38 @@ export type OrientationRoute = {
 
 export type RuntimeOrientationState = { orientation_route: OrientationRoute | null };
 
+export type PreparedMemorySelection = {
+  version: "prepared-memory-selection-v1";
+  state: "complete" | "unavailable";
+  unavailable_reason: "selection_limit" | "selection_unverifiable" | null;
+  turn_id: Identifier;
+  brain_id: Identifier;
+  conversation_id: Identifier;
+  branch_id: Identifier;
+  packet_id: Identifier;
+  model_context_sha256: string;
+  context_fingerprint: string;
+  context_generation: number;
+  working_revision: number;
+  prepared_at: string;
+  input_event_refs: { event_id: Identifier; revision: number }[];
+  source_event_refs: { event_id: Identifier; revision: number; content_sha256: string }[];
+  memories: {
+    memory_id: Identifier;
+    memory_revision: number;
+    statement_sha256: string;
+    trace_id: Identifier;
+    recall_id: Identifier;
+    evidence_refs: EvidenceRef[];
+  }[];
+} | {
+  version: "prepared-memory-selection-v1";
+  state: "unavailable";
+  unavailable_reason: "custom_context";
+};
+
+export type RuntimePreparedSelectionState = { prepared_memory_selection: PreparedMemorySelection | null };
+
 export type ResponseReviewIssue =
   | "current_input_misread" | "unsupported_memory_claim" | "applicability_override" | "uncertainty_erased"
   | "unconfirmed_action" | "uncertain_current_input_fidelity" | "uncertain_memory_fidelity"

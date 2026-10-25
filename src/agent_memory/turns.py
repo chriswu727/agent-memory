@@ -25,6 +25,7 @@ PUBLIC_FIELDS = (
     "context_generation", "working_revision", "durable_sequence", "context_tokens",
     "recall_plan", "recall_model_calls", "recall_input_bytes", "orientation_job_id", "orientation_route",
     "response_review_policy", "response_review", "response_review_calls",
+    "prepared_memory_selection",
     "failure_code", "created_at", "updated_at",
 )
 
@@ -81,6 +82,9 @@ class TurnStore:
             ).fetchone()
             if brain is None:
                 raise DomainError("not_found_or_forbidden", "Brain is unavailable.")
+            from .recovery_authority import reconcile_brain
+
+            reconcile_brain(self.database, conn, principal, brain)
             yield conn, brain
 
     def _params(self, principal, brain_id, turn_id):
@@ -567,10 +571,22 @@ class TurnStore:
     def advance(self, principal, brain_id, turn_id, *, lease_token, expected_revision, stage,
                 input_event_refs=None, context_event_refs=None, output_event_refs=None, context_fingerprint=None,
                 context_generation=None, working_revision=None, durable_sequence=None, context_tokens=None,
-                recall_plan=None, response_review_policy=None, orientation_route=None):
+                recall_plan=None, response_review_policy=None, orientation_route=None,
+                prepared_packet_id=None, memory_context_sha256=None, selection_omitted_reason=None):
         _integer(expected_revision, 1)
         if stage not in STAGES[1:-2]:
             raise DomainError("validation_failed", "Stage is not a valid advance target.")
+        selection_request = None
+        if selection_omitted_reason is not None:
+            if (stage != "prepared" or selection_omitted_reason != "custom_context"
+                    or prepared_packet_id is not None or memory_context_sha256 is not None):
+                raise DomainError("validation_failed", "Custom context cannot also bind a prepared selection.")
+            selection_request = {"omitted_reason": selection_omitted_reason}
+        if prepared_packet_id is not None or memory_context_sha256 is not None:
+            if stage != "prepared" or prepared_packet_id is None or memory_context_sha256 is None:
+                raise DomainError("validation_failed", "Prepared selection requires its packet and context hash together.")
+            selection_request = {"packet_id": _identifier(prepared_packet_id),
+                                 "model_context_sha256": _hash(memory_context_sha256)}
         changes = {key: value for key, value in {
             "input_event_refs": input_event_refs, "context_event_refs": context_event_refs,
             "output_event_refs": output_event_refs,
@@ -602,7 +618,10 @@ class TurnStore:
         }
         if any(stage not in allowed_at[key] for key in changes if key in allowed_at):
             raise DomainError("validation_failed", "Stage cannot replace previously bound turn metadata.")
-        fingerprint = digest({"revision": expected_revision, "stage": stage, "changes": changes})
+        transition = {"revision": expected_revision, "stage": stage, "changes": changes}
+        if selection_request is not None:
+            transition["prepared_selection"] = selection_request
+        fingerprint = digest(transition)
         with self._transaction(principal, brain_id) as (conn, brain):
             row = self._row(conn, principal, brain_id, turn_id)
             self._lease(row, lease_token)
@@ -680,10 +699,25 @@ class TurnStore:
                 raise DomainError("validation_failed", "Prepared context requires a fingerprint and working revision.")
             if candidate["durable_sequence"] is not None and candidate["durable_sequence"] > brain["durable_sequence"]:
                 raise DomainError("validation_failed", "Turn cannot cover events that are not durable.")
+            if selection_request is not None:
+                from .prepared_selection import VERSION, bind_prepared_selection
+                from .service import MemoryService
+
+                if selection_omitted_reason is not None:
+                    changes["prepared_memory_selection"] = {
+                        "version": VERSION, "state": "unavailable", "unavailable_reason": selection_omitted_reason,
+                    }
+                else:
+                    service = self.service if self.service is not None else MemoryService(self.database)
+                    changes["prepared_memory_selection"] = bind_prepared_selection(
+                        conn, service, principal, brain, candidate, prepared_packet_id, memory_context_sha256,
+                    )
             assignments, values = [], []
             for key, value in changes.items():
                 assignments.append(f"{key}=%s")
-                values.append(Jsonb(value) if key.endswith("_refs") or key in {"recall_plan", "orientation_route"} else value)
+                values.append(Jsonb(value) if key.endswith("_refs") or key in {
+                    "recall_plan", "orientation_route", "prepared_memory_selection",
+                } else value)
             assignments.extend([
                 "stage=%s", "revision=revision+1", "updated_at=clock_timestamp()", "last_transition_hash=%s",
                 "recovery_required=NULL", "generation_count=generation_count+%s",

@@ -45,6 +45,9 @@ class MemoryService:
         ).fetchone()
         if row is None:
             raise DomainError("not_found_or_forbidden", "Brain is unavailable.")
+        from .recovery_authority import reconcile_brain
+
+        reconcile_brain(self.database, conn, principal, row)
         return row
 
     def _scope(self, principal, brain, target=None):
@@ -184,6 +187,12 @@ class MemoryService:
             envelope.update(outcome="failed", error={"code": "budget_exceeded", "message": "Database deadline exceeded.", "retryable": True})
         except psycopg.OperationalError:
             envelope.update(outcome="failed", error={"code": "dependency_unavailable", "message": "Database is unavailable.", "retryable": True})
+        authority = getattr(self.database, "recovery_authority", None)
+        if action == "forget" and authority is not None and authority.recorded_intent(principal, request):
+            envelope.update(outcome="failed", error={
+                "code": "deletion_in_progress", "retryable": True,
+                "message": "A durable deletion intent was recorded. Reconcile it before treating deletion as complete.",
+            })
         return envelope
 
     def _advance(self, conn, principal, brain, *, scope=False):
@@ -345,6 +354,10 @@ class MemoryService:
                 raise DomainError("invalid_evidence", "Correction audit records are created by the service.")
             event_id, duplicate, job_id = self._append_event(conn, principal, brain, request["target"], event)
             (duplicates if duplicate else accepted).append(event_id)
+            if not duplicate and event["actor_role"] == "user" and event["delivery_state"] == "received":
+                from .feedback import observe_feedback
+
+                observe_feedback(conn, self, principal, brain, request["target"], event_id)
             if job_id:
                 jobs.append(job_id)
         return {"accepted_event_ids": accepted, "duplicate_event_ids": duplicates,
@@ -1048,82 +1061,18 @@ class MemoryService:
                                 "dependency_generation": brain["dependency_generation"], "stale_projection_reads_blocked": True}}
 
     def _forget(self, conn, principal, brain, request):
+        from .erasure import apply_erasure, resolve_targets
+
         self._archive_guard(conn, principal)
+        authority = getattr(self.database, "recovery_authority", None)
+        if authority is not None:
+            return authority.forget(self, conn, principal, brain, request)
         payload = request["payload"]
         if brain["scope_generation"] != payload["expected_scope_generation"]:
             raise DomainError("version_conflict", "Scope generation changed.", current_revision=brain["scope_generation"])
-        params = self._params(principal, brain["id"])
-        kind, ids = payload["selector"]["kind"], payload["selector"]["ids"]
-        event_ids, memory_ids = set(), set()
-        if kind == "memories":
-            rows = conn.execute(
-                "SELECT id,event_ids FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND id=ANY(%s::text[])", (*params, ids),
-            ).fetchall()
-            for row in rows:
-                memory_ids.add(row["id"])
-                event_ids.update(row["event_ids"])
-        else:
-            condition = {"events": "id=ANY(%s::text[])", "conversation": "conversation_id=ANY(%s::text[])",
-                         "all_authorized_scope": "true"}[kind]
-            rows = conn.execute(
-                "SELECT DISTINCT id FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND " + condition,
-                (*params, ids) if kind != "all_authorized_scope" else params,
-            ).fetchall()
-            event_ids.update(row["id"] for row in rows)
-        event_ids = self._dependent_events(conn, principal, brain, event_ids)
-        memory_ids.update(self._invalidate(conn, principal, brain, event_ids, memory_ids))
-        self._advance(conn, principal, brain, scope=True)
-        for object_kind, object_ids in (("event", event_ids), ("memory", memory_ids)):
-            for object_id in object_ids:
-                conn.execute(
-                    "INSERT INTO memory_tombstones(tenant_id,owner_id,brain_id,object_kind,object_id,mode) "
-                    "VALUES(%s,%s,%s,%s,%s,%s) ON CONFLICT(tenant_id,owner_id,brain_id,object_kind,object_id) "
-                    "DO UPDATE SET mode=CASE WHEN memory_tombstones.mode='erase_content' THEN 'erase_content' ELSE EXCLUDED.mode END",
-                    (*params, object_kind, object_id, payload["mode"]),
-                )
-        erase = payload["mode"] == "erase_content"
-        if erase:
-            from .belief_store import invalidate_beliefs
-            from .pattern_store import invalidate_patterns
-
-            invalidate_patterns(conn, self, principal, brain, event_ids=event_ids,
-                                memory_ids=memory_ids, deleted=True)
-            invalidate_beliefs(conn, self, principal, brain, event_ids=event_ids,
-                              memory_ids=memory_ids, deleted=True)
-        conn.execute(
-            "UPDATE memory_jobs SET result=NULL WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='query_embedding'",
-            params,
-        )
-        conn.execute(
-            "UPDATE memory_events SET suppressed=true,deleted=deleted OR %s,document=CASE WHEN %s THEN NULL ELSE document END "
-            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=ANY(%s::text[])",
-            (erase, erase, *params, list(event_ids)),
-        )
-        conn.execute(
-            "UPDATE memory_assertions SET suppressed=true,deleted=deleted OR %s,"
-            "document=CASE WHEN %s THEN NULL ELSE document END,search_text='',embedding=NULL "
-            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=ANY(%s::text[])",
-            (erase, erase, *params, list(memory_ids)),
-        )
-        conn.execute("DELETE FROM memory_working_states WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s", params)
-        conn.execute("DELETE FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s", params)
-        if erase:
-            for archive in conn.execute(
-                "SELECT id,brain_id,document FROM memory_archives WHERE tenant_id=%s AND owner_id=%s",
-                (principal.tenant_id, principal.principal_id),
-            ).fetchall():
-                data = self._sanitize_archive(conn, principal, archive["document"])
-                if data != archive["document"]:
-                    conn.execute(
-                        "UPDATE memory_archives SET document=%s,manifest_hash=%s "
-                        "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                        (Jsonb(data), digest(data), principal.tenant_id, principal.principal_id, archive["brain_id"], archive["id"]),
-                    )
-        return {"deletion_id": uid(), "mode": payload["mode"], "scope_generation": brain["scope_generation"],
-                "recall_blocked_at": now(), "purge_state": "completed" if erase else "not_requested",
-                "backup_expiry_deadline": None, "tombstone_recorded": True,
-                "affected_object_count": len(event_ids) + len(memory_ids)}
+        event_ids, memory_ids = resolve_targets(self, conn, principal, brain, payload["selector"])
+        return apply_erasure(self, conn, principal, brain, event_ids=event_ids,
+                             memory_ids=memory_ids, mode=payload["mode"])
 
     def _archive_guard(self, conn, principal):
         key = digest([principal.tenant_id, principal.principal_id, "archive-erasure"])
@@ -1190,7 +1139,10 @@ class MemoryService:
         return data
 
     def _archive(self, conn, principal, archive_id):
+        from .recovery_authority import archive_barrier
+
         self._archive_guard(conn, principal)
+        archive_barrier(self.database, conn, principal)
         row = conn.execute(
             "SELECT a.* FROM memory_archives a JOIN memory_brains b ON "
             "a.tenant_id=b.tenant_id AND a.owner_id=b.owner_id AND a.brain_id=b.id "
@@ -1212,8 +1164,10 @@ class MemoryService:
 
     def _export(self, conn, principal, brain, request):
         from .archive_views import export_views
+        from .recovery_authority import archive_barrier
 
         self._archive_guard(conn, principal)
+        archive_barrier(self.database, conn, principal)
         payload = request["payload"]
         params = self._params(principal, brain["id"])
         memories = [self._rebind(row["document"], principal, brain) for row in conn.execute(
@@ -1308,6 +1262,9 @@ class MemoryService:
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
             self._archive_guard(conn, principal)
+            from .recovery_authority import archive_barrier
+
+            archive_barrier(self.database, conn, principal)
             document = self._sanitize_archive(conn, principal, document)
             archive_id, manifest = uid(), digest(document)
             conn.execute(

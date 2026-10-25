@@ -445,6 +445,7 @@ class ConversationTrial:
                     self.report["brains"][fixture["brain"]] = brain_id
                 memory.brain_id = brain_id
                 stage["brain_id"] = brain_id
+                self.configure_runtime(memory)
                 trial = Trial(service, self.principal, brain_id)
                 stage["before"] = {"documents": trial.documents(),
                                    "sources": source_snapshot(service, self.principal, brain_id, limit=self.source_limit)}
@@ -503,6 +504,9 @@ class ConversationTrial:
         stage["timings"]["total_seconds"] = round(time.monotonic() - started, 6)
         stage["state"] = "finished"
         self.save()
+
+    def configure_runtime(self, memory):
+        pass
 
 
 def main():

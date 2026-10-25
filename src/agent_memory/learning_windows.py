@@ -134,6 +134,9 @@ def recover_windows(conn, service, principal, brain):
     rows = conn.execute(
         "SELECT id,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND kind='consolidate' AND payload ? 'from_sequence' AND NOT payload ? 'recovery_job_id' "
+        "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
+        "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
+        "AND q.object_kind='job' AND q.object_id=memory_jobs.id) "
         "AND (state='superseded' OR (state='cancelled' AND last_error IN ('source_unavailable','context_stale'))) "
         "ORDER BY created_at,id LIMIT 8 FOR UPDATE",
         params,

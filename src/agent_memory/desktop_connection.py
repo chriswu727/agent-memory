@@ -4,7 +4,12 @@ import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 
+import httpx
+
 from .client import MemoryClient
+
+# Frozen jobs may retain a 300-second deadline after the current policy is lowered.
+_RPC_TIMEOUT = httpx.Timeout(30, connect=5, read=315, pool=5)
 
 
 def mcp_config(directory: Path | None = None) -> dict:
@@ -24,15 +29,20 @@ def mcp_config(directory: Path | None = None) -> dict:
     }
 
 
-def open_client(directory: Path | None = None, *, start_service: bool = True) -> MemoryClient:
+def open_client(directory: Path | None = None, *, start_service: bool = True,
+                timeout: float | httpx.Timeout = _RPC_TIMEOUT) -> MemoryClient:
     from .local_profile import load_profile
+    from .recovery_profile import check_start_allowed, load_binding
 
     if start_service:
         from . import desktop
 
         desktop.start(directory)
     profile = load_profile(directory)
-    return MemoryClient(profile.base_url, profile.api_key, profile.brain_id, trust_env=False)
+    check_start_allowed(profile)
+    binding = load_binding(profile)
+    kwargs = {"recovery_epoch": binding["recovery_epoch"]} if binding and binding["recovery_epoch"] else {}
+    return MemoryClient(profile.base_url, profile.api_key, profile.brain_id, timeout=timeout, trust_env=False, **kwargs)
 
 
 def run_mcp(directory: Path | None = None) -> None:

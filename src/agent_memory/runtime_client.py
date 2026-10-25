@@ -65,6 +65,21 @@ class RuntimeClient:
         brain_id = self.memory._scope()["brain_ref"]
         return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/cognitive-usage")
 
+    def cognitive_budget(self) -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/cognitive-budget")
+
+    def configure_cognitive_budget(
+        self, *, request_id: str, expected_revision: int, window_seconds: int,
+        max_model_calls: int, max_input_bytes: int,
+    ) -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request("PUT", f"v1/brains/{quote(brain_id, safe='')}/runtime/cognitive-budget", json={
+            "request_id": request_id, "expected_revision": expected_revision,
+            "policy": {"window_seconds": window_seconds, "max_model_calls": max_model_calls,
+                       "max_input_bytes": max_input_bytes},
+        })
+
     def learning_progress(self) -> JsonObject:
         brain_id = self.memory._scope()["brain_ref"]
         return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/learning-progress")
@@ -118,6 +133,9 @@ class RuntimeClient:
         recall_plan: Mapping[str, Any] | None = None,
         response_review_policy: str | None = None,
         orientation_route: Mapping[str, Any] | None = None,
+        prepared_packet_id: str | None = None,
+        memory_context_sha256: str | None = None,
+        selection_omitted_reason: str | None = None,
     ) -> JsonObject:
         return self._post(
             turn_id, "advance", lease_token=lease_token, expected_revision=expected_revision,
@@ -130,6 +148,8 @@ class RuntimeClient:
             context_tokens=context_tokens, recall_plan=dict(recall_plan) if recall_plan is not None else None,
             response_review_policy=response_review_policy,
             orientation_route=dict(orientation_route) if orientation_route is not None else None,
+            prepared_packet_id=prepared_packet_id, memory_context_sha256=memory_context_sha256,
+            selection_omitted_reason=selection_omitted_reason,
         )
 
     def reserve_response_review(

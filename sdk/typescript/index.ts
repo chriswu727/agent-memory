@@ -72,6 +72,17 @@ export type RetryLearningOptions = {
   expectedFence: number;
   brainId?: string;
 };
+export type CognitiveBudgetPolicy = {
+  window_seconds: number;
+  max_model_calls: number;
+  max_input_bytes: number;
+};
+export type CognitiveBudgetOptions = {
+  requestId: string;
+  expectedRevision: number;
+  policy: CognitiveBudgetPolicy;
+  brainId?: string;
+};
 export type PrepareOptions = BranchOptions & Partial<Omit<PreparePayload,
   "turn_id" | "recall_plan" | "evidence_mode" | "expected_dependency_generation"
 >> & PrepareRecallSelection;
@@ -81,6 +92,7 @@ export type ClientOptions = {
   brainId?: string;
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  recoveryEpoch?: string;
 };
 
 export class MemoryActionError extends Error {
@@ -327,9 +339,15 @@ export class MemoryClient {
   #apiKey: string;
   #fetch: typeof globalThis.fetch;
   #timeoutMs: number;
+  #recoveryEpoch?: string;
 
   constructor(options: ClientOptions) {
     if (!options.apiKey) throw new Error("apiKey must not be empty");
+    if (options.recoveryEpoch !== undefined && (typeof options.recoveryEpoch !== "string"
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(options.recoveryEpoch))) {
+      throw new Error("recoveryEpoch must be a canonical UUID");
+    }
+    this.#recoveryEpoch = options.recoveryEpoch;
     this.brainId = options.brainId;
     this.#baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.#apiKey = options.apiKey;
@@ -340,7 +358,8 @@ export class MemoryClient {
   async #request(method: string, path: string, body?: unknown): Promise<JsonObject> {
     const response = await this.#fetch(`${this.#baseUrl}/${path}`, {
       method,
-      headers: { Authorization: `Bearer ${this.#apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${this.#apiKey}`, "Content-Type": "application/json",
+        ...(this.#recoveryEpoch === undefined ? {} : { "X-Memory-Recovery-Epoch": this.#recoveryEpoch }) },
       body: body === undefined ? undefined : JSON.stringify(body),
       redirect: "error",
       signal: AbortSignal.timeout(this.#timeoutMs),
@@ -361,6 +380,10 @@ export class MemoryClient {
       ...(options.conversationId === undefined ? {} : { conversation_ref: options.conversationId }),
       ...(options.branchId === undefined ? {} : { branch_ref: options.branchId }),
     };
+  }
+
+  recovery(): Promise<JsonObject> {
+    return this.#request("GET", "v1/recovery");
   }
 
   async send<A extends Action>(request: ActionRequest<A>, raiseOnError = true): Promise<ActionResponse<A>> {
@@ -401,6 +424,16 @@ export class MemoryClient {
   }
   cognitiveUsage(brainId?: string): Promise<JsonObject> {
     return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/runtime/cognitive-usage`);
+  }
+
+  cognitiveBudget(brainId?: string): Promise<JsonObject> {
+    return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/runtime/cognitive-budget`);
+  }
+  configureCognitiveBudget(options: CognitiveBudgetOptions): Promise<JsonObject> {
+    const brain = encodeURIComponent(this.#scope(options).brain_ref);
+    return this.#request("PUT", `v1/brains/${brain}/runtime/cognitive-budget`, {
+      request_id: options.requestId, expected_revision: options.expectedRevision, policy: options.policy,
+    });
   }
 
   learningProgress(brainId?: string): Promise<JsonObject> {

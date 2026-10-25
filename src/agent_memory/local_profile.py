@@ -105,7 +105,7 @@ def _private(path: Path, *, directory: bool = False) -> None:
 def _open_private(path: Path, flags: int) -> int:
     if path.is_symlink():
         raise LocalProfileError("Profile files must not be symbolic links.")
-    descriptor = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0), 0o600)
+    descriptor = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0), 0o600)
     try:
         metadata = os.fstat(descriptor)
         if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
@@ -207,6 +207,9 @@ class DesktopProfile:
         return f"postgresql://postgres:{quote(self.admin_password, safe='')}@127.0.0.1:{self.database_port}/agent_memory?connect_timeout=5"
 
     def settings(self) -> Settings:
+        from .cognition_config import load_cognition_policy
+        from .recovery_profile import profile_settings
+
         cognition = self.cognition or {}
         return Settings(
             database_url=self.database_url,
@@ -217,6 +220,8 @@ class DesktopProfile:
             cognition_api_key=cognition.get("api_key"),
             cognition_model=cognition.get("model"),
             cognition_thinking=cognition.get("thinking"),
+            **load_cognition_policy(self.directory).settings(),
+            **profile_settings(self),
         )
 
 

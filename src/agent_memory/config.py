@@ -22,13 +22,23 @@ class Settings:
     cognition_api_key: str | None = field(default=None, repr=False)
     cognition_model: str | None = None
     cognition_thinking: Literal["enabled", "disabled"] | None = None
+    cognition_max_wall_time_ms: int = 30_000
+    cognition_max_output_tokens: int = 8192
+    cognition_max_response_bytes: int = 32768
     embedding_base_url: str | None = None
     embedding_api_key: str | None = field(default=None, repr=False)
     embedding_model: str | None = None
     embedding_model_version: str | None = None
     embedding_dimensions: int | None = None
+    recovery_registry_path: Path | None = None
+    recovery_registry_id: str | None = None
+    recovery_installation_id: str | None = None
 
     def __post_init__(self):
+        self.semantic_policy()
+        recovery = (self.recovery_registry_path, self.recovery_registry_id, self.recovery_installation_id)
+        if any(value is not None for value in recovery) and any(value is None for value in recovery):
+            raise ValueError("Recovery authority requires its path, registry identity and installation identity.")
         for prefix, names in (
             ("MEMORY_COGNITION", ("base_url", "api_key", "model")),
             ("MEMORY_EMBEDDING", ("base_url", "api_key", "model", "model_version", "dimensions")),
@@ -51,6 +61,13 @@ class Settings:
         ):
             raise ValueError("MEMORY_EMBEDDING_DIMENSIONS must be an integer from 1 to 8192")
 
+    def semantic_policy(self):
+        from .semantic import SemanticPolicy
+
+        return SemanticPolicy(max_wall_time_ms=self.cognition_max_wall_time_ms,
+                              max_output_tokens=self.cognition_max_output_tokens,
+                              max_response_bytes=self.cognition_max_response_bytes)
+
     @classmethod
     def from_env(cls) -> "Settings":
         load_dotenv()
@@ -72,6 +89,9 @@ class Settings:
             cognition_api_key=os.environ.get("MEMORY_COGNITION_API_KEY"),
             cognition_model=os.environ.get("MEMORY_COGNITION_MODEL"),
             cognition_thinking=os.environ.get("MEMORY_COGNITION_THINKING"),
+            cognition_max_wall_time_ms=_environment_integer("MEMORY_COGNITION_MAX_WALL_TIME_MS", 30_000),
+            cognition_max_output_tokens=_environment_integer("MEMORY_COGNITION_MAX_OUTPUT_TOKENS", 8192),
+            cognition_max_response_bytes=_environment_integer("MEMORY_COGNITION_MAX_RESPONSE_BYTES", 32768),
             embedding_base_url=os.environ.get("MEMORY_EMBEDDING_BASE_URL"),
             embedding_api_key=os.environ.get("MEMORY_EMBEDDING_API_KEY"),
             embedding_model=os.environ.get("MEMORY_EMBEDDING_MODEL"),
@@ -86,6 +106,15 @@ class Settings:
         return self.api_keys
 
 
+def _environment_integer(name, default):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    if not value.isascii() or not value.isdecimal() or len(value) > 10:
+        raise ValueError(f"{name} must be a bounded positive integer")
+    return int(value)
+
+
 @contextmanager
 def configured_service(settings: Settings):
     from .embeddings import ChatCompletionsEmbeddingProvider
@@ -96,6 +125,9 @@ def configured_service(settings: Settings):
 
     database = Database(settings.database_url)
     database.check_compatibility(require_current=True)
+    from .recovery_authority import configure_authority
+
+    configure_authority(database, settings)
     with ExitStack() as resources:
         processor, embedding = None, None
         if settings.cognition_base_url is not None:
@@ -103,7 +135,7 @@ def configured_service(settings: Settings):
                 settings.cognition_base_url, settings.cognition_api_key, settings.cognition_model,
                 thinking=settings.cognition_thinking,
             ))
-            processor = SemanticProcessor(provider, verify=provider)
+            processor = SemanticProcessor(provider, verify=provider, policy=settings.semantic_policy())
         if settings.embedding_base_url is not None:
             embedding = resources.enter_context(ChatCompletionsEmbeddingProvider(
                 settings.embedding_base_url, settings.embedding_api_key, settings.embedding_model,

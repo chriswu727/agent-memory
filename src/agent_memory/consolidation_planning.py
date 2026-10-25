@@ -7,10 +7,12 @@ from itertools import combinations
 from . import cognition
 from .helpers import digest
 
-PLANNER_VERSION = "independent-instance-comparison-v3"
+PLANNER_VERSION = "independent-instance-comparison-v4"
 _LEGACY_PLANNER_VERSION = "independent-instance-comparison-v1"
 _WEAK_PLANNER_VERSION = "independent-instance-comparison-v2"
+_SHARED_MEANING_PLANNER_VERSION = "independent-instance-comparison-v3"
 COMPARISON_POLICY = "minimal-shared-meaning-v1"
+SELECTION_POLICY = "source-pair-diversity-v1"
 MAX_OBJECTIVES = 3
 NO_CHANGE_REASONS = (
     "insufficient_shared_meaning", "uncertain_attribution", "incompatible_qualifiers",
@@ -46,9 +48,31 @@ def _terms(memory):
     return {term for term in words | pairs if not term.isdecimal()}
 
 
+def _diverse_selection(strong, weak, source_pairs):
+    selected, seen_pairs, seen_sources = [], set(), set()
+
+    def select(candidates, limit):
+        remaining = list(candidates)
+        for _ in range(min(limit, len(remaining))):
+            def rank(index):
+                pair = source_pairs[remaining[index]["objective_id"]]
+                return pair in seen_pairs, bool(set().union(*pair) & seen_sources), index
+
+            item = remaining.pop(min(range(len(remaining)), key=rank))
+            pair = source_pairs[item["objective_id"]]
+            selected.append(item)
+            seen_pairs.add(pair)
+            seen_sources.update(*pair)
+
+    select(strong, MAX_OBJECTIVES - bool(weak))
+    select(weak, 1)
+    return selected
+
+
 def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, *,
                        attempted_ids=(), include_all=False, planner_version=PLANNER_VERSION):
-    if planner_version not in {PLANNER_VERSION, _LEGACY_PLANNER_VERSION, _WEAK_PLANNER_VERSION}:
+    if planner_version not in {PLANNER_VERSION, _LEGACY_PLANNER_VERSION, _WEAK_PLANNER_VERSION,
+                              _SHARED_MEANING_PLANNER_VERSION}:
         raise ValueError("Unknown consolidation planner version")
     events = {(source["event_id"], source["revision"]): source for source in sources}
     eligible = []
@@ -70,7 +94,7 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
     related = [{(ref["memory_id"], ref["revision"]) for ref in
                 [relation["source_memory_version"], *relation["target_memory_versions"]]}
                for relation in belief_relations if relation["kind"] != "abstracts"]
-    candidates = []
+    candidates, source_pairs = [], {}
     for left, right in combinations(eligible, 2):
         a, actor_a, roots_a, terms_a = left
         b, actor_b, roots_b, terms_b = right
@@ -90,7 +114,9 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
             excluded["no_lexical_lead"] += 1
             continue
         versions = [_version(a), _version(b)]
-        identity = {"planner_version": planner_version, "instances": [
+        # A ranking-only upgrade must not authorize paying again for the same comparison.
+        identity_version = _SHARED_MEANING_PLANNER_VERSION if planner_version == PLANNER_VERSION else planner_version
+        identity = {"planner_version": identity_version, "instances": [
             {key: item.get(key) for key in ("memory_id", "revision", "statement", "world", "conditions",
                                            "claim_kind", "valid_time", "valid_during", "evidence_refs")}
             for item in (a, b)], "source_actor": actor_a}
@@ -98,10 +124,11 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
                                   "operation": "compare_instances", "instance_memory_versions": versions,
                                   "world": a["world"], "conditions": copy.deepcopy(a["conditions"]),
                                   "evidence_policy": "sampled_instances_only_preserve_attribution_and_differences"}))
+        source_pairs[candidates[-1][1]["objective_id"]] = frozenset((frozenset(roots_a), frozenset(roots_b)))
         if planner_version != _LEGACY_PLANNER_VERSION:
             candidates[-1][1]["selection_basis"] = ("strong_lexical_lead" if score >= 0.2
                                                     else "weak_lexical_exploration")
-        if planner_version == PLANNER_VERSION:
+        if planner_version in {PLANNER_VERSION, _SHARED_MEANING_PLANNER_VERSION}:
             candidates[-1][1]["comparison_policy"] = COMPARISON_POLICY
     candidates.sort(key=lambda value: (-value[0], value[1]["objective_id"]))
     attempted_ids = set(attempted_ids)
@@ -111,12 +138,16 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
     else:
         strong = [item for item in available if item["selection_basis"] == "strong_lexical_lead"]
         weak = [item for item in available if item["selection_basis"] == "weak_lexical_exploration"]
-        selected = strong[:MAX_OBJECTIVES - bool(weak)] + weak[:1]
+        selected = (_diverse_selection(strong, weak, source_pairs) if planner_version == PLANNER_VERSION
+                    else strong[:MAX_OBJECTIVES - bool(weak)] + weak[:1])
     restricted = bool((sampling or {}).get("publication_restricted"))
-    return {"planner_version": planner_version, "candidate_count": len(candidates),
-            "search_exhaustive": False, "limit": MAX_OBJECTIVES,
-            "excluded_counts": dict(sorted(excluded.items())), "suppressed_count": len(candidates) - len(available),
-            "objectives": [] if restricted else available if include_all else selected}
+    result = {"planner_version": planner_version, "candidate_count": len(candidates),
+              "search_exhaustive": False, "limit": MAX_OBJECTIVES,
+              "excluded_counts": dict(sorted(excluded.items())), "suppressed_count": len(candidates) - len(available),
+              "objectives": [] if restricted else available if include_all else selected}
+    if planner_version == PLANNER_VERSION:
+        result["selection_policy"] = SELECTION_POLICY
+    return result
 
 
 def consolidation_coverage(plan, decisions=(), links=(), *, attempted=False, verified_objective_ids=()):

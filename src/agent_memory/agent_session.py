@@ -385,6 +385,9 @@ def open_agent(
     })
     try:
         profile = load_profile(directory)
+        from .recovery_profile import check_start_allowed
+
+        check_start_allowed(profile)
         identity = _identity(profile, conversation_id, branch_id)
         root = profile.directory / "sessions"
         root.mkdir(mode=0o700, exist_ok=True)

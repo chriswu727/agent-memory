@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+from dataclasses import asdict
 from importlib.resources import files
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -91,7 +92,7 @@ def _docker_endpoint(docker: str, environment: dict) -> str:
     return endpoint
 
 
-def _compose(profile, *arguments: str) -> None:
+def _compose_invocation(profile, *arguments: str):
     docker = shutil.which("docker")
     if docker is None and sys.platform == "darwin":
         docker = next((str(path) for path in (
@@ -113,6 +114,11 @@ def _compose(profile, *arguments: str) -> None:
     command = [docker, "compose", "--project-name", profile.project_name,
                "--project-directory", str(profile.directory), "--env-file", str(environment_file),
                "--file", str(compose), *arguments]
+    return command, environment
+
+
+def _compose(profile, *arguments: str) -> None:
+    command, environment = _compose_invocation(profile, *arguments)
     try:
         result = subprocess.run(command, cwd=profile.directory, env=environment,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -123,9 +129,13 @@ def _compose(profile, *arguments: str) -> None:
         raise DesktopError("database_start_failed", "Docker could not manage the database. Check Docker, available ports and disk space, then retry.")
 
 
-def _fingerprint(profile) -> str:
+def _fingerprint(profile, *, settings=None) -> str:
+    from .recovery_profile import load_binding
+
+    settings = settings or profile.settings()
     values = {"database_port": profile.database_port, "api_port": profile.api_port,
-              "cognition": profile.cognition, "version": __version__, "build_id": BUILD_ID}
+              "cognition": profile.cognition, "cognition_policy": asdict(settings.semantic_policy()),
+              "recovery_binding": load_binding(profile), "version": __version__, "build_id": BUILD_ID}
     return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
 
 
@@ -193,6 +203,13 @@ def _supervisor_active(profile) -> bool:
 
 def status(directory: Path | None = None) -> dict:
     profile = load_profile(directory)
+    from .recovery_profile import MAINTENANCE_FILE, load_binding, read_document
+
+    marker, binding = read_document(profile.directory / MAINTENANCE_FILE), load_binding(profile)
+    if marker is not None or binding is not None and binding["state"] == "quarantined":
+        return {**_base_status(profile), "ready": False, "state": "recovery_blocked",
+                "database": "not_checked", "worker": "not_checked",
+                "recovery_epoch": binding["recovery_epoch"] if binding else None}
     result = _probe(profile)
     if result is not None:
         result["configuration_current"] = result.get("configuration") == _fingerprint(profile)
@@ -233,6 +250,9 @@ def _prepare_database(profile) -> None:
         MemoryService(Database(profile.database_url)).ensure_brain(
             Principal(profile.tenant_id, profile.principal_id), profile.brain_id, profile.name,
         )
+        from .recovery_profile import ensure_authority
+
+        ensure_authority(profile)
     except Exception:
         raise DesktopError("database_initialization_failed", "Database initialization failed. Existing credentials and data were preserved; retry after checking the database.") from None
 
@@ -252,6 +272,9 @@ def start(directory: Path | None = None) -> dict:
     profile = ensure_profile(directory)
     with profile_lock(profile.directory / "lifecycle", timeout=360):
         profile = load_profile(profile.directory)
+        from .recovery_profile import check_start_allowed
+
+        check_start_allowed(profile, allow_initializing=True)
         existing = status(profile.directory)
         if existing["state"] == "restart_required":
             raise DesktopError("restart_required", "Configuration changed; run desktop restart to apply it.")
@@ -345,7 +368,9 @@ class LocalSupervisor:
         self.worker_state = "starting"
         self.last_progress = time.monotonic()
         self.server = None
-        self.configuration = _fingerprint(profile)
+        with profile_lock(profile.directory):
+            self.settings = profile.settings()
+            self.configuration = _fingerprint(profile, settings=self.settings)
 
     def log(self, event):
         self.logger.info(json.dumps({"time": round(time.time(), 3), "event": event,
@@ -353,7 +378,7 @@ class LocalSupervisor:
 
     def work(self):
         try:
-            with configured_service(self.profile.settings()) as service:
+            with configured_service(self.settings) as service:
                 principal = Principal(self.profile.tenant_id, self.profile.principal_id)
                 while not self.stopped.is_set():
                     try:
@@ -390,6 +415,10 @@ class LocalSupervisor:
                 if schema["state"] != "current":
                     database = "migration_required"
                 else:
+                    from .recovery_profile import authority_for, load_binding
+
+                    if load_binding(self.profile) is not None:
+                        authority_for(self.profile).check(connection, Principal(self.profile.tenant_id, self.profile.principal_id))
                     row = connection.execute(
                         "SELECT id FROM memory_brains WHERE id=%s AND tenant_id=%s AND owner_id=%s",
                         (self.profile.brain_id, self.profile.tenant_id, self.profile.principal_id),
@@ -402,7 +431,7 @@ class LocalSupervisor:
         worker = self.worker_state
         if self.worker is None or not self.worker.is_alive():
             worker = "stopped"
-        elif time.monotonic() - self.last_progress > 300:
+        elif time.monotonic() - self.last_progress > max(300, self.settings.cognition_max_wall_time_ms / 1000 + 30):
             worker = "stalled"
         ready = (database == "ready" and worker in {"ready", "busy"}
                  and not self.stopped.is_set())
@@ -416,7 +445,7 @@ class LocalSupervisor:
 
         from .api import create_app
 
-        app = create_app(self.profile.settings())
+        app = create_app(self.settings)
 
         def authenticate(authorization):
             expected = "Bearer " + self.profile.api_key
@@ -459,6 +488,9 @@ def run(directory: Path | None = None) -> None:
     if os.name != "nt":
         os.umask(0o077)
     with profile_lock(profile.directory / "supervisor", timeout=0):
+        from .recovery_profile import check_start_allowed
+
+        check_start_allowed(profile)
         _check_database(profile, require_current=True)
         logger, handler = _logger(profile)
         supervisor = LocalSupervisor(profile, logger)

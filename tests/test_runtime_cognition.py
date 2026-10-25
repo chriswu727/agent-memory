@@ -147,7 +147,8 @@ def test_generation_retains_sources_seen_by_orientation_but_not_selected_for_pro
     runtime = BrainRuntime(SimpleNamespace(brain_id="brain"), lambda _: "Local callback output")
     reference = {"event_id": "orientation-observation", "revision": 2}
     row = {**captured(), "context_event_refs": [reference]}
-    prepared = {"blocks": [], "coverage": {"read_fence_satisfied": True, "dependency_generation": 0},
+    prepared = {"packet_id": "prepared-packet", "blocks": [],
+                "coverage": {"read_fence_satisfied": True, "dependency_generation": 0},
                 "working_state": {"revision": 0}}
     runtime._recall = lambda *args: (prepared, None)
     transitions = []

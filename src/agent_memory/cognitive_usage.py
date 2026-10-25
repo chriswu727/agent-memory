@@ -3,17 +3,20 @@ from __future__ import annotations
 
 def cognitive_usage(conn, principal, brain_id):
     rows = conn.execute(
-        "WITH counters AS (SELECT outcome,split_part(operation_id,':',2) AS phase,"
+        "WITH counters AS (SELECT outcome,CASE WHEN split_part(operation_id,':',1)='embedding' "
+        "THEN 'embedding' ELSE split_part(operation_id,':',2) END AS phase,"
         "CASE WHEN jsonb_typeof(usage->'input_tokens')='number' AND usage->>'input_tokens' ~ '^[0-9]+$' "
         "THEN (usage->>'input_tokens')::numeric END AS input_tokens,"
-        "CASE WHEN jsonb_typeof(usage->'output_tokens')='number' AND usage->>'output_tokens' ~ '^[0-9]+$' "
+        "CASE WHEN split_part(operation_id,':',1)='embedding' AND NOT usage ? 'output_tokens' THEN 0 "
+        "WHEN jsonb_typeof(usage->'output_tokens')='number' AND usage->>'output_tokens' ~ '^[0-9]+$' "
         "THEN (usage->>'output_tokens')::numeric END AS output_tokens,"
         "CASE WHEN jsonb_typeof(usage->'total_tokens')='number' AND usage->>'total_tokens' ~ '^[0-9]+$' "
         "THEN (usage->>'total_tokens')::numeric END AS total_tokens "
         "FROM memory_cognitive_operations WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s),"
         "classified AS (SELECT *,COALESCE(input_tokens+output_tokens=total_tokens "
         "AND total_tokens<=9223372036854775807,false) AS usage_known "
-        "FROM counters) SELECT CASE WHEN phase IN ('proposal','verification') THEN phase ELSE 'other' END AS phase,"
+        "FROM counters) SELECT CASE WHEN phase IN ('proposal','verification','embedding') "
+        "THEN phase ELSE 'other' END AS phase,"
         "outcome,count(*) AS reservation_count,count(*) FILTER (WHERE usage_known) AS usage_known_count,"
         "COALESCE(sum(input_tokens) FILTER (WHERE usage_known),0) AS input_tokens,"
         "COALESCE(sum(output_tokens) FILTER (WHERE usage_known),0) AS output_tokens,"
@@ -23,7 +26,7 @@ def cognitive_usage(conn, principal, brain_id):
     ).fetchall()
     result = {
         "basis": "retained_cognitive_operation_reservations",
-        "scope": "semantic_orientation_and_learning",
+        "scope": "cognition_and_embeddings",
         "token_source": "provider_reported",
         "reservation_count": 0, "usage_known_count": 0, "usage_unknown_count": 0,
         "outcome_counts": {"reserved": 0, "completed": 0, "failed": 0, "uncertain": 0},

@@ -122,6 +122,10 @@ def test_long_plan_has_reproducible_hidden_probes_and_equal_nontransferable_caps
     assert len(dataset["history"]) == 104 and len(dataset["probes"]) == 6
     assert len({x["name"] for x in dataset["history"] + dataset["probes"]}) == 110
     assert planned["per_arm_max_calls"] == 648
+    assert planned["server_budget_policy"] == {
+        "window_seconds": 2_592_000, "max_model_calls": 428,
+        "max_input_bytes": 214 * planned["semantic_policy"]["max_input_bytes"],
+    }
     assert planned["arms"] == ["memory", "rolling_summary", "no_memory"]
     assert all(sum(values.values()) <= planned["per_arm_max_calls"]
                for values in planned["baseline_call_allocation"].values())
@@ -266,7 +270,17 @@ def test_history_checkpoint_uses_real_client_envelopes_and_rejects_incomplete_re
     class Memory:
         def export(self, **kwargs):
             return {"action": "export", "outcome": "completed",
-                    "result": {"archive_id": "frozen-archive", "manifest_sha256": "hash"}}
+                    "result": {"archive_id": "frozen-archive", "manifest_sha256": digest(self.document())}}
+
+        def document(self):
+            return {"source_brain_id": self.brain_id, "archive_origin": "local_export", "events": [],
+                    "memories": [], "dependency_memories": [], "belief_relations": [],
+                    "cognitive_views": {"episodes": [], "members": [], "associations": []},
+                    "event_dependencies": [], "tombstones": [], "retired_event_ids": [],
+                    "excluded_deleted_event_ids": []}
+
+        def download_archive(self, identifier):
+            return {"archive_id": identifier, "manifest_sha256": digest(self.document()), "document": self.document()}
 
         def create_brain(self, name):
             return {"id": "isolated-probe"}
@@ -290,7 +304,8 @@ def test_history_checkpoint_uses_real_client_envelopes_and_rejects_incomplete_re
     else:
         trial.prepare_probe(fixture)
     assert restored == [("isolated-probe", "frozen-archive", {
-        "expected_manifest_sha256": "hash", "expected_scope_generation": 1, "mode": "new_brain",
+        "expected_manifest_sha256": trial.report["history_checkpoint"]["archive"]["manifest_sha256"],
+        "expected_scope_generation": 1, "mode": "new_brain",
         "budget": evaluation.default_budget(64000)})]
     assert trial.report["probe_restores"][0]["result"]["result"]["quarantined_event_count"] == quarantined
     with pytest.raises(RuntimeError, match="reused"):

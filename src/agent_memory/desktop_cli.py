@@ -18,15 +18,23 @@ def add_commands(commands):
             parser.add_argument("--model", help="Cognition model name")
             parser.add_argument("--api-key-env", help="Name of the environment variable containing the provider key")
             parser.add_argument("--thinking", choices=("enabled", "disabled"))
+            parser.add_argument("--cognition-preset", choices=("reasoning",),
+                                help="Explicitly allow 240s per cognitive batch and 16384 output tokens per request")
             parser.add_argument("--no-start", action="store_true", help="Save configuration without starting services")
             parser.add_argument("--non-interactive", action="store_true")
         elif name == "logs":
             parser.add_argument("--lines", type=int, default=30)
+    from .desktop_budget import add_commands as add_budget_commands
     from .desktop_chat import add_commands as add_chat_commands
+    from .desktop_cognition import add_commands as add_cognition_commands
     from .desktop_learning import add_commands as add_learning_commands
+    from .desktop_recovery import add_commands as add_recovery_commands
 
     add_chat_commands(actions)
     add_learning_commands(actions)
+    add_budget_commands(actions)
+    add_cognition_commands(actions)
+    add_recovery_commands(actions)
 
 
 def _setup(args):
@@ -53,6 +61,11 @@ def _setup(args):
             model = input().strip()
             api_key = getpass.getpass("Provider API key (hidden): ")
             profile = configure_cognition(profile, base_url=base_url, model=model, api_key=api_key)
+    preset = getattr(args, "cognition_preset", None)
+    if preset is not None:
+        from .cognition_config import cognition_policy_preset, save_cognition_policy
+
+        save_cognition_policy(cognition_policy_preset(preset), profile.directory)
     with profile_lock(profile.directory):
         configuration = mcp_config(profile.directory)
         path = profile.directory / "mcp.json"
@@ -65,6 +78,10 @@ def _setup(args):
     else:
         result = desktop.start(profile.directory)
     result.update(mcp_config=configuration, mcp_config_file=str(path))
+    if preset is not None:
+        from dataclasses import asdict
+
+        result["cognition_policy"] = asdict(cognition_policy_preset(preset))
     return result
 
 
@@ -90,11 +107,16 @@ def _logs(directory, lines):
 
 
 def dispatch(args):
+    import psycopg
+
     from . import desktop
     from .agent_session import SessionError
+    from .backup_transport import BackupError
     from .chat_config import ChatConfigurationError
+    from .deletion_registry import RegistryError
     from .desktop_chat import configure, run
     from .desktop_connection import mcp_config, run_mcp
+    from .storage import SchemaCompatibilityError
 
     try:
         action = args.desktop_command
@@ -115,6 +137,18 @@ def dispatch(args):
             return
         elif action == "logs":
             result = _logs(args.directory, args.lines)
+        elif action in {"cognition-policy", "configure-cognition-policy"}:
+            from .desktop_cognition import run as run_cognition
+
+            result = run_cognition(args)
+        elif action in {"budget", "configure-budget"}:
+            from .desktop_budget import run as run_budget
+
+            result = run_budget(args)
+        elif action in {"backup", "restore-backup", "activate-recovery", "recovery-status", "cancel-backup"}:
+            from .desktop_recovery import run as run_recovery
+
+            result = run_recovery(args)
         elif action in {"learning-status", "retry-learning"}:
             from .desktop_learning import run as run_learning
 
@@ -124,8 +158,12 @@ def dispatch(args):
         print(json.dumps(result, ensure_ascii=False, indent=2))
         if action in {"setup", "start", "restart"} and result.get("cognition") == "not_configured":
             print("Model-driven learning is not configured. MCP provides tools only; automatic conversation memory needs a host lifecycle adapter.", file=sys.stderr)
-    except (desktop.DesktopError, SessionError, ChatConfigurationError, ValueError) as error:
+    except (desktop.DesktopError, SessionError, ChatConfigurationError, BackupError, RegistryError,
+            SchemaCompatibilityError, ValueError) as error:
         print(f"{getattr(error, 'code', 'configuration_error')}: {error}", file=sys.stderr)
+        raise SystemExit(1) from None
+    except psycopg.Error:
+        print("database_unavailable: The database operation did not complete. Existing data was preserved; retry the same recovery request.", file=sys.stderr)
         raise SystemExit(1) from None
     except OSError:
         print("local_io_error: Local files or processes were unavailable. Existing data was preserved.", file=sys.stderr)

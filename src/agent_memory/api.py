@@ -51,6 +51,18 @@ class RuntimeLearningRetry(RuntimeBody):
     expected_fence: RuntimeCounter
 
 
+class CognitiveBudgetPolicy(RuntimeBody):
+    window_seconds: Annotated[int, Field(ge=1, le=2_592_000)]
+    max_model_calls: Annotated[int, Field(ge=0, le=1_000_000)]
+    max_input_bytes: Annotated[int, Field(ge=0, le=1_000_000_000_000)]
+
+
+class RuntimeBudgetChange(RuntimeBody):
+    request_id: RuntimeIdentifier
+    expected_revision: Annotated[int, Field(ge=0, le=2**63 - 2)]
+    policy: CognitiveBudgetPolicy
+
+
 class RuntimeRenew(RuntimeBody):
     lease_token: RuntimeIdentifier
     lease_seconds: RuntimeLeaseSeconds = 30
@@ -88,6 +100,9 @@ class RuntimeAdvance(RuntimeLeaseMutation):
     recall_plan: dict | None = None
     response_review_policy: RuntimeFingerprint | None = None
     orientation_route: dict | None = None
+    prepared_packet_id: RuntimeIdentifier | None = None
+    memory_context_sha256: RuntimeFingerprint | None = None
+    selection_omitted_reason: Literal["custom_context"] | None = None
 
 
 class RuntimeResponseReviewReservation(RuntimeLeaseMutation):
@@ -126,6 +141,7 @@ class RuntimeFail(RuntimeLeaseMutation):
 
 def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
     from .delivery_receipts import sanitize_delivery_receipt
+    from .prepared_selection import sanitize_prepared_selection
     from .turns import PUBLIC_FIELDS
 
     allowed = {*PUBLIC_FIELDS, "lease_active", "unavailable_event_refs", "sources_available"}
@@ -134,6 +150,8 @@ def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
     result = {key: value for key, value in record.items() if key in allowed}
     if "delivery_receipt" in result:
         result["delivery_receipt"] = sanitize_delivery_receipt(result["delivery_receipt"])
+    if "prepared_memory_selection" in result:
+        result["prepared_memory_selection"] = sanitize_prepared_selection(result["prepared_memory_selection"])
     if result.get("recall_plan") is not None:
         validate("RecallPlan", result["recall_plan"])
     if result.get("response_review") is not None:
@@ -204,7 +222,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     bearer = HTTPBearer(auto_error=False)
 
-    def authenticate(
+    def authenticate_identity(
         credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     ) -> Principal:
         if credentials is None or credentials.scheme.lower() != "bearer":
@@ -213,6 +231,16 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         principal = settings.principals().get(key_hash)
         if principal is None:
             raise DomainError("unauthorized", "A valid API key is required")
+        return principal
+
+    def authenticate(request: Request, principal: Principal = Depends(authenticate_identity)) -> Principal:
+        database = getattr(service, "database", None)
+        if database is not None and getattr(database, "recovery_authority", None) is not None:
+            from .recovery import metadata
+
+            current = metadata(database, principal)
+            if current["recovery_epoch"] is not None and request.headers.get("X-Memory-Recovery-Epoch") != current["recovery_epoch"]:
+                raise DomainError("recovery_acknowledgement_required", "Reconcile the host with the recovery checkpoint before continuing.")
         return principal
 
     async def read_document(request: Request, max_bytes: int | None = None) -> dict:
@@ -237,9 +265,10 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             from .storage import Database
             from .turns import TurnStore
 
-            app.state.turns = TurnStore(Database(
+            database = getattr(service, "database", None) or Database(
                 settings.database_url, settings.migration_database_url,
-            ), service=service)
+            )
+            app.state.turns = TurnStore(database, service=service)
         return app.state.turns
 
     def job_store():
@@ -247,7 +276,8 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             from .jobs import JobStore
             from .storage import Database
 
-            app.state.jobs = JobStore(Database(settings.database_url, settings.migration_database_url))
+            database = getattr(service, "database", None) or Database(settings.database_url, settings.migration_database_url)
+            app.state.jobs = JobStore(database)
         return app.state.jobs
 
     def job_metadata(record):
@@ -296,6 +326,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             "version_conflict": 409, "idempotency_conflict": 409,
             "lease_conflict": 409, "stage_conflict": 409, "turn_terminal": 409,
             "scope_conflict": 409, "provider_uncertain": 409,
+            "recovery_acknowledgement_required": 409, "deletion_in_progress": 409,
             "source_unavailable": 409, "context_stale": 409,
             "response_review_required": 409, "response_review_uncertain": 409, "response_review_blocked": 409,
             "dependency_unavailable": 503, "budget_exceeded": 413,
@@ -311,6 +342,12 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     @app.get("/health")
     def health():
         return {"status": "alive", "version": __version__}
+
+    @app.get("/v1/recovery")
+    def recovery_metadata(principal: Principal = Depends(authenticate_identity)):
+        from .recovery import metadata
+
+        return metadata(getattr(service, "database", None), principal)
 
     @app.get("/v1/capabilities")
     def get_capabilities(principal: Principal = Depends(authenticate)):
@@ -369,6 +406,19 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     @app.get("/v1/brains/{brain_id}/runtime/cognitive-usage")
     def cognitive_usage(brain_id: str, principal: Principal = Depends(authenticate)):
         return job_store().cognitive_usage(principal, brain_id)
+
+    @app.get("/v1/brains/{brain_id}/runtime/cognitive-budget")
+    def cognitive_budget(brain_id: str, principal: Principal = Depends(authenticate)):
+        return job_store().cognitive_budget(principal, brain_id)
+
+    @app.put("/v1/brains/{brain_id}/runtime/cognitive-budget")
+    async def configure_cognitive_budget(
+        brain_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        from starlette.concurrency import run_in_threadpool
+
+        body = await runtime_body(request, RuntimeBudgetChange)
+        return await run_in_threadpool(job_store().configure_cognitive_budget, principal, brain_id, **body)
 
     @app.get("/v1/brains/{brain_id}/runtime/learning-progress")
     def learning_progress(brain_id: str, principal: Principal = Depends(authenticate)):

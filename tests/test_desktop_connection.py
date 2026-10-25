@@ -10,7 +10,7 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from agent_memory import desktop_connection
+from agent_memory import desktop_connection, recovery_profile
 from agent_memory.client import MemoryClient
 
 
@@ -28,6 +28,8 @@ def local_connection(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "agent_memory.local_profile", profiles)
     monkeypatch.setitem(sys.modules, "agent_memory.desktop", desktop)
     monkeypatch.setattr("agent_memory.desktop", desktop, raising=False)
+    monkeypatch.setattr(recovery_profile, "check_start_allowed", lambda _: None)
+    monkeypatch.setattr(recovery_profile, "load_binding", lambda _: None)
     return SimpleNamespace(profile=profile, start=desktop.start, load=profiles.load_profile)
 
 
@@ -83,7 +85,8 @@ def test_open_client_starts_service_before_loading_bound_credentials(local_conne
         ("start", local_connection.profile.directory), ("load", local_connection.profile.directory),
     ]
     profile = local_connection.profile
-    factory.assert_called_once_with(profile.base_url, profile.api_key, profile.brain_id, trust_env=False)
+    factory.assert_called_once_with(profile.base_url, profile.api_key, profile.brain_id,
+                                    timeout=httpx.Timeout(30, connect=5, read=315, pool=5), trust_env=False)
 
 
 def test_open_client_can_connect_without_starting_services(local_connection, capsys):
@@ -205,3 +208,62 @@ def test_memory_client_preserves_existing_proxy_default(monkeypatch):
     monkeypatch.setattr("agent_memory.client.httpx.Client", client_factory)
     MemoryClient("http://127.0.0.1:18787", "private-access-token")
     assert client_factory.call_args.kwargs["trust_env"] is True
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_desktop_rpc_timeout_covers_frozen_policy_after_current_limits_are_lowered(tmp_path, monkeypatch, failure):
+    from agent_memory.cognition_config import CognitionPolicyConfiguration, save_cognition_policy
+    from agent_memory.local_profile import ensure_profile
+
+    profile = ensure_profile(tmp_path / "profile")
+    save_cognition_policy(CognitionPolicyConfiguration(max_wall_time_ms=1), profile.directory)
+    calls = []
+
+    def handle(request):
+        calls.append(request)
+        assert request.extensions["timeout"] == {"connect": 5, "read": 315, "write": 30, "pool": 5}
+        if failure:
+            raise httpx.ReadTimeout("request did not finish", request=request)
+        return httpx.Response(200, json={"state": "completed"})
+
+    def connect(*args, **kwargs):
+        return MemoryClient(*args, **kwargs, transport=httpx.MockTransport(handle))
+
+    monkeypatch.setattr(desktop_connection, "MemoryClient", connect)
+    with desktop_connection.open_client(profile.directory, start_service=False) as client:
+        if failure:
+            with pytest.raises(httpx.ReadTimeout):
+                client._request("GET", "test")
+        else:
+            assert client._request("GET", "test") == {"state": "completed"}
+    assert len(calls) == 1
+
+
+def test_generic_sdk_keeps_thirty_second_timeout_for_real_http_requests():
+    calls = []
+
+    def handle(request):
+        calls.append(request)
+        assert request.extensions["timeout"] == {"connect": 30, "read": 30, "write": 30, "pool": 30}
+        return httpx.Response(200, json={})
+
+    with MemoryClient("http://memory.test", "key", transport=httpx.MockTransport(handle)) as client:
+        assert client._request("GET", "test") == {}
+    assert len(calls) == 1
+
+
+def test_desktop_monitor_can_override_timeout_without_starting_or_retrying(local_connection, monkeypatch):
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        assert request.extensions["timeout"] == dict.fromkeys(("connect", "read", "write", "pool"), 2.0)
+        raise httpx.ReadTimeout("diagnostics unavailable", request=request)
+
+    monkeypatch.setattr(desktop_connection, "MemoryClient", lambda *args, **kwargs:
+                        MemoryClient(*args, **kwargs, transport=httpx.MockTransport(handle)))
+    with desktop_connection.open_client(start_service=False, timeout=2.0) as client:
+        with pytest.raises(httpx.ReadTimeout):
+            client._request("GET", "test")
+    local_connection.start.assert_not_called()
+    assert len(requests) == 1

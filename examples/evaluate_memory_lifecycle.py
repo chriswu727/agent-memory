@@ -11,12 +11,13 @@ import time
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 from pathlib import Path
+from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 
 from agent_memory.api import create_app
 from agent_memory.client import MemoryClient, default_budget
-from agent_memory.config import Settings
+from agent_memory.config import Settings, configured_service
 from agent_memory.helpers import Principal, digest, uid
 from agent_memory.recall_provider import ChatCompletionsRecallReasoner
 from agent_memory.runtime import (
@@ -24,6 +25,7 @@ from agent_memory.runtime import (
     BrainRuntime,
     ModelRequest,
 )
+from agent_memory.runtime_client import RuntimeClient
 from agent_memory.service import MemoryService
 from agent_memory.storage import Database
 from examples import evaluate_conversation as conversation
@@ -52,7 +54,7 @@ LIMITATIONS = [
     "Same declared host/context and per-arm resource ceilings, not equal actual costs or a currency cap.",
     "No semantic recall controller or embeddings; the memory arm uses the configured default retrieval path.",
     "Runtime/client/service recreation tests persisted continuity, not an OS crash or QQ delivery.",
-    "Existing per-brain server quotas remain enforced and may stop a long experiment before completion.",
+    "Server quotas remain enforced; long runs freeze and record an explicit bounded per-brain allowance.",
     "Semantic acceptance and fluent answers do not certify correctness; independent whole-answer review remains pending.",
 ]
 
@@ -73,10 +75,15 @@ def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_p
     } | {str(path.relative_to(ROOT)) for path in (ROOT / "src/agent_memory").glob("*.py")})
     return {
         "version": "memory-lifecycle-evaluation-v1", "profile": profile, "model": conversation.MODEL,
+        "provider_base_url": "https://api.deepseek.com",
         "thinking": "enabled", "instructions": conversation.INSTRUCTIONS,
         "memory_protocol": MEMORY_CONSUMPTION_INSTRUCTIONS,
         "arms": list(ARMS if dataset else ("memory",)), "fixtures": fixtures, "dataset": dataset,
         "semantic_policy": asdict(conversation.SEMANTIC_POLICY),
+        "service_configuration": "configured_service-v1; only the provider HTTP transport is instrumented",
+        "server_budget_policy": ({"window_seconds": 2_592_000, "max_model_calls": semantic_calls,
+                                  "max_input_bytes": (turns + learning_turns)
+                                  * conversation.SEMANTIC_POLICY.max_input_bytes} if dataset else None),
         "runtime_policy": asdict(conversation.runtime_policy(orientation_policy)),
         "orientation_evaluation": "A persisted safe skip is a routing outcome, not successful semantic orientation. "
                                   "Both policies retain the same ceiling, answer review and source/delivery checks.",
@@ -213,19 +220,186 @@ def learning_queue_audit(stage, windows):
         "meaning": "Enqueued source coverage only; it does not establish successful learning or publication."}
 
 
+def archive_graph(document, *, restored=False):
+    from agent_memory.belief_store import assertion_fingerprint
+
+    sources = {event["event_id"]: event for event in document["events"]}
+    if len(sources) != len(document["events"]):
+        raise ValueError("Archive source identities are not unique")
+
+    def normalized(value):
+        if isinstance(value, list):
+            return [normalized(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+        value = copy.deepcopy(value)
+        if "principal_binding_id" in value and "access_policy_id" in value:
+            if (value["brain_id"] != document["source_brain_id"]
+                    or value["access_policy_id"] != "owner:" + document["source_brain_id"]):
+                raise ValueError("Archive graph scope differs from its brain")
+            value["brain_id"], value["access_policy_id"] = "restored-brain", "owner:restored-brain"
+            value.pop("scope_generation")
+        if "event_id" in value and ("event_revision" in value or set(value) == {"event_id", "revision"}):
+            source = sources[value["event_id"]]
+            field = "event_revision" if "event_revision" in value else "revision"
+            if value[field] != source["revision"] or ("source_content_sha256" in value
+                    and value["source_content_sha256"] != source["content_sha256"]):
+                raise ValueError("Archive graph contains an unavailable source version")
+            value[field] = 1
+        if "support_paths" in value or "permitted_scope" in value:
+            value.pop("dependency_generation", None)
+        result = {key: normalized(item) for key, item in value.items()}
+        for field in ("evidence_refs", "counterexamples"):
+            if field in result:
+                result[field] = sorted(result[field], key=digest)
+        return result
+
+    events = []
+    for source in sorted(sources.values(), key=lambda item: item["sequence"]):
+        if digest(source["observed"]["content"]) != source["content_sha256"]:
+            raise ValueError("Archive source content hash differs")
+        event = copy.deepcopy(source)
+        if restored and (event["revision"] != 1 or event["previous_revision"] is not None
+                or event["origin"] != "document_import" or event["origin_verification"] != "unverified_import"
+                or event["observed"]["producer_ref"] != "archive-import"
+                or event["observed"]["source_event_key"] != event["event_id"]):
+            raise ValueError("Restored source import metadata differs")
+        for field in ("sequence", "revision", "previous_revision", "system_time", "origin", "origin_verification"):
+            event.pop(field)
+        for field in ("producer_ref", "source_event_key"):
+            event["observed"].pop(field)
+        events.append({**event, "scope": normalized(event["scope"])})
+    memories = {(item["memory_id"], item["revision"]): item
+                for item in document["memories"] + document["dependency_memories"]}
+    relations = []
+    for original in document["belief_relations"]:
+        relation = copy.deepcopy(original)
+        relation.pop("relation_id")
+        for endpoint in relation["endpoint_snapshots"]:
+            version = endpoint["memory_version"]
+            memory = memories[(version["memory_id"], version["revision"])]
+            if endpoint["content_sha256"] != assertion_fingerprint(memory):
+                raise ValueError("Archived belief endpoint fingerprint differs")
+            endpoint["content_sha256"] = digest(normalized(memory))
+        relations.append(normalized(relation))
+    views = document["cognitive_views"]
+    graph = {"events": events, "memories": document["memories"],
+             "dependency_memories": document["dependency_memories"], "relations": relations,
+             **{key: views[key] for key in ("episodes", "members", "associations")},
+             **{key: document[key] for key in ("event_dependencies", "tombstones", "retired_event_ids",
+                                               "excluded_deleted_event_ids")}}
+    for field in graph.keys() - {"events", "relations"}:
+        graph[field] = sorted((normalized(item) for item in graph[field]), key=digest)
+    graph["relations"] = sorted(relations, key=digest)
+    return graph
+
+
+def archive_evidence(memory, archive, path, *, restored=False):
+    downloaded = memory.download_archive(archive["archive_id"])
+    document = downloaded["document"]
+    if (downloaded["archive_id"] != archive["archive_id"]
+            or downloaded["manifest_sha256"] != archive["manifest_sha256"]
+            or digest(document) != archive["manifest_sha256"]
+            or document["source_brain_id"] != memory.brain_id or document["archive_origin"] != "local_export"):
+        raise RuntimeError("Evaluation archive differs from its frozen identity")
+    graph = archive_graph(document, restored=restored)
+    save(path, downloaded)
+    return {"path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "graph_sha256": digest(graph), "counts": {key: len(value) for key, value in graph.items()},
+            "comparison": "Complete exported recall graph; target brain scope, source revisions and import "
+                          "bookkeeping are normalized. Working state and execution/access caches are excluded."}
+
+
+class RecordedCognition:
+    def __init__(self, trial):
+        self.trial = trial
+
+    def __call__(self, request):
+        return self.trial.cognition(request)
+
+    @property
+    def last_call_id(self):
+        return getattr(self.trial.provider, "last_call_id", None)
+
+    @property
+    def last_usage(self):
+        return getattr(self.trial.provider, "last_usage", None)
+
+
 class LifecycleTrial(conversation.ConversationTrial):
-    def __init__(self, output, report, database, provider, host, meter, review_provider, summary_host=None):
+    def __init__(self, output, report, database, provider, host, meter, review_provider, summary_host=None,
+                 *, cognition_settings=None, meter_factory=None):
         self.arm = report["arm"]
         self.review_provider, self.summary_host = review_provider, summary_host
         self.summary = ""
+        self.cognition_settings, self.meter_factory = cognition_settings, meter_factory
+        self._configured_service = None
         super().__init__(output, report, database, provider, host, meter,
                          runtime_factory=self.make_runtime, service_factory=self.make_service, source_limit=512)
 
     def make_service(self, database):
+        if self._configured_service is not None:
+            return self._configured_service
         if self.arm == "memory":
+            provider = RecordedCognition(self)
             return MemoryService(database, semantic_processor=conversation.SemanticProcessor(
-                self.cognition, self.cognition, conversation.SEMANTIC_POLICY))
+                provider, provider, conversation.SemanticPolicy(**self.report["plan"]["semantic_policy"])))
         return MemoryService(database)
+
+    @contextmanager
+    def stage_service(self):
+        if self.cognition_settings is None:
+            yield
+            return
+        planned = self.report["plan"]
+        settings = self.cognition_settings
+        if (settings.cognition_model != planned["model"] or settings.cognition_thinking != planned["thinking"]
+                or settings.cognition_base_url != planned["provider_base_url"]):
+            raise RuntimeError("Configured provider differs from the frozen evaluation plan")
+        from agent_memory import semantic_provider
+
+        original = semantic_provider.ChatCompletionsSemanticProvider
+
+        def instrumented_provider(*args, **kwargs):
+            return original(*args, **kwargs, transport=self.meter_factory())
+
+        with patch.object(semantic_provider, "ChatCompletionsSemanticProvider", instrumented_provider):
+            with configured_service(self.cognition_settings) as service:
+                if asdict(service.semantic_processor.policy) != self.report["plan"]["semantic_policy"]:
+                    raise RuntimeError("Configured service policy differs from the frozen evaluation plan")
+                self.provider = service.semantic_processor.propose
+                recorder = RecordedCognition(self)
+                service.semantic_processor.propose = service.semantic_processor.verify = recorder
+                self._configured_service = service
+                try:
+                    yield
+                finally:
+                    self._configured_service, self.provider = None, None
+
+    def configure_runtime(self, memory):
+        policy = self.report["plan"].get("server_budget_policy")
+        if self.arm != "memory" or policy is None:
+            return
+        client = RuntimeClient(memory)
+        configurations = self.report.setdefault("server_budget_configurations", {})
+        if memory.brain_id not in configurations:
+            current = client.cognitive_budget()
+            if current["revision"] != 0 or current["is_explicit"] or any(current["used"].values()):
+                raise RuntimeError("Evaluation refuses to replace a used or previously configured brain budget")
+            request = {"request_id": "evaluation-" + self.report["plan_sha256"],
+                       "expected_revision": 0, **policy}
+            configurations[memory.brain_id] = {"request": request, "state": "started"}
+            self.save()
+            receipt = client.configure_cognitive_budget(**request)
+            configurations[memory.brain_id].update(state="finished", receipt=receipt)
+            self.save()
+        saved = configurations[memory.brain_id]
+        current = client.cognitive_budget()
+        if (saved.get("state") != "finished" or current["policy"] != policy or not current["is_explicit"]
+                or current["revision"] != saved["receipt"]["configuration"]["revision"]):
+            raise RuntimeError("Evaluation brain budget differs from its frozen configuration")
+        self.current["server_budget_before"] = current
+        self.save()
 
     def make_runtime(self, memory, generate, **kwargs):
         from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
@@ -309,7 +483,8 @@ class LifecycleTrial(conversation.ConversationTrial):
             actual["learn"] = False
         before, started = self.meter.summary(), time.monotonic()
         try:
-            super().run_stage(actual)
+            with self.stage_service():
+                super().run_stage(actual)
         finally:
             if self.current is not None:
                 self.current["usage_before"] = before
@@ -352,6 +527,9 @@ class LifecycleTrial(conversation.ConversationTrial):
                                            stage.get("runtime", {}).get("branch_id")))]
                 stage["learning_queue_audit"] = learning_queue_audit(stage, windows)
                 stage["checks"].update(stage["learning_queue_audit"]["checks"])
+            jobs = conversation.JobStore(self.database)
+            stage["server_budget_after"] = jobs.cognitive_budget(self.principal, stage["brain_id"])
+            stage["server_cognitive_usage"] = jobs.cognitive_usage(self.principal, stage["brain_id"])
         stage["semantic_review"] = {"state": "pending_independent_review", "automatic_word_score": None}
         stage["performance"] = performance_metrics(stage)
         self.save()
@@ -403,6 +581,8 @@ class LifecycleTrial(conversation.ConversationTrial):
                 if response.get("outcome") != "completed" or response.get("action") != "export":
                     raise RuntimeError("History export did not complete")
                 checkpoint["archive"] = response["result"]
+                checkpoint["archive_evidence"] = archive_evidence(
+                    memory, checkpoint["archive"], self.output / "history-archive.json")
         self.report["history_checkpoint"] = checkpoint
         self.save()
 
@@ -415,6 +595,14 @@ class LifecycleTrial(conversation.ConversationTrial):
         self.summary = checkpoint["summary"]
         if self.arm == "memory":
             archive = checkpoint["archive"]
+            evidence = checkpoint["archive_evidence"]
+            raw = (self.output / "history-archive.json").read_bytes()
+            if (evidence["path"] != "history-archive.json" or hashlib.sha256(raw).hexdigest() != evidence["sha256"]
+                    or digest(json.loads(raw)["document"]) != archive["manifest_sha256"]):
+                raise RuntimeError("Frozen history archive changed")
+            expected = archive_graph(json.loads(raw)["document"])
+            if digest(expected) != evidence["graph_sha256"]:
+                raise RuntimeError("Frozen history graph changed")
             with self.archive_client() as memory:
                 created = memory.create_brain("Isolated probe " + fixture["name"])
                 memory.brain_id = created["id"]
@@ -429,6 +617,18 @@ class LifecycleTrial(conversation.ConversationTrial):
                         or result.get("read_enabled") is not True or result.get("quarantined_event_count") != 0
                         or result.get("excluded_deleted_count") != 0):
                     raise RuntimeError("Held-out history restore was incomplete; refusing a paid probe")
+                exported = memory.export(budget=default_budget(64000))
+                if exported.get("outcome") != "completed" or exported.get("action") != "export":
+                    raise RuntimeError("Probe graph export did not complete; refusing a paid probe")
+                actual = archive_evidence(memory, exported["result"],
+                                          self.output / ("probe-archive-" + digest(fixture["name"]) + ".json"),
+                                          restored=True)
+                audit = {"expected": evidence, "restored": actual,
+                         "complete_recall_graph_preserved": actual["graph_sha256"] == evidence["graph_sha256"]}
+                self.report["probe_restores"][-1]["graph_audit"] = audit
+                self.save()
+                if not audit["complete_recall_graph_preserved"]:
+                    raise RuntimeError("Held-out recall graph changed during restore; refusing a paid probe")
 
 
 def stop_reason(stage, meter):
@@ -462,18 +662,25 @@ def run_arm(output, planned, arm, database, key):
     meter = new_meter()
     try:
         with ExitStack() as stack:
-            provider = (stack.enter_context(conversation.ChatCompletionsSemanticProvider(
-                "https://api.deepseek.com", key, planned["model"], thinking="enabled", transport=meter))
-                        if arm == "memory" else None)
+            policy = planned["semantic_policy"]
+            cognition_settings = (Settings(
+                database_url=database.dsn, cognition_base_url=planned["provider_base_url"],
+                cognition_api_key=key, cognition_model=planned["model"], cognition_thinking=planned["thinking"],
+                api_keys={digest(uid()): Principal(**report["principal"])},
+                cognition_max_wall_time_ms=policy["max_wall_time_ms"],
+                cognition_max_output_tokens=policy["max_output_tokens"],
+                cognition_max_response_bytes=policy["max_response_bytes"],
+            ) if arm == "memory" else None)
             host = stack.enter_context(ChatCompletionsHost(
-                "https://api.deepseek.com", key, planned["model"], transport=new_meter(),
+                planned["provider_base_url"], key, planned["model"], transport=new_meter(),
                 max_output_tokens=HOST_OUTPUT_TOKENS, timeout_seconds=180))
             review = stack.enter_context(ChatCompletionsRecallReasoner(
-                "https://api.deepseek.com", key, planned["model"], thinking="enabled", transport=new_meter()))
+                planned["provider_base_url"], key, planned["model"], thinking=planned["thinking"], transport=new_meter()))
             summary_host = (stack.enter_context(ChatCompletionsHost(
-                "https://api.deepseek.com", key, planned["model"], transport=new_meter(),
+                planned["provider_base_url"], key, planned["model"], transport=new_meter(),
                 max_output_tokens=SUMMARY_OUTPUT_TOKENS, timeout_seconds=180)) if arm == "rolling_summary" else None)
-            trial = LifecycleTrial(output, report, database, provider, host, meter, review, summary_host)
+            trial = LifecycleTrial(output, report, database, None, host, meter, review, summary_host,
+                                   cognition_settings=cognition_settings, meter_factory=new_meter)
             if planned["dataset"] is not None:
                 validate_dataset(planned["dataset"])
             for fixture in planned["fixtures"]:

@@ -37,7 +37,7 @@ def test_usage_survives_reopen_and_keeps_each_phase_outcome(learning):
     assert result["outcome_counts"] == {"reserved": 0, "completed": 1, "failed": 0, "uncertain": 1}
     assert result["reported_tokens"] == {"input_tokens": 12, "output_tokens": 8, "total_tokens": 20}
     assert result["counts_complete"] is False
-    assert result["scope"] == "semantic_orientation_and_learning"
+    assert result["scope"] == "cognition_and_embeddings"
     fresh = JobStore(Database(learning.database.dsn))
     assert fresh.cognitive_usage(learning.principal, learning.brain) == result
     text = json.dumps(result)

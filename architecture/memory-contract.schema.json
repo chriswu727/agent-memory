@@ -5760,6 +5760,228 @@
           }
         }
       ]
+    },
+    "PreparedMemorySelection": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "prepared-memory-selection-v1"
+            },
+            "state": {
+              "enum": [
+                "complete",
+                "unavailable"
+              ]
+            },
+            "unavailable_reason": {
+              "enum": [
+                null,
+                "selection_limit",
+                "selection_unverifiable"
+              ]
+            },
+            "turn_id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "brain_id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "conversation_id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "branch_id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "packet_id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "model_context_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "context_fingerprint": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "context_generation": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "working_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "prepared_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "input_event_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "event_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "event_id",
+                  "revision"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 64,
+              "uniqueItems": true
+            },
+            "source_event_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "event_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "content_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "event_id",
+                  "revision",
+                  "content_sha256"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 64,
+              "uniqueItems": true
+            },
+            "memories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "memory_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "memory_revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "statement_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "trace_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "recall_id": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceRef"
+                    },
+                    "maxItems": 1024,
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "memory_id",
+                  "memory_revision",
+                  "statement_sha256",
+                  "trace_id",
+                  "recall_id",
+                  "evidence_refs"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 64,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "version",
+            "state",
+            "unavailable_reason",
+            "turn_id",
+            "brain_id",
+            "conversation_id",
+            "branch_id",
+            "packet_id",
+            "model_context_sha256",
+            "context_fingerprint",
+            "context_generation",
+            "working_revision",
+            "prepared_at",
+            "input_event_refs",
+            "source_event_refs",
+            "memories"
+          ],
+          "additionalProperties": false,
+          "description": "Server-issued metadata copied from the exact final prepared context at the prepared transition. It binds selected memory versions to the model context without storing text. It is not proof of model reasoning or factual truth.",
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "complete"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "unavailable_reason": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "unavailable_reason": {
+                    "type": "string"
+                  },
+                  "memories": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "prepared-memory-selection-v1"
+            },
+            "state": {
+              "const": "unavailable"
+            },
+            "unavailable_reason": {
+              "const": "custom_context"
+            }
+          },
+          "required": [
+            "version",
+            "state",
+            "unavailable_reason"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "A final prepared selection or an explicit custom-context opt-out. An opt-out never authorizes feedback attribution and is distinct from a legacy absent binding."
     }
   },
   "x-runtime-invariants": [

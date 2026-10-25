@@ -1,11 +1,14 @@
 import json
 
 import pytest
+from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_learning_windows import claim as claim_job
 from test_learning_windows import drain, jobs
 from test_semantic import claim, encoded, proposals, verifier
 
+from agent_memory import learning as learning_module
+from agent_memory.consolidation_planning import PLANNER_VERSION, plan_consolidation
 from agent_memory.learning import LearningEngine
 from agent_memory.semantic import SemanticPolicy, SemanticProcessor
 
@@ -75,6 +78,95 @@ def test_frozen_plan_survives_learning_engine_restart_before_execution(learning)
     completed = learning.job(selected["id"])
     assert completed["state"] == "completed" and completed["model_calls"] == 1
     assert completed["result"]["consolidation_plan"] == snapshot["consolidation_plan"]
+
+
+def test_completed_v3_comparison_is_not_reauthorized_by_v4_ranking_upgrade(learning, monkeypatch):
+    install_instance_learning(learning)
+    with monkeypatch.context() as patch:
+        patch.setattr(learning_module, "plan_consolidation", lambda *args, **kwargs:
+                      plan_consolidation(*args, **kwargs, planner_version="independent-instance-comparison-v3"))
+        learning.observe("I recalled those two study sessions.")
+        drain(learning)
+    previous = jobs(learning)[1]
+    assert previous["result"]["consolidation_plan"]["planner_version"] == "independent-instance-comparison-v3"
+    assert previous["result"]["consolidation"]["no_change_count"] == 1
+    learning.observe("Those old study sessions came to mind again.")
+    drain(learning)
+    current = jobs(learning)[2]
+    assert current["result"]["consolidation_plan"]["planner_version"] == PLANNER_VERSION
+    assert current["result"]["consolidation_plan"]["objectives"] == []
+    assert current["result"]["consolidation_plan"]["suppressed_count"] == 1
+    assert sum(job["model_calls"] for job in jobs(learning)) == 4
+
+
+def test_frozen_v3_comparison_survives_restart_under_v4_default(learning):
+    install_instance_learning(learning)
+    learning.observe("I recalled those two study sessions.")
+    selected = claim_job(learning)
+    engine = LearningEngine(learning.service)
+    batch, snapshot = engine._snapshot(learning.principal, learning.brain, selected)
+    old_plan = plan_consolidation(batch.sources, batch.existing_assertions, batch.belief_relations,
+                                 batch.sampling, planner_version="independent-instance-comparison-v3")
+    snapshot["consolidation_plan"] = old_plan
+    with learning.database.transaction(learning.principal) as conn:
+        conn.execute("UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                     (Jsonb(snapshot), *learning.service._params(learning.principal, learning.brain), selected["id"]))
+    resumed, frozen = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, selected)
+    assert resumed.consolidation_plan == old_plan and frozen == snapshot
+    engine._execute(learning.principal, learning.brain, selected)
+    finished = learning.job(selected["id"])
+    assert finished["state"] == "completed" and finished["model_calls"] == 1
+    assert finished["result"]["consolidation_plan"] == old_plan
+
+
+def test_published_distinct_fragments_do_not_crowd_out_independent_source_pair(learning):
+    repeated = ("I chose a cedar garden fence.", "I planted cedar near the garden fence.",
+                "I painted the cedar garden fence.")
+    independent = ("I launched a kayak on the ocean beside the blue pier.",
+                   "I paddled a kayak on the ocean past a quiet cove.")
+    observed = [learning.observe(" ".join(repeated)) for _ in range(2)]
+    observed += [learning.observe(text) for text in independent]
+    source_ids = [receipt["accepted_event_ids"][0] for receipt in observed]
+    snapshots = []
+
+    def propose(request):
+        data = json.loads(request.messages[-1]["content"])
+        snapshots.append(data)
+        if len(snapshots) == 1:
+            lookup = {source["event_id"]: source for source in data["sources"]}
+            items = []
+            for index, identifier in enumerate(source_ids):
+                statements = repeated if index < 2 else [independent[index - 2]]
+                items.extend(claim(lookup[identifier], proposal_id=f"instance-{index}-{fragment}",
+                                   statement=text, memory_kind="episodic", representation="episode_outline",
+                                   claim_kind="reported_fact", conditions={"op": "always"})
+                             for fragment, text in enumerate(statements))
+            return encoded(proposals(*items))
+        return encoded({**proposals(), "consolidation_decisions": [
+            {"objective_id": item["objective_id"], "outcome": "no_change", "reason": "insufficient_shared_meaning",
+             "link_proposal_ids": []} for item in data["consolidation_plan"]["objectives"]]})
+
+    learning.service.semantic_processor = SemanticProcessor(propose, verifier)
+    drain(learning)
+    assert jobs(learning)[0]["result"]["publication"]["published_count"] == 8
+    learning.observe("I recalled the cedar garden fence and the ocean kayak trips.")
+    drain(learning)
+    body = snapshots[-1]
+    current = body["consolidation_plan"]
+    old = plan_consolidation(body["sources"], body["existing_assertions"], body["belief_relations"], body["sampling"],
+                             planner_version="independent-instance-comparison-v3")
+    assertions = {item["memory_id"]: item for item in body["existing_assertions"]}
+
+    def pairs(plan):
+        return [frozenset(reference["event_id"] for version in objective["instance_memory_versions"]
+                          for reference in assertions[version["memory_id"]]["evidence_refs"]
+                          if reference["relationship"] == "supports") for objective in plan["objectives"]]
+
+    assert pairs(old) == [frozenset(source_ids[:2])] * 3
+    assert frozenset(source_ids[2:]) in pairs(current)
+    assert len(current["objectives"]) == 3
+    assert jobs(learning)[1]["result"]["consolidation"]["no_change_count"] == 3
+    assert jobs(learning)[1]["result"]["consolidation"]["satisfied_count"] == 0
 
 
 def test_model_ignored_goal_is_reported_unresolved_and_can_be_attempted_later(learning):

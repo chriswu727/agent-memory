@@ -15,11 +15,27 @@ from .semantic import (
     GENERAL_PROPOSAL_MODE,
     ORIENT_PROPOSAL_MODE,
     CognitiveBatch,
+    SemanticPolicy,
     SemanticResult,
     check_result_mode,
     validate_input_contract,
 )
 from .turns import TurnStore, _hash, _identifier, _integer, _refs
+
+
+def _snapshot_policy(snapshot, default=None):
+    if "semantic_policy" not in snapshot:
+        return default
+    value = snapshot["semantic_policy"]
+    try:
+        if (not isinstance(value, dict) or set(value) != {"version", "limits"}
+                or value["version"] != "semantic-policy-v1"
+                or not isinstance(value["limits"], dict)
+                or set(value["limits"]) != set(SemanticPolicy.__dataclass_fields__)):
+            raise ValueError
+        return SemanticPolicy(**value["limits"])
+    except (TypeError, ValueError):
+        raise DomainError("context_stale", "Cognitive policy snapshot is malformed or unsupported.") from None
 
 
 def _snapshot_proposal_mode(snapshot, kind=None):
@@ -145,6 +161,7 @@ def _snapshot_documents(conn, service, principal, brain, refs, table, identifier
 def _validated_snapshot(conn, service, principal, brain, result):
     _snapshot_proposal_mode(result)
     _snapshot_input_contract(result)
+    _snapshot_policy(result)
     scope = result.get("scope", {})
     try:
         validate("BoundScope", scope)
@@ -289,6 +306,7 @@ class LearningEngine:
                                  (*params, job["id"])).fetchone()["result"]
             if prior:
                 _current_input_authorization(prior)
+            policy = _snapshot_policy(prior or {}, service.semantic_processor.policy)
             mode = (_snapshot_proposal_mode(prior, job["kind"]) if prior else
                     ORIENT_PROPOSAL_MODE if job["kind"] == "orient" else GENERAL_PROPOSAL_MODE)
             input_contract = _snapshot_input_contract(prior) if prior else COMMUNICATION_INTENT_INPUT_VERSION
@@ -300,7 +318,7 @@ class LearningEngine:
                     "working_snapshot", "sampling", "learning_window", "learning_input_refs", "dependency_generation",
                     "belief_relations", "belief_relation_snapshot", "consolidation_plan",
                     "current_input_refs", "current_input_binding", "proposal_mode", "input_contract_version",
-                    "operation_settlement_policy",
+                    "operation_settlement_policy", "semantic_policy",
                 }}
                 if windowed and (snapshot.get("current_input_refs") or snapshot.get("current_input_binding")):
                     raise DomainError("context_stale", "Consolidation cannot authorize current input.")
@@ -317,7 +335,7 @@ class LearningEngine:
             current_input_refs = []
             window = None
             through = payload["through_sequence"]
-            selection_policy = service.semantic_processor.policy
+            selection_policy = policy
             if windowed and "recovery_budget" in payload and job["max_input_bytes"] is not None:
                 input_limit = min(selection_policy.max_input_bytes, job["max_input_bytes"])
                 selection_policy = replace(selection_policy, max_input_bytes=input_limit,
@@ -372,6 +390,10 @@ class LearningEngine:
                 snapshot["operation_settlement_policy"] = NO_UNSETTLED_RETRY_POLICY
             elif "operation_settlement_policy" in prior:
                 snapshot["operation_settlement_policy"] = prior["operation_settlement_policy"]
+            if not prior:
+                snapshot["semantic_policy"] = {"version": "semantic-policy-v1", "limits": asdict(policy)}
+            elif "semantic_policy" in prior:
+                snapshot["semantic_policy"] = copy.deepcopy(prior["semantic_policy"])
             if input_contract is not None or prior and "input_contract_version" in prior:
                 snapshot["input_contract_version"] = input_contract
             if frozen_orientation:
@@ -443,19 +465,20 @@ class LearningEngine:
     def semantic(self, principal, brain_id, job):
         service = self.service
         batch, snapshot = self._snapshot(principal, brain_id, job)
+        processor = copy.copy(service.semantic_processor)
+        policy = processor.policy = _snapshot_policy(snapshot, processor.policy)
         lease = {"lease_token": job["lease_token"], "fence": job["fence"]}
         operations = []
         settled_operations = set()
         renewable_budget = False
         # Synchronous provider calls cannot renew their lease while waiting for a response.
-        lease_seconds = max(120, (service.semantic_processor.policy.max_wall_time_ms + 999) // 1000 + 5)
+        lease_seconds = max(120, (policy.max_wall_time_ms + 999) // 1000 + 5)
 
         def check():
             self.jobs.renew(principal, brain_id, job["id"], **lease, lease_seconds=lease_seconds)
 
         def reserve(**request):
             operation_id = f"{job['fence']}:{request['phase']}"
-            policy = service.semantic_processor.policy
             reservation = self.jobs.reserve_operation(
                 principal, brain_id, job["id"], **lease, operation_id=operation_id,
                 request_fingerprint=request["request_fingerprint"], input_bytes=request["input_bytes"],
@@ -477,12 +500,11 @@ class LearningEngine:
             settled_operations.add(operation_id)
 
         try:
-            policy = service.semantic_processor.policy
             call_limit = min(policy.max_model_calls, job["max_model_calls"] if job["max_model_calls"] is not None
                              else policy.max_model_calls)
             if "learning_window" in snapshot and batch.sources and call_limit - job["model_calls"] < 2:
                 raise DomainError("budget_exceeded", "Remaining learning budget cannot cover proposal and verification.")
-            result = service.semantic_processor.process(
+            result = processor.process(
                 batch, reserve=reserve, check=check, prior_model_calls=job["model_calls"], prior_input_bytes=job["input_bytes"],
                 on_call_result=on_call_result,
             )
@@ -547,7 +569,6 @@ class LearningEngine:
                            else "dependency_unavailable" if batch.sampling.get("publication_restricted")
                            else "invalid_proposal")
                 current = self.jobs._row(conn, principal, brain_id, job["id"])
-                policy = service.semantic_processor.policy
                 call_limit = min(policy.max_model_calls, current["max_model_calls"] or policy.max_model_calls)
                 byte_limit = min(policy.max_input_bytes, current["max_input_bytes"] or policy.max_input_bytes)
                 remaining = call_limit - current["model_calls"]
