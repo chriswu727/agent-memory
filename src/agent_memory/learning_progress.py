@@ -1,7 +1,13 @@
 from collections import Counter, deque
 from datetime import UTC, datetime
 
-from .jobs import FAILURE_CODES, LEARNING_OUTCOMES, PROCESSING_STATUSES, REJECTION_REASONS
+from .jobs import (
+    FAILURE_CODES,
+    LEARNING_OUTCOMES,
+    NO_UNSETTLED_RETRY_POLICY,
+    PROCESSING_STATUSES,
+    REJECTION_REASONS,
+)
 from .learning_phase_monitor import (
     DEFERRED_REASON,
     HISTORY_PHASE,
@@ -449,7 +455,7 @@ def _summary(rows, *, configured):
                 row["issues"].add("invalid_lineage")
             edges[identifier].append(child_id)
             parents[child_id].append(identifier)
-            if relation != "integration" or not unassessed_history(row):
+            if relation != "integration" or not unassessed_history(row, delegated=True):
                 delegated[identifier].append(required)
         for relation in ("continuation", "recovery", "integration"):
             parent_id = row.get(relation + "_parent")
@@ -511,6 +517,13 @@ def _summary(rows, *, configured):
             category = "blocked_count"
             reason = ("history_integration_unassessed" if unassessed_history(row) else row["last_error"]
                       or ("missing_continuation" if row["state"] == "completed" else "terminal_window"))
+        elif ((row.get("has_result") and row.get("result_object") is False)
+              or row.get("has_settlement_policy") and
+              row.get("settlement_policy") != NO_UNSETTLED_RETRY_POLICY):
+            category, reason = "blocked_count", "dependency_unavailable"
+        elif (row.get("settlement_policy") == NO_UNSETTLED_RETRY_POLICY
+              and row.get("has_unsettled_operation") is True):
+            category, reason = "blocked_count", "provider_uncertain"
         elif row["attempts"] >= _MAX_ATTEMPTS:
             category, reason = "blocked_count", "attempts_exhausted"
         elif row["available_at"] > row["observed_at"]:
@@ -559,7 +572,13 @@ def learning_progress(connection, principal, brain_id, *, configured: bool):
         "payload->'continuation_job_id' AS continuation_id,payload->'recovery_job_id' AS recovery_id,"
         "payload ? 'continuation_job_id' AS has_continuation,payload ? 'recovery_job_id' AS has_recovery,"
         "payload->'continuation_parent_job_id' AS continuation_parent,"
-        "payload->'recovery_parent_job_id' AS recovery_parent," + _outcome_projection() + "," + projection() + " "
+        "payload->'recovery_parent_job_id' AS recovery_parent,"
+        "result->'operation_settlement_policy' AS settlement_policy,"
+        "result ? 'operation_settlement_policy' AS has_settlement_policy,"
+        "EXISTS (SELECT 1 FROM memory_cognitive_operations o WHERE o.tenant_id=memory_jobs.tenant_id "
+        "AND o.owner_id=memory_jobs.owner_id AND o.brain_id=memory_jobs.brain_id "
+        "AND o.job_id=memory_jobs.id AND o.outcome='reserved') AS has_unsettled_operation,"
+        + _outcome_projection() + "," + projection() + " "
         "FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='consolidate' "
         "AND (payload ? 'from_sequence' OR payload ?| ARRAY[" + ",".join(repr(key) for key in PHASE_FIELDS) + "])",
         (principal.tenant_id, principal.principal_id, brain_id),

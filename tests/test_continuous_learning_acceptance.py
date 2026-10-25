@@ -19,6 +19,7 @@ from agent_memory.history_attention import POLICY as ATTENTION_POLICY
 from agent_memory.history_attention import model_manifest
 from agent_memory.learning import LearningEngine
 from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
+from agent_memory.learning_packages import integration_package
 from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
 from agent_memory.runtime_client import RuntimeClient
 from agent_memory.semantic import SemanticPolicy, SemanticProcessor
@@ -192,6 +193,36 @@ def objective_ids(manifest):
     return {item["objective_id"] for item in manifest["objectives"]}
 
 
+def assert_exact_partition(obligation, selected, remaining):
+    original_ids = objective_ids(obligation)
+    selected_ids, remaining_ids = objective_ids(selected), objective_ids(remaining)
+    assert selected_ids and not selected_ids & remaining_ids
+    assert selected_ids | remaining_ids == original_ids
+    metadata = {key: value for key, value in obligation.items() if key != "objectives"}
+    for part in (selected, remaining):
+        assert {key: value for key, value in part.items() if key != "objectives"} == metadata
+        assert len(part["objectives"]) == len(objective_ids(part))
+        assert part["objectives"] == [item for item in obligation["objectives"]
+                                      if item["objective_id"] in objective_ids(part)]
+
+
+def assert_funded_package(harness, job, obligation):
+    assert job["payload"]["history_obligation_manifest"] == obligation
+    selected, remaining = job["result"]["integration_manifest"], job["result"]["remaining_manifest"]
+    assert_exact_partition(obligation, selected, remaining)
+    if remaining["objectives"]:
+        tail = harness.job(job["payload"]["integration_continuation_job_id"])
+        assert tail["payload"]["history_obligation_manifest"] == tail["result"]["integration_manifest"] == remaining
+        assert tail["payload"]["integration_continuation_parent_job_id"] == job["id"]
+        assert tail["payload"]["encoding_parent_job_id"] == job["payload"]["encoding_parent_job_id"]
+        assert tail["payload"]["target"] == job["payload"]["target"]
+        assert tail["state"] == "deferred" and tail["model_calls"] == tail["input_bytes"] == 0
+        assert not operations(harness, tail["id"])
+    else:
+        assert "integration_continuation_job_id" not in job["payload"]
+    return selected
+
+
 def encoding_for(harness, sources):
     inputs = {(item["event_id"], item["revision"]) for item in sources["input_events"]}
     matching = [row for row in jobs(harness) if phase(row["payload"]) == ENCODING_PHASE
@@ -239,7 +270,7 @@ def assert_exact_delivery_context(memory, earlier_sources, requests, *, routines
     assert len(requests) == 1
 
 
-def test_same_conversation_repays_exact_unattempted_history_after_service_restart(learning):
+def test_same_conversation_repays_exact_unattempted_history_package_after_service_restart(learning):
     cognition = GroundedCognition()
     with restarted_service(learning, cognition) as memory:
         learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
@@ -294,10 +325,10 @@ def test_same_conversation_repays_exact_unattempted_history_after_service_restar
         assert old["payload"].get("integration_continuation_job_id"), diagnostic(learning)
         paid = learning.job(old["payload"]["integration_continuation_job_id"])
         assert paid["state"] == "completed", diagnostic(learning)
-        assert paid["result"]["integration_manifest"] == frozen
+        paid_selection = assert_funded_package(learning, paid, frozen)
         assert paid["payload"]["authorization_root_job_id"] == donor["id"] != second["id"]
         assert paid["payload"]["encoding_parent_job_id"] == old["payload"]["encoding_parent_job_id"]
-        assert paid["result"]["history_integration"]["assessed_count"] == len(frozen["objectives"])
+        assert paid["result"]["history_integration"]["assessed_count"] == len(paid_selection["objectives"])
         assert paid["result"]["history_integration"]["published_count"] == 0
         assert paid["model_calls"] == 1 and len(operations(learning, paid["id"])) == 1
         assert all(operation["outcome"] == "completed" for operation in operations(learning, paid["id"]))
@@ -311,7 +342,7 @@ def test_same_conversation_repays_exact_unattempted_history_after_service_restar
         matching = [data["integration_manifest"] for phase_name, data in cognition.requests
                     if phase_name == "proposal" and "integration_manifest" in data
                     and objective_ids(data["integration_manifest"]) & objective_ids(frozen)]
-        assert matching == [model_manifest(frozen)]
+        assert matching == [model_manifest(paid_selection)]
         delivered_requests = []
         assert_exact_delivery_context(memory, earlier_sources, delivered_requests, routines=ROUTINES[:3])
 
@@ -357,8 +388,8 @@ def test_later_conversation_capacity_never_retries_paid_failed_or_unknown_compar
         assert delegated["state"] == "completed"
         assert delegated["payload"]["authorization_root_job_id"] == donor["id"]
         assert delegated["payload"]["encoding_parent_job_id"] == second["id"]
-        assert delegated["result"]["integration_manifest"] == untouched
-        assert delegated["result"]["history_integration"]["assessed_count"] == len(untouched["objectives"])
+        delegated_selection = assert_funded_package(learning, delegated, untouched)
+        assert delegated["result"]["history_integration"]["assessed_count"] == len(delegated_selection["objectives"])
         for _ in range(3):
             drain(learning)
         retained = learning.job(failed["id"])
@@ -378,3 +409,32 @@ def test_later_conversation_capacity_never_retries_paid_failed_or_unknown_compar
         summary = RuntimeClient(memory).learning_progress()["learning_phases"]
         assert summary["history_integration_open_count"] > 0
         assert summary["history_integration_unassessed_objective_count"] >= len(selected)
+
+
+def test_actual_admission_preserves_exact_objectives_when_package_capacity_splits_or_fits(learning):
+    cognition = GroundedCognition()
+    with restarted_service(learning, cognition) as memory:
+        learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
+                                                              max_sources=4, max_assertions=8)
+        for index, fact in enumerate(ROUTINES[:3]):
+            _, sources = turn(memory, fact, f"first-{index}")
+            drain(learning)
+        parent = encoding_for(learning, sources)
+        historical = learning.job(parent["result"]["history_integration_job_id"])
+        obligation = copy.deepcopy(historical["payload"]["history_obligation_manifest"])
+        assert len(obligation["objectives"]) == 3
+        before_calls, before_ledger = len(cognition.requests), operations(learning)
+        for capacity, expected_count in ((1, 1), (32, 3)):
+            policy = replace(learning.service.semantic_processor.policy, max_assertions=capacity,
+                             max_sources=32, max_request_bytes=524288, max_input_bytes=1048576)
+            with learning.database.transaction(learning.principal) as conn:
+                brain = learning.service._brain(conn, learning.principal, learning.brain)
+                _, selected, remaining = integration_package(
+                    conn, learning.service, learning.principal, brain, historical["payload"]["target"],
+                    manifest=obligation, policy=policy,
+                    input_contract_version=historical["result"]["input_contract_version"],
+                )
+            assert len(selected["objectives"]) == expected_count
+            assert_exact_partition(obligation, selected, remaining)
+        assert len(cognition.requests) == before_calls and operations(learning) == before_ledger
+        assert learning.job(historical["id"])["payload"]["history_obligation_manifest"] == obligation

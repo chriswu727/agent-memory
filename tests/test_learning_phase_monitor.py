@@ -12,7 +12,8 @@ from test_learning_progress import stored as stored
 
 from agent_memory.api import create_app
 from agent_memory.config import Settings
-from agent_memory.helpers import Principal
+from agent_memory.helpers import Principal, digest
+from agent_memory.history_semantics import MANIFEST_VERSION
 from agent_memory.jobs import JobStore, sanitize_learning_summary
 from agent_memory.learning_allocations import HISTORY_PHASE, allocation_metadata
 from agent_memory.learning_phase_monitor import (
@@ -25,9 +26,20 @@ from agent_memory.learning_phase_monitor import (
 )
 
 
+def manifest(count=1):
+    inputs = [{"event_id": "private-source", "revision": 1, "content_sha256": "a" * 64}]
+    fingerprint = digest(inputs)
+    targets = [{"memory_id": f"private-memory-{index}", "revision": 1, "content_sha256": "b" * 64}
+               for index in range(count)]
+    return {"version": MANIFEST_VERSION, "input_fingerprint": fingerprint, "input_refs": inputs,
+            "through_sequence": 8, "unresolved_discovery": False, "discovery_limitations": [],
+            "objectives": [{"objective_id": "comparison-" + digest([MANIFEST_VERSION, fingerprint, target]),
+                            "target_memory_version": target} for target in targets]}
+
+
 def coverage(*, assessed=True, published=False):
     return {"version": "bounded-history-manifest-v1", "objectives": [
-        {"objective_id": "private-objective", "assessed": assessed,
+        {"objective_id": manifest()["objectives"][0]["objective_id"], "assessed": assessed,
          "status": "published_relation" if published else "assessed_no_publication" if assessed else "not_evaluated",
          "verified_link_ids": ["private-relation"] if published else [], "reason": None},
     ], "assessed_count": int(assessed), "published_count": int(published)}
@@ -47,8 +59,9 @@ def history(identifier="history", *, state="deferred", parent="encoding", root="
                   attempts=2 if evaluated else 0, model_calls=2 if evaluated else 0, input_bytes=200 if evaluated else 0,
                   phase_payload={
                       **allocation_metadata(identifier, phase=HISTORY_PHASE, root_job_id=root),
-                      "encoding_parent_job_id": parent, "encoding_input_fingerprint": "a" * 64,
+                      "encoding_parent_job_id": parent, "encoding_input_fingerprint": manifest()["input_fingerprint"],
                       "history_cutoff_sequence": 8,
+                      "history_obligation_manifest": manifest(),
                   }, history_coverage=coverage() if evaluated else None,
                   history_reason=DEFERRED_REASON if state == "deferred" else None,
                   history_category="package_incomplete" if state == "deferred" else None)
@@ -372,7 +385,8 @@ def exact_rows():
              "last_error": None, "cycle": False, "depth": 0,
              "payload": {**allocation_metadata("history", phase=HISTORY_PHASE, root_job_id="encoding"),
                          "target": target, "from_sequence": 1, "through_sequence": 8,
-                         "encoding_parent_job_id": "encoding", "encoding_input_fingerprint": "a" * 64,
+                         "encoding_parent_job_id": "encoding", "encoding_input_fingerprint": manifest()["input_fingerprint"],
+                         "history_obligation_manifest": manifest(),
                          "history_cutoff_sequence": 8},
              "result": {**semantic_result(status="not_evaluated"), "history_integration_reason": DEFERRED_REASON,
                         "history_integration_category": "package_incomplete"}}

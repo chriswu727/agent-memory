@@ -1,10 +1,12 @@
 # First-release completion plan
 
-Status: active development; this document is not release acceptance.
+Status: first-release acceptance failed; paid follow-up allowance exhausted, with offline diagnosis and targeted repair only. This document is not release acceptance.
 
 The [finite first-release acceptance](v1-acceptance.md) now defines the supported scope, measurable gates, spending limits and explicit success stop. It governs release completion; the broader architecture and implementation sequence below do not authorize an ever-expanding first release.
 
 The [local acceptance checkpoint](../evaluations/v1-2026-10-25-local-acceptance.md) records bounded-attention, private-funding, capability and speech-attribution repairs. The subsequent [first finite acceptance attempt](../evaluations/v1-2026-10-25-acceptance-attempt-1.md) stopped after twelve exchanges on contradictory historical comparison accounting. The [versioned coverage repair](history-link-coverage.md) removes that redundant model bookkeeping while preserving validation. Historical results remain evidence for their original candidates. Actual 100-exchange/twelve-probe acceptance is still open.
+
+The [single full follow-up](../evaluations/v1-2026-10-25-acceptance-attempt-2.md) passed its sixteen-exchange checkpoint and durable replay, then stopped after twenty-three exchanges on a provider timeout with unknown usage. All twenty-three new inputs were encoded, but the last historical comparison and all probes remain incomplete. Further paid campaigns stop under the existing rule. The observed monitoring defects now have a [locally verified repair](../evaluations/v1-2026-10-25-timeout-monitoring.md); no subsequent local check can retroactively pass this campaign.
 
 The first release must be a usable independent memory runtime for API-backed text agents, with a desktop installation and a public integration surface. It must form and retrieve memories automatically through the declared lifecycle, preserve continuity across restarts and model changes, retain qualifications and corrections, and make failures and costs inspectable. MCP remains an additional tools interface; installing MCP alone cannot intercept a closed host's conversations.
 

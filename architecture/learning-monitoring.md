@@ -29,11 +29,11 @@ Desktop chat reads aggregate progress once at startup. Its post-delivery situati
 | `history_integration_deferred_count` | Valid open historical obligations whose current leaf is deferred. |
 | `history_integration_running_count` | Valid open historical obligations whose current leaf has a live running lease. |
 | `history_integration_assessed_count` | Valid historical lineages with assessed objectives or an empty assessed manifest. |
-| `history_integration_unassessed_objective_count` | Selected comparison objectives still unassessed in retained partial results or known failed attempts. |
+| `history_integration_unassessed_objective_count` | Admitted comparison objectives still unassessed, including valid frozen manifests before a result exists, partial results and known failed attempts. Valid delegation avoids counting the same pending work twice. |
 | `legacy_unclassified_count` | Jobs predating explicit phase metadata. |
 | `unknown_count` | Jobs whose phase metadata or required lineage cannot be validated. |
 
-The aggregate examines all retained learning-window metadata in the authorized brain, including old jobs beyond the latest 200. It does not select conversation text or integration manifests. Missing children, cycles, incompatible phases, invalid scopes, and malformed metadata make `counts_complete=false`; their work is not silently treated as finished. Do not read incomplete zero counters as proof that nothing remains.
+The aggregate examines all retained learning-window metadata in the authorized brain, including old jobs beyond the latest 200. It reads bounded admitted/selected manifests and unsettled-operation flags to compute progress, without selecting conversation text or provider responses. Public summaries do not expose those manifests. Missing children, cycles, incompatible phases, invalid scopes, and malformed metadata make `counts_complete=false`; their work is not silently treated as finished. A paid historical attempt with missing manifest/coverage evidence is incomplete, not a trustworthy zero. Do not read incomplete zero counters as proof that nothing remains.
 
 A valid recovery or continuation transfers the corresponding remaining work to its child without double-counting that lineage. Historical integration never substitutes for encoding progress. Its original pending creation time survives validated continuation and recovery links. An assessed historical prefix and an open historical tail can both be counted: `history_integration_assessed_count` is not a count of fully closed obligations.
 
@@ -42,6 +42,8 @@ An encoding replan after optional evidence changes is recognized only by its exp
 When source or context invalidation leaves a paid encoding prefix blocked, a validated `encoding-window-snapshot-v1` boundary can identify later inputs that were never attempted. A separate linked encoding allocation may process only that untouched tail. Monitoring keeps the original prefix blocked, checks the exact boundary and reverse link, and does not infer a safe tail from missing or malformed snapshot metadata.
 
 The existing `window_count` and scheduling counts remain available. Deferred historical work contributes to `blocked_count` with the fixed reason `history_integration_deferred`. Here, blocked means it is not currently claimable; deferred integration may be reconsidered automatically when complete evidence and existing authorized capacity become available. Provider failures and uncertain paid attempts are separate failure/recovery cases.
+
+For a frozen `no_unsettled_retry-v1` job, an expired lease with a retained reserved operation contributes to `blocked_count` with reason `provider_uncertain`, even before a worker's reclaim terminalizes it. A live lease remains running; legacy jobs retain their original policy. Reading progress does not settle or cancel the job. An actual lease conflict during provider settlement retains error code `provider_uncertain` and exposes only a fixed `lease_conflict` diagnostic; other settlement exceptions keep the generic message without raw exception text.
 
 ## Exact status and semantic outcomes
 

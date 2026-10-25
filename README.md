@@ -12,6 +12,8 @@ The current learning repair adds [source-derived relation capabilities](architec
 
 The [first finite real-memory attempt](evaluations/v1-2026-10-25-acceptance-attempt-1.md) stopped after twelve delivered exchanges and 47 known-usage calls because a historical proposal contradicted its own relation coverage. The runtime correctly withheld that publication. The [versioned accounting repair](architecture/history-link-coverage.md) derives coverage from exact relation endpoints and retains source and semantic verification; the hundred-exchange/twelve-probe gate remains unpassed.
 
+The [single permitted follow-up](evaluations/v1-2026-10-25-acceptance-attempt-2.md) passed its sixteen-exchange source/accounting/replay checkpoint, then stopped after twenty-three exchanges on a provider response timeout with unknown usage. All twenty-three new inputs were encoded; the last historical comparison and all twelve probes remain incomplete. There were 90 known-usage calls and one unknown-usage call. Further paid campaigns have stopped for offline reassessment; the monitoring defects exposed by the timeout have a [locally verified repair](evaluations/v1-2026-10-25-timeout-monitoring.md), separate from the preserved failed result.
+
 The [cognitive memory implementation plan](architecture/cognitive-memory-plan.md) describes proposed changes to the cognitive core, implementation dependencies, and behavioral evaluation. Its additional capabilities remain planned work, not a description of current behavior.
 
 ## Product and integration goals

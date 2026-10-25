@@ -98,20 +98,70 @@ def coverage_summary(value):
 def history_assessment(row):
     coverage = coverage_summary(row.get("history_coverage"))
     status = row.get("processing_status")
+    manifest, _, complete = _history_manifest(row)
+    if not complete or (manifest is not None and coverage is not None and
+            {item["objective_id"] for item in row["history_coverage"]["objectives"]}
+            != {item["objective_id"] for item in manifest["objectives"]}):
+        return None
     return (coverage if coverage is not None and (status == "partial" or status == "completed"
             and coverage["assessed_count"] == coverage["objective_count"]) else None)
 
 
 def assessed_history(row):
     coverage = history_assessment(row)
-    return coverage is not None and coverage["assessed_count"] == coverage["objective_count"]
+    return (coverage is not None and coverage["assessed_count"] == coverage["objective_count"]
+            and not unassessed_history(row))
 
 
-def unassessed_history(row):
+def _history_manifest(row):
+    from .history_semantics import validate_manifest
+
+    payload = row.get("phase_payload", row.get("payload", {}))
+    admitted = payload.get("history_obligation_manifest")
+    selected = row.get("history_manifest")
+    present = row.get("has_history_manifest", selected is not None)
+    try:
+        if "history_obligation_manifest" in payload:
+            validate_manifest(admitted)
+        if present:
+            validate_manifest(selected)
+            if admitted is not None and (
+                    any(selected[key] != admitted[key] for key in ("version", "input_fingerprint", "input_refs",
+                                                                   "through_sequence"))
+                    or any(item not in admitted["objectives"] for item in selected["objectives"])):
+                return None, None, False
+        for manifest in (admitted, selected if present else None):
+            if manifest is not None and (
+                    manifest["input_fingerprint"] != payload.get("encoding_input_fingerprint")
+                    or manifest["through_sequence"] != payload.get("history_cutoff_sequence")):
+                return None, None, False
+        return selected if present else admitted, admitted, True
+    except (DomainError, ValueError, TypeError, KeyError):
+        return None, None, False
+
+
+def history_debt(row, *, delegated=False, recovered=False):
     coverage = (history_assessment(row) if row["state"] == "completed" else
                 coverage_summary(row.get("history_coverage")) if failed_history(row) else None)
-    return (coverage["objective_count"] - coverage["assessed_count"]
-            if coverage is not None else 0)
+    manifest, admitted, complete = _history_manifest(row)
+    remainder = (len(admitted["objectives"]) - len(manifest["objectives"])
+                 if admitted is not None and manifest is not None and not delegated else 0)
+    retained = coverage_summary(row.get("history_coverage"))
+    if manifest is not None and retained is not None and (
+            {item["objective_id"] for item in row["history_coverage"]["objectives"]}
+            != {item["objective_id"] for item in manifest["objectives"]}):
+        return len(manifest["objectives"]) + remainder, False
+    if coverage is not None:
+        return (0 if recovered else coverage["objective_count"] - coverage["assessed_count"] + remainder), complete
+    if row.get("history_coverage") not in (None, {}) and retained is None:
+        complete = False
+    if manifest is not None:
+        return (0 if delegated else len(manifest["objectives"]) + remainder), complete
+    return 0, False
+
+
+def unassessed_history(row, *, delegated=False, recovered=False):
+    return history_debt(row, delegated=delegated, recovered=recovered)[0]
 
 
 def failed_history(row):
@@ -241,6 +291,8 @@ def annotate_phases(windows):
             row["issues"].add("invalid_metadata")
         if row["state"] == "deferred" and not valid_deferred(row):
             row["issues"].add("invalid_metadata")
+        if not history_debt(row)[1]:
+            row["phase_issues"].add("invalid_metadata")
         if "history_replan_version" in payload and not _identifier(row.get("integration_parent")):
             row["issues"].add("invalid_lineage")
 
@@ -281,6 +333,8 @@ def valid_phase_edge(parent, child, relation):
     if relation == "integration" and not valid_integration_predecessor(parent, child):
         return False
     first, second = parent.get("phase_payload", {}), child.get("phase_payload", {})
+    if relation == "recovery" and first.get("history_obligation_manifest") != second.get("history_obligation_manifest"):
+        return False
     return all(first.get(key) == second.get(key) for key in (
         "encoding_parent_job_id", "encoding_input_fingerprint",
     )) and (parent["window_start"], parent["window_end"]) == (child["window_start"], child["window_end"])
@@ -336,7 +390,9 @@ def summarize_phases(windows, edges):
             counts["history_integration_assessed_count"] += healthy and any(
                 (coverage := history_assessment(item)) is not None
                 and (coverage["assessed_count"] > 0 or coverage["objective_count"] == 0) for item in chain)
-            counts["history_integration_unassessed_objective_count"] += sum(unassessed_history(item) for item in chain)
+            counts["history_integration_unassessed_objective_count"] += sum(
+                unassessed_history(item, delegated=bool(edges[item["id"]]),
+                                   recovered=item.get("recovery_id") in edges[item["id"]]) for item in chain)
             if opened and healthy:
                 counts["history_integration_deferred_count"] += chain[-1]["state"] == "deferred"
                 counts["history_integration_running_count"] += (
@@ -455,7 +511,7 @@ def _exact_projection(alias=""):
     fields = (*PHASE_FIELDS, "from_sequence", "through_sequence", "processed_through_sequence", "target", "recovery_job_id",
               "recovery_parent_job_id", "continuation_job_id", "continuation_parent_job_id")
     result_fields = (*HISTORY_LINK_FIELDS, "status", "learning_outcome", "learning_window", "history_integration",
-                     "integration_continuation_job_id")
+                     "integration_continuation_job_id", "integration_manifest")
     return (f"{prefix}id,{prefix}kind,{prefix}state,{prefix}model_calls,{prefix}input_bytes,{prefix}last_error,"
             + _selected_json(prefix + "payload", fields) + " AS payload,"
             + _selected_json(prefix + "result", result_fields) + " AS result")
@@ -594,16 +650,20 @@ def resolve_history_status(connection, row):
         if "integration_continuation_job_id" in result and result["integration_continuation_job_id"] != payload.get("integration_continuation_job_id"):
             return safe
         assessment = {"state": item["state"], "processing_status": result.get("status"),
+                      "last_error": item.get("last_error"), "model_calls": item.get("model_calls", 0),
+                      "phase_payload": payload, "history_manifest": result.get("integration_manifest"),
+                      "has_history_manifest": "integration_manifest" in result,
                       "history_coverage": result.get("history_integration")}
         if item["state"] == "completed" and history_assessment(assessment) is None:
-            return safe
-        unassessed += unassessed_history(assessment)
+            return sanitize_phase_metadata({**safe, "phase_metadata_complete": False})
+        if not history_debt(assessment)[1]:
+            return sanitize_phase_metadata({**safe, "phase_metadata_complete": False})
         links = {key: payload[key] for key in ("recovery_job_id", "integration_continuation_job_id") if key in payload}
         if len(links) > 1 or any(not _identifier(value) for value in links.values()):
             return safe
         if links:
             key, child = next(iter(links.items()))
-            predecessor = {**item, "processing_status": result.get("status"),
+            predecessor = {**item, **assessment, "processing_status": result.get("status"),
                            "learning_outcome": result.get("learning_outcome"),
                            "history_coverage": result.get("history_integration"),
                            "history_reason": result.get("history_integration_reason"),
@@ -612,8 +672,13 @@ def resolve_history_status(connection, row):
                     or (key == "integration_continuation_job_id" and not valid_integration_predecessor(predecessor, by_id[child]))
                     or (key == "recovery_job_id" and item["state"] not in {"failed", "cancelled", "superseded"})):
                 return safe
+            if (key == "recovery_job_id" and payload.get("history_obligation_manifest")
+                    != by_id[child]["payload"].get("history_obligation_manifest")):
+                return safe
+            unassessed += unassessed_history(assessment, delegated=True, recovered=key == "recovery_job_id")
             previous, relation, current = current, key.removesuffix("_job_id"), child
             continue
+        unassessed += unassessed_history(assessment)
         if len(seen) != len(rows) or item["state"] not in HISTORY_STATES - {"unknown"}:
             return safe
         safe.update(history_integration_job_id=linked, history_integration_current_job_id=current,
@@ -644,6 +709,8 @@ def projection():
         "result->'history_integration_reason' AS history_reason,"
         "result->'history_integration_category' AS history_category,"
         "result->'history_integration' AS history_coverage,"
+        "result->'integration_manifest' AS history_manifest,"
+        "result ? 'integration_manifest' AS has_history_manifest,"
         "payload->'integration_continuation_job_id' AS integration_id,"
         "payload ? 'integration_continuation_job_id' AS has_integration,"
         "payload->'integration_continuation_parent_job_id' AS integration_parent"

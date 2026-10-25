@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "kind": "failed_finite_acceptance_followup",
+  "date": "2026-10-25",
+  "status": "stopped",
+  "gate_g4": "not_passed",
+  "candidate": {
+    "revision": "0f2685608c2402922f5cd47e8bac55856e82e166",
+    "build_id": "7e40bd17ef4cdc6c894d620ea244788c34f27874ab4422072a212d169b537b13",
+    "archive_sha256": "25b76bd10e03b77208e4f8eb3a39b4ebc5793f48cc234d34fbb27902e5eb297f",
+    "plan_sha256": "bc8dfdf26f5e04fbbf2b7debaecd1e41312148fb6e95462c52e6756794b93d5f",
+    "migration_count": 22
+  },
+  "profile": {
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "arms": [
+      "memory"
+    ],
+    "planned_history_exchanges": 100,
+    "planned_isolated_probes": 12,
+    "baseline": false,
+    "paid_reviewer": false,
+    "same_plan_except_code_fingerprints": true
+  },
+  "actual": {
+    "history_exchanges_delivered": 23,
+    "current_input_encoding_completed": 23,
+    "last_stage": "history-022",
+    "probes": 0,
+    "checkpoint_016": "independently_reviewed_and_released",
+    "durable_replay_016": "passed_without_additional_model_or_delivery_calls",
+    "durable_replay_100": "not_reached",
+    "host_calls": 23,
+    "cognitive_calls": 68,
+    "provider_completion_event_count": 91,
+    "usage": {
+      "reserved_calls": 91,
+      "completed_calls": 91,
+      "reserved_output_tokens": 1208320,
+      "usage_confirmed_calls": 90,
+      "usage_unknown_calls": 1,
+      "usage_totals": {
+        "prompt_tokens": 766041,
+        "completion_tokens": 303910,
+        "total_tokens": 1069951,
+        "prompt_cache_hit_tokens": 286080,
+        "prompt_cache_miss_tokens": 479961
+      }
+    },
+    "usage_totals_basis": "Confirmed calls only; unknown final-call usage is additional and is not zero.",
+    "stopped_reason": "unknown_provider_usage",
+    "process_exit_code": 1
+  },
+  "limits": {
+    "input_bytes_basis": "Canonical UTF-8 semantic request envelope including messages, response_schema and max_output_tokens; separately verified against exact HTTP request hashes and wire sizes.",
+    "configured": {
+      "per_root_calls": 4,
+      "per_root_input_bytes": 393216,
+      "per_phase_calls": 2,
+      "per_phase_input_bytes": 196608,
+      "per_semantic_request_bytes": 98304,
+      "campaign_calls": 736,
+      "campaign_reserved_output_tokens": 10682368
+    },
+    "exercised": {
+      "fresh_roots": 23,
+      "host_calls": 23,
+      "semantic_calls": 68,
+      "provider_calls": 91,
+      "confirmed_usage_calls": 90,
+      "unknown_completed_usage_calls": 1,
+      "usage_totals_basis": "Provider-confirmed calls only; unknown usage is excluded, never assumed zero",
+      "reserved_output_tokens": 1208320,
+      "max_root_calls": 4,
+      "max_root_input_bytes": 185103,
+      "max_phase_calls": 2,
+      "max_phase_input_bytes": 122568,
+      "max_semantic_request_bytes": 92975,
+      "usage_totals": {
+        "prompt_tokens": 766041,
+        "completion_tokens": 303910,
+        "total_tokens": 1069951,
+        "prompt_cache_hit_tokens": 286080,
+        "prompt_cache_miss_tokens": 479961
+      }
+    },
+    "additional_in_requested_range": {
+      "provider_calls": 29,
+      "host_calls": 7,
+      "semantic_calls": 22,
+      "confirmed_usage_calls": 28,
+      "unknown_completed_usage_calls": 1,
+      "reserved_output_tokens": 389120,
+      "usage_totals": {
+        "prompt_tokens": 223356,
+        "completion_tokens": 86671,
+        "total_tokens": 310027,
+        "prompt_cache_hit_tokens": 92800,
+        "prompt_cache_miss_tokens": 130556
+      }
+    }
+  },
+  "timeout_failure": {
+    "stage": "history-022",
+    "learning_job_id": "integrate:5babe6832dd33a29b3720a442a0252a3c489a6197364988105a152fb3ba5e6fe",
+    "job_state_at_stop": "running",
+    "job_last_error_at_stop": null,
+    "execution_error": {
+      "type": "DomainError",
+      "code": "provider_uncertain"
+    },
+    "call_error": {
+      "type": "SemanticProviderError",
+      "code": "timeout"
+    },
+    "call_elapsed_seconds": 240.54379,
+    "provider_transport_record": {
+      "event": "completed",
+      "request_id": "a54114dfcfb444fc99163d1c428970c0",
+      "status_code": 200,
+      "outcome": "stream_error",
+      "elapsed_seconds": 240.533692,
+      "response_bytes_observed": 0,
+      "usage_confirmed": false,
+      "raw_response_bytes_observed": 0
+    },
+    "reservation": {
+      "event": "reserved",
+      "request_id": "a54114dfcfb444fc99163d1c428970c0",
+      "reserved_output_tokens": 16384,
+      "request_sha256": "69cbc6c1e95a22fff582474fe5bf4db37e50844fe5e687cb71442bedb8c7f880",
+      "request_bytes": 72443
+    },
+    "semantic_input_bytes_charged": 82714,
+    "server_operation_state": "reserved",
+    "server_operation_usage": null,
+    "history_publication": null,
+    "selected_objective_count": 3,
+    "assessed_objectives": 0,
+    "failed_required_checks": {
+      "no_learning_execution_failure": false
+    },
+    "settlement_cause": "Not retained; expired lease in later snapshot does not prove why settlement failed."
+  },
+  "monitor_snapshot": {
+    "learning_phases": {
+      "version": "encoding-integration-v1",
+      "encoding_open_count": 0,
+      "encoding_assessed_count": 23,
+      "history_integration_open_count": 1,
+      "history_integration_deferred_count": 0,
+      "history_integration_running_count": 0,
+      "history_integration_assessed_count": 18,
+      "history_integration_unassessed_objective_count": 0,
+      "legacy_unclassified_count": 0,
+      "unknown_count": 0,
+      "counts_complete": true
+    },
+    "runnable_count": 1,
+    "blocked_count": 0,
+    "server_cognitive_usage": {
+      "basis": "retained_cognitive_operation_reservations",
+      "scope": "cognition_and_embeddings",
+      "token_source": "provider_reported",
+      "reservation_count": 68,
+      "usage_known_count": 67,
+      "usage_unknown_count": 1,
+      "outcome_counts": {
+        "reserved": 1,
+        "completed": 67,
+        "failed": 0,
+        "uncertain": 0
+      },
+      "reported_tokens": {
+        "input_tokens": 642487,
+        "output_tokens": 297253,
+        "total_tokens": 939740
+      },
+      "counts_complete": false,
+      "phases": [
+        {
+          "phase": "proposal",
+          "reservation_count": 42,
+          "usage_known_count": 41,
+          "usage_unknown_count": 1,
+          "outcome_counts": {
+            "reserved": 1,
+            "completed": 41,
+            "failed": 0,
+            "uncertain": 0
+          },
+          "reported_tokens": {
+            "input_tokens": 476082,
+            "output_tokens": 187971,
+            "total_tokens": 664053
+          }
+        },
+        {
+          "phase": "verification",
+          "reservation_count": 26,
+          "usage_known_count": 26,
+          "usage_unknown_count": 0,
+          "outcome_counts": {
+            "reserved": 0,
+            "completed": 26,
+            "failed": 0,
+            "uncertain": 0
+          },
+          "reported_tokens": {
+            "input_tokens": 166405,
+            "output_tokens": 109282,
+            "total_tokens": 275687
+          }
+        }
+      ]
+    },
+    "confirmed_gaps": [
+      "Three retained admitted objectives are reported as zero unassessed before coverage exists.",
+      "An expired running job with an unsettled operation is reported runnable although reclaim must fence it."
+    ],
+    "retry_safety": "Frozen no_unsettled_retry-v1 claim path cancels rather than authorizes another provider call; actual failed database was preserved without reclaim."
+  },
+  "source_review": {
+    "reviewed_history": "000–022",
+    "unrun_history": "023–099",
+    "reviewed_probe_count": 0,
+    "semantic_memories": 51,
+    "episode_versions": 22,
+    "belief_relations": 3,
+    "accepted_current_only_updates": 1,
+    "unsupported_published_fact_found": false,
+    "optional_rejected_episode_count": 1,
+    "limitations": [
+      "No probe was reached.",
+      "Prior episode navigation arrays were empty.",
+      "Cross-conversation funding was not exercised.",
+      "Three distinct relations cover six selected objective outcomes; these are different counts.",
+      "Generic pronoun wording at010 is not demographic evidence."
+    ]
+  },
+  "spending_stop": {
+    "followup_attempt": 1,
+    "permitted_followups": 1,
+    "further_paid_campaigns": "stopped_pending_offline_reassessment_and_separate_decision",
+    "automatic_retry_performed": false,
+    "same_run_paid_resume_allowed": false,
+    "release_accepted": false
+  },
+  "private_evidence": {
+    "plan.json": "610445eced4bac9d95c47add34860bcc85752a0f41e20241145c29e9e75cdf4f",
+    "provenance.json": "e46952c07f0a237f3f9a470ded66b50ebb1826835e8f455aaa256dea0e6121a9",
+    "run/memory/report.json": "343786c96cb4afc453441d157302675d009dc79d6d7d73f78a27cb7df67ce1d4",
+    "run/memory/calls.jsonl": "65fd655adbcfe48620b9ad5271037751fb4f28cb2ef59bbad4bc16bd0d66c84c",
+    "run.log": "d3d19c89eb0bef24036fb6650519676f080a1573e77a0c1d3250b5abbe701978",
+    "run/checkpoint-016.json": "c776df4e6b7a8a26b6048d0ad469e1367f0212a3e8b77143b82e00c97307b673",
+    "run/checkpoint-016-decision.json": "92025690922349282470e148d9077c5a37c21b953f9dd8b6c2d5ab138301d4d1",
+    "checkpoint-016-review.json": "a6b3edd4c1188272bf1870b336f0ba3aca4b06d4e3fe374d9b7682630ca3d653",
+    "audit-history-000-007.json": "cb658a8a3a968d31da05a2d7d9d3e6e118a11332df75205480b9121b1db62be9",
+    "audit-history-008-015.json": "e65426b2964732181af090380c74af922ec9d43d92ba831a6089df9514a4aafb",
+    "audit-history-016-023.json": "5f37e41cacdea71b37f6776a5e7603e49aed5be1822927a5ea433ecfde7af7b3",
+    "audit-history-024-031.json": "67c9bd5563280a440186289345d8bdd701b5e7b43e4ef089731580dce371e931",
+    "audit-accounting-000-015.json": "abe59e6dc601b36957201d8163d01c4d0bd2ddb77db36ccec8a1c33cab535685",
+    "audit-accounting-016-031.json": "559aa565275d37e9365a8b0e87b70d7eba2ccac9ff3ddb38b767ed1922dbfb56"
+  }
+}

@@ -569,8 +569,11 @@ class LearningEngine:
                     principal, brain_id, job["id"], **lease, operation_id=operation_id,
                     outcome=outcome, usage=usage, response_fingerprint=response_fingerprint,
                 )
-            except Exception:
-                raise DomainError("provider_uncertain", "Provider settlement requires explicit reconciliation.") from None
+            except Exception as error:
+                message = "Provider settlement requires explicit reconciliation."
+                if isinstance(error, DomainError) and error.code == "lease_conflict":
+                    message = "Provider settlement requires explicit reconciliation (lease_conflict)."
+                raise DomainError("provider_uncertain", message) from None
             settled_operations.add(operation_id)
 
         try:
