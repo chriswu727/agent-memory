@@ -402,6 +402,11 @@ export class MemoryClient {
   learningProgress(brainId?: string): Promise<JsonObject> {
     return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/runtime/learning-progress`);
   }
+  activeScope(conversationId: string, branchId = "main", brainId?: string): Promise<JsonObject> {
+    const brain = encodeURIComponent(this.#scope({ brainId }).brain_ref);
+    const query = new URLSearchParams({ conversation_id: conversationId, branch_id: branchId });
+    return this.#request("GET", `v1/brains/${brain}/runtime/scope?${query}`);
+  }
   retryLearning(jobId: string, options: RetryLearningOptions): Promise<JsonObject> {
     const brain = encodeURIComponent(this.#scope(options).brain_ref);
     return this.#request("POST", `v1/brains/${brain}/runtime/jobs/${encodeURIComponent(jobId)}/retry-learning`, {

@@ -1,8 +1,8 @@
-import httpx
 import pytest
 from test_learning import learning as learning
 
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
+from agent_memory.delivery_receipts import confirmed_delivery_receipt
+from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
 from agent_memory.turns import TurnStore
 
 pytestmark = pytest.mark.integration
@@ -24,9 +24,16 @@ def test_external_dependency_change_after_delivery_cannot_commit_stale_orientati
 
     monkeypatch.setattr(TurnStore, "finish", change_before_finish)
     runtime = BrainRuntime(learning.memory, lambda _: "我们先讨论复习安排。", deliver=deliver)
-    with pytest.raises(httpx.HTTPStatusError) as error:
+    with pytest.raises(RuntimeBlocked) as error:
         runtime.respond("我现在要准备复习。", message_id="generation-after-delivery", conversation_id="chat")
-    assert error.value.response.status_code == 409
+    assert error.value.code == "context_stale"
+    row = runtime.journal.get(error.value.turn_id)
+    assert confirmed_delivery_receipt(row)
+    assert row["delivery_receipt"]["state"] == "delivered"
+    assert row["delivery_receipt"]["disposition"] == "content_recorded"
+    assert row["scope_reserved"] is False
+    with pytest.raises(RuntimeBlocked, match="context_stale"):
+        runtime.resume(row["turn_id"])
     assert delivered == ["我们先讨论复习安排。"]
     assert learning.working() is None
     assert learning.calls == ["proposal", "verification"]

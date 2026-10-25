@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from typing import Literal
 from uuid import uuid4
 
+import httpx
+
 from .answer_review import AnswerReviewer, AnswerReviewError
 from .client import (
     MemoryClient,
@@ -16,6 +18,7 @@ from .client import (
     integration_capabilities,
     prepared_context,
 )
+from .delivery_receipts import confirmed_delivery_receipt
 from .helpers import digest
 from .orientation import ORIENTATION_ROUTE_VERSION, orientation_route
 from .recall_control import RecallController
@@ -64,6 +67,17 @@ class RuntimeBlocked(RuntimeError):
     def __init__(self, code: str, turn_id: str):
         self.code, self.turn_id = code, turn_id
         super().__init__(f"{code}: turn {turn_id}")
+
+
+def _scope_conflict(error):
+    if not isinstance(error, httpx.HTTPStatusError) or error.response.status_code != 409:
+        return False
+    try:
+        body = error.response.json()
+    except (ValueError, UnicodeError):
+        return False
+    return (isinstance(body, dict) and isinstance(body.get("error"), dict)
+            and body["error"].get("code") == "scope_conflict")
 
 
 @dataclass(frozen=True)
@@ -161,7 +175,7 @@ class _Lease:
 
     def finish(self):
         with self.lock:
-            if self.error is not None:
+            if self.error is not None and self.row["stage"] != "delivered":
                 raise RuntimeBlocked("lease_lost", self.row["turn_id"]) from self.error
             self.row = self.journal.finish(
                 self.row["turn_id"], lease_token=self.token,
@@ -172,12 +186,17 @@ class _Lease:
 
     def record_output(self, text, delivery_state):
         with self.lock:
-            if self.error is not None:
+            if delivery_state == "draft" and self.error is not None:
                 raise RuntimeBlocked("lease_lost", self.row["turn_id"]) from self.error
+            # A returned receipt records an external fact; the server still fences its write.
             self.row = self.journal.record_output(
                 self.row["turn_id"], lease_token=self.token,
                 expected_revision=self.row["revision"], text=text, delivery_state=delivery_state,
             )
+            if delivery_state != "draft":
+                self.error = None
+                if self.row["stage"] == "failed":
+                    self.stopped.set()
             return self.row
 
     def reserve_recall(self, **fields):
@@ -286,14 +305,23 @@ class BrainRuntime:
         if not isinstance(message_id, str) or not 1 <= len(message_id) <= 256:
             raise ValueError("A stable message_id is required")
         turn_id = "turn-" + digest([self.memory.brain_id, conversation_id, branch_id, message_id])[:40]
-        row = self.journal.begin(
-            turn_id=turn_id, conversation_id=conversation_id, branch_id=branch_id,
-            input_fingerprint=digest({"message_id": message_id, "text": text}),
-        )
+        try:
+            row = self.journal.begin(
+                turn_id=turn_id, conversation_id=conversation_id, branch_id=branch_id,
+                input_fingerprint=digest({"message_id": message_id, "text": text}),
+            )
+        except httpx.HTTPStatusError as error:
+            if _scope_conflict(error):
+                raise RuntimeBlocked("scope_conflict", turn_id) from None
+            raise
         return self._run(row, text)
 
     def resume(self, turn_id: str):
         row = self.journal.get(turn_id)
+        if confirmed_delivery_receipt(row):
+            raise RuntimeBlocked(row["failure_code"], turn_id)
+        if row["stage"] == "delivered":
+            return self._run(row, "")
         if row["stage"] == "started":
             raise RuntimeBlocked("input_not_captured_retry_original_message", turn_id)
         sources = self.journal.sources(turn_id)
@@ -304,7 +332,9 @@ class BrainRuntime:
 
     def _run(self, row, text):
         turn_id = row["turn_id"]
-        if not row["sources_available"]:
+        if confirmed_delivery_receipt(row):
+            raise RuntimeBlocked(row["failure_code"], turn_id)
+        if not row["sources_available"] and row["stage"] != "delivered":
             raise RuntimeBlocked("source_unavailable", turn_id)
         if row["stage"] == "completed":
             return TurnResult(turn_id, "completed", self._output(turn_id), replayed=True)
@@ -345,8 +375,9 @@ class BrainRuntime:
                     return TurnResult(turn_id, lease.row["stage"], self._output(turn_id))
                 self._deliver(lease, scope)
             if lease.row["stage"] == "delivered":
-                lease.check()
                 lease.finish()
+            if lease.row["stage"] == "failed":
+                raise RuntimeBlocked(lease.row["failure_code"] or "failed", turn_id)
             return TurnResult(turn_id, lease.row["stage"], self._output(turn_id))
 
     def _prompt(self, turn_id, text, packet):
@@ -589,8 +620,9 @@ class BrainRuntime:
         if receipt.state == "unknown":
             raise RuntimeBlocked("delivery_uncertain", turn_id)
         if receipt.state == "cancelled":
-            lease.record_output("", "cancelled")
-            raise RuntimeBlocked("delivery_cancelled", turn_id)
+            row = lease.record_output("", "cancelled")
+            failure = row.get("failure_code")
+            raise RuntimeBlocked("delivery_cancelled" if failure == "cancelled" else failure or "failed", turn_id)
         if receipt.state not in ("delivered", "partially_delivered"):
             raise RuntimeBlocked("invalid_delivery_receipt", turn_id)
         actual = receipt.delivered_text
@@ -600,5 +632,4 @@ class BrainRuntime:
             actual = text
         if not isinstance(actual, str) or not actual or len(actual.encode()) > self.policy.max_output_bytes:
             raise RuntimeBlocked("invalid_delivery_receipt", turn_id)
-        lease.check()
         lease.record_output(actual, receipt.state)

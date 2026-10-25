@@ -35,6 +35,11 @@ class RuntimeBegin(RuntimeBody):
     input_fingerprint: RuntimeFingerprint
 
 
+class RuntimeScope(RuntimeBody):
+    conversation_id: RuntimeIdentifier
+    branch_id: RuntimeIdentifier
+
+
 class RuntimeClaim(RuntimeBody):
     worker_id: RuntimeIdentifier
     lease_seconds: RuntimeLeaseSeconds = 30
@@ -120,12 +125,15 @@ class RuntimeFail(RuntimeLeaseMutation):
 
 
 def runtime_metadata(record: dict, *, include_lease: bool = False) -> dict:
+    from .delivery_receipts import sanitize_delivery_receipt
     from .turns import PUBLIC_FIELDS
 
     allowed = {*PUBLIC_FIELDS, "lease_active", "unavailable_event_refs", "sources_available"}
     if include_lease:
         allowed.add("lease_token")
     result = {key: value for key, value in record.items() if key in allowed}
+    if "delivery_receipt" in result:
+        result["delivery_receipt"] = sanitize_delivery_receipt(result["delivery_receipt"])
     if result.get("recall_plan") is not None:
         validate("RecallPlan", result["recall_plan"])
     if result.get("response_review") is not None:
@@ -287,6 +295,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             "unauthorized": 401, "not_found_or_forbidden": 404,
             "version_conflict": 409, "idempotency_conflict": 409,
             "lease_conflict": 409, "stage_conflict": 409, "turn_terminal": 409,
+            "scope_conflict": 409,
             "source_unavailable": 409, "context_stale": 409,
             "response_review_required": 409, "response_review_uncertain": 409, "response_review_blocked": 409,
             "dependency_unavailable": 503, "budget_exceeded": 413,
@@ -349,7 +358,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         result = turn_store().status(principal, brain_id)
         fields = {
             "brain_id", "durable_sequence", "indexed_sequence", "dependency_generation",
-            "scope_generation", "turn_count", "active_lease_count", "stage_counts", "pending_job_count",
+            "scope_generation", "turn_count", "active_lease_count", "reserved_scope_count", "stage_counts", "pending_job_count",
             "response_review_counts", "response_review_calls",
         }
         public = {key: value for key, value in result.items() if key in fields}
@@ -364,6 +373,17 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         return sanitize_learning_progress(job_store().learning_progress(
             principal, brain_id, configured=getattr(service, "semantic_processor", None) is not None,
         ))
+
+    @app.get("/v1/brains/{brain_id}/runtime/scope")
+    def active_scope(brain_id: str, request: Request, principal: Principal = Depends(authenticate)):
+        if any(len(request.query_params.getlist(key)) != 1 for key in request.query_params):
+            raise DomainError("validation_failed", "Scope parameters must not be repeated.")
+        try:
+            body = RuntimeScope.model_validate(dict(request.query_params)).model_dump()
+        except ValidationError as error:
+            raise DomainError("validation_failed", "A conversation ID and branch ID are required.") from error
+        row = turn_store().active_scope(principal, brain_id, **body)
+        return {"turn": runtime_metadata(row) if row is not None else None}
 
     @app.get("/v1/brains/{brain_id}/runtime/jobs")
     def list_jobs(brain_id: str, request: Request, principal: Principal = Depends(authenticate)):

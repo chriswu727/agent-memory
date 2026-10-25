@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 
 from . import desktop_connection
+from .delivery_receipts import confirmed_delivery_receipt
 from .helpers import digest
 from .local_profile import (
     LocalProfileBusy,
@@ -22,7 +23,14 @@ from .local_profile import (
     load_profile,
     profile_lock,
 )
-from .runtime import MEMORY_CONSUMPTION_VERSION, BrainRuntime, RuntimePolicy, TurnResult
+from .runtime import (
+    MEMORY_CONSUMPTION_VERSION,
+    BrainRuntime,
+    RuntimeBlocked,
+    RuntimePolicy,
+    TurnResult,
+    _scope_conflict,
+)
 from .turns import FAILURE_CODES, STAGES
 
 _MAX_PENDING_BYTES = 8192
@@ -193,7 +201,8 @@ class AgentSession:
     def _recovery_configuration(self, pending, row):
         if row is not None and row.get("stage") == "committed":
             raise SessionError("commit_recovery_required", pending["turn_id"])
-        if row is None or row.get("stage") not in ("delivered", "completed"):
+        if row is None or (row.get("stage") not in ("delivered", "completed")
+                           and not confirmed_delivery_receipt(row)):
             self._configuration(pending)
 
     def _binding(self, row, pending, *, code="session_state_invalid"):
@@ -220,6 +229,16 @@ class AgentSession:
         except OSError:
             raise SessionError("session_state_unavailable", pending["turn_id"]) from None
 
+    def _clear_confirmed_failure(self, pending, error):
+        if error.turn_id != pending["turn_id"]:
+            return
+        try:
+            row = self._existing_turn(pending)
+        except httpx.HTTPError:
+            return
+        if confirmed_delivery_receipt(row):
+            self._clear(pending)
+
     def _result(self, result, pending):
         if not isinstance(result, TurnResult) or result.turn_id != pending["turn_id"]:
             raise SessionError("invalid_runtime_result", pending["turn_id"])
@@ -238,6 +257,7 @@ class AgentSession:
             raise SessionError("invalid_message") from None
         with self._operation():
             pending = _read_pending(self._path, self._identity)
+            new_pending = pending is None
             fingerprint = digest({"message_id": message_id, "text": text})
             if pending:
                 if pending["message_id"] != message_id or pending["input_fingerprint"] != fingerprint:
@@ -252,10 +272,19 @@ class AgentSession:
                 }
                 self._existing_turn(pending, allow_missing=True, code="message_identity_conflict")
                 _save_pending(self._path, pending)
-            return self._result(self._runtime.respond(
-                text, message_id=message_id, conversation_id=self._identity["conversation_id"],
-                branch_id=self._identity["branch_id"],
-            ), pending)
+            try:
+                result = self._runtime.respond(
+                    text, message_id=message_id, conversation_id=self._identity["conversation_id"],
+                    branch_id=self._identity["branch_id"],
+                )
+            except RuntimeBlocked as error:
+                if (new_pending and error.code == "scope_conflict" and error.turn_id == pending["turn_id"]
+                        and self._existing_turn(pending, allow_missing=True) is None):
+                    self._clear(pending)
+                elif error.code != "scope_conflict":
+                    self._clear_confirmed_failure(pending, error)
+                raise
+            return self._result(result, pending)
 
     def resume(self) -> TurnResult:
         with self._operation():
@@ -269,7 +298,12 @@ class AgentSession:
                     self._configuration(pending)
                 raise
             self._recovery_configuration(pending, row)
-            return self._result(self._runtime.resume(pending["turn_id"]), pending)
+            try:
+                result = self._runtime.resume(pending["turn_id"])
+            except RuntimeBlocked as error:
+                self._clear_confirmed_failure(pending, error)
+                raise
+            return self._result(result, pending)
 
     def cancel(self, *, turn_id: str, acknowledge_uncertain: bool = False) -> dict:
         """Close a pending turn without undoing captured memory or external effects."""
@@ -285,10 +319,16 @@ class AgentSession:
                 raise SessionError("pending_turn", pending["turn_id"])
             row = self._existing_turn(pending, allow_missing=True)
             if row is None:
-                row = self._runtime.journal.begin(
-                    turn_id=turn_id, conversation_id=self._identity["conversation_id"],
-                    branch_id=self._identity["branch_id"], input_fingerprint=pending["input_fingerprint"],
-                )
+                try:
+                    row = self._runtime.journal.begin(
+                        turn_id=turn_id, conversation_id=self._identity["conversation_id"],
+                        branch_id=self._identity["branch_id"], input_fingerprint=pending["input_fingerprint"],
+                    )
+                except httpx.HTTPStatusError as error:
+                    if _scope_conflict(error) and self._existing_turn(pending, allow_missing=True) is None:
+                        self._clear(pending)
+                        return {"turn_id": turn_id, "stage": "not_started", "failure_code": "scope_conflict"}
+                    raise
                 self._binding(row, pending)
             if row.get("stage") in ("delivered", "committed"):
                 raise SessionError("delivery_already_recorded", turn_id)

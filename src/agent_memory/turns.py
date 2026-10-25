@@ -19,6 +19,7 @@ FAILURE_CODES = frozenset({
 })
 PUBLIC_FIELDS = (
     "turn_id", "brain_id", "conversation_id", "branch_id", "input_fingerprint", "stage",
+    "scope_reserved", "delivery_receipt",
     "revision", "fence", "claim_count", "generation_count", "worker_id", "lease_expires_at",
     "recovery_required", "input_event_refs", "context_event_refs", "output_event_refs", "context_fingerprint",
     "context_generation", "working_revision", "durable_sequence", "context_tokens",
@@ -146,6 +147,8 @@ class TurnStore:
         )
 
     def _lease(self, row, lease_token, expected_revision=None):
+        if not row["scope_reserved"]:
+            raise DomainError("scope_conflict", "Turn does not own this conversation branch.")
         token_digest = hashlib.sha256(_identifier(lease_token).encode()).hexdigest()
         if (not row["lease_token_digest"] or not secrets.compare_digest(row["lease_token_digest"], token_digest)
                 or not row["lease_expires_at"] or row["lease_expires_at"] <= row["db_now"]):
@@ -154,18 +157,27 @@ class TurnStore:
             raise DomainError("version_conflict", "Turn revision has changed.", current_revision=row["revision"])
 
     def begin(self, principal, brain_id, *, turn_id, conversation_id, branch_id, input_fingerprint):
+        from .turn_scopes import require_new_scope
+
         _identifier(turn_id)
         _identifier(conversation_id)
         _identifier(branch_id)
         _hash(input_fingerprint)
         with self._transaction(principal, brain_id) as (conn, _):
-            inserted = conn.execute(
-                "INSERT INTO memory_runtime_turns(tenant_id,owner_id,brain_id,turn_id,conversation_id,"
-                "branch_id,input_fingerprint) VALUES(%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING "
-                "RETURNING *,clock_timestamp() AS db_now",
-                (*self._params(principal, brain_id, turn_id), conversation_id, branch_id, input_fingerprint),
+            row = conn.execute(
+                "SELECT *,clock_timestamp() AS db_now FROM memory_runtime_turns "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s FOR UPDATE",
+                self._params(principal, brain_id, turn_id),
             ).fetchone()
-            row = inserted or self._row(conn, principal, brain_id, turn_id)
+            inserted = row is None
+            if inserted:
+                require_new_scope(conn, principal, brain_id, conversation_id, branch_id)
+                row = conn.execute(
+                    "INSERT INTO memory_runtime_turns(tenant_id,owner_id,brain_id,turn_id,conversation_id,"
+                    "branch_id,input_fingerprint,scope_reserved) VALUES(%s,%s,%s,%s,%s,%s,%s,true) "
+                    "RETURNING *,clock_timestamp() AS db_now",
+                    (*self._params(principal, brain_id, turn_id), conversation_id, branch_id, input_fingerprint),
+                ).fetchone()
             if (row["conversation_id"], row["branch_id"], row["input_fingerprint"]) != (
                     conversation_id, branch_id, input_fingerprint):
                 raise DomainError("idempotency_conflict", "Turn identifier already binds different input or scope.")
@@ -176,6 +188,21 @@ class TurnStore:
     def get(self, principal, brain_id, turn_id):
         with self._transaction(principal, brain_id) as (conn, _):
             return self._public(conn, principal, self._row(conn, principal, brain_id, turn_id))
+
+    def active_scope(self, principal, brain_id, *, conversation_id, branch_id):
+        _identifier(conversation_id)
+        _identifier(branch_id)
+        with self._transaction(principal, brain_id) as (conn, _):
+            query = (
+                "SELECT *,clock_timestamp() AS db_now FROM memory_runtime_turns "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND conversation_id=%s AND branch_id=%s "
+                "AND stage NOT IN ('completed','failed') "
+            )
+            params = (principal.tenant_id, principal.principal_id, brain_id, conversation_id, branch_id)
+            row = conn.execute(query + "AND scope_reserved LIMIT 1", params).fetchone()
+            if row is None:
+                row = conn.execute(query + "ORDER BY created_at,turn_id LIMIT 1", params).fetchone()
+            return self._public(conn, principal, row) if row is not None else None
 
     def sources(self, principal, brain_id, turn_id):
         with self._transaction(principal, brain_id) as (conn, _):
@@ -220,7 +247,8 @@ class TurnStore:
             params = (principal.tenant_id, principal.principal_id, brain_id)
             counts = conn.execute(
                 "SELECT stage,count(*) AS count,count(*) FILTER (WHERE lease_expires_at>clock_timestamp()) "
-                "AS active FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s GROUP BY stage",
+                "AS active,count(*) FILTER (WHERE scope_reserved) AS reserved FROM memory_runtime_turns "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s GROUP BY stage",
                 params,
             ).fetchall()
             jobs = conn.execute(
@@ -237,6 +265,7 @@ class TurnStore:
                 "indexed_sequence": brain["indexed_sequence"], "dependency_generation": brain["dependency_generation"],
                 "scope_generation": brain["scope_generation"], "turn_count": sum(row["count"] for row in counts),
                 "active_lease_count": sum(row["active"] for row in counts),
+                "reserved_scope_count": sum(row["reserved"] for row in counts),
                 "stage_counts": {row["stage"]: row["count"] for row in counts}, "pending_job_count": jobs,
                 "response_review_counts": {row["status"]: row["count"] for row in reviews},
                 "response_review_calls": sum(row["count"] for row in reviews),
@@ -247,6 +276,8 @@ class TurnStore:
             }
 
     def claim(self, principal, brain_id, turn_id, *, worker_id, lease_seconds=30, expected_revision=None):
+        from .turn_scopes import reserve_existing_scope
+
         _identifier(worker_id)
         _integer(lease_seconds, 1, 300)
         with self._transaction(principal, brain_id) as (conn, _):
@@ -255,6 +286,7 @@ class TurnStore:
                 raise DomainError("version_conflict", "Turn revision has changed.", current_revision=row["revision"])
             if row["stage"] in ("completed", "failed"):
                 raise DomainError("turn_terminal", "Turn already reached a terminal state.")
+            reserve_existing_scope(conn, principal, row)
             if row["lease_expires_at"] and row["lease_expires_at"] > row["db_now"]:
                 raise DomainError("lease_conflict", "Another worker holds the turn lease.", retryable=True)
             recovery = {"generating": "generation_uncertain", "delivering": "delivery_uncertain"}.get(row["stage"])
@@ -658,7 +690,7 @@ class TurnStore:
             ])
             values.extend([stage, fingerprint, int(stage == "generating")])
             if stage == "completed":
-                assignments.append("lease_expires_at=NULL")
+                assignments.extend(["lease_expires_at=NULL", "scope_reserved=false"])
             row = conn.execute(
                 "UPDATE memory_runtime_turns SET " + ",".join(assignments)
                 + " WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s RETURNING *,clock_timestamp() AS db_now",
@@ -669,13 +701,14 @@ class TurnStore:
 
     def record_output(self, principal, brain_id, turn_id, *, lease_token, expected_revision,
                       text, delivery_state):
+        from .delivery_receipts import receipt_matches, recorded_delivery_receipt
         from .service import MemoryService
 
         _integer(expected_revision, 1)
         if delivery_state not in ("draft", "delivered", "partially_delivered", "cancelled"):
             raise DomainError("validation_failed", "Output delivery state is not supported.")
         if (not isinstance(text, str) or len(text.encode("utf-8")) > 64000
-                or (not text and delivery_state != "cancelled")):
+                or (not text and delivery_state != "cancelled") or (text and delivery_state == "cancelled")):
             raise DomainError("validation_failed", "Output must contain bounded text; only cancellation may be empty.")
         source_revision = 1 if delivery_state == "draft" else 2
         incoming = {
@@ -689,6 +722,10 @@ class TurnStore:
         }
         with self._transaction(principal, brain_id) as (conn, brain):
             row = self._row(conn, principal, brain_id, turn_id)
+            if delivery_state != "draft" and row.get("delivery_receipt") is not None:
+                if not recorded_delivery_receipt(row) or not receipt_matches(row["delivery_receipt"], text, delivery_state):
+                    raise DomainError("idempotency_conflict", "Output capture has different text or delivery state.")
+                return self._public(conn, principal, row)
             existing = conn.execute(
                 "SELECT id,input_hash,document FROM memory_events WHERE tenant_id=%s AND owner_id=%s "
                 "AND brain_id=%s AND producer_ref=%s AND source_key=%s AND source_revision=%s",
@@ -711,61 +748,120 @@ class TurnStore:
             expected_stage = "generating" if delivery_state == "draft" else "delivering"
             if row["stage"] != expected_stage:
                 raise DomainError("stage_conflict", "Output capture does not match the current turn stage.")
+            if delivery_state != "draft":
+                return self._record_delivery(conn, principal, brain, row, incoming)
             if self._unavailable(conn, principal, row):
                 raise DomainError("source_unavailable", "A turn source changed before output capture.")
             if row["context_generation"] != brain["dependency_generation"]:
                 raise DomainError("context_stale", "Memory changed before output capture.")
             self._working_revision(conn, principal, row)
-            if delivery_state != "draft" and len(row["output_event_refs"]) != 1:
-                raise DomainError("invalid_evidence", "Delivery requires one previously recorded assistant draft.")
             service = self.service if self.service is not None else MemoryService(self.database)
             target = {"brain_ref": brain_id, "conversation_ref": row["conversation_id"], "branch_ref": row["branch_id"]}
-            orientation = None
-            if row["orientation_job_id"] and delivery_state != "draft":
-                from .learning import orientation_result
-
-                orientation = orientation_result(conn, service, principal, brain, row)
             event_id, _, _ = service._append_event(conn, principal, brain, target, incoming)
             output_refs = [{"event_id": event_id, "revision": source_revision}]
             candidate = {**row, "output_event_refs": output_refs}
-            if delivery_state != "draft" and event_id != row["output_event_refs"][0]["event_id"]:
-                raise DomainError("invalid_evidence", "Delivery must revise its own generated draft.")
             if self._unavailable(conn, principal, candidate):
                 raise DomainError("source_unavailable", "Output source references are no longer current.")
             input_ids = {ref["event_id"] for ref in row["input_event_refs"] + row["context_event_refs"]}
             if event_id in input_ids:
                 raise DomainError("invalid_evidence", "Generated output cannot also be its own input evidence.")
-            if orientation and "dependency_generation" in orientation:
-                from .learning import validate_snapshot
-
-                # Revising this turn's own draft advances the generation without changing its input proof.
-                rebound = {**orientation, "dependency_generation": brain["dependency_generation"]}
-                validate_snapshot(conn, service, principal, brain, rebound)
-                updated = conn.execute(
-                    "UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                    "AND id=%s AND state='completed' AND result IS NOT NULL",
-                    (Jsonb(rebound), principal.tenant_id, principal.principal_id, brain_id, row["orientation_job_id"]),
-                )
-                if updated.rowcount != 1:
-                    raise DomainError("context_stale", "Orientation changed while recording delivery.")
             conn.execute(
                 "INSERT INTO memory_event_dependencies(tenant_id,owner_id,brain_id,input_event_id,output_event_id) "
                 "SELECT %s,%s,%s,input_id,%s FROM unnest(%s::text[]) AS sources(input_id) ON CONFLICT DO NOTHING",
                 (principal.tenant_id, principal.principal_id, brain_id, event_id, sorted(input_ids)),
             )
-            stage = "generated" if delivery_state == "draft" else "failed" if delivery_state == "cancelled" else "delivered"
             row = conn.execute(
-                "UPDATE memory_runtime_turns SET revision=revision+1,stage=%s,output_event_refs=%s,"
-                "durable_sequence=%s,recovery_required=NULL,last_transition_hash=NULL,failure_code=%s,"
-                "lease_token_digest=CASE WHEN %s THEN NULL ELSE lease_token_digest END,"
-                "lease_expires_at=CASE WHEN %s THEN NULL ELSE lease_expires_at END,updated_at=clock_timestamp() "
+                "UPDATE memory_runtime_turns SET revision=revision+1,stage='generated',output_event_refs=%s,"
+                "durable_sequence=%s,recovery_required=NULL,last_transition_hash=NULL,failure_code=NULL,"
+                "updated_at=clock_timestamp() "
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
                 "RETURNING *,clock_timestamp() AS db_now",
-                (stage, Jsonb(output_refs), brain["durable_sequence"], "cancelled" if stage == "failed" else None,
-                 stage == "failed", stage == "failed", *self._params(principal, brain_id, turn_id)),
+                (Jsonb(output_refs), brain["durable_sequence"], *self._params(principal, brain_id, turn_id)),
             ).fetchone()
-            self._record(conn, row, "fail" if stage == "failed" else "advance")
+            self._record(conn, row, "advance")
             return self._public(conn, principal, row)
+
+    def _delivery_staleness(self, conn, principal, brain, row, *, recorded=False):
+        reasons = []
+        if self._unavailable(conn, principal, row):
+            reasons.append("source_unavailable")
+        # Replacing this turn's draft advances the generation exactly once.
+        if row["context_generation"] + int(recorded) != brain["dependency_generation"]:
+            reasons.append("context_generation_changed")
+        try:
+            self._working_revision(conn, principal, row)
+        except DomainError as error:
+            if error.code != "version_conflict":
+                raise
+            reasons.append("working_revision_changed")
+        return reasons
+
+    def _record_delivery(self, conn, principal, brain, row, incoming):
+        from .delivery_receipts import receipt_for
+        from .learning import orientation_result, validate_snapshot
+        from .service import MemoryService
+
+        if len(row["output_event_refs"]) != 1:
+            raise DomainError("invalid_evidence", "Delivery requires one previously recorded assistant draft.")
+        service = self.service if self.service is not None else MemoryService(self.database)
+        reasons = self._delivery_staleness(conn, principal, brain, row)
+        orientation = None
+        if not reasons:
+            try:
+                self._check_orientation_route(conn, principal, brain, row, exact=False)
+            except DomainError:
+                reasons.append("orientation_changed")
+        if row["orientation_job_id"] and not reasons:
+            try:
+                orientation = orientation_result(conn, service, principal, brain, row)
+            except DomainError:
+                reasons.append("orientation_changed")
+        available = "source_unavailable" not in reasons
+        output_refs = row["output_event_refs"]
+        if available:
+            target = {"brain_ref": brain["id"], "conversation_ref": row["conversation_id"], "branch_ref": row["branch_id"]}
+            event_id, _, _ = service._append_event(conn, principal, brain, target, incoming)
+            if event_id != row["output_event_refs"][0]["event_id"]:
+                raise DomainError("invalid_evidence", "Delivery must revise its own generated draft.")
+            output_refs = [{"event_id": event_id, "revision": 2}]
+            input_ids = {ref["event_id"] for ref in row["input_event_refs"] + row["context_event_refs"]}
+            if event_id in input_ids:
+                raise DomainError("invalid_evidence", "Generated output cannot also be its own input evidence.")
+            if orientation and "dependency_generation" in orientation:
+                # Only the known draft revision may rebind an otherwise current orientation.
+                rebound = {**orientation, "dependency_generation": brain["dependency_generation"]}
+                try:
+                    validate_snapshot(conn, service, principal, brain, rebound)
+                except DomainError:
+                    reasons.append("orientation_changed")
+                else:
+                    updated = conn.execute(
+                        "UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                        "AND id=%s AND state='completed' AND result IS NOT NULL",
+                        (Jsonb(rebound), principal.tenant_id, principal.principal_id, brain["id"], row["orientation_job_id"]),
+                    )
+                    if updated.rowcount != 1:
+                        reasons.append("orientation_changed")
+            conn.execute(
+                "INSERT INTO memory_event_dependencies(tenant_id,owner_id,brain_id,input_event_id,output_event_id) "
+                "SELECT %s,%s,%s,input_id,%s FROM unnest(%s::text[]) AS sources(input_id) ON CONFLICT DO NOTHING",
+                (principal.tenant_id, principal.principal_id, brain["id"], event_id, sorted(input_ids)),
+            )
+        receipt = receipt_for(row, incoming["content"]["text"], incoming["delivery_state"],
+                              reasons=reasons, content_recorded=available)
+        failed = receipt["failure_code"] is not None
+        row = conn.execute(
+            "UPDATE memory_runtime_turns SET revision=revision+1,stage=%s,output_event_refs=%s,delivery_receipt=%s,"
+            "durable_sequence=%s,recovery_required=NULL,last_transition_hash=NULL,failure_code=%s,"
+            "lease_token_digest=CASE WHEN %s THEN NULL ELSE lease_token_digest END,"
+            "lease_expires_at=CASE WHEN %s THEN NULL ELSE lease_expires_at END,"
+            "scope_reserved=CASE WHEN %s THEN false ELSE scope_reserved END,updated_at=clock_timestamp() "
+            "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s RETURNING *,clock_timestamp() AS db_now",
+            ("failed" if failed else "delivered", Jsonb(output_refs), Jsonb(receipt), brain["durable_sequence"],
+             receipt["failure_code"], failed, failed, failed, *self._params(principal, brain["id"], row["turn_id"])),
+        ).fetchone()
+        self._record(conn, row, "fail" if failed else "advance")
+        return self._public(conn, principal, row)
 
     def release(self, principal, brain_id, turn_id, *, lease_token, expected_revision):
         _integer(expected_revision, 1)
@@ -788,9 +884,11 @@ class TurnStore:
         with self._transaction(principal, brain_id) as (conn, _):
             row = self._row(conn, principal, brain_id, turn_id)
             self._lease(row, lease_token, expected_revision)
+            if row["stage"] in {"delivered", "committed", "completed"}:
+                raise DomainError("stage_conflict", "An already delivered turn must finish without relabeling delivery.")
             row = conn.execute(
                 "UPDATE memory_runtime_turns SET revision=revision+1,stage='failed',failure_code=%s,"
-                "lease_token_digest=NULL,lease_expires_at=NULL,last_transition_hash=NULL,"
+                "lease_token_digest=NULL,lease_expires_at=NULL,last_transition_hash=NULL,scope_reserved=false,"
                 "updated_at=clock_timestamp() WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
                 "AND turn_id=%s RETURNING *,clock_timestamp() AS db_now",
                 (failure_code, *self._params(principal, brain_id, turn_id)),
@@ -823,19 +921,40 @@ class TurnStore:
             raise DomainError("invalid_evidence", "Delivered turn requires actual delivered assistant source events.")
 
     def finish(self, principal, brain_id, turn_id, *, lease_token, expected_revision):
+        from .delivery_receipts import confirmed_delivery_receipt, recorded_delivery_receipt
         from .service import MemoryService
 
         _integer(expected_revision, 1)
         with self._transaction(principal, brain_id) as (conn, brain):
             row = self._row(conn, principal, brain_id, turn_id)
-            if row["stage"] == "completed":
+            if row["stage"] == "completed" or confirmed_delivery_receipt(row):
                 return self._public(conn, principal, row)
             self._lease(row, lease_token, expected_revision)
             if row["stage"] != "delivered":
                 raise DomainError("stage_conflict", "Only an actually delivered turn can finish.")
-            self._working_revision(conn, principal, row)
-            self._delivered(conn, principal, row)
             service = self.service if self.service is not None else MemoryService(self.database)
+            receipt = row.get("delivery_receipt")
+            if receipt is not None and not recorded_delivery_receipt(row):
+                raise DomainError("invalid_evidence", "Delivery receipt does not match its durable turn.")
+            reasons = self._delivery_staleness(conn, principal, brain, row, recorded=True)
+            if receipt is None:
+                reasons = [reason for reason in reasons if reason != "context_generation_changed"]
+            updates = []
+            if not reasons:
+                try:
+                    self._check_orientation_route(conn, principal, brain, row, exact=False)
+                except DomainError:
+                    reasons.append("orientation_changed")
+            if row["orientation_job_id"] is not None and not reasons:
+                from .learning import orientation_updates
+
+                try:
+                    updates = orientation_updates(conn, service, principal, brain, row)
+                except DomainError:
+                    reasons.append("orientation_changed")
+            if reasons:
+                return self._close_stale_delivery(conn, principal, row, reasons)
+            self._delivered(conn, principal, row)
             target = {"brain_ref": brain_id, "conversation_ref": row["conversation_id"], "branch_ref": row["branch_id"]}
             raw = service._working(conn, principal, brain, target, None)
             event_ids = {ref["event_id"] for field in ("items", "open_loops") for item in raw[field]
@@ -845,12 +964,7 @@ class TurnStore:
             state = service._working(conn, principal, brain, target,
                                      service._events(conn, principal, brain, event_ids=event_ids, limit=1024))
             items = {item["key"]: item for item in state["items"]}
-            if row["orientation_job_id"] is not None:
-                from .learning import orientation_updates
-
-                items.update({item["key"]: item for item in orientation_updates(
-                    conn, service, principal, brain, row,
-                )})
+            items.update({item["key"]: item for item in updates})
             committed = service._commit(conn, principal, brain, {"target": target, "payload": {
                 "turn_id": turn_id, "expected_working_revision": row["working_revision"],
                 "delivered_event_ids": [ref["event_id"] for ref in row["output_event_refs"]],
@@ -874,9 +988,26 @@ class TurnStore:
             self._record(conn, row, "advance")
             row = conn.execute(
                 "UPDATE memory_runtime_turns SET revision=revision+1,stage='completed',lease_token_digest=NULL,"
-                "lease_expires_at=NULL,recovery_required=NULL,updated_at=clock_timestamp() "
+                "lease_expires_at=NULL,recovery_required=NULL,scope_reserved=false,updated_at=clock_timestamp() "
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND turn_id=%s "
                 "RETURNING *,clock_timestamp() AS db_now", self._params(principal, brain_id, turn_id),
             ).fetchone()
             self._record(conn, row, "advance")
             return self._public(conn, principal, row)
+
+    def _close_stale_delivery(self, conn, principal, row, reasons):
+        from .delivery_receipts import failed_receipt, failure_code
+
+        receipt = row.get("delivery_receipt")
+        if receipt is not None:
+            receipt = failed_receipt(receipt, reasons)
+        row = conn.execute(
+            "UPDATE memory_runtime_turns SET revision=revision+1,stage='failed',failure_code=%s,delivery_receipt=%s,"
+            "lease_token_digest=NULL,lease_expires_at=NULL,last_transition_hash=NULL,recovery_required=NULL,"
+            "scope_reserved=false,updated_at=clock_timestamp() WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND turn_id=%s RETURNING *,clock_timestamp() AS db_now",
+            (failure_code(reasons, "delivered"), Jsonb(receipt) if receipt is not None else None,
+             *self._params(principal, row["brain_id"], row["turn_id"])),
+        ).fetchone()
+        self._record(conn, row, "fail")
+        return self._public(conn, principal, row)

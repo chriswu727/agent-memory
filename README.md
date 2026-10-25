@@ -183,6 +183,16 @@ The runtime automatically persists inputs, recalls before answering, saves draft
 
 Return `delivered` only after the host confirms actual sending. For partial delivery, use `DeliveryReceipt("partially_delivered", delivered_text=actual_text)`; use `cancelled` for cancellation and `unknown` when the sending outcome cannot be confirmed. Without a delivery function, the turn stops at `generated`, and its draft is excluded from recall. `delivered` means host-confirmed delivery, not proof that the user has read the message.
 
+A durable reservation allows one unfinished turn per brain, conversation, and branch across hosts connected to the same upgraded service. A competing new turn receives `scope_conflict` before its input is captured or its model is called. Releasing or expiring the worker lease does not release that reservation: a saved draft or uncertain external operation still belongs to its original turn. Resume that turn or explicitly close it before submitting a different message. Independent conversations and branches remain available. A completed message can still replay while a newer turn owns the scope. `scope_reserved` and `reserved_scope_count` expose occupancy separately from active worker leases.
+
+Delivery recording distinguishes the host's confirmed send from successful memory-state commit. After a valid sending authorization, `record_output` preserves a bounded `delivery_receipt` containing the actual-text SHA-256 digest and byte count, authorization metadata, and fixed disposition and failure codes. It never copies response text into monitoring. If unrelated memory or working state changes during sending, the actual delivered content can be retained while the turn closes as `failed`; stale situation updates are not applied. If a bound source was changed or erased, only receipt metadata is retained and no deleted text is revived. The receipt's `state` can therefore be `delivered` while the turn's `stage` is `failed`. A later invalidation before `finish` also preserves the receipt and closes the uncommitted turn without overwriting newer working state.
+
+The runtime reports that failure without sending again. A local session clears its pending marker only after verifying the matching terminal receipt; an uncertain network response keeps recovery pending. A confirmed scope rejection with no remote turn can also clear a local marker, without cancelling the other host's turn. A lease lost to another worker still requires reconciliation: this does not guarantee exactly-once delivery across a process crash between sending and recording its receipt. Existing checks before generation and before sending remain enforced.
+
+Upgrade all API service processes before relying on cross-host exclusion; mixing older servers against the same database is unsupported. Migration preserves historical unfinished turns and grants each scope's oldest turn the reservation, leaving later legacy turns available for ordered recovery. Migration requires a database role that can see all rows despite row-level security and fails rather than silently skipping hidden turns. The normal desktop migration connection already has that role. Runtime reservations and delivery receipts are operational records and are not copied into memory archives.
+
+For an older delivered turn with no receipt, resume can still close a stale turn and release its reservation after source deletion. If this returns a terminal failure, explicitly cancel its local pending marker before sending the next message; the session cannot automatically verify a receipt that was never recorded.
+
 When an external model call or delivery has an uncertain outcome, the default is to stop and report `generation_uncertain` / `delivery_uncertain`. Enable `generation_is_idempotent=True` / `delivery_is_idempotent=True` only if the host implements durable deduplication or result lookup using `request_id` / `delivery_id`. Ordinary HTTP retries, printing output, or a typical model API do not establish this property. Lease expiration can block later writes and calls, but cannot cancel a request already accepted by an external system. Similarly, deletion and correction cannot retract content already provided to a model or delivery channel; subsequent generation results are checked again.
 
 `RuntimePolicy` separately limits memory material and the full message budget, using UTF-8 bytes as a conservative estimate. The host should reserve space within the model's total context window for output and protocol overhead. The current service limit for text output is 64,000 bytes. The synchronous adapter does not handle tool loops, streaming messages, automatic message editing, context compaction, or merging branches from concurrent turns. Its capability is explicitly reported as `partial_automation`.
@@ -375,14 +385,17 @@ These endpoints use the same Bearer authentication as the memory service:
 
 | GET path (prefix `/v1/brains/{brain_id}/runtime`) | Content |
 | --- | --- |
-| `/status` | Persistence and index progress, learning progress, legacy non-completed job counts, turn phases, and active lease counts |
+| `/status` | Persistence and index progress, learning progress, legacy non-completed job counts, turn phases, active lease counts, and reserved scope counts |
 | `/learning-progress` | Brain-wide learning windows, runnable/waiting/running/blocked counts, and the oldest gaps |
+| `/scope?conversation_id=...&branch_id=...` | Reserved turn, or oldest unfinished legacy turn, for the exact scope; `turn: null` when empty |
 | `/turns?limit=100` | Recent turns, up to 200 |
 | `/turns/{turn_id}` | Current phase, revision, source versions, context usage, recall plan, cumulative call budget, and recovery state |
 | `/turns/{turn_id}/history?limit=100` | Ordered phase history, up to 200 entries |
 | `/turns/{turn_id}/sources` | Separately authorized expansion of currently valid inputs and outputs |
 | `/jobs?limit=100` | Recent background and cognition jobs, up to 200 |
 | `/jobs/{job_id}` | Job type, status, attempts, cumulative call and input budgets, error category, and safe learning summary |
+
+Use `RuntimeClient(memory).active_scope(conversation_id, branch_id="main")` in Python or `memory.activeScope(conversationId, branchId)` in TypeScript to find the turn holding up a conversation. This lookup is independent of the recent-turn list, reads metadata only, and does not claim or cancel the turn. A legacy queued turn can have `scope_reserved=false` until claimed after the previous owner finishes.
 
 `recall_plan` contains selected memory versions, observed source versions, stop reasons, search counts, elapsed time, coverage limits, and a structured decision trace. The trace stores actions, query hashes, and candidate counts without copying query text or model explanations. `recall_model_calls` and `recall_input_bytes` provide cumulative budget records across recovery. `orientation_job_id` links to the turn's situation job. Job endpoints do not return job bodies, raw model results, or lease credentials. Embedding-provider usage can be recorded, but actual tokens from chat-based semantic providers are not yet uniformly recorded. Cost is `null` when the actual amount cannot be determined; it must not be treated as free. The service enforces call-count and input-byte limits but does not yet guarantee a monetary cap. Complete billing and background metrics still need work.
 
@@ -514,6 +527,8 @@ GitHub Actions is manual-only, with no automatic execution on push or pull reque
 The [standalone chat acceptance report](evaluations/standalone-chat-2026-10-24.md) records the installed-wheel, real-database, local-provider checks for direct chat, restart recovery, deduplication, and explicit cancellation. Its deterministic provider does not measure semantic learning quality.
 
 The [background learning recovery report](evaluations/learning-recovery-2026-10-24.md) records blocked-window monitoring, explicit recovery, preserved budgets and uncertainty, and the remaining architecture gaps.
+
+The [cross-host conversation and delivery recovery report](evaluations/runtime-concurrency-2026-10-25.md) records durable scope ownership, delivery receipts during memory invalidation, upgrade recovery, and the remaining external-delivery uncertainty.
 
 Interface-structure validation, deterministic regression tests, actual MCP protocol round trips, and database tests verify only their covered behavior. They do not establish that all 52 system scenarios in the complete architecture pass. The project also makes no claim of surpassing any baseline in long-term memory quality.
 

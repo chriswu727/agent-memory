@@ -65,6 +65,13 @@ class RuntimeClient:
         brain_id = self.memory._scope()["brain_ref"]
         return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/learning-progress")
 
+    def active_scope(self, conversation_id: str, branch_id: str = "main") -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request(
+            "GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/scope",
+            params={"conversation_id": conversation_id, "branch_id": branch_id},
+        )
+
     def job(self, job_id: str) -> JsonObject:
         brain_id = self.memory._scope()["brain_ref"]
         return self.memory._request(
