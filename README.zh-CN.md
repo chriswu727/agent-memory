@@ -28,7 +28,7 @@
 
 更换模型、渠道或聊天框架时，应能继续绑定原有大脑；跨平台参与者与会话的关联必须由可信配置明确映射，不能仅凭昵称或模型猜测合并，也不能将私聊记忆自动带入群聊。卸载适配器不应删除核心数据。独立使用和适配器替换都需经过重启恢复、重试去重、范围隔离及更正删除的验收，不能把目标写成已完成能力。
 
-当前核心、HTTP API 和 Python 同步文本运行时已不依赖上述聊天框架；模型生成和发送仍由宿主回调提供。直接配置模型即可聊天的入口、模型兼容网关以及 QQ 框架适配插件尚未交付。MCP 继续作为补充接口，不能代替缺失的生命周期接入。
+核心、HTTP API 和 Python 同步文本运行时不依赖上述聊天框架。桌面聊天命令与 `open_agent()` 会话入口可以直接连接已配置的 Chat Completions 模型。外部宿主仍需提供真实发送回执和稳定消息身份。模型兼容网关及 QQ 框架适配插件尚未交付；MCP 继续作为补充接口，不能代替缺失的生命周期接入。
 
 ## 电脑版使用
 
@@ -52,6 +52,50 @@ agent-memory desktop mcp-config
 将这份配置添加到支持 stdio MCP 的宿主即可连接记忆工具。不同宿主的配置入口不同，当前不会自动修改外部客户端配置。宿主启动这条 MCP 连接时会自动启动或连接本机服务；退出 MCP 连接后，服务继续在后台处理任务。电脑重启后，下次 MCP 连接或 SDK 的 `open_client()` 会重新启动服务并沿用原大脑，不必重新设置。
 
 **MCP 连接仍是 `tools_only`。** 它不会自动读取宿主全部聊天、接管 compact 或确认消息送达。需要自动记忆的 Agent 应使用下文的 Python 运行时，并由宿主提供消息生命周期。安装成功、认知模型已配置和宿主已自动接入是三个不同状态。
+
+### 直接聊天与 Python 会话
+
+完成 setup 后，可明确选择复用记忆学习的模型来回答，或不带参数运行 `configure-chat`，单独填写聊天模型：
+
+```sh
+agent-memory desktop configure-chat --use-cognition
+agent-memory desktop chat
+```
+
+聊天使用同一个持久大脑，自动捕获输入、回忆、生成回答、记录真实终端交付并更新工作状态，不需要聊天框架或主动调用记忆工具。下次启动继续连接原大脑及默认会话；用 `--conversation <稳定标识>` 和 `--branch <稳定标识>` 选择会话。新会话不是新大脑，也不是租户隐私隔离边界；无关用户应分别使用获授权的大脑身份。
+
+回答配置保存在私有 `chat.json`，与 `profile.json` 中的认知配置分开。它是受文件权限保护的本地明文，不是系统钥匙串。切换回答模型不重启记忆服务、不改变大脑。`configure-chat` 支持 `--base-url`、`--model`、`--api-key-env`、可选 `--thinking` 和 `--non-interactive`。单次请求默认最多 4,096 个输出 token、180 秒网络超时与经过时间检查、1 MiB 响应体；可用 `--max-output-tokens`、`--timeout-seconds`、`--max-response-bytes` 修改。这些不是累计费用上限，也不能保证远端请求在硬截止时间被取消。运行时另外限制实际交付文本为 64,000 字节。只配置回答模型不会启用模型驱动的记忆学习，聊天入口会提示这一状态。
+
+Python 入口复用同一模型配置及会话保护：
+
+```python
+from agent_memory.agent_session import open_agent
+from agent_memory.runtime import DeliveryReceipt
+
+def deliver(request):
+    channel.send(request.text)
+    return DeliveryReceipt("delivered")
+
+with open_agent(conversation_id=conversation_id, deliver=deliver) as agent:
+    result = agent.respond(text, message_id=message_id)
+```
+
+宿主的 Python 环境也需要安装此包；上例的 `channel`、输入和稳定身份由宿主提供。`open_agent()` 自动启动或连接本机服务，支持 `directory`、`branch_id`、`instructions`、`policy` 及 `start_service=False`。自定义 `generate` 回调还须提供稳定的 `generator_fingerprint`，标识实际模型和配置。没有 `deliver` 时结果仍是草稿，会话保持待处理；之后带发送回调重新打开并调用 `resume()`，可交付符合条件的现有草稿而不重新生成。需要自定义回忆控制器或回答核验时，可用下文更底层的 `BrainRuntime`；桌面聊天不会暗中启用这些付费调用。
+
+本地会话在打开期间持有按大脑、会话和分支划分的跨进程锁，同一安装下相同范围的第二个会话不能并行运行另一轮。这不覆盖其他电脑、更底层的 `BrainRuntime` 实例或直接 API 调用。小型持久恢复文件只保存待处理身份及校验值，不复制消息和回答正文，数据库保持权威来源。未完成轮次会阻止另一条消息；仍可能生成或发送时，模型配置、指令和运行策略保持冻结。已经送达或完成的轮次可在配置改变后收尾或重放，仍保留数据库身份和来源检查，不重新生成或发送。仅轮换密钥不会改变生成配置指纹。重启时应保留安装目录。
+
+交互命令为 `/quit`、`/resume`、`/retry <原始输入>`，恢复需显式触发。如果输入捕获中断，重交完全相同的原文，CLI 会复用已保存的消息身份。脚本调用方式：
+
+```sh
+agent-memory desktop chat --conversation example --message 'Hello' --message-id event-001
+agent-memory desktop chat --conversation example --resume
+```
+
+脚本重试保持消息 ID 与正文不变。用旧 ID 提交不同输入时，会在新建待处理状态前拒绝；恢复时也会将输入校验值与数据库核对。已完成轮次的重放不会再次输出或发送回答。模型调用或终端写入结果不确定时保留阻塞，避免自动重复付费或发送；`/resume` 无法解决未知外部结果。终端回执只证明输出已写入并 flush，不证明用户已经阅读。
+
+需要明确结束阻塞轮次时，使用 `/cancel <准确轮次ID>` 或 `chat --cancel <准确轮次ID>`；来源与失败记录会保留，之后可使用新的消息 ID 继续。生成或发送结果未知时，须显式使用 `/cancel-uncertain <准确轮次ID>`，或在脚本取消命令上加 `--acknowledge-uncertain`。取消不重试模型、不发送回答，也无法撤销可能已经发生的付费或发送；日志保留 `generation_uncertain` 或 `delivery_uncertain`。已经确认交付但尚未提交的轮次应恢复，不能取消。Python 对应 `agent.cancel(turn_id=..., acknowledge_uncertain=False)`。取消遇到网络失败时保留待处理文件，可再次依据持久日志协调同一次取消。需要更换被冻结的策略或模型时，也应先明确取消未交付轮次，不要手动删除恢复文件。
+
+此入口仅支持 Chat Completions 同步文本，保留运行时提供的消息，拒绝截断回复及工具调用，不自动重试提供方请求。它尚不支持流式、工具循环、多模态、模型代理或自动接管其他客户端。`ChatCompletionsGenerator.last_usage` 与 `last_request_id` 提供最近一次调用经过校验的有界诊断；缺失或无效用量保持未知，它们不是持久账单账本。完整认知质量仍需单独评估。默认情境分析策略保持 `always`，`chat --orientation on_demand` 显式选择下文说明的取舍。`--instructions-file` 接受最多 64,000 字节的 UTF-8 文件，实际仍受更小的完整输入预算约束。
 
 ### 本机状态与配置
 
@@ -431,6 +475,7 @@ MCP 允许模型主动回忆和提交有来源标记的笔记。它不会拦截�
 - `src/agent_memory/api.py`、`web/`：认证、HTTP 与本地工作台。
 - `src/agent_memory/client.py`、`mcp_server.py`、`sdk/typescript/`：宿主接入。
 - `src/agent_memory/local_profile.py`、`desktop.py`、`desktop_connection.py`：本机配置、服务生命周期与自动连接。
+- `src/agent_memory/agent_session.py`、`chat_config.py`、`chat_provider.py`、`desktop_chat.py`：直接模型接入、持久本机会话、显式恢复与终端聊天。
 - `architecture/`：完整目标、机器可读契约和 52 个系统验收场景。
 
 ## 验证
@@ -448,6 +493,8 @@ uv build
 TypeScript 测试与类型检查命令见 `sdk/typescript/package.json`。没有配置数据库时，数据库相关测试会跳过；跳过不代表通过。测试使用新建的随机租户与大脑，不依赖私人对话，也不调用付费模型或 Codex／Claude 订阅。
 
 GitHub Actions 仅保留手动触发，不在 push 或 pull request 时自动运行。日常开发优先执行与修改相关的本地检查；发布前按改动影响验证，避免重复运行云 CI。
+
+[独立聊天验收记录](evaluations/standalone-chat-2026-10-24.md) 包含安装包、真实数据库和本地模拟提供方的验证，覆盖直接聊天、重启恢复、去重及显式取消。确定性提供方不用于衡量语义学习质量。
 
 接口结构校验、确定性回归测试、真实 MCP 协议往返和数据库测试，只验证各自覆盖的行为。完整架构中的 52 个系统场景尚不能据此宣称全部通过，也未宣称在长期记忆质量上超过任何基线。
 

@@ -28,7 +28,7 @@ The core owns persistent memories, provenance, identity and scope, recall, learn
 
 Changing models, channels, or chat frameworks should allow the agent to retain its existing brain. Trusted configuration must explicitly map participants and conversations across platforms; display names or model guesses must not merge identities, and private-chat memories must not automatically enter group chats. Uninstalling an adapter should not delete core data. Independent operation and adapter replacement both require acceptance checks for restart recovery, retry deduplication, scope isolation, corrections, and deletion. These goals must not be presented as completed capabilities.
 
-The current core, HTTP API, and Python synchronous text runtime already operate independently of these chat frameworks. The host still supplies generation and delivery callbacks. A chat entry point configured directly with a model, a model-compatible gateway, and QQ framework adapters have not been delivered. MCP remains supplementary and cannot replace missing lifecycle integration.
+The core, HTTP API, and Python synchronous text runtime operate independently of these chat frameworks. The desktop chat command and `open_agent()` session entry point connect directly to a configured Chat Completions model. External hosts still supply actual delivery and stable message identities. A model-compatible gateway and QQ framework adapters have not been delivered. MCP remains supplementary and cannot replace missing lifecycle integration.
 
 ## Desktop setup
 
@@ -52,6 +52,50 @@ agent-memory desktop mcp-config
 Add this configuration to a host that supports stdio MCP to connect the memory tools. Configuration locations vary by host; setup does not currently modify external client configuration automatically. Starting this MCP connection automatically starts or connects to the local service. Closing the MCP connection leaves the service processing background tasks. After a computer restart, the next MCP connection or SDK `open_client()` call starts the service again with the same brain; no new setup is required.
 
 **The MCP connection is still `tools_only`.** It does not automatically read all host conversations, take over compaction, or confirm message delivery. Agents that need automatic memory should use the Python runtime below and supply the host message lifecycle. Successful installation, a configured cognition model, and automatic host integration are three distinct states.
+
+### Direct chat and Python sessions
+
+After setup, explicitly reuse the configured memory learning provider for replies, or run `configure-chat` without flags to enter a separate provider:
+
+```sh
+agent-memory desktop configure-chat --use-cognition
+agent-memory desktop chat
+```
+
+Chat uses the same persistent brain and automatically captures input, recalls memory, generates an answer, records actual terminal delivery, and updates working state. No chat framework or memory-tool calls are required. The next invocation reconnects to the same brain and default conversation. Use `--conversation <stable-id>` and `--branch <stable-id>` to select a session. A new conversation is not a separate brain or a tenant privacy boundary; unrelated users need separate authorized brain identities.
+
+Reply settings live in private `chat.json`, separate from the cognition settings in `profile.json`. They are protected local plaintext, not a system keychain. Changing the reply model does not restart the memory service or change the brain. `configure-chat` supports `--base-url`, `--model`, `--api-key-env`, optional `--thinking`, and `--non-interactive`. The default per-request limits are 4,096 output tokens, 180 seconds of network timeout and elapsed-time checks, and 1 MiB of response bytes. Override them with `--max-output-tokens`, `--timeout-seconds`, and `--max-response-bytes`. These are not cumulative spending limits or a hard cancellation deadline for a remote request. The runtime separately caps delivered text at 64,000 bytes. Configuring only replies leaves model-driven memory learning disabled, and chat reports that state.
+
+The Python entry point uses the same saved model configuration and session protection:
+
+```python
+from agent_memory.agent_session import open_agent
+from agent_memory.runtime import DeliveryReceipt
+
+def deliver(request):
+    channel.send(request.text)
+    return DeliveryReceipt("delivered")
+
+with open_agent(conversation_id=conversation_id, deliver=deliver) as agent:
+    result = agent.respond(text, message_id=message_id)
+```
+
+Install the package in the host's Python environment as well. The host supplies `channel`, input text, and stable identities. `open_agent()` starts or connects to the local service; `directory`, `branch_id`, `instructions`, `policy`, and `start_service=False` provide explicit overrides. A custom `generate` callback also requires a stable `generator_fingerprint` identifying its actual model and configuration. Without `deliver`, the result remains a draft and the session remains pending; reopening with a delivery callback and calling `resume()` can deliver an eligible draft without generating it again. The lower-level `BrainRuntime` below remains available for custom recall controllers and answer reviewers; desktop chat does not enable those paid calls implicitly.
+
+One local session holds a cross-process lock for its brain, conversation, and branch. Other sessions using that same installation cannot run a second turn in that scope concurrently. This does not serialize clients on other machines, lower-level `BrainRuntime` instances, or direct API calls. A small durable sidecar holds pending identities and fingerprints, never message or answer bodies; the database remains authoritative. Pending work blocks a different message and freezes the model configuration, instructions, and runtime policy while generation or delivery remains possible. Already delivered or completed turns can finish or replay after a configuration change, with database identity and source checks retained and no new generation or delivery. Rotating a key alone does not change the generation fingerprint. Keep the installation directory intact when restarting.
+
+Interactive commands are `/quit`, `/resume`, and `/retry <original input>`. Recovery is explicit. If input capture was interrupted, retry the exact original input; the CLI reuses its saved message identity. For scripted use:
+
+```sh
+agent-memory desktop chat --conversation example --message 'Hello' --message-id event-001
+agent-memory desktop chat --conversation example --resume
+```
+
+Keep the same message ID and text when retrying a scripted send. Reusing an existing ID with different input is rejected before creating new pending state. Recovery checks the pending input fingerprint against the database. A completed replay does not print or send the answer again. An uncertain model call or terminal write stays blocked rather than automatically charging or sending again; `/resume` cannot resolve an unknown external outcome. A successful terminal receipt means output was written and flushed, not that a person read it.
+
+To deliberately close a blocked turn, use `/cancel <exact-turn-id>` or `chat --cancel <exact-turn-id>`. This preserves its sources and failure record and permits a new message with a new ID. For an unknown generation or delivery outcome, explicitly use `/cancel-uncertain <exact-turn-id>` or add `--acknowledge-uncertain` to the scripted cancellation. Cancellation neither retries the model nor sends a reply, and cannot undo a possible charge or send; the journal retains `generation_uncertain` or `delivery_uncertain`. A confirmed delivery still awaiting commit must be resumed, not cancelled. The Python equivalent is `agent.cancel(turn_id=..., acknowledge_uncertain=False)`. A cancellation network failure keeps the pending record so the same cancellation can be reconciled against the durable journal. Cancelling is also the way to close an undelivered turn before changing a frozen policy or model; do not manually delete its sidecar.
+
+This entry point supports synchronous text Chat Completions only. It preserves runtime messages, rejects truncated replies and tool calls, and does not retry provider requests. It does not implement streaming, tool loops, multimodal input, a model proxy, or automatic integration into another client. `ChatCompletionsGenerator.last_usage` and `last_request_id` expose bounded, validated diagnostics for its most recent call; missing or invalid usage remains unknown, and these fields are not a persistent billing ledger. Full cognitive quality remains a separate evaluation target. The default orientation policy stays `always`; `chat --orientation on_demand` explicitly selects the tradeoffs described below. `--instructions-file` accepts a UTF-8 file up to 64,000 bytes, subject to the smaller effective full-input budget.
 
 ### Local status and configuration
 
@@ -431,6 +475,7 @@ An archive is currently limited to 16 MB and 5,000 records of each type. Exceedi
 - `src/agent_memory/api.py`, `web/`: authentication, HTTP, and the local workbench.
 - `src/agent_memory/client.py`, `mcp_server.py`, `sdk/typescript/`: host integration.
 - `src/agent_memory/local_profile.py`, `desktop.py`, `desktop_connection.py`: local configuration, service lifecycle, and automatic connections.
+- `src/agent_memory/agent_session.py`, `chat_config.py`, `chat_provider.py`, `desktop_chat.py`: direct model integration, durable local sessions, explicit recovery, and terminal chat.
 - `architecture/`: complete goals, machine-readable contracts, and 52 system acceptance scenarios.
 
 ## Verification
@@ -448,6 +493,8 @@ uv build
 See `sdk/typescript/package.json` for TypeScript tests and type-check commands. Database-dependent tests are skipped when no database is configured; a skip is not a pass. Tests use newly created random tenants and brains, do not depend on private conversations, and do not call paid models or Codex/Claude subscriptions.
 
 GitHub Actions is manual-only, with no automatic execution on push or pull requests. Day-to-day development prioritizes relevant local checks. Before publishing, validate according to the change's impact and avoid redundant cloud CI runs.
+
+The [standalone chat acceptance report](evaluations/standalone-chat-2026-10-24.md) records the installed-wheel, real-database, local-provider checks for direct chat, restart recovery, deduplication, and explicit cancellation. Its deterministic provider does not measure semantic learning quality.
 
 Interface-structure validation, deterministic regression tests, actual MCP protocol round trips, and database tests verify only their covered behavior. They do not establish that all 52 system scenarios in the complete architecture pass. The project also makes no claim of surpassing any baseline in long-term memory quality.
 

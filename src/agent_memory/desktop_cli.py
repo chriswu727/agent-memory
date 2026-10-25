@@ -22,6 +22,9 @@ def add_commands(commands):
             parser.add_argument("--non-interactive", action="store_true")
         elif name == "logs":
             parser.add_argument("--lines", type=int, default=30)
+    from .desktop_chat import add_commands as add_chat_commands
+
+    add_chat_commands(actions)
 
 
 def _setup(args):
@@ -86,12 +89,20 @@ def _logs(directory, lines):
 
 def dispatch(args):
     from . import desktop
+    from .agent_session import SessionError
+    from .chat_config import ChatConfigurationError
+    from .desktop_chat import configure, run
     from .desktop_connection import mcp_config, run_mcp
 
     try:
         action = args.desktop_command
         if action == "setup":
             result = _setup(args)
+        elif action == "configure-chat":
+            result = configure(args)
+        elif action == "chat":
+            run(args)
+            return
         elif action == "mcp-config":
             result = mcp_config(args.directory)
         elif action == "mcp":
@@ -107,12 +118,14 @@ def dispatch(args):
         print(json.dumps(result, ensure_ascii=False, indent=2))
         if action in {"setup", "start", "restart"} and result.get("cognition") == "not_configured":
             print("Model-driven learning is not configured. MCP provides tools only; automatic conversation memory needs a host lifecycle adapter.", file=sys.stderr)
-    except (desktop.DesktopError, ValueError) as error:
+    except (desktop.DesktopError, SessionError, ChatConfigurationError, ValueError) as error:
         print(f"{getattr(error, 'code', 'configuration_error')}: {error}", file=sys.stderr)
         raise SystemExit(1) from None
     except OSError:
         print("local_io_error: Local files or processes were unavailable. Existing data was preserved.", file=sys.stderr)
         raise SystemExit(1) from None
     except (KeyboardInterrupt, EOFError):
-        print("Setup cancelled; saved configuration was preserved.", file=sys.stderr)
+        message = ("Chat interrupted; check the pending turn before retrying. An interrupted send may have an unknown outcome."
+                   if args.desktop_command == "chat" else "Setup cancelled; saved configuration was preserved.")
+        print(message, file=sys.stderr)
         raise SystemExit(130) from None
