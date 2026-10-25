@@ -2,6 +2,7 @@ import copy
 import hashlib
 import json
 from contextlib import contextmanager
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -14,6 +15,8 @@ from test_semantic import claim, encoded, proposals, reference, verifier
 from agent_memory.api import create_app
 from agent_memory.client import MemoryClient
 from agent_memory.config import Settings
+from agent_memory.history_attention import POLICY as ATTENTION_POLICY
+from agent_memory.history_attention import model_manifest
 from agent_memory.learning import LearningEngine
 from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
 from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
@@ -199,11 +202,11 @@ def selected_reports(request):
                   and block["content"].get("representation") != "literal"]
 
 
-def assert_exact_delivery_context(memory, earlier_sources, requests):
+def assert_exact_delivery_context(memory, earlier_sources, requests, *, routines=ROUTINES):
     def generate(request):
         requests.append(request)
         view, reports = selected_reports(request)
-        expected = {statement(fact) for fact in ROUTINES}
+        expected = {statement(fact) for fact in routines}
         chosen = [block for block in reports if block["content"].get("statement") in expected]
         assert {block["content"]["statement"] for block in chosen} == expected
         prior_users = {(event["event_id"], event["revision"]): event
@@ -234,31 +237,37 @@ def assert_exact_delivery_context(memory, earlier_sources, requests):
 def test_same_conversation_repays_exact_unattempted_history_after_service_restart(learning):
     cognition = GroundedCognition()
     with restarted_service(learning, cognition) as memory:
-        _, first_sources = turn(memory, FIRST, "first")
-        drain(learning)
-        first = [row for row in jobs(learning) if phase(row["payload"]) == ENCODING_PHASE]
-        assert len(first) == 1 and first[0]["state"] == "completed", diagnostic(learning)
-        assert len(first[0]["result"]["publication"]["memory_versions"]) == len(ROUTINES), diagnostic(learning)
-        _, second_sources = turn(memory, SECOND, "repeat")
-        drain(learning)
+        learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
+                                                              max_sources=4, max_assertions=8)
+        earlier_sources = []
+        for index, fact in enumerate(ROUTINES[:3]):
+            _, sources = turn(memory, fact, f"first-{index}")
+            earlier_sources.append(sources)
+            drain(learning)
+        second_sources = earlier_sources[-1]
         second = encoding_for(learning, second_sources)
+        assert second["payload"]["history_attention_policy"] == ATTENTION_POLICY
         assert second["result"]["proposal_mode"] == "local-observation-v1"
-        assert "request_bytes_budget" in second["result"]["history_sampling"]["limitations"]
         assert second["result"]["history_sampling"]["publication_restricted"] is True
         previous = learning.job(second["result"]["history_integration_job_id"])
-        assert previous["state"] == "completed" and previous["model_calls"] == 2
-        assert previous["result"]["history_integration"]["assessed_count"] == 3
+        assert previous["state"] == "completed" and previous["model_calls"] == 1
+        assert previous["result"]["history_integration"]["assessed_count"] == len(
+            previous["result"]["integration_manifest"]["objectives"])
+        assert previous["result"]["history_integration"]["published_count"] == 0
         deferred = [row for row in jobs(learning) if phase(row["payload"]) == HISTORY_PHASE
                     and row["state"] == "deferred"]
         assert len(deferred) == 1, diagnostic(learning)
         old = deferred[0]
         assert old["model_calls"] == old["input_bytes"] == 0 and not operations(learning, old["id"])
         frozen = copy.deepcopy(old["result"]["integration_manifest"])
-        assert len(frozen["objectives"]) == 1
+        assert 1 <= len(frozen["objectives"]) < 3
+        assert frozen["attention"]["admitted_count"] == 3
         assert not objective_ids(frozen) & objective_ids(previous["result"]["integration_manifest"])
         old_ledger = operations(learning)
         original_service = learning.service
     with restarted_service(learning, cognition) as memory:
+        learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
+                                                              max_sources=8, max_assertions=8)
         assert learning.service is not original_service
         before = len(cognition.requests)
         for _ in range(3):
@@ -270,7 +279,7 @@ def test_same_conversation_repays_exact_unattempted_history_after_service_restar
             pytest.fail("A completed turn must replay without generation or delivery")
 
         runtime = BrainRuntime(memory, forbidden, deliver=forbidden, policy=POLICY)
-        replay = runtime.respond(SECOND, message_id="repeat", conversation_id="continuous")
+        replay = runtime.respond(ROUTINES[2], message_id="first-2", conversation_id="continuous")
         assert replay.replayed and replay.stage == "completed"
         assert len(cognition.requests) == before
         _, donor_sources = turn(memory, NOTEBOOK, "notebook")
@@ -283,9 +292,9 @@ def test_same_conversation_repays_exact_unattempted_history_after_service_restar
         assert paid["result"]["integration_manifest"] == frozen
         assert paid["payload"]["authorization_root_job_id"] == donor["id"] != second["id"]
         assert paid["payload"]["encoding_parent_job_id"] == old["payload"]["encoding_parent_job_id"]
-        assert paid["result"]["history_integration"]["assessed_count"] == 1
-        assert paid["result"]["history_integration"]["published_count"] == 1
-        assert paid["model_calls"] == 2 and len(operations(learning, paid["id"])) == 2
+        assert paid["result"]["history_integration"]["assessed_count"] == len(frozen["objectives"])
+        assert paid["result"]["history_integration"]["published_count"] == 0
+        assert paid["model_calls"] == 1 and len(operations(learning, paid["id"])) == 1
         assert all(operation["outcome"] == "completed" for operation in operations(learning, paid["id"]))
         assert all(operation in operations(learning) for operation in old_ledger)
         assert not operations(learning, old["id"])
@@ -297,34 +306,42 @@ def test_same_conversation_repays_exact_unattempted_history_after_service_restar
         matching = [data["integration_manifest"] for phase_name, data in cognition.requests
                     if phase_name == "proposal" and "integration_manifest" in data
                     and objective_ids(data["integration_manifest"]) & objective_ids(frozen)]
-        assert matching == [frozen]
+        assert matching == [model_manifest(frozen)]
         delivered_requests = []
-        assert_exact_delivery_context(memory, [first_sources, second_sources], delivered_requests)
+        assert_exact_delivery_context(memory, earlier_sources, delivered_requests, routines=ROUTINES[:3])
 
 
 @pytest.mark.parametrize("failure,outcome", [("failed", "completed"), ("unknown", "uncertain")])
 def test_later_conversation_capacity_never_retries_paid_failed_or_unknown_comparisons(learning, failure, outcome):
     cognition = GroundedCognition()
     with restarted_service(learning, cognition) as memory:
-        turn(memory, FIRST, "first")
-        drain(learning)
+        learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
+                                                              max_sources=4, max_assertions=8)
+        for index, fact in enumerate(ROUTINES[:2]):
+            turn(memory, fact, f"first-{index}")
+            drain(learning)
         cognition.history_failure = failure
-        _, second_sources = turn(memory, SECOND, "repeat")
+        _, second_sources = turn(memory, ROUTINES[2], "first-2")
         drain(learning)
         second = encoding_for(learning, second_sources)
         failed = learning.job(second["result"]["history_integration_job_id"])
         assert failed["state"] == "cancelled" and failed["model_calls"] == 1
         selected = objective_ids(failed["result"]["integration_manifest"])
-        assert len(selected) == 3
+        assert 1 <= len(selected) < 3
+        assert failed["payload"]["history_attention_policy"] == ATTENTION_POLICY
         ledger = operations(learning, failed["id"])
         assert len(ledger) == 1 and ledger[0]["outcome"] == outcome
         remainder = learning.job(failed["payload"]["integration_continuation_job_id"])
         assert remainder["state"] == "deferred" and remainder["model_calls"] == 0
         untouched = copy.deepcopy(remainder["result"]["integration_manifest"])
-        assert len(objective_ids(untouched)) == 1 and not selected & objective_ids(untouched)
+        assert 1 <= len(objective_ids(untouched)) < 3 and not selected & objective_ids(untouched)
+        assert selected | objective_ids(untouched) == {
+            item["objective_id"] for item in untouched["attention"]["candidates"] if item["basis"] != "not_selected"}
         assert not operations(learning, remainder["id"])
         calls = len(cognition.requests)
     with restarted_service(learning, cognition) as memory:
+        learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
+                                                              max_sources=8, max_assertions=8)
         for _ in range(3):
             drain(learning)
         assert len(cognition.requests) == calls and operations(learning, failed["id"]) == ledger
@@ -336,7 +353,7 @@ def test_later_conversation_capacity_never_retries_paid_failed_or_unknown_compar
         assert delegated["payload"]["authorization_root_job_id"] == donor["id"]
         assert delegated["payload"]["encoding_parent_job_id"] == second["id"]
         assert delegated["result"]["integration_manifest"] == untouched
-        assert delegated["result"]["history_integration"]["assessed_count"] == 1
+        assert delegated["result"]["history_integration"]["assessed_count"] == len(untouched["objectives"])
         for _ in range(3):
             drain(learning)
         retained = learning.job(failed["id"])

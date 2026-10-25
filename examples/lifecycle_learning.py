@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 
-from agent_memory.helpers import uid
+from agent_memory.helpers import digest, uid
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine
 from agent_memory.learning_allocations import CONTRACT_VERSION, ENCODING_PHASE, HISTORY_PHASE, phase
@@ -12,7 +12,7 @@ from agent_memory.learning_integration import reconsider
 from examples.evaluate_deepseek import Trial
 
 PHASE_POLICY = {
-    "version": "lifecycle-phase-execution-v1",
+    "version": "lifecycle-phase-execution-v2",
     "fresh_encoding_roots_per_learning_stage": 1,
     "max_calls_per_fresh_root": 4,
     "max_calls_per_phase": 2,
@@ -22,7 +22,13 @@ PHASE_POLICY = {
     "max_literal_jobs_per_stage": 4,
     "attempt_policy": "Only queued jobs with zero attempts, counters and operation rows; no retries or new recovery roots.",
     "debt_policy": "Deferred, unassessed and undispatched history remains open evidence; it is not successful learning.",
-    "conversation_scope": "One conversation per fixture, unchanged from the original runner; later stages do not fund earlier scopes.",
+    "conversation_scope": "One conversation per fixture; the server may assign a later fresh root's unused pair "
+                          "to an exact never-attempted obligation in the same private brain and branch. "
+                          "The original source scope and cutoff remain unchanged; no additional allocation is created.",
+    "attention": "Fresh roots use the server's bounded comparison admission; unselected opportunities, "
+                 "admitted deferred work and actual no_change assessments remain distinct.",
+    "authority_recording": "The exact claimed job payload is saved before execution and bound by its digest; "
+                           "this audit is not additional permission or a replacement for server validation.",
 }
 
 
@@ -57,6 +63,11 @@ def window_metadata(row):
             "learning_contract_version": payload.get("learning_contract_version"),
             "authorization_root_job_id": payload.get("authorization_root_job_id"),
             "from_sequence": payload.get("from_sequence"), "through_sequence": payload.get("through_sequence")}
+
+
+def execution_authority(row):
+    return {"job_id": row["id"], "payload_sha256": digest(row["payload"]),
+            "payload": copy.deepcopy(row["payload"])}
 
 
 def source_sequences(stage):
@@ -199,6 +210,9 @@ class PhaseLearning:
                                             "learning_phase": phase(job["payload"]),
                                             "authorization_root_job_id": job["payload"]["authorization_root_job_id"]}
                                            if cognitive else None)
+        if cognitive:
+            self.stage.setdefault("learning_authority_snapshots", []).append(execution_authority(job))
+            self.trial.save()
         failure = None
         try:
             self.engine._execute(self.principal, self.brain_id, job)

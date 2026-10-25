@@ -92,7 +92,7 @@ def test_database_prevents_rewriting_a_frozen_attempt_boundary(jobs, change):
     assert row(jobs, identifier)["payload"] == original
 
 
-def test_paid_replan_child_with_mismatched_root_scope_cannot_be_laundered_into_a_new_root(jobs):
+def test_paid_replan_child_scope_cannot_be_changed_to_launder_its_remaining_window(jobs):
     root = insert(jobs, extra={"through_sequence": 16})
     child = replan_child(jobs, root, through_sequence=16, encoding_window_snapshot=copy.deepcopy(MARKER))
     with jobs.database.transaction(jobs.principal) as conn:
@@ -100,18 +100,11 @@ def test_paid_replan_child_with_mismatched_root_scope_cannot_be_laundered_into_a
     _, lease = reserve(jobs, child)
     jobs.store.fail(jobs.principal, jobs.brain, child, lease_token=lease["lease_token"], fence=lease["fence"],
                     failure_code="context_stale", retry=False)
-    with jobs.database.transaction(jobs.principal) as conn:
+    before = row(jobs, child)
+    with pytest.raises(psycopg.errors.CheckViolation), jobs.database.transaction(jobs.principal) as conn:
         conn.execute("UPDATE memory_jobs SET payload=jsonb_set(payload,'{target,conversation_ref}','\"other\"') "
                      "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s", (*params(jobs), child))
-        conn.execute("UPDATE memory_brains SET durable_sequence=16 WHERE tenant_id=%s AND owner_id=%s AND id=%s",
-                     params(jobs))
-        before = conn.execute("SELECT id,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                              "ORDER BY id", params(jobs)).fetchall()
-    recover(jobs)
-    assert "continuation_job_id" not in row(jobs, child)["payload"]
-    with jobs.database.transaction(jobs.principal) as conn:
-        assert conn.execute("SELECT id,payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                            "ORDER BY id", params(jobs)).fetchall() == before
+    assert row(jobs, child) == before
 
 
 @pytest.mark.parametrize("invalidation", ["correction", "erasure"])

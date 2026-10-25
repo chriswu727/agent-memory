@@ -43,6 +43,27 @@ def source_actor(memory, events):
     return next(iter(actors)) if len(actors) == 1 else None
 
 
+def abstraction_profile(memory, events):
+    if memory.get("counterexamples") or any(ref["relationship"] == "contradicts" for ref in memory["evidence_refs"]):
+        raise ValueError("Abstraction cannot discard contested instance evidence")
+    actor = source_actor(memory, events)
+    roots = frozenset(ref["event_id"] for ref in memory["evidence_refs"] if ref["relationship"] == "supports")
+    if actor is None or not roots:
+        raise ValueError("Abstraction must preserve source attribution")
+    return {"actor": actor, "roots": roots, "conditions": memory["conditions"], "world": memory["world"]}
+
+
+def validate_abstraction_profiles(profiles, conditions, world):
+    if not profiles or any(item["actor"] != profiles[0]["actor"] or item["conditions"] != conditions
+                           or item["world"] != world for item in profiles):
+        raise ValueError("Abstraction must preserve instance conditions and source attribution")
+    seen = set()
+    for item in profiles:
+        if seen & item["roots"]:
+            raise ValueError("Abstraction instances are not independent observations")
+        seen.update(item["roots"])
+
+
 def _terms(memory):
     words, pairs, _ = cognition._terms(memory["statement"])
     return {term for term in words | pairs if not term.isdecimal()}

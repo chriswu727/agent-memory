@@ -3,6 +3,7 @@ from collections import Counter
 
 from .consolidation_planning import NO_CHANGE_REASONS
 from .helpers import DomainError
+from .history_attention import attention_summary, sanitize_attention_summary
 from .learning_allocations import (
     ALLOCATION_POLICY,
     AUTHORITY_FIELDS,
@@ -11,6 +12,7 @@ from .learning_allocations import (
     HISTORY_PHASE,
     phase,
 )
+from .learning_funding import PERMISSION_VERSION, funded_lineage_matches
 
 PHASE_COUNTS = (
     "encoding_open_count", "encoding_assessed_count", "history_integration_open_count",
@@ -23,7 +25,8 @@ DEFERRED_CATEGORIES = frozenset({"package_incomplete", "shared_allocation_exhaus
 HISTORY_STATES = frozenset({"queued", "deferred", "running", "failed", "cancelled", "superseded", "completed", "unknown"})
 PHASE_FIELDS = (*AUTHORITY_FIELDS, "encoding_parent_job_id", "encoding_input_fingerprint",
                 "history_cutoff_sequence", "integration_continuation_job_id", "integration_continuation_parent_job_id",
-                "encoding_replan_version", "history_replan_version", "encoding_window_snapshot")
+                "encoding_replan_version", "history_replan_version", "encoding_window_snapshot",
+                "history_obligation_manifest", "history_allocation_job_id")
 HISTORY_LINK_FIELDS = ("history_integration_job_id", "history_integration_state",
                        "history_integration_reason", "history_integration_category")
 _MAX_INTEGER = 2**63 - 1
@@ -189,6 +192,11 @@ def unprocessed_encoding_tail(row, child):
 
 
 def annotate_phases(windows):
+    funding_rows = {identifier: {**row, "payload": {**(row.get("phase_payload")
+                    if isinstance(row.get("phase_payload"), dict) else {}),
+                    "target": {"conversation_ref": row["conversation"], "branch_ref": row["branch"]},
+                    "from_sequence": row["window_start"], "through_sequence": row["window_end"]}}
+                    for identifier, row in windows.items()}
     for identifier, row in windows.items():
         row["phase_issues"] = set()
         selected = row["learning_phase"]
@@ -204,7 +212,8 @@ def annotate_phases(windows):
         root = windows.get(payload["authorization_root_job_id"])
         if (root is None or root["learning_phase"] in {None, "unknown"}
                 or root.get("phase_payload", {}).get("authorization_root_job_id") != root["id"]
-                or (root["conversation"], root["branch"]) != (row["conversation"], row["branch"])
+                or ((root["conversation"], root["branch"]) != (row["conversation"], row["branch"])
+                    and not funded_lineage_matches(funding_rows[identifier], funding_rows[root["id"]], funding_rows))
                 or any(root["phase_payload"].get(key) != payload[key] for key in ("allocation_policy", "allocation_budget"))
                 or payload["allocation_policy"] == ALLOCATION_POLICY and root["learning_phase"] != ENCODING_PHASE
                 or selected == ENCODING_PHASE and not valid_encoding_root(row, windows)):
@@ -353,7 +362,8 @@ def sanitize_phase_counts(value):
 def sanitize_phase_metadata(value):
     keys = {"learning_contract_version", "learning_phase", "phase_metadata_complete", *HISTORY_LINK_FIELDS,
             "history_integration_resolved", "history_integration_current_job_id", "history_integration",
-            "history_integration_open", "history_integration_unassessed_objective_count"}
+            "history_integration_open", "history_integration_unassessed_objective_count",
+            "history_funding", "history_attention"}
     if not isinstance(value, dict) or not keys.intersection(value):
         return {}
     valid = (value.get("learning_contract_version") == CONTRACT_VERSION
@@ -361,6 +371,21 @@ def sanitize_phase_metadata(value):
              and value.get("phase_metadata_complete") is True)
     safe = {"learning_contract_version": CONTRACT_VERSION,
             "learning_phase": value["learning_phase"] if valid else "unknown", "phase_metadata_complete": bool(valid)}
+    if "history_funding" in value:
+        funding = value["history_funding"]
+        if (valid and isinstance(funding, dict)
+                and set(funding) == {"version", "authorization_root_job_id", "origin_job_id"}
+                and funding["version"] == PERMISSION_VERSION
+                and all(_identifier(funding[key]) for key in ("authorization_root_job_id", "origin_job_id"))):
+            safe["history_funding"] = dict(funding)
+        else:
+            safe["phase_metadata_complete"] = False
+    if "history_attention" in value:
+        attention = sanitize_attention_summary(value["history_attention"])
+        if valid and attention is not None:
+            safe["history_attention"] = attention
+        else:
+            safe["phase_metadata_complete"] = False
     if any(key in value for key in HISTORY_LINK_FIELDS) or "history_integration_resolved" in value:
         linked, current = value.get("history_integration_job_id"), value.get("history_integration_current_job_id")
         state = value.get("history_integration_state")
@@ -404,6 +429,12 @@ def job_phase_metadata(row):
     safe = {"learning_contract_version": CONTRACT_VERSION, "learning_phase": selected,
             "phase_metadata_complete": selected != "unknown"}
     result = row.get("result") if isinstance(row.get("result"), dict) else {}
+    try:
+        attention = attention_summary(row["payload"].get("history_obligation_manifest"))
+        if attention is not None:
+            safe["history_attention"] = attention
+    except (ValueError, TypeError, KeyError):
+        safe["phase_metadata_complete"] = False
     if "history_integration" in result and result["history_integration"] != {}:
         safe["history_integration"] = coverage_summary(result["history_integration"])
     if selected == HISTORY_PHASE or "history_integration_job_id" in result:
@@ -545,13 +576,18 @@ def resolve_history_status(connection, row):
         root = roots.get(payload["authorization_root_job_id"])
         if (root is None or root["kind"] != "consolidate" or classify(root["payload"]) in (None, "unknown")
                 or root["payload"].get("authorization_root_job_id") != root["id"]
-                or root["payload"].get("target") != scope
+                or (root["payload"].get("target") != scope
+                    and not funded_lineage_matches(item, root, by_id))
                 or any(root["payload"].get(key) != payload[key] for key in ("allocation_policy", "allocation_budget"))
                 or payload["allocation_policy"] == ALLOCATION_POLICY and classify(root["payload"]) != ENCODING_PHASE):
             return safe
         if fingerprint is not None and fingerprint != payload["encoding_input_fingerprint"]:
             return safe
         fingerprint = payload["encoding_input_fingerprint"]
+        if root["payload"].get("target") != scope:
+            safe["history_funding"] = {"version": PERMISSION_VERSION,
+                "authorization_root_job_id": root["id"],
+                "origin_job_id": payload["history_funding_origin"]["parent_job_id"]}
         reverse = {key: payload[key] for key in ("recovery_parent_job_id", "integration_continuation_parent_job_id") if key in payload}
         if reverse != ({relation + "_parent_job_id": previous} if previous is not None else {}):
             return safe

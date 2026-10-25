@@ -5982,6 +5982,114 @@
         }
       ],
       "description": "A final prepared selection or an explicit custom-context opt-out. An opt-out never authorizes feedback attribution and is distinct from a legacy absent binding."
+    },
+    "HistoryFundingSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "authorization_root_job_id",
+        "origin_job_id"
+      ],
+      "properties": {
+        "version": {
+          "const": "private-brain-history-funding-v1"
+        },
+        "authorization_root_job_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "origin_job_id": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "HistoryAttentionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Original bounded admission counts, not totals over descendants. Cross-field count relations require runtime validation.",
+      "required": [
+        "version",
+        "limit",
+        "candidate_count",
+        "admitted_count",
+        "not_selected_count",
+        "focus_count",
+        "exploration_count",
+        "source_origin_count",
+        "retrieval_truncated",
+        "search_exhaustive",
+        "discovery_limitations"
+      ],
+      "properties": {
+        "version": {
+          "const": "bounded-comparison-attention-v1"
+        },
+        "limit": {
+          "const": 3
+        },
+        "candidate_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "admitted_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "not_selected_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "focus_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "exploration_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "source_origin_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16384
+        },
+        "retrieval_truncated": {
+          "type": "boolean"
+        },
+        "search_exhaustive": {
+          "const": false
+        },
+        "discovery_limitations": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 4,
+          "items": {
+            "enum": [
+              "cue_limit",
+              "candidate_scan_limit",
+              "candidate_limit",
+              "source_candidate_limit"
+            ]
+          }
+        }
+      }
+    },
+    "LearningHistorySummaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional public projections within learning_summary; private grants, manifests and source text are excluded.",
+      "properties": {
+        "history_funding": {
+          "$ref": "#/$defs/HistoryFundingSummary"
+        },
+        "history_attention": {
+          "$ref": "#/$defs/HistoryAttentionSummary"
+        }
+      }
     }
   },
   "x-runtime-invariants": [

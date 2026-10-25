@@ -52,6 +52,8 @@ An encoding result preserves the historical integration job originally created w
 - `history_integration_state` and `history_integration_resolved`: the current state and whether lookup succeeded.
 - `history_integration_reason` and `history_integration_category`: fixed deferred diagnostics when applicable.
 - `history_integration_open` and `history_integration_unassessed_objective_count`: whether the chain retains work, including unassessed selected objectives on a partial ancestor even when its current leaf completed.
+- `history_funding`: the validated donor authorization root and original unattempted obligation when private history uses another conversation's unused allocation. Logical progress retains the original conversation and encoding parent.
+- `history_attention`: bounded admission counts for the original manifest. Descendants retain this same summary; their counts must not be added together. Nonselected opportunities are not admitted debt, and `search_exhaustive` remains false.
 
 The safe deferred categories are `package_incomplete`, `shared_allocation_exhausted`, and `brain_budget_unavailable`. A complete bounded package can be assessed without publishing a new memory. A valid partial semantic result can likewise record assessment with rejected proposals. Neither job completion nor an assessment counter promises publication.
 
@@ -62,3 +64,5 @@ Exact lookup follows at most 256 lineage edges. Missing, cyclic, malformed, or l
 `semantic_outcomes.by_phase` separates `encoding`, `history_integration`, `legacy`, and `unknown` results. These totals describe retained latest job results, not every attempt and not the number of memories currently usable for recall. Source invalidation can make a retained result unavailable. Accepted proposal counts and published version counts remain separate.
 
 Public history coverage includes only bounded objective, assessed, and published counts. Objective identifiers, source contents, private manifests, provider text, and raw result bodies are not exposed through these summaries. These monitoring calls are read-only; they neither replenish allocations nor authorize another provider attempt.
+
+The optional summary shapes are `HistoryFundingSummary`, `HistoryAttentionSummary`, and `LearningHistorySummaries` in the JSON Schema and TypeScript contract. See [private historical learning capacity](cross-conversation-learning-funding.md) for grant boundaries and resource accounting.

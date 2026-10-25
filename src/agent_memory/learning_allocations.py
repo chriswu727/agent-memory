@@ -1,6 +1,12 @@
 from psycopg.types.json import Jsonb
 
 from .helpers import DomainError
+from .learning_funding import (
+    FUNDING_FIELDS,
+    validate_funded_root,
+    validate_funding_metadata,
+    validate_private_funding_sources,
+)
 from .turns import _hash, _identifier
 
 CONTRACT_VERSION = "encoding-integration-v1"
@@ -14,7 +20,7 @@ PHASE_CALLS = 2
 PHASE_BYTES = 196608
 AUTHORITY_FIELDS = (
     "learning_contract_version", "learning_phase", "authorization_root_job_id", "allocation_policy",
-    "allocation_budget", "phase_budget", "allocation_input_fingerprint",
+    "allocation_budget", "phase_budget", "allocation_input_fingerprint", "history_attention_policy", *FUNDING_FIELDS,
 )
 
 
@@ -47,6 +53,7 @@ def _metadata_phase(payload):
                 raise ValueError
         if "allocation_input_fingerprint" in payload:
             _hash(payload["allocation_input_fingerprint"])
+        validate_funding_metadata(payload)
     except (DomainError, KeyError, TypeError, ValueError):
         raise _invalid() from None
     return value
@@ -162,8 +169,12 @@ def allocation_root(conn, params, row):
                 raise ValueError
             for value in target.values():
                 _identifier(value)
-        if payload["target"] != root["payload"]["target"]:
+        if "history_funding_permission" in payload and row["id"] != root_id:
             raise ValueError
+        if payload["target"] != root["payload"]["target"]:
+            if selected_phase != HISTORY_PHASE:
+                raise ValueError
+            validate_funded_root(conn, params, row, root)
     except (KeyError, ValueError, DomainError):
         raise _invalid() from None
     if selected_phase == ENCODING_PHASE and root_id != row["id"]:
@@ -197,8 +208,11 @@ def freeze_input(conn, params, job_id, *, input_fingerprint, window=None):
     ).fetchone()
     if row is None:
         raise _invalid()
-    if allocation_root(conn, params, row) is None:
+    root = allocation_root(conn, params, row)
+    if root is None:
         raise _invalid()
+    if row["payload"]["target"] != root["payload"]["target"]:
+        validate_funded_root(conn, params, row, root, assigned=True)
     payload = row["payload"]
     window_marker = None
     if window is not None:
@@ -236,6 +250,9 @@ def check_reservation(conn, params, row, *, input_bytes):
         return
     root = allocation_root(conn, params, row)
     payload = row["payload"]
+    if payload["target"] != root["payload"]["target"]:
+        validate_funded_root(conn, params, row, root, assigned=True)
+        validate_private_funding_sources(conn, params, row, root)
     if (selected_phase == HISTORY_PHASE and payload["allocation_policy"] == ALLOCATION_POLICY
             and not encoding_allocation_ready(conn, params, root)):
         raise DomainError("dependency_unavailable", "History integration requires completed encoding.")

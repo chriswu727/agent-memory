@@ -1,0 +1,166 @@
+{
+  "version": "v1-lexical-retrieval-acceptance-v1",
+  "measured_at": "2026-10-25T17:28:53.473308+00:00",
+  "build_id": "7336fbd4a2b087cbe73e2e7d572b7fee76ea05e2aea734b742248c552f195274",
+  "source": "evaluations/retrieval-scale-2026-10-25-c.json",
+  "source_sha256": "305de67840396de4a9c5c446323997ac2652fd71cea5ff206e7fc3a99bfa14f6",
+  "fixture_identity": {
+    "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+    "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+    "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+  },
+  "records": 10000,
+  "platform": "macOS-15.7.4-arm64-arm-64bit",
+  "processor": "Apple M4",
+  "python": "3.12.13",
+  "cache_state": "Existing previously used fixture; no discarded warmups. Every current request retained. OS/database cache was not flushed.",
+  "scope": "Local in-process lexical recall only; no HTTP or provider waiting.",
+  "samples": [
+    {
+      "query": "zeta00094",
+      "elapsed_ms": 178.788459,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00141",
+      "elapsed_ms": 89.670834,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00188",
+      "elapsed_ms": 86.885542,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00235",
+      "elapsed_ms": 84.477875,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00282",
+      "elapsed_ms": 88.664583,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00329",
+      "elapsed_ms": 99.468875,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00376",
+      "elapsed_ms": 91.457917,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00423",
+      "elapsed_ms": 112.433458,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00470",
+      "elapsed_ms": 102.289125,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00517",
+      "elapsed_ms": 314.270958,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00564",
+      "elapsed_ms": 82.70475,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00611",
+      "elapsed_ms": 84.663541,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00658",
+      "elapsed_ms": 91.266583,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00705",
+      "elapsed_ms": 100.733042,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00752",
+      "elapsed_ms": 99.248459,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00799",
+      "elapsed_ms": 92.41075,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00846",
+      "elapsed_ms": 86.989875,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00893",
+      "elapsed_ms": 91.669667,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00940",
+      "elapsed_ms": 83.186917,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    },
+    {
+      "query": "zeta00987",
+      "elapsed_ms": 106.832,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true
+    }
+  ],
+  "median_ms": 91.563792,
+  "p95_ms": 178.788459,
+  "p95_limit_ms": 500,
+  "all_sources_found": true,
+  "provider_calls": 0,
+  "passed": true
+}

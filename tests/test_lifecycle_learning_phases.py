@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory.helpers import Principal
+from agent_memory.helpers import Principal, digest
 from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, allocation_metadata
 
 
@@ -80,6 +80,19 @@ def test_metadata_keeps_phase_and_scope_window_without_manifest(helper):
     value = helper.window_metadata(row)
     assert value["learning_phase"] == HISTORY_PHASE
     assert "private" not in repr(value) and "manifest" not in repr(value)
+
+
+def test_execution_audit_preserves_exact_authority_without_creating_permission(helper):
+    row = candidate("old-obligation", HISTORY_PHASE)
+    row["payload"].update({"target": {"conversation_ref": "old", "branch_ref": "main"},
+                           "history_funding_origin": {"parent_job_id": "never-attempted"},
+                           "history_attention_policy": "bounded-comparison-attention-v1"})
+    value = helper.execution_authority(row)
+    assert value == {"job_id": row["id"], "payload_sha256": helper.digest(row["payload"]),
+                     "payload": row["payload"]}
+    row["payload"]["target"]["conversation_ref"] = "changed"
+    assert value["payload"]["target"]["conversation_ref"] == "old"
+    assert "history_funding_permission" not in helper.execution_authority(candidate())["payload"]
 
 
 class Stop(Exception):
@@ -159,6 +172,9 @@ def test_encoding_and_ready_history_are_separate_one_attempt_jobs(harness):
     assert trial.current["learning_phase_checks"]["local_encoding_processed_successfully"]
     assert trial.current["learning_progress"]["learning_phases"]["history_integration_open_count"] == 1
     assert trial.current["learning_allocation_ledger"][0]["input_bytes"] == 100
+    assert [item["job_id"] for item in trial.current["learning_authority_snapshots"]] == ["encoding", "history"]
+    assert all(item["payload_sha256"] == digest(item["payload"])
+               for item in trial.current["learning_authority_snapshots"])
 
 
 def test_deferred_history_does_not_dispatch_or_invent_assessment(harness):
@@ -338,7 +354,8 @@ def test_v2_repair_plan_freezes_small_memory_only_diagnostic_and_original_source
     assert planned["server_budget_policy"] == {
         "window_seconds": 2_592_000, "max_model_calls": 96, "max_input_bytes": 48 * 196608}
     assert planned["baseline_call_allocation"] == {} and planned["summary"]["updates"] == 0
-    assert "later stages do not fund earlier scopes" in planned["learning_phase_policy"]["conversation_scope"]
+    assert planned["learning_phase_policy"]["version"] == "lifecycle-phase-execution-v2"
+    assert "original source scope and cutoff remain unchanged" in planned["learning_phase_policy"]["conversation_scope"]
     assert planned["code_fingerprints"]["examples/lifecycle_learning.py"] == runner.digest(
         (runner.ROOT / "examples/lifecycle_learning.py").read_text())
 

@@ -1,5 +1,30 @@
 export type Identifier = string;
 
+export type HistoryFundingSummary = {
+  version: "private-brain-history-funding-v1";
+  authorization_root_job_id: Identifier;
+  origin_job_id: Identifier;
+};
+
+export type HistoryAttentionSummary = {
+  version: "bounded-comparison-attention-v1";
+  limit: 3;
+  candidate_count: number;
+  admitted_count: number;
+  not_selected_count: number;
+  focus_count: number;
+  exploration_count: number;
+  source_origin_count: number;
+  retrieval_truncated: boolean;
+  search_exhaustive: false;
+  discovery_limitations: ("cue_limit" | "candidate_scan_limit" | "candidate_limit" | "source_candidate_limit")[];
+};
+
+export type LearningHistorySummaries = {
+  history_funding?: HistoryFundingSummary;
+  history_attention?: HistoryAttentionSummary;
+};
+
 export type OrientationReason =
   | "existing_orientation" | "recall_plan" | "embedding_recall" | "historical_boundary_required"
   | "conditional_memory" | "conditional_relation" | "working_state" | "incomplete_dependencies"

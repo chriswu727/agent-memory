@@ -63,8 +63,24 @@ The completion campaign is memory-only. Baseline arms and automatic answer-revie
 
 Passing a gate does not justify repeating it after unrelated documentation edits. Reopen only the gates materially affected by a later code change. After success, stop; after a budget/usage interruption, report unfinished work accurately and retain the checkpoint.
 
+## Running the fixed campaign
+
+The evaluator now has a dedicated acceptance profile. From the frozen candidate checkout, inspect its complete plan without loading provider credentials:
+
+```sh
+uv run python -m examples.evaluate_memory_lifecycle --plan --profile acceptance --orientation-policy on_demand
+```
+
+After the local prerequisites pass, run the same profile with `--live` and a new `--output` directory. It authorizes only the memory arm, with 100 history exchanges and twelve probes; no baseline or answer-review provider is constructed. Its conservative aggregate ceiling is 736 calls (624 cognitive and 112 host calls), with 10,682,368 reserved output tokens. This is a maximum, not predicted use; the per-root, per-phase and effective brain limits still apply. An existing output directory cannot be reused for paid execution.
+
+After history stage 015, the process writes `checkpoint-016.json` in the output root and waits without making calls. The developer reviews the complete `memory/report.json` sources, delivered answers, publications, debt and usage, then atomically creates `checkpoint-016-decision.json` with exactly `checkpoint_sha256` (the checkpoint's `sha256`) and `decision` (`continue` or `stop`). Continuing uses the same process and ledger. It does not mark semantic acceptance passed. A root `STOP` file ends the campaign at the next safe boundary; `--resume` only reads the saved report and cannot restart paid work.
+
+Completed-turn replay is checked after history stages 015 and 099 using reconstructed clients/runtime and callbacks that fail if generation or delivery is attempted. Each probe receives its own restored brain from the same final trained archive. Even a normally finished run retains `pending_independent_review` until the complete source-and-answer audit is recorded.
+
 ## Progress checkpoint
 
 The last published implementation is `dd79b70d4b5738dc5f4a089af0e111c0dd445a88`, followed by evidence-only commit `496a76d76a179bad90f51fe48efa4a1e00cd6aff`. Its integrated suite passed 4,282 tests with a verified installed artifact and twenty-one migrations. That is evidence for the previous implementation, not a claim that the present uncommitted batch passes.
 
-The current capability, attention and funding changes have focused passing checks but still require integration, adjacent regressions, installed-artifact verification and a full run. Migration 022 has been applied to the dedicated development test database. The speech-event/content-world issue remains open. The preserved real repair run stopped after eight exchanges; no hundred-turn or twelve-probe acceptance has passed. No new paid provider calls were made during this progress audit.
+The four current repairs are now implemented. The [local acceptance checkpoint](../evaluations/v1-2026-10-25-local-acceptance.md) records the full regression's 4,450 passes and one outdated fixture failure, its completed 42-test follow-up, thirty final installed-wheel checks, exact 113-file artifact identity and twenty-two migrations. The initial failure remains disclosed; it is not relabeled as an entirely green full-suite run. Local retrieval and capability measurements meet their budgets. The dedicated 100/12 acceptance profile and same-campaign checkpoint are implemented and locally tested.
+
+The preserved real repair run stopped after eight exchanges; no hundred-turn or twelve-probe acceptance has passed. No new paid provider calls were made during this progress audit. First-release completion still requires the actual frozen campaign, independent source-and-answer review and final release evidence. Passing local engineering checks does not close that gate.

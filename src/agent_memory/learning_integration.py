@@ -22,6 +22,7 @@ from .learning_allocations import (
     freeze_input,
     phase,
 )
+from .learning_funding import funding_origin, permitted_target
 from .learning_packages import (
     discover_manifest,
     empty_working,
@@ -188,6 +189,20 @@ def _prepare(conn, service, principal, brain, row, manifest, policy):
             reason = "package_incomplete"
         else:
             snapshot = _snapshot(conn, service, principal, brain, row, package, selected, remaining, limited)
+            root = _row(conn, params, row["payload"]["authorization_root_job_id"])
+            if root["payload"]["target"] != row["payload"]["target"]:
+                if (not permitted_target(root, row["payload"]["target"], brain_id=brain["id"])
+                        or any(item["scope"]["visibility"] != "private"
+                               for item in (*package.sources, *package.assertions, *package.belief_relations))):
+                    raise DomainError("dependency_unavailable", "Private historical funding scope changed.")
+            assigned = root["payload"].get("history_allocation_job_id")
+            if assigned not in (None, row["id"]):
+                raise DomainError("dependency_unavailable", "Historical funding is already assigned.")
+            conn.execute(
+                "UPDATE memory_jobs SET payload=payload || %s "
+                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                (Jsonb({"history_allocation_job_id": row["id"]}), *params, root["id"]),
+            )
             freeze_input(conn, params, row["id"], input_fingerprint=snapshot_fingerprint(snapshot))
             conn.execute(
                 "UPDATE memory_jobs SET state='queued',result=%s,source_event_ids=%s,source_memory_ids=%s,"
@@ -195,11 +210,6 @@ def _prepare(conn, service, principal, brain, row, manifest, policy):
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                 (Jsonb(snapshot), [event["event_id"] for event in package.sources],
                  [memory["memory_id"] for memory in package.assertions], *params, row["id"]),
-            )
-            conn.execute(
-                "UPDATE memory_jobs SET payload=payload || %s "
-                "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                (Jsonb({"history_allocation_job_id": row["id"]}), *params, row["payload"]["authorization_root_job_id"]),
             )
             return _row(conn, params, row["id"])
     conn.execute(
@@ -237,6 +247,7 @@ def enqueue_integration(conn, service, principal, brain, job, snapshot, policy):
         conn, service, principal, brain, job["payload"]["target"],
         through_sequence=window["attempted_through_sequence"], required_event_refs=refs, policy=policy,
         input_contract_version=LATEST_INPUT_CONTRACT_VERSION,
+        attention_policy=job["payload"].get("history_attention_policy"),
     )
     identifier = "integrate:" + digest([job["id"], window["from_sequence"], window["attempted_through_sequence"],
                                        manifest["input_fingerprint"]])
@@ -247,6 +258,8 @@ def enqueue_integration(conn, service, principal, brain, job, snapshot, policy):
                **allocation_metadata(identifier, phase=HISTORY_PHASE,
                                      root_job_id=job["payload"]["authorization_root_job_id"],
                                      recovery=job["payload"]["allocation_policy"] == RECOVERY_POLICY)}
+    if "history_attention_policy" in job["payload"]:
+        payload["history_attention_policy"] = job["payload"]["history_attention_policy"]
     row = _insert(conn, service, principal, brain, identifier=identifier, payload=payload, manifest=manifest)
     _fund_oldest(conn, service, principal, brain, job, policy)
     row = _prepare(conn, service, principal, brain, row, manifest, policy)
@@ -265,6 +278,15 @@ def _continuation(conn, service, principal, brain, parent, manifest, policy, *, 
         "history_replan_version", "history_obligation_manifest", "last_history_replan_token",
     }}
     root = _row(conn, params, root_id)
+    if root_id != parent["payload"]["authorization_root_job_id"]:
+        payload.pop("history_funding_origin", None)
+        if root["payload"]["target"] != parent["payload"]["target"]:
+            if (not permitted_target(root, parent["payload"]["target"], brain_id=brain["id"])
+                    or parent["model_calls"] or parent["input_bytes"]
+                    or conn.execute("SELECT 1 FROM memory_cognitive_operations WHERE tenant_id=%s AND owner_id=%s "
+                                    "AND brain_id=%s AND job_id=%s LIMIT 1", (*params, parent["id"])).fetchone()):
+                raise DomainError("dependency_unavailable", "Historical funding requires an unattempted obligation.")
+            payload["history_funding_origin"] = funding_origin(parent, manifest)
     payload.update(allocation_metadata(identifier, phase=HISTORY_PHASE, root_job_id=root_id,
                                        recovery=root["payload"]["allocation_policy"] == RECOVERY_POLICY),
                    integration_continuation_parent_job_id=parent["id"],
@@ -272,11 +294,11 @@ def _continuation(conn, service, principal, brain, parent, manifest, policy, *, 
     if replan:
         payload["history_replan_version"] = HISTORY_REPLAN_VERSION
     child = _insert(conn, service, principal, brain, identifier=identifier, payload=payload, manifest=manifest)
-    child = _prepare(conn, service, principal, brain, child, manifest, policy)
     conn.execute(
         "UPDATE memory_jobs SET payload=payload || %s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
         (Jsonb({"integration_continuation_job_id": identifier}), *params, parent["id"]),
     )
+    child = _prepare(conn, service, principal, brain, child, manifest, policy)
     _wake(conn, params)
     return child
 
@@ -285,17 +307,21 @@ def _fund_oldest(conn, service, principal, brain, donor, policy):
     if donor["payload"]["allocation_policy"] != ALLOCATION_POLICY:
         return
     params = service._params(principal, brain["id"])
+    root = _row(conn, params, donor["payload"]["authorization_root_job_id"])
+    broader = permitted_target(root, donor["payload"]["target"], brain_id=brain["id"])
+    scope_clause = ("AND payload #>> '{target,branch_ref}'=%s " if broader else "AND payload->'target'=%s ")
+    scope_value = donor["payload"]["target"]["branch_ref"] if broader else Jsonb(donor["payload"]["target"])
     rows = conn.execute(
         "SELECT * FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND kind='consolidate' AND state='deferred' AND model_calls=0 "
-        "AND payload->>'learning_phase'='history_integration' AND payload->'target'=%s "
+        "AND payload->>'learning_phase'='history_integration' " + scope_clause +
         "AND (payload->>'through_sequence')::bigint<%s "
         "AND NOT payload ?| ARRAY['integration_continuation_job_id','recovery_job_id'] "
         "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
         "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
         "AND q.object_kind='job' AND q.object_id=memory_jobs.id) "
         "ORDER BY (payload->>'from_sequence')::bigint,created_at,id LIMIT 8 FOR UPDATE",
-        (*params, Jsonb(donor["payload"]["target"]), donor["payload"]["from_sequence"]),
+        (*params, scope_value, donor["payload"]["from_sequence"]),
     ).fetchall()
     for old in rows:
         if "allocation_input_fingerprint" in old["payload"]:
@@ -316,7 +342,7 @@ def _fund_oldest(conn, service, principal, brain, donor, policy):
 
 
 def _refresh_manifest(conn, service, principal, brain, row, manifest, policy):
-    if manifest["objectives"] or not manifest["unresolved_discovery"]:
+    if "attention" in manifest or manifest["objectives"] or not manifest["unresolved_discovery"]:
         return manifest
     rows = conn.execute(
         "SELECT result->'integration_manifest' AS manifest FROM memory_jobs "
@@ -393,15 +419,21 @@ def _donor(conn, service, principal, brain, row, policy):
         "SELECT authorization_root_job_id FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
         "AND kind='consolidate' AND state='completed' AND payload->>'learning_contract_version'=%s "
         "AND payload->>'learning_phase'='encoding' AND payload->>'allocation_policy'=%s "
-        "AND payload->'target'=%s AND NOT payload ? 'history_allocation_job_id' "
+        "AND (payload->'target'=%s OR (payload ? 'history_funding_permission' "
+        "AND payload #>> '{target,branch_ref}'=%s)) AND NOT payload ? 'history_allocation_job_id' "
         "AND (payload->>'from_sequence')::bigint>%s "
         "AND NOT EXISTS (SELECT 1 FROM memory_recovery_quarantine q WHERE q.tenant_id=memory_jobs.tenant_id "
         "AND q.owner_id=memory_jobs.owner_id AND q.brain_id=memory_jobs.brain_id "
         "AND q.object_kind='job' AND q.object_id=memory_jobs.id) ORDER BY created_at,id LIMIT 8 FOR UPDATE",
-        (*params, CONTRACT_VERSION, ALLOCATION_POLICY, Jsonb(row["payload"]["target"]), row["payload"]["through_sequence"]),
+        (*params, CONTRACT_VERSION, ALLOCATION_POLICY, Jsonb(row["payload"]["target"]),
+         row["payload"]["target"]["branch_ref"], row["payload"]["through_sequence"]),
     ).fetchall()
     for candidate in candidates:
         identifier = candidate["authorization_root_job_id"]
+        root = _row(conn, params, identifier)
+        if (root["payload"]["target"] != row["payload"]["target"]
+                and not permitted_target(root, row["payload"]["target"], brain_id=brain["id"])):
+            continue
         probe = {**row, "payload": {**row["payload"], "authorization_root_job_id": identifier}}
         if _capacity(conn, service, principal, brain, probe, policy) is None:
             return identifier

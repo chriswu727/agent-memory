@@ -75,6 +75,13 @@ def test_chat_processes_recall_restart_deduplicate_and_block_unknown_generation(
         ], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=180)
 
     try:
+        setup = subprocess.run([
+            executable, "-m", "agent_memory.cli", "desktop", "setup", "--non-interactive",
+            "--directory", str(profile.directory),
+        ], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=180)
+        assert setup.returncode == 0, setup.stderr
+        assert json.loads(setup.stdout)["brain_id"] == profile.brain_id
+        assert not calls
         first = chat("first", "--message", "My telescope is named Aurora Maple.", "--message-id", "event-1")
         assert first.returncode == 0, first.stderr
         assert first.stdout == "Understood.\n"
@@ -89,10 +96,18 @@ def test_chat_processes_recall_restart_deduplicate_and_block_unknown_generation(
         assert len(calls) == 1
         with open_client(profile.directory, start_service=False) as memory:
             assert len(memory.dashboard()["events"]) == 2
+            original_sources = {event["event_id"] for event in memory.dashboard()["events"]}
         assert desktop.stop(profile.directory)["data_preserved"]
+        save_chat_configuration(ChatConfiguration(
+            f"http://127.0.0.1:{server.server_port}/v1", "replacement-test-model", "local-fake-provider-key",
+        ), profile.directory)
         second = chat("second", "--message", "What is the name of my telescope?", "--message-id", "event-2")
         assert second.returncode == 0, second.stderr
         assert second.stdout == "Aurora Maple.\n"
+        assert [call["model"] for call in calls] == ["local-test-model", "replacement-test-model"]
+        with open_client(profile.directory, start_service=False) as memory:
+            assert original_sources <= {event["event_id"] for event in memory.dashboard()["events"]}
+            assert load_profile(profile.directory).brain_id == profile.brain_id
         assert "Aurora Maple" in calls[1]["messages"][-2]["content"]
         replay = chat("second", "--message", "What is the name of my telescope?", "--message-id", "event-2")
         assert replay.returncode == 0, replay.stderr

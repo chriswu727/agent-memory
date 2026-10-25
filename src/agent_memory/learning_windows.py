@@ -15,6 +15,7 @@ from .learning_allocations import (
     phase,
     unreserved_encoding_root,
 )
+from .learning_funding import ordinary_root_metadata
 from .semantic import COMMUNICATION_INTENT_INPUT_VERSION
 from .turns import _identifier
 
@@ -80,6 +81,19 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
     if learning_contract_version is not None:
         identifier = "consolidate:" + digest([brain["id"], identity, origin, learning_contract_version])
         payload.update(allocation_metadata(identifier, recovery="recovery_budget" in payload))
+        if "recovery_budget" not in payload:
+            payload.update(ordinary_root_metadata(service._scope(principal, brain, target)))
+            if isinstance(origin, str) and parent is not None:
+                authority = conn.execute(
+                    "SELECT payload FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                    (*params, parent["payload"].get("authorization_root_job_id")),
+                ).fetchone()
+                if authority is None or "history_funding_permission" not in authority["payload"]:
+                    payload.pop("history_funding_permission", None)
+                if "history_attention_policy" in parent["payload"]:
+                    payload["history_attention_policy"] = parent["payload"]["history_attention_policy"]
+                else:
+                    payload.pop("history_attention_policy", None)
     budget = payload.get("recovery_budget", {})
     if learning_contract_version is not None:
         budget = {"max_model_calls": PHASE_CALLS, "max_input_bytes": PHASE_BYTES}
@@ -301,6 +315,8 @@ def _replan_unreserved_encoding(conn, service, principal, brain):
                         "encoding_replan_version": ENCODING_REPLAN_VERSION, "recovery_parent_job_id": old["id"],
                         **allocation_metadata(replacement, root_job_id=root_id,
                                               recovery=payload["allocation_policy"] == RECOVERY_POLICY)}
+            if "history_attention_policy" in payload:
+                metadata["history_attention_policy"] = payload["history_attention_policy"]
             conn.execute(
                 "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,state,payload,max_model_calls,max_input_bytes) "
                 "VALUES(%s,%s,%s,%s,'consolidate','queued',%s,%s,%s) ON CONFLICT DO NOTHING",

@@ -99,7 +99,11 @@ def _minimum_verification_size(selector, events, memories, manifest):
 
 
 def discover_manifest(conn, service, principal, brain, target, *, through_sequence, required_event_refs,
-                      policy, input_contract_version, assessed_ids=(), excluded_versions=()):
+                      policy, input_contract_version, assessed_ids=(), excluded_versions=(), attention_policy=None):
+    from .history_attention import POLICY, admit
+
+    if attention_policy not in (None, POLICY):
+        raise DomainError("dependency_unavailable", "Historical attention policy is unavailable.")
     selector = _Selector(conn, service, principal, brain, target, through_sequence, policy,
                          input_contract_version=input_contract_version)
     sources = _required_sources(selector, required_event_refs)
@@ -121,7 +125,7 @@ def discover_manifest(conn, service, principal, brain, target, *, through_sequen
         if identifier not in assessed_ids:
             objectives.append({"objective_id": identifier, "target_memory_version": version})
     truncated = len(objectives) > MAX_COMPARISONS or bool(selector.reasons & _DISCOVERY_LIMITS)
-    return {
+    manifest = {
         "version": MANIFEST_VERSION, "input_fingerprint": fingerprint,
         "input_refs": [{"event_id": item["event_id"], "revision": item["revision"],
                         "content_sha256": item["content_sha256"]}
@@ -129,6 +133,11 @@ def discover_manifest(conn, service, principal, brain, target, *, through_sequen
         "through_sequence": through_sequence, "objectives": objectives[:MAX_COMPARISONS],
         "unresolved_discovery": truncated, "discovery_limitations": sorted(selector.reasons & _DISCOVERY_LIMITS),
     }
+    if attention_policy == POLICY:
+        return admit({**manifest, "objectives": objectives,
+                      "unresolved_discovery": bool(selector.reasons & _DISCOVERY_LIMITS)},
+                     candidates, sources.values())
+    return manifest
 
 
 def complete_history_package(selector, root):

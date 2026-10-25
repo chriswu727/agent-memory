@@ -68,7 +68,9 @@ def bounded_verification_context(mode, sources, assertions=(), relations=(), *, 
         return {"local_input_context": [copy.deepcopy(lookup[(ref["event_id"], ref["revision"])])
                                          for ref in input_refs]}
     if mode == HISTORY_INTEGRATION_MODE:
-        return {"integration_manifest": copy.deepcopy(manifest),
+        from .history_attention import model_manifest
+
+        return {"integration_manifest": model_manifest(manifest),
                 "historical_context": {"sources": copy.deepcopy(list(sources)),
                                        "assertions": copy.deepcopy(list(assertions)),
                                        "belief_relations": copy.deepcopy(list(relations))},

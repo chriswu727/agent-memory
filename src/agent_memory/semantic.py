@@ -6,6 +6,7 @@ import math
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import Literal
 
 from jsonschema import Draft202012Validator, FormatChecker
@@ -18,11 +19,18 @@ from .applicability import (
     validate_new_condition,
     validate_observation,
 )
+from .belief_capabilities import (
+    CAPABILITY_INSTRUCTIONS,
+    RELATION_CAPABILITIES_INPUT_VERSION,
+    relation_capabilities,
+    validate_capability_link,
+)
 from .consolidation_planning import (
     NO_CHANGE_REASONS,
+    abstraction_profile,
     consolidation_coverage,
     plan_consolidation,
-    source_actor,
+    validate_abstraction_profiles,
     validate_consolidation_plan,
 )
 from .contracts import validate
@@ -30,7 +38,7 @@ from .episode_semantics import (
     EPISODE_FIDELITY_INSTRUCTIONS,
     EPISODE_FIDELITY_VERIFY_INSTRUCTIONS,
     EPISODE_INSTRUCTIONS,
-    EPISODE_SOURCE_VIEW_INPUT_VERSION,
+    EPISODE_SOURCE_VIEW_INPUT_VERSIONS,
     EPISODE_SOURCE_VIEW_INSTRUCTIONS,
     EPISODE_VERIFY_INSTRUCTIONS,
     ORGANIZATION_STATEMENT_SCHEMA,
@@ -38,6 +46,9 @@ from .episode_semantics import (
     episode_fidelity_schema,
     episode_fidelity_supported,
     episode_navigation_view,
+)
+from .episode_semantics import (
+    EPISODE_SOURCE_VIEW_INPUT_VERSION as EPISODE_SOURCE_VIEW_INPUT_VERSION,
 )
 from .episode_semantics import (
     _reference as episode_reference,
@@ -61,6 +72,15 @@ from .ontology import CORE_REGISTRY
 from .temporal import validate_valid_during
 
 TruthValue = Literal["true", "false", "unknown"]
+
+SPEECH_EVENT_INSTRUCTIONS = (
+    "For agent_said only, a delivered assistant message with unknown or real_world_report "
+    "interpretation may support a real_world report of the communication act even when an if-clause "
+    "makes its content hypothetical. Retain the speaker and the complete condition in the statement: "
+    "the fact that an invitation was spoken does not establish its condition, outcome, a commitment, "
+    "or an external fact. Explicit hypothetical, roleplay, dream and quotation source hints remain "
+    "binding. Independently verify this attribution and all qualifications against complete sources."
+)
 
 
 def _object(properties):
@@ -169,8 +189,8 @@ ORIENT_PROPOSAL_MODE = "orient-v1"
 EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
-EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, EPISODE_SOURCE_VIEW_INPUT_VERSION)
-LATEST_INPUT_CONTRACT_VERSION = EPISODE_SOURCE_VIEW_INPUT_VERSION
+EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
+LATEST_INPUT_CONTRACT_VERSION = RELATION_CAPABILITIES_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -425,7 +445,7 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
                 "belief_relations": belief_relations, "current_input_refs": list(current_input_refs)}
     else:
         episodes = list(episodes)
-        if input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+        if input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS:
             scope = scope if scope is not None else working_state.get("scope")
             events = {(source["event_id"], source["revision"]): source for source in sources}
             episodes = [episode_navigation_view(episode, scope, events) for episode in episodes]
@@ -450,13 +470,17 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
             "current_input_citations_authorized": bool(current_input_refs),
             "reference_semantics": "citation_authority_not_request_evidence",
         }
+    if input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+        data["belief_relation_capabilities"] = belief_capabilities(scope, sources, assertions)
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         data["local_observation_contract"] = {
             "version": LOCAL_OBSERVATION_MODE, "history_intentionally_withheld": True,
             "historical_integration": "pending", "claims_are_attributed_reports": True,
         }
     elif proposal_mode == HISTORY_INTEGRATION_MODE:
-        data["integration_manifest"] = copy.deepcopy(integration_manifest)
+        from .history_attention import model_manifest
+
+        data["integration_manifest"] = model_manifest(integration_manifest)
     return data
 
 
@@ -495,8 +519,10 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
     if input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + (EPISODE_FIDELITY_INSTRUCTIONS if phase == "proposal"
                                else EPISODE_FIDELITY_VERIFY_INSTRUCTIONS)
-    if input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+    if input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + EPISODE_SOURCE_VIEW_INSTRUCTIONS
+    if input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+        instructions += " " + CAPABILITY_INSTRUCTIONS + " " + SPEECH_EVENT_INSTRUCTIONS
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         instructions += " " + (LOCAL_INSTRUCTIONS if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
     elif proposal_mode == HISTORY_INTEGRATION_MODE:
@@ -694,13 +720,24 @@ def _check_reference(reference, events, scope, relationship):
     return event, text[span["start"]:span["end"]]
 
 
-def _check_claim_sources(proposal, events, scope, *, situation=False, current_request=False):
+def _check_claim_sources(proposal, events, scope, *, situation=False, current_request=False,
+                         input_contract_version=None):
     for reference in proposal["evidence_refs"] + proposal.get("counterexamples", []):
         relationship = "supports" if reference in proposal["evidence_refs"] else "contradicts"
         event, excerpt = _check_reference(reference, events, scope, relationship)
         observed = event["observed"]
         role = observed["actor_role"]
-        if not current_request and cognition._world(observed, excerpt) != proposal["world"]:
+        source_world = cognition._world(observed, excerpt)
+        speech_event = (
+            input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION and not situation
+            and proposal.get("claim_kind") == "agent_said" and proposal["world"] == "real_world"
+            and source_world == "hypothetical" and role == "assistant"
+            and observed["event_kind"] == "message" and observed["delivery_state"] == "delivered"
+            and observed["interpretation_hint"] in {"unknown", "real_world_report"}
+            and not any(pattern.search(excerpt) for world, pattern in cognition._WORLD_MARKERS
+                        if world != "hypothetical")
+        )
+        if not current_request and source_world != proposal["world"] and not speech_event:
             raise ValueError("world_mismatch")
         bounds = reference["span"]
         if observed["content"]["media_type"] != "text/plain":
@@ -814,7 +851,7 @@ def _complete_support_basis(assessment):
                                  if item["verdict"] == "supports"})
 
 
-def _validate_belief_link(item, scope, events, assertions, episodes, claims):
+def _validate_belief_link(item, scope, events, assertions, episodes, claims, *, input_contract_version=None):
     validator = Draft202012Validator({"$defs": PROPOSAL_SCHEMA["$defs"], **_BELIEF_LINK},
                                      format_checker=FormatChecker())
     if not validator.is_valid(item):
@@ -839,38 +876,29 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
             raise ValueError("Unavailable relationship target")
         targets.append(target)
     SemanticProcessor._validate_proposal("claims", linked, scope, events, assertions, episodes,
-                                         abstraction_parents=keys if item["kind"] == "abstracts" else ())
+                                         abstraction_parents=keys if item["kind"] == "abstracts" else (),
+                                         input_contract_version=input_contract_version)
     if linked.get("counterexamples") and item["kind"] != "contradicts":
         raise ValueError("Contested claim cannot establish an overriding relationship")
     premise = {"world": item["world"], "claim_kind": linked["claim_kind"],
                "evidence_refs": item["evidence_refs"], "counterexamples": []}
-    _check_claim_sources(premise, events, scope)
+    _check_claim_sources(premise, events, scope, input_contract_version=input_contract_version)
     offered = {_evidence_identity(ref) for ref in item["evidence_refs"]}
     for endpoint in [linked, *targets]:
         required = {_evidence_identity(ref) for ref in endpoint["evidence_refs"] + endpoint.get("counterexamples", [])}
         if not required.issubset(offered):
             raise ValueError("Relationship omits endpoint evidence")
     if item["kind"] == "abstracts":
-        if any(target.get("counterexamples") or any(ref["relationship"] == "contradicts"
-               for ref in target["evidence_refs"]) for target in targets):
-            raise ValueError("Abstraction cannot discard contested instance evidence")
         if linked["representation"] != "schema" or linked["claim_kind"] != "inferred_pattern" or len(targets) < 2:
             raise ValueError("Abstraction requires a schema and multiple instances")
         parents = {(ref["memory_id"], ref["revision"]) for ref in linked["source_memory_versions"]}
         if not set(keys).issubset(parents):
             raise ValueError("Abstraction must retain exact instance parents")
         _instance_support(item, linked, assertions)
-        actor = source_actor(targets[0], events)
-        if (actor is None or linked["conditions"] != item["conditions"]
-                or any(target["conditions"] != item["conditions"] or source_actor(target, events) != actor
-                       for target in targets)):
+        if linked["conditions"] != item["conditions"]:
             raise ValueError("Abstraction must preserve instance conditions and source attribution")
-        supports = []
-        for target in targets:
-            own = {ref["event_id"] for ref in target["evidence_refs"] if ref["relationship"] == "supports"}
-            if not own or any(own & previous for previous in supports):
-                raise ValueError("Abstraction instances are not independent observations")
-            supports.append(own)
+        validate_abstraction_profiles([abstraction_profile(target, events) for target in targets],
+                                      item["conditions"], item["world"])
     elif item["kind"] == "equivalent":
         fields = ("memory_kind", "world", "claim_kind", "conditions", "valid_time", "valid_during", "procedure")
         missing = object()
@@ -887,6 +915,16 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims):
                 and validity["end"]["kind"] == "unbounded"):
             raise ValueError("An unconditional exception requires a bounded end or unknown validity")
     return item["evidence_refs"]
+
+
+def belief_capabilities(scope, sources, assertions):
+    return relation_capabilities(
+        scope, {(source["event_id"], source["revision"]): source for source in sources},
+        {(memory["memory_id"], memory["revision"]): memory for memory in assertions},
+        claim_schema={**copy.deepcopy(_CLAIM), "$defs": PROPOSAL_SCHEMA["$defs"]},
+        check_sources=partial(_check_claim_sources, input_contract_version=RELATION_CAPABILITIES_INPUT_VERSION),
+        max_link_evidence=_BELIEF_LINK["properties"]["evidence_refs"]["maxItems"],
+    )
 
 
 class SemanticProcessor:
@@ -979,7 +1017,7 @@ class SemanticProcessor:
                         or any(episode["scope"][key] != batch.scope[key]
                                for key in ("conversation_id", "branch_id"))):
                     raise DomainError("invalid_evidence", "Episode snapshot is out of scope")
-            if batch.input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+            if batch.input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS:
                 try:
                     episode_navigation_view(episode, batch.scope, events)
                 except (ValueError, KeyError, TypeError) as error:
@@ -1177,6 +1215,8 @@ class SemanticProcessor:
         groups = ("claims", "situation_updates", "episode_actions", "belief_links")
         items = [(group, item) for group in groups for item in proposed.get(group, [])]
         proposed_claims = {item["proposal_id"]: item for item in proposed.get("claims", [])}
+        capabilities = (belief_capabilities(batch.scope, events.values(), assertions.values())
+                        if batch.input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION else None)
         ids = [item["proposal_id"] for _, item in items]
         if len(ids) != len(set(ids)) or len(items) > policy.max_proposals:
             return result("invalid_response")
@@ -1186,7 +1226,10 @@ class SemanticProcessor:
             if link["kind"] != "abstracts":
                 continue
             try:
-                _validate_belief_link(link, batch.scope, events, assertions, episodes, proposed_claims)
+                if capabilities is not None:
+                    validate_capability_link(link, capabilities)
+                _validate_belief_link(link, batch.scope, events, assertions, episodes, proposed_claims,
+                                      input_contract_version=batch.input_contract_version)
             except (ValueError, DomainError, KeyError, TypeError):
                 continue
             abstraction_parents.setdefault(link["claim_proposal_id"], set()).update(
@@ -1197,6 +1240,8 @@ class SemanticProcessor:
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "incomplete_history_package"})
                 continue
             try:
+                if group == "belief_links" and capabilities is not None:
+                    validate_capability_link(item, capabilities)
                 validate_bounded_proposal(
                     batch.proposal_mode, group, item, schema=output_schema, events=events,
                     learning_input_refs=batch.learning_input_refs, links=proposed.get("belief_links", []),
@@ -1409,7 +1454,8 @@ class SemanticProcessor:
     def _validate_proposal(group, item, scope, events, assertions, episodes, claims=None, *, abstraction_parents=(),
                            current_input_refs=(), input_contract_version=None):
         if group == "belief_links":
-            return _validate_belief_link(item, scope, events, assertions, episodes, claims or {})
+            return _validate_belief_link(item, scope, events, assertions, episodes, claims or {},
+                                         input_contract_version=input_contract_version)
         if group == "episode_actions":
             return episode_assessment(item, scope, events, episodes,
                                       input_contract_version=input_contract_version)["references"]
@@ -1417,7 +1463,8 @@ class SemanticProcessor:
         if group == "situation_updates" and item.get("evidence_use") == "current_request":
             _check_current_request(item, events, scope, current_input_refs)
         else:
-            _check_claim_sources(item, events, scope, situation=group == "situation_updates")
+            _check_claim_sources(item, events, scope, situation=group == "situation_updates",
+                                 input_contract_version=input_contract_version)
         if group == "situation_updates" and "observation" in item:
             observation = item["observation"]
             validate_observation(observation)

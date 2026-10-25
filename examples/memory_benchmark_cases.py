@@ -69,6 +69,33 @@ def long_history(seed=DEFAULT_SEED, history_turns=104):
     return {**result, "sha256": digest(result)}
 
 
+def acceptance_history(seed=DEFAULT_SEED):
+    source = long_history(seed, 100)
+    paraphrases = [
+        "请梳理我那项长期复习计划的名称和调整前后的先后步骤；如果曾约定饮品，也告诉我是什么。",
+        "小时候校门边种着银杏的那所学校，我说过它的名字和所在城市吗？",
+        "把我提到的两次复习见面安排分开说：日期、地点，以及最后有没有见成。",
+        "我曾怎样限定‘先倾听、别主动建议’这个偏好？仅凭目前的信息，你能确定现在应不应该应用它吗？",
+        "备用钥匙收在哪个带标签的小盒里？我交代过小盒在家中的具体位置吗？",
+        "你还记得我们定下的海滨复习地点和柠檬汽水吗？请把那项约定说清楚。",
+    ]
+    probes, oracle = list(source["probes"]), dict(source["oracle"])
+    for original, text in zip(source["probes"], paraphrases, strict=True):
+        name = original["name"] + "_paraphrase"
+        probes.append({**original, "name": name, "text": text, "brain": "probe-" + name})
+        oracle[name] = {**source["oracle"][original["name"]], "paraphrase_of": original["name"]}
+    result = {**source, "version": "v1-acceptance-history-v1", "probes": probes, "oracle": oracle,
+              "source_dataset_sha256": source["sha256"],
+              "split": "One 100-exchange campaign; all twelve questions and their oracle remain outside history."}
+    result.pop("sha256")
+    return {**result, "sha256": digest(result)}
+
+
 def validate_dataset(dataset):
-    if not isinstance(dataset, dict) or dataset != long_history(dataset.get("seed"), dataset.get("history_turns")):
+    if not isinstance(dataset, dict):
+        raise ValueError("The frozen history or oracle changed")
+    expected = (acceptance_history(dataset.get("seed"))
+                if dataset.get("version") == "v1-acceptance-history-v1"
+                else long_history(dataset.get("seed"), dataset.get("history_turns")))
+    if dataset != expected:
         raise ValueError("The frozen history or oracle changed")

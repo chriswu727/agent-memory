@@ -12,6 +12,7 @@ from test_semantic import claim as proposed_claim
 from test_semantic import encoded, proposals, reference, verifier
 
 from agent_memory.helpers import uid
+from agent_memory.history_attention import POLICY, model_manifest
 from agent_memory.jobs import JobStore
 from agent_memory.learning_allocations import ENCODING_PHASE, phase
 from agent_memory.learning_integration import reconsider
@@ -77,6 +78,13 @@ def setup_history(harness, monkeypatch, count=1):
     return memories, requests
 
 
+def setup_legacy_history(harness, monkeypatch, count=1):
+    import agent_memory.learning_windows as learning_windows
+
+    monkeypatch.setattr(learning_windows, "ordinary_root_metadata", lambda scope: {})
+    return setup_history(harness, monkeypatch, count=count)
+
+
 def encode(harness):
     harness.observe("I prefer study conversation in these contexts.")
     current = [row for row in jobs(harness) if phase(row["payload"]) == ENCODING_PHASE and row["state"] == "queued"]
@@ -99,6 +107,9 @@ def test_local_encoding_queues_and_automatically_executes_exact_history_pair(lea
     child_id = parent["result"]["history_integration_job_id"]
     child = learning.job(child_id)
     assert child["state"] == "queued"
+    assert parent["payload"]["history_attention_policy"] == POLICY
+    assert parent["payload"]["history_funding_permission"]["visibility"] == "private"
+    assert child["payload"]["history_attention_policy"] == POLICY
     assert child["payload"]["authorization_root_job_id"] == parent["id"]
     assert child["source_event_ids"] and child["source_memory_ids"]
     frozen = copy.deepcopy(child["result"])
@@ -107,15 +118,17 @@ def test_local_encoding_queues_and_automatically_executes_exact_history_pair(lea
     assert completed["model_calls"] == parent["model_calls"] == 2
     assert completed["result"]["history_integration"]["assessed_count"] == 1
     assert len(requests) == 4
-    assert requests[2][1]["integration_manifest"] == frozen["integration_manifest"]
+    assert requests[2][1]["integration_manifest"] == model_manifest(frozen["integration_manifest"])
     assert "historical_context" in requests[3][1]
     assert learning.job(parent["id"])["payload"]["allocation_input_fingerprint"]
     assert JobStore(learning.database).claim(learning.principal, learning.brain, worker_id=uid(), job_id=child_id) is None
 
 
-def test_unattempted_remainder_waits_without_paid_loop_then_new_input_funds_oldest_debt(learning, monkeypatch):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_legacy_unattempted_remainder_waits_without_paid_loop_then_new_input_funds_oldest_debt(learning, monkeypatch):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
+    assert "history_attention_policy" not in parent["payload"]
+    assert "history_funding_permission" not in parent["payload"]
     first = execute(learning, claim(learning, parent["result"]["history_integration_job_id"]))
     assert first["state"] == "completed", (first["last_error"], first["result"])
     remainder_id = first["payload"]["integration_continuation_job_id"]
@@ -250,8 +263,8 @@ def test_budget_race_keeps_exact_unpaid_frozen_plan_until_original_allocation_ca
     assert len(requests) == 4
 
 
-def test_truncated_discovery_advances_past_assessed_endpoints_under_finite_new_input_allocations(learning, monkeypatch):
-    memories, requests = setup_history(learning, monkeypatch, count=5)
+def test_legacy_truncated_discovery_advances_past_assessed_endpoints_under_finite_new_input_allocations(learning, monkeypatch):
+    memories, requests = setup_legacy_history(learning, monkeypatch, count=5)
     learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy, max_assertions=2)
     original = encode(learning)
     child_id = original["result"]["history_integration_job_id"]
@@ -283,8 +296,8 @@ def test_truncated_discovery_advances_past_assessed_endpoints_under_finite_new_i
     assert len(requests) == 12
 
 
-def test_partially_invalid_selected_work_does_not_block_unattempted_manifest_tail(learning, monkeypatch):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_legacy_partially_invalid_selected_work_does_not_block_unattempted_manifest_tail(learning, monkeypatch):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
     child_id = parent["result"]["history_integration_job_id"]
     frozen = learning.job(child_id)["result"]
@@ -313,8 +326,8 @@ def test_partially_invalid_selected_work_does_not_block_unattempted_manifest_tai
     assert learning.job(child_id)["model_calls"] == 2 and len(requests) == 8
 
 
-def test_unknown_selected_call_keeps_untouched_tail_runnable_under_later_input(learning, monkeypatch):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_legacy_unknown_selected_call_keeps_untouched_tail_runnable_under_later_input(learning, monkeypatch):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
     child_id = parent["result"]["history_integration_job_id"]
     frozen = learning.job(child_id)["result"]

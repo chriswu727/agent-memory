@@ -1,4 +1,14 @@
-"""Opt-in lifecycle smoke, repair diagnostics, and frozen long-history comparisons; resume never spends."""
+"""Opt-in lifecycle evaluations; resume never spends.
+
+The acceptance profile runs one fixed 100-exchange, twelve-probe memory campaign
+without a paid answer reviewer. After sixteen exchanges it waits in the same
+process. Review memory/report.json and checkpoint-016.json, then atomically write
+checkpoint-016-decision.json containing exactly checkpoint_sha256 (the checkpoint's
+sha256) and decision (continue or stop). A root STOP file ends work at a safe
+boundary. Neither a checkpoint release nor finished execution is semantic approval;
+complete independent source-and-answer review is recorded separately. Exiting the
+process does not authorize paid resume or rerunning the first sixteen exchanges.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +17,7 @@ import copy
 import hashlib
 import json
 import os
+import stat
 import time
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
@@ -42,7 +53,12 @@ from examples.lifecycle_learning import (
     semantic_allowance,
     window_metadata,
 )
-from examples.memory_benchmark_cases import DEFAULT_SEED, long_history, validate_dataset
+from examples.memory_benchmark_cases import (
+    DEFAULT_SEED,
+    acceptance_history,
+    long_history,
+    validate_dataset,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST_OUTPUT_TOKENS = 4096
@@ -50,6 +66,15 @@ REVIEW_OUTPUT_TOKENS = 8192
 SUMMARY_OUTPUT_TOKENS = 4096
 REVIEWER_ID = "deepseek-v4-pro-thinking-lifecycle-review-v1"
 ARMS = ("memory", "rolling_summary", "no_memory")
+ACCEPTANCE_POLICY = {
+    "version": "v1-acceptance-execution-v1", "history_exchanges": 100, "isolated_probes": 12,
+    "checkpoint_after": 16, "replay_stages": ["history-015", "history-099"],
+    "checkpoint": "Wait in this process for checkpoint-016-decision.json bound to checkpoint-016.json. "
+                  "No calls while waiting; continue uses the same ledger. STOP or decision stop ends the run. "
+                  "A process exit cannot be resumed for paid work.",
+    "review": "No paid reviewer. Operator checkpoint release is not final semantic acceptance; "
+              "all source/publication and twelve whole-answer reviews remain independently required.",
+}
 SUMMARY_INSTRUCTIONS = (
     "Maintain a bounded rolling summary of the supplied conversation. Preserve attribution, names, "
     "negation, dates, conditions, unknown details, cancellations and changes. The previous summary "
@@ -69,10 +94,16 @@ LIMITATIONS = [
 ]
 
 
-def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_policy="always"):
-    if profile not in {"smoke", "long", "repair"}:
+def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=None, orientation_policy="always"):
+    if profile not in {"smoke", "long", "repair", "acceptance"}:
         raise ValueError("Unknown experiment profile")
+    if history_turns is None:
+        history_turns = 100 if profile == "acceptance" else 104
+    if profile == "acceptance" and (type(history_turns) is not int or history_turns != 100):
+        raise ValueError("Acceptance requires exactly 100 history exchanges")
     dataset = long_history(seed, history_turns) if profile == "long" else None
+    if profile == "acceptance":
+        dataset = acceptance_history(seed)
     diagnostic = None
     if profile == "repair":
         fixtures, diagnostic = repair_selection(seed)
@@ -85,10 +116,13 @@ def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_p
     calls = {"semantic": semantic_calls, "host": turns, "answer_review": turns}
     outputs = {"semantic": semantic_calls * conversation.SEMANTIC_POLICY.max_output_tokens,
                "host": turns * HOST_OUTPUT_TOKENS, "answer_review": turns * REVIEW_OUTPUT_TOKENS}
+    if profile == "acceptance":
+        calls.pop("answer_review")
+        outputs.pop("answer_review")
     files = sorted(set(conversation.fingerprints()) | {
         "examples/evaluate_memory_lifecycle.py", "examples/memory_benchmark_cases.py", "examples/lifecycle_learning.py",
     } | {str(path.relative_to(ROOT)) for path in (ROOT / "src/agent_memory").glob("*.py")})
-    return {
+    planned = {
         "version": "memory-lifecycle-evaluation-v2", "profile": profile, "model": conversation.MODEL,
         "provider_base_url": "https://api.deepseek.com",
         "thinking": "enabled", "instructions": conversation.INSTRUCTIONS,
@@ -132,6 +166,17 @@ def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=104, orientation_p
         "code_fingerprints": {name: digest((ROOT / name).read_text()) for name in files},
         "limitations": LIMITATIONS,
     }
+    if profile == "acceptance":
+        planned.update(
+            version="memory-lifecycle-acceptance-v1", arms=["memory"],
+            acceptance_policy=copy.deepcopy(ACCEPTANCE_POLICY), review_policy=None, reviewer_id=None,
+            summary=None, baseline_call_allocation={},
+            orientation_evaluation="Safe skips are routing outcomes, not semantic orientation; both policies "
+                                   "retain identical ceilings and source/delivery checks. No paid answer reviewer.",
+            budget_comparison="One memory arm; no baseline or answer-review calls are authorized.",
+            probe_isolation="Each of twelve probes restores the same trained archive into a distinct brain.",
+        )
+    return planned
 
 
 def baseline_request(turn_id, brain_id, text, summary, *, instructions, policy):
@@ -184,6 +229,11 @@ def validate_frozen_plan(report):
         fixtures, diagnostic = repair_selection(planned["repair_diagnostic"]["seed"])
         if planned["fixtures"] != fixtures or planned["repair_diagnostic"] != diagnostic or planned["arms"] != ["memory"]:
             raise ValueError("Frozen repair diagnostic selection changed")
+    if planned.get("profile") == "acceptance":
+        expected = plan("acceptance", seed=planned["dataset"]["seed"],
+                        orientation_policy=planned["runtime_policy"]["orientation_policy"])
+        if planned != expected:
+            raise ValueError("Frozen acceptance plan changed")
     for name, expected in planned["code_fingerprints"].items():
         if digest((ROOT / name).read_text()) != expected:
             raise ValueError("Frozen experiment code changed: " + name)
@@ -434,6 +484,10 @@ class LifecycleTrial(conversation.ConversationTrial):
         self.save()
 
     def make_runtime(self, memory, generate, **kwargs):
+        if self.report["plan"].get("profile") == "acceptance":
+            if self.arm != "memory" or self.review_provider is not None or self.summary_host is not None:
+                raise RuntimeError("Acceptance does not authorize baseline or review providers")
+            return BrainRuntime(memory, generate, **kwargs)
         from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
 
         reviewer = AnswerReviewer(self.review, reviewer_id=self.report["plan"]["reviewer_id"],
@@ -442,6 +496,13 @@ class LifecycleTrial(conversation.ConversationTrial):
             return BrainRuntime(memory, generate, answer_reviewer=reviewer, **kwargs)
         return BaselineRuntime(memory, generate, answer_reviewer=reviewer,
                                frozen_summary=self.summary if self.arm == "rolling_summary" else "", **kwargs)
+
+    def review_audit(self, stage):
+        if self.report["plan"].get("profile") == "acceptance":
+            if stage.get("answer_review_calls") or stage.get("runtime", {}).get("response_review"):
+                raise RuntimeError("Acceptance performed an unauthorized answer review")
+            return {}
+        return review_audit(stage)
 
     def logged_call(self, category, request, callback):
         assert_paid_ready(self.meter)
@@ -538,7 +599,7 @@ class LifecycleTrial(conversation.ConversationTrial):
                 self.current["usage_before"] = before
                 self.current["elapsed_seconds"] = round(time.monotonic() - started, 6)
                 self.current["usage_delta"] = usage_delta(before, self.meter.summary())
-                self.current["review_audit"] = review_audit(self.current)
+                self.current["review_audit"] = self.review_audit(self.current)
                 self.current["performance"] = performance_metrics(self.current)
                 self.save()
         stage = self.current
@@ -558,7 +619,7 @@ class LifecycleTrial(conversation.ConversationTrial):
             stage["current_request_audit"] = (conversation.skipped_request_audit(stage) if skipped
                                               else conversation.current_request_audit(stage))
             stage["checks"].update(stage["current_request_audit"]["checks"])
-        stage["review_audit"] = review_audit(stage)
+        stage["review_audit"] = self.review_audit(stage)
         stage["checks"].update(stage["review_audit"])
         sink = stage.get("delivery_sink")
         stage["checks"]["durable_delivery_matches_host_output"] = bool(sink) and json.loads(
@@ -580,6 +641,26 @@ class LifecycleTrial(conversation.ConversationTrial):
         stage["semantic_review"] = {"state": "pending_independent_review", "automatic_word_score": None}
         stage["performance"] = performance_metrics(stage)
         self.save()
+
+    def replay_completed(self):
+        stage = self.current
+        before, sources = copy.deepcopy(self.meter.records), copy.deepcopy(stage["sources"])
+
+        def forbidden(_):
+            raise RuntimeError("Acceptance replay must not generate or deliver")
+
+        with self.archive_client() as memory:
+            memory.brain_id = stage["brain_id"]
+            runtime = self.make_runtime(memory, forbidden, deliver=forbidden,
+                                        instructions=self.report["plan"]["instructions"], policy=self.policy)
+            result = runtime.resume(stage["runtime"]["turn_id"])
+            checked = (result.replayed and result.stage == "completed" and result.text == stage["model_output"]
+                       and runtime.journal.sources(result.turn_id) == sources and self.meter.records == before)
+        stage["replay"] = {"result": asdict(result), "checks_passed": checked}
+        stage["checks"]["completed_turn_replay_has_no_model_or_delivery_calls"] = checked
+        self.save()
+        if not checked:
+            raise EvaluationStopped("acceptance_replay_failed")
 
     def update_summary(self):
         if self.arm != "rolling_summary" or self.summary_host is None:
@@ -717,6 +798,73 @@ def stage_boundary(output, meter=None, stage=None):
         raise EvaluationStopped("operator_stop")
 
 
+def checkpoint_decision(path, checkpoint_sha256):
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return None
+    with os.fdopen(descriptor, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > 1024:
+            raise ValueError("Invalid checkpoint decision file")
+        raw = stream.read(1025)
+    if len(raw) > 1024:
+        raise ValueError("Invalid checkpoint decision file")
+    pairs = json.loads(raw, object_pairs_hook=list)
+    if (not isinstance(pairs, list) or len(pairs) != 2
+            or any(not isinstance(pair, tuple) or len(pair) != 2 for pair in pairs)):
+        raise ValueError("Invalid checkpoint decision")
+    decision = dict(pairs)
+    if (set(decision) != {"checkpoint_sha256", "decision"}
+            or decision["checkpoint_sha256"] != checkpoint_sha256
+            or decision["decision"] not in ("continue", "stop")):
+        raise ValueError("Checkpoint decision does not match the pending audit")
+    return decision
+
+
+def acceptance_checkpoint(trial):
+    report, meter = trial.report, trial.meter
+    output = trial.output.parent
+    stages = report["stages"]
+    if len(stages) != 16 or [stage["name"] for stage in stages] != [
+            item["name"] for item in report["plan"]["fixtures"][:16]]:
+        raise RuntimeError("Checkpoint requires the first sixteen completed stages")
+    stage_boundary(output, meter, stages[-1])
+    checkpoint = {
+        "version": "v1-acceptance-checkpoint-v1", "plan_sha256": report["plan_sha256"],
+        "completed_history_turns": 16, "stages_sha256": digest(stages),
+        "ledger_sha256": digest(meter.records), "usage": meter.summary(),
+        "report": "memory/report.json", "review": "Review complete sources, delivered answers and publications. "
+        "Continue confirms this checkpoint was reviewed without a known release blocker; it is not final acceptance.",
+    }
+    checkpoint["sha256"] = digest(checkpoint)
+    path = output / "checkpoint-016.json"
+    if path.exists() or path.is_symlink():
+        raise RuntimeError("Checkpoint evidence will not be overwritten")
+    save(path, checkpoint)
+    report.update(state="waiting_for_checkpoint_review", checkpoint_audit={"state": "pending", **checkpoint},
+                  usage=meter.summary(), call_ledger=meter.records)
+    trial.save()
+    print(json.dumps({"state": "waiting_for_checkpoint_review", "checkpoint": str(path),
+                      "checkpoint_sha256": checkpoint["sha256"]}), flush=True)
+    while True:
+        stage_boundary(output, meter, stages[-1])
+        validate_frozen_plan(report)
+        if digest(stages) != checkpoint["stages_sha256"] or digest(meter.records) != checkpoint["ledger_sha256"]:
+            raise RuntimeError("Checkpoint evidence changed while awaiting review")
+        decision = checkpoint_decision(output / "checkpoint-016-decision.json", checkpoint["sha256"])
+        if decision is not None:
+            report["checkpoint_audit"].update(state="operator_released" if decision["decision"] == "continue"
+                                               else "operator_stopped", decision=decision)
+            trial.save()
+            if decision["decision"] == "stop":
+                raise EvaluationStopped("operator_stop")
+            report["state"] = "started"
+            trial.save()
+            return
+        time.sleep(1)
+
+
 def run_arm(output, planned, arm, database, key):
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
     report = {"version": 2, "state": "started", "arm": arm, "plan": planned,
@@ -724,6 +872,11 @@ def run_arm(output, planned, arm, database, key):
               "brains": {}, "stages": [], "limitations": LIMITATIONS}
     save(output / "report.json", report)
     validate_frozen_plan(report)
+    acceptance = planned.get("profile") == "acceptance"
+    if acceptance and arm != "memory":
+        raise ValueError("Acceptance authorizes only the memory arm")
+    if acceptance:
+        report["semantic_review"] = "pending_independent_review"
     transports = []
 
     def new_meter():
@@ -749,8 +902,9 @@ def run_arm(output, planned, arm, database, key):
             host = stack.enter_context(ChatCompletionsHost(
                 planned["provider_base_url"], key, planned["model"], transport=new_meter(),
                 max_output_tokens=HOST_OUTPUT_TOKENS, timeout_seconds=180))
-            review = stack.enter_context(ChatCompletionsRecallReasoner(
+            review = (stack.enter_context(ChatCompletionsRecallReasoner(
                 planned["provider_base_url"], key, planned["model"], thinking=planned["thinking"], transport=new_meter()))
+                      if not acceptance else None)
             summary_host = (stack.enter_context(ChatCompletionsHost(
                 planned["provider_base_url"], key, planned["model"], transport=new_meter(),
                 max_output_tokens=SUMMARY_OUTPUT_TOKENS, timeout_seconds=180)) if arm == "rolling_summary" else None)
@@ -763,6 +917,11 @@ def run_arm(output, planned, arm, database, key):
                 print(json.dumps({"arm": arm, "stage": fixture["name"], "state": "started"}), flush=True)
                 trial.run_stage(fixture)
                 stage_boundary(output.parent, meter, report["stages"][-1])
+                if acceptance:
+                    if fixture["name"] in planned["acceptance_policy"]["replay_stages"]:
+                        trial.replay_completed()
+                    if len(report["stages"]) == planned["acceptance_policy"]["checkpoint_after"]:
+                        acceptance_checkpoint(trial)
                 if arm == "rolling_summary":
                     trial.update_summary()
                     stage_boundary(output.parent, meter, report["stages"][-1])
@@ -805,10 +964,10 @@ def main():
     modes = parser.add_mutually_exclusive_group(required=True)
     for mode in ("plan", "live", "resume"):
         modes.add_argument("--" + mode, action="store_true")
-    parser.add_argument("--profile", choices=("smoke", "long", "repair"), default="smoke")
+    parser.add_argument("--profile", choices=("smoke", "long", "repair", "acceptance"), default="smoke")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--history-turns", type=int, default=104,
-                        help="Long profile only (100–128); repair always uses the first 16 turns of a 100-turn source")
+    parser.add_argument("--history-turns", type=int,
+                        help="Long: 100–128, default 104; acceptance: fixed 100; repair: first 16 of 100")
     parser.add_argument("--orientation-policy", choices=("always", "on_demand"), default="always")
     parser.add_argument("--output", type=Path, default=Path(".local/deepseek-memory-lifecycle"))
     args = parser.parse_args()

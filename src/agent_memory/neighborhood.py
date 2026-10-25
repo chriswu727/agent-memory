@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from . import cognition
 from .candidates import _eligible, _scope_clause
-from .episode_semantics import EPISODE_SOURCE_VIEW_INPUT_VERSION, episode_navigation_view
+from .episode_semantics import EPISODE_SOURCE_VIEW_INPUT_VERSIONS, episode_navigation_view
 from .helpers import DomainError, digest
 from .retrieval import resolve_dependency_closure
 from .semantic import COMMUNICATION_INTENT_INPUT_VERSION
@@ -346,12 +346,12 @@ class _Selector:
                     ids = set(row["event_ids"]) | set(episode.get("root_event_ids", []))
                     ids.update(ref["event_id"] for ref in episode["member_refs"])
                     events = self.source_package(ids)
-                    if self.input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+                    if self.input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS:
                         episode_navigation_view(self.bind(episode), self.scope,
                                                 {(event["event_id"], event["revision"]): event
                                                  for event in events.values()})
                 except (ValueError, KeyError, TypeError) as error:
-                    if self.input_contract_version != EPISODE_SOURCE_VIEW_INPUT_VERSION:
+                    if self.input_contract_version not in EPISODE_SOURCE_VIEW_INPUT_VERSIONS:
                         raise
                     raise _Incomplete("episode_source_view_unavailable") from error
                 if any(events[ref["event_id"]]["revision"] != ref["revision"] for ref in episode["member_refs"]):

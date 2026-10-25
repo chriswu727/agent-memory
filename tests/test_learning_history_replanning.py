@@ -1,10 +1,11 @@
 import copy
 import json
 
+import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 from test_learning import learning as learning
-from test_learning_integration import encode, setup_history
+from test_learning_integration import encode, setup_history, setup_legacy_history
 from test_learning_windows import claim, execute, jobs
 
 from agent_memory.helpers import DomainError, digest, uid
@@ -59,8 +60,8 @@ def operations(harness):
         ).fetchall()
 
 
-def test_unpaid_stale_history_replans_with_same_authority_and_preserves_all_remaining_objectives(learning, monkeypatch):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_legacy_unpaid_stale_history_replans_with_same_authority_and_preserves_all_remaining_objectives(learning, monkeypatch):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
     original = learning.job(parent["result"]["history_integration_job_id"])
     before = copy.deepcopy(original["result"])
@@ -109,8 +110,8 @@ def test_unpaid_stale_history_replans_with_same_authority_and_preserves_all_rema
     assert "history_obligation_manifest" not in json.dumps(store.get(learning.principal, learning.brain, replacement["id"]))
 
 
-def test_frozen_budget_defer_retains_private_obligation_when_stale_snapshot_was_cleared(learning, monkeypatch):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_legacy_frozen_budget_defer_retains_private_obligation_when_stale_snapshot_was_cleared(learning, monkeypatch):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
     original = learning.job(parent["result"]["history_integration_job_id"])
     store = JobStore(learning.database)
@@ -169,7 +170,7 @@ def test_any_recorded_history_operation_blocks_automatic_replanning(learning, mo
     assert learning.job(parent["id"])["payload"]["history_allocation_job_id"] == original["id"]
 
 
-@pytest.mark.parametrize("change", ["input_erasure", "input_correction", "endpoint_erasure", "endpoint_content", "scope"])
+@pytest.mark.parametrize("change", ["input_erasure", "input_correction", "endpoint_erasure", "endpoint_content"])
 def test_never_paid_replan_cannot_substitute_unavailable_original_inputs_or_endpoints(learning, monkeypatch, change):
     memories, requests = setup_history(learning, monkeypatch)
     parent = encode(learning)
@@ -187,15 +188,10 @@ def test_never_paid_replan_cannot_substitute_unavailable_original_inputs_or_endp
     else:
         bump_generation(learning)
         with learning.database.transaction(learning.principal) as conn:
-            if change == "endpoint_content":
-                altered = copy.deepcopy(memories[0])
-                altered["statement"] = "A materially different report."
-                conn.execute("UPDATE memory_assertions SET document=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                             (Jsonb(altered), *learning.service._params(learning.principal, learning.brain), altered["memory_id"]))
-            else:
-                conn.execute("UPDATE memory_jobs SET payload=jsonb_set(payload,'{target,conversation_ref}','\"elsewhere\"') "
-                             "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
-                             (*learning.service._params(learning.principal, learning.brain), original["id"]))
+            altered = copy.deepcopy(memories[0])
+            altered["statement"] = "A materially different report."
+            conn.execute("UPDATE memory_assertions SET document=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                         (Jsonb(altered), *learning.service._params(learning.principal, learning.brain), altered["memory_id"]))
             conn.execute("UPDATE memory_jobs SET state='cancelled',last_error='context_stale',result=NULL "
                          "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                          (*learning.service._params(learning.principal, learning.brain), original["id"]))
@@ -206,8 +202,26 @@ def test_never_paid_replan_cannot_substitute_unavailable_original_inputs_or_endp
     assert len(requests) == 2 and len(operations(learning)) == 2
 
 
-def test_malformed_paid_selection_stays_open_while_independent_unattempted_remainder_can_progress(learning, monkeypatch):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_never_paid_history_scope_is_immutable_before_replanning(learning, monkeypatch):
+    _, requests = setup_history(learning, monkeypatch)
+    parent = encode(learning)
+    original = learning.job(parent["result"]["history_integration_job_id"])
+    recorded = operations(learning)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with learning.database.transaction(learning.principal) as conn:
+            conn.execute("UPDATE memory_jobs SET payload=jsonb_set(payload,'{target,conversation_ref}','\"elsewhere\"') "
+                         "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                         (*learning.service._params(learning.principal, learning.brain), original["id"]))
+    assert learning.job(original["id"])["payload"] == original["payload"]
+    for _ in range(3):
+        tick(learning)
+    assert leaf(learning, original["id"])["id"] == original["id"]
+    assert len(history_jobs(learning)) == 1 and learning.job(original["id"])["model_calls"] == 0
+    assert operations(learning) == recorded and len(requests) == 2
+
+
+def test_legacy_malformed_paid_selection_stays_open_while_independent_unattempted_remainder_can_progress(learning, monkeypatch):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
     child_id = parent["result"]["history_integration_job_id"]
     frozen = learning.job(child_id)["result"]
@@ -257,8 +271,8 @@ def test_malformed_paid_selection_stays_open_while_independent_unattempted_remai
 
 
 @pytest.mark.parametrize("failure", ["invalid_selected", "provider_timeout"])
-def test_structured_paid_failure_delegates_only_never_attempted_comparisons(learning, monkeypatch, failure):
-    _, requests = setup_history(learning, monkeypatch, count=4)
+def test_legacy_structured_paid_failure_delegates_only_never_attempted_comparisons(learning, monkeypatch, failure):
+    _, requests = setup_legacy_history(learning, monkeypatch, count=4)
     parent = encode(learning)
     child_id = parent["result"]["history_integration_job_id"]
     frozen = learning.job(child_id)["result"]

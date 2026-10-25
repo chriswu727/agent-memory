@@ -6,9 +6,10 @@ from dataclasses import asdict
 from psycopg.types.json import Jsonb
 
 from . import cognition
+from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION, validate_capability_link
 from .contracts import validate
 from .episode_semantics import (
-    EPISODE_SOURCE_VIEW_INPUT_VERSION,
+    EPISODE_SOURCE_VIEW_INPUT_VERSIONS,
     episode_fidelity_supported,
     episode_navigation_view,
 )
@@ -27,6 +28,7 @@ from .semantic import (
     CognitiveBatch,
     SemanticProcessor,
     SemanticResult,
+    belief_capabilities,
     check_result_mode,
     proposal_schema,
     validate_input_contract,
@@ -137,7 +139,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
         raise DomainError("invalid_evidence", "Unknown cognitive input contract") from error
     if batch.proposal_mode in BOUNDED_MODES and batch.input_contract_version not in EPISODE_FIDELITY_INPUT_VERSIONS:
         raise DomainError("invalid_evidence", "Bounded learning input contract changed")
-    if batch.input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION:
+    if batch.input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS:
         try:
             for episode in batch.episodes:
                 episode_navigation_view(episode, batch.scope, snapshot["events"])
@@ -171,6 +173,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
         except (ValueError, KeyError, TypeError) as error:
             raise DomainError("invalid_evidence", "Historical integration decisions are unsupported") from error
     episodes = {episode["episode_id"]: episode for episode in batch.episodes}
+    capabilities = (belief_capabilities(batch.scope, snapshot["events"].values(), snapshot["assertions"].values())
+                    if batch.input_contract_version == RELATION_CAPABILITIES_INPUT_VERSION else None)
     ids, changed_episodes = set(), set()
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
     claims = {item["proposal_id"]: {key: copy.deepcopy(value) for key, value in item.items() if key in claim_fields}
@@ -182,8 +186,11 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
             continue
         item = {key: copy.deepcopy(value) for key, value in final.items() if key in link_fields}
         try:
+            if capabilities is not None:
+                validate_capability_link(item, capabilities)
             SemanticProcessor._validate_proposal(
-                "belief_links", item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims)
+                "belief_links", item, batch.scope, snapshot["events"], snapshot["assertions"], episodes, claims,
+                input_contract_version=batch.input_contract_version)
         except (ValueError, KeyError, TypeError) as error:
             raise DomainError("invalid_evidence", "Cognitive abstraction is unsupported") from error
         abstraction_parents.setdefault(item["claim_proposal_id"], set()).update(
@@ -205,6 +212,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
             if group == "situation_updates" and final.get("current_only") is not True:
                 raise DomainError("invalid_evidence", "Situation updates are current context only")
             try:
+                if group == "belief_links" and capabilities is not None:
+                    validate_capability_link(item, capabilities)
                 validate_bounded_proposal(
                     batch.proposal_mode, group, item, schema=proposal_schema(batch.proposal_mode),
                     events=snapshot["events"], learning_input_refs=batch.learning_input_refs, links=result.belief_links,

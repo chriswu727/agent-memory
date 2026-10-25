@@ -8,6 +8,8 @@
 
 第一版按[有限验收与停止标准](architecture/v1-acceptance.md)收尾，范围包含安装、连续性、隔离、用量、真实记忆和性能；这些验收目前尚未全部通过。
 
+本批学习修复加入了[从来源推导的关系能力限制](architecture/relation-capabilities.md)、[每个新输入根任务最多接纳三项历史比较](architecture/history-comparison-attention.md)，以及[在既有额度内跨私有会话继续未尝试的工作](architecture/cross-conversation-learning-funding.md)。未选中的机会、已接纳的待处理工作、评估后无需修改与实际发布会分别记录。[本地验收记录](evaluations/v1-2026-10-25-local-acceptance.md)保留了安装、回归与性能证据。这些修改仍需通过限定的真实记忆验收，不能据此宣称已达到人类的回忆准确度。
+
 后续认知内核的具体改造、实施依赖和行为评估见[认知记忆架构实施计划](architecture/cognitive-memory-plan.md)。计划中的新增能力仍待实现，不代表当前运行状态。
 
 ## 产品与接入目标

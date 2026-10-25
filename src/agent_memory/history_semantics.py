@@ -6,6 +6,7 @@ from jsonschema import Draft202012Validator
 
 from .belief_store import assertion_fingerprint
 from .helpers import digest
+from .history_attention import validate_attention
 from .turns import _hash, _identifier, _integer
 
 MANIFEST_VERSION = "bounded-history-manifest-v1"
@@ -29,7 +30,8 @@ HISTORY_DECISIONS = {
 def validate_manifest(manifest, *, events=None, assertions=None):
     fields = {"version", "input_fingerprint", "input_refs", "through_sequence", "objectives",
               "unresolved_discovery", "discovery_limitations"}
-    if not isinstance(manifest, dict) or set(manifest) != fields or manifest["version"] != MANIFEST_VERSION:
+    if (not isinstance(manifest, dict) or set(manifest) not in (fields, fields | {"attention"})
+            or manifest["version"] != MANIFEST_VERSION):
         raise ValueError("Invalid historical integration manifest")
     _hash(manifest["input_fingerprint"])
     cutoff = _integer(manifest["through_sequence"], 1)
@@ -75,6 +77,7 @@ def validate_manifest(manifest, *, events=None, assertions=None):
         seen.add(expected)
         if assertions is not None and (key not in assertions or assertion_fingerprint(assertions[key]) != reference["content_sha256"]):
             raise ValueError("Historical comparison endpoint changed")
+    validate_attention(manifest)
 
 
 def validate_decisions(manifest, proposals):

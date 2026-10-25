@@ -3,9 +3,11 @@ from __future__ import annotations
 import copy
 
 from . import cognition
+from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION
 
 MAX_EPISODE_EVIDENCE = 32
 EPISODE_SOURCE_VIEW_INPUT_VERSION = "episode-source-view-v1"
+EPISODE_SOURCE_VIEW_INPUT_VERSIONS = (EPISODE_SOURCE_VIEW_INPUT_VERSION, RELATION_CAPABILITIES_INPUT_VERSION)
 EPISODE_SOURCE_VIEW_INSTRUCTIONS = (
     "Existing episodes are source-backed navigation views, not factual propositions or independent "
     "evidence. Their membership and boundaries are fallible inferred organization, even when closed. "
@@ -254,7 +256,7 @@ def episode_assessment(action, scope, events, episodes, *, input_contract_versio
         "version": "episode-organization-v1",
         "interpretation": "observed_interaction_records_not_external_event_truth",
         "existing_episode": (episode_navigation_view(previous, scope, events)
-                             if previous is not None and input_contract_version == EPISODE_SOURCE_VIEW_INPUT_VERSION
+                             if previous is not None and input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS
                              else previous),
         "prior_member_refs": previous["member_refs"] if previous is not None else [],
         "proposed_member_refs": action["member_refs"], "effective_member_refs": ordered,

@@ -8,6 +8,8 @@ See the [architecture and acceptance specification](architecture/architecture.ht
 
 First-release work is bounded by the [finite acceptance and stop criteria](architecture/v1-acceptance.md). Its installation, continuity, isolation, spending, real-memory and performance gates have not yet all passed.
 
+The current learning repair adds [source-derived relation capabilities](architecture/relation-capabilities.md), [at most three admitted historical comparisons per fresh input root](architecture/history-comparison-attention.md), and [private cross-conversation continuation within existing allowances](architecture/cross-conversation-learning-funding.md). Unselected opportunities, admitted pending work, assessed no-change and actual publications remain distinct. The [local acceptance checkpoint](evaluations/v1-2026-10-25-local-acceptance.md) records installation, regression and performance evidence. These changes still require the finite real-memory acceptance; they do not establish human-like recall accuracy.
+
 The [cognitive memory implementation plan](architecture/cognitive-memory-plan.md) describes proposed changes to the cognitive core, implementation dependencies, and behavioral evaluation. Its additional capabilities remain planned work, not a description of current behavior.
 
 ## Product and integration goals

@@ -208,7 +208,7 @@ def test_episode_member_count_limit_does_not_disappear_with_projection():
 
 
 def test_new_learning_contract_and_legacy_snapshot_versions_remain_explicit():
-    assert LATEST_INPUT_CONTRACT_VERSION == VERSION
+    assert LATEST_INPUT_CONTRACT_VERSION == "relation-capabilities-v1"
     assert batch(event("A contribution.")).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     assert _snapshot_input_contract({"input_contract_version": EPISODE_FIDELITY_INPUT_VERSION}) == (
         EPISODE_FIDELITY_INPUT_VERSION)
@@ -261,7 +261,7 @@ def test_published_wrong_label_is_retained_raw_but_next_worker_receives_source_v
     first = source(learning, "I cannot confirm whether this was saved permanently.")
     initial = execute(learning)
     assert initial["state"] == "completed" and initial["model_calls"] == 2
-    assert initial["result"]["input_contract_version"] == VERSION
+    assert initial["result"]["input_contract_version"] == LATEST_INPUT_CONTRACT_VERSION
     assert initial["result"]["episode_actions"][0]["organization_statement"] == WRONG_LABEL
     assert initial["result"]["verification_assessments"][0]["organization_fidelity"] == dict.fromkeys(FACETS, "supports")
     with learning.database.transaction(learning.principal) as conn:

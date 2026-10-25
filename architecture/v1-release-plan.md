@@ -4,6 +4,8 @@ Status: active development; this document is not release acceptance.
 
 The [finite first-release acceptance](v1-acceptance.md) now defines the supported scope, measurable gates, spending limits and explicit success stop. It governs release completion; the broader architecture and implementation sequence below do not authorize an ever-expanding first release.
 
+The [current local acceptance checkpoint](../evaluations/v1-2026-10-25-local-acceptance.md) records the subsequent bounded-attention, private-funding, capability and speech-attribution repairs, installed artifact, regression follow-up and measured overhead. The historical results below remain evidence for their original candidates. Actual 100-exchange/twelve-probe acceptance is still open.
+
 The first release must be a usable independent memory runtime for API-backed text agents, with a desktop installation and a public integration surface. It must form and retrieve memories automatically through the declared lifecycle, preserve continuity across restarts and model changes, retain qualifications and corrections, and make failures and costs inspectable. MCP remains an additional tools interface; installing MCP alone cannot intercept a closed host's conversations.
 
 Human memory is a functional inspiration. A passing software test or synthetic time advance does not establish biological fidelity or reliable performance over years. Personality and emotion remain subsequent research, as requested. Existing restrictions on streaming, tools, multimodal input, shared accounts, and unsupported operating systems must remain explicit until their own acceptance is executed.

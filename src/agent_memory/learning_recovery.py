@@ -140,6 +140,7 @@ def retry_learning(store, conn, principal, brain_id, job_id, *, request_id, expe
             "integration_continuation_job_id",
             "history_allocation_job_id", "last_reconsidered_token", "last_history_replan_token",
             "allocation_input_fingerprint", "recovery_policy_refresh", "recovery_input_fingerprint",
+            "history_funding_permission", "history_funding_origin",
         }}
         child_payload = {**preserved, **child_payload,
                          **allocation_metadata(identifier, phase=selected_phase, recovery=True)}

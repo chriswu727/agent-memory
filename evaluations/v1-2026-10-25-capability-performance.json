@@ -1,0 +1,23 @@
+{
+  "version": "relation-capability-performance-v1",
+  "build_id": "7336fbd4a2b087cbe73e2e7d572b7fee76ea05e2aea734b742248c552f195274",
+  "platform": "macOS-15.7.4-arm64-arm-64bit",
+  "machine": "arm64",
+  "processor": "Apple M4",
+  "python": "3.12.13",
+  "endpoint_count": 32,
+  "eligible_pair_count": 496,
+  "samples_ms": [
+    24.048459,
+    24.39375,
+    23.855708,
+    24.091125,
+    24.114625
+  ],
+  "median_ms": 24.091125,
+  "median_limit_ms": 100,
+  "passed": true,
+  "cache_state": "No discarded warmup; five consecutive calls in one process.",
+  "metadata_bytes": 13400,
+  "provider_calls": 0
+}
