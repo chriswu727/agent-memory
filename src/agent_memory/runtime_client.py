@@ -61,6 +61,23 @@ class RuntimeClient:
         brain_id = self.memory._scope()["brain_ref"]
         return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/status")
 
+    def learning_progress(self) -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request("GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/learning-progress")
+
+    def job(self, job_id: str) -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request(
+            "GET", f"v1/brains/{quote(brain_id, safe='')}/runtime/jobs/{quote(job_id, safe='')}",
+        )
+
+    def retry_learning(self, job_id: str, *, request_id: str, expected_fence: int) -> JsonObject:
+        brain_id = self.memory._scope()["brain_ref"]
+        return self.memory._request(
+            "POST", f"v1/brains/{quote(brain_id, safe='')}/runtime/jobs/{quote(job_id, safe='')}/retry-learning",
+            json={"request_id": request_id, "expected_fence": expected_fence},
+        )
+
     def claim(
         self, turn_id: str, *, worker_id: str, lease_seconds: int = 30,
         expected_revision: int | None = None,

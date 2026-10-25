@@ -23,8 +23,10 @@ def add_commands(commands):
         elif name == "logs":
             parser.add_argument("--lines", type=int, default=30)
     from .desktop_chat import add_commands as add_chat_commands
+    from .desktop_learning import add_commands as add_learning_commands
 
     add_chat_commands(actions)
+    add_learning_commands(actions)
 
 
 def _setup(args):
@@ -113,6 +115,10 @@ def dispatch(args):
             return
         elif action == "logs":
             result = _logs(args.directory, args.lines)
+        elif action in {"learning-status", "retry-learning"}:
+            from .desktop_learning import run as run_learning
+
+            result = run_learning(args)
         else:
             result = getattr(desktop, action)(args.directory)
         print(json.dumps(result, ensure_ascii=False, indent=2))

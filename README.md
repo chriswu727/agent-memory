@@ -375,7 +375,8 @@ These endpoints use the same Bearer authentication as the memory service:
 
 | GET path (prefix `/v1/brains/{brain_id}/runtime`) | Content |
 | --- | --- |
-| `/status` | Persistence and index progress, pending job counts, turn phases, and active lease counts |
+| `/status` | Persistence and index progress, learning progress, legacy non-completed job counts, turn phases, and active lease counts |
+| `/learning-progress` | Brain-wide learning windows, runnable/waiting/running/blocked counts, and the oldest gaps |
 | `/turns?limit=100` | Recent turns, up to 200 |
 | `/turns/{turn_id}` | Current phase, revision, source versions, context usage, recall plan, cumulative call budget, and recovery state |
 | `/turns/{turn_id}/history?limit=100` | Ordered phase history, up to 200 entries |
@@ -390,6 +391,22 @@ Monitoring records do not copy content bodies or store lease credentials or hidd
 The `learning_summary` in cognition job lists and details returns only processing state, proposal outcome, accepted and published counts, fixed sampling limits, and rejection-reason counts. For example, a `completed` job with `learning_outcome=no_proposals` has finished processing without proposing anything. Nonzero `accepted_counts` also does not establish that long-term memory was written; check `published_counts`. `published_counts.pattern_views` counts organization views available in this run, and `belief_relations` counts published belief relations. Neither is a count of objective facts or cumulative learning events. `learning_window` shows the input interval, attempted and successfully processed positions, and whether an interval remains pending. `pending_sequence_span` is a sequence span, not a message count. Summaries exclude original text, model explanations, and source IDs. Pending intervals remain independently visible even when the original cognitive result has been cleared because its sources became invalid.
 
 `learning_summary.consolidation` separately counts comparison targets, attempts, verified results, explicit no-change decisions, unresolved targets, and deduplications, exposing only fixed reason enums. `no_change` is the model's decision on this attempt, not proof that there is no shared meaning. `satisfied` requires a verified abstraction relation, not merely a completed job or model self-report.
+
+`learning_progress` aggregates all background input windows, independently of the most recent 200 jobs. It reports provider configuration separately from processing state, counts remaining windows without double-counting valid continuation or recovery handoffs, and includes up to eight oldest blocked examples with job IDs and fences. Invalid or missing handoffs are reported as incomplete coverage. These are processing diagnostics, not message counts or a measure of what the model understands. The existing `pending_job_count` also includes historical cancelled and superseded jobs; use `learning_progress` to find actionable work. Indexing can be current while semantic learning still has a gap.
+
+After fixing the cause of a blocked window, schedule recovery with `POST /v1/brains/{brain_id}/runtime/jobs/{job_id}/retry-learning` and `{"request_id":"recover-1","expected_fence":1}`. The fence must match the blocked job. Reusing the same request ID and fence returns the same recovery job; a different authorization for the same parent conflicts. The response is the recovery job's current public metadata. The service must have cognition configured. This operation queues work without making a model request itself. Ordinary queued, running, or automatically retryable jobs cannot be manually duplicated.
+
+Recovery reads fresh valid sources over the remaining original interval. It preserves the parent's result, call counts, input-byte reservations, and uncertain outcomes. Each recovery batch has at most two model calls and 196,608 input bytes, and shares the brain's rolling budget. Successful batches may continue across the remaining original interval with the same per-batch limits; two calls is **not** the total authorization for a multi-batch window. Later messages cannot expand this recovery interval. Provider failures stop when the batch's budget no longer permits safe retry; another recovery must be requested explicitly. Source changes still use the normal invalidation and rebuilding path. Queuing recovery is not evidence that learning succeeded or a new belief was published.
+
+For the desktop service, these commands use the saved profile and require the service to be running. They do not start a worker implicitly:
+
+```sh
+agent-memory desktop learning-status
+agent-memory desktop learning-status --job JOB_ID
+agent-memory desktop retry-learning JOB_ID --expected-fence 1 --request-id recover-1
+```
+
+Use the job ID and fence returned by monitoring. If the recovery response is lost, reuse the exact request ID and fence. Python exposes `RuntimeClient(memory).learning_progress()`, `.job(job_id)`, and `.retry_learning(job_id, request_id="recover-1", expected_fence=1)`; TypeScript exposes `memory.learningProgress()` and `memory.retryLearning(jobId, {requestId: "recover-1", expectedFence: 1})`. Neither SDK automatically retries this write.
 
 ## Current low-level interfaces
 
@@ -495,6 +512,8 @@ See `sdk/typescript/package.json` for TypeScript tests and type-check commands. 
 GitHub Actions is manual-only, with no automatic execution on push or pull requests. Day-to-day development prioritizes relevant local checks. Before publishing, validate according to the change's impact and avoid redundant cloud CI runs.
 
 The [standalone chat acceptance report](evaluations/standalone-chat-2026-10-24.md) records the installed-wheel, real-database, local-provider checks for direct chat, restart recovery, deduplication, and explicit cancellation. Its deterministic provider does not measure semantic learning quality.
+
+The [background learning recovery report](evaluations/learning-recovery-2026-10-24.md) records blocked-window monitoring, explicit recovery, preserved budgets and uncertainty, and the remaining architecture gaps.
 
 Interface-structure validation, deterministic regression tests, actual MCP protocol round trips, and database tests verify only their covered behavior. They do not establish that all 52 system scenarios in the complete architecture pass. The project also makes no claim of surpassing any baseline in long-term memory quality.
 

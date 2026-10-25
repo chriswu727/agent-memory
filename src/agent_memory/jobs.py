@@ -256,6 +256,19 @@ class JobStore:
         with self._transaction(principal, brain_id) as conn:
             return self._public(self._row(conn, principal, brain_id, job_id))
 
+    def retry_learning(self, principal, brain_id, job_id, *, request_id, expected_fence):
+        from .learning_recovery import retry_learning
+
+        with self._transaction(principal, brain_id) as conn:
+            return retry_learning(self, conn, principal, brain_id, job_id,
+                                  request_id=request_id, expected_fence=expected_fence)
+
+    def learning_progress(self, principal, brain_id, *, configured):
+        from .learning_progress import learning_progress
+
+        with self._transaction(principal, brain_id) as conn:
+            return learning_progress(conn, principal, brain_id, configured=configured)
+
     def list(self, principal, brain_id, *, limit=100):
         _integer(limit, 1, 200)
         with self._transaction(principal, brain_id) as conn:
@@ -282,6 +295,7 @@ class JobStore:
             row = conn.execute(
                 "SELECT * FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
                 "AND attempts<%s AND available_at<=clock_timestamp() "
+                "AND NOT payload ? 'recovery_job_id' "
                 "AND (state IN ('queued','failed') OR (state='running' AND lease_expires_at<=clock_timestamp())) "
                 "AND (%s::text[] IS NULL OR kind=ANY(%s::text[])) "
                 "AND (%s::text IS NULL OR id=%s) "

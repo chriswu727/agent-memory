@@ -1,5 +1,5 @@
 import copy
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timedelta, timezone
 
 from psycopg.types.json import Jsonb
@@ -317,9 +317,14 @@ class LearningEngine:
             current_input_refs = []
             window = None
             through = payload["through_sequence"]
+            selection_policy = service.semantic_processor.policy
+            if windowed and "recovery_budget" in payload and job["max_input_bytes"] is not None:
+                input_limit = min(selection_policy.max_input_bytes, job["max_input_bytes"])
+                selection_policy = replace(selection_policy, max_input_bytes=input_limit,
+                                           max_request_bytes=min(selection_policy.max_request_bytes, input_limit // 2))
             if windowed:
                 required, window = select_window(conn, service, principal, brain, payload,
-                                                policy=service.semantic_processor.policy,
+                                                policy=selection_policy,
                                                 input_contract_version=input_contract)
                 through = window["attempted_through_sequence"]
             elif "event_id" in payload:
@@ -337,7 +342,7 @@ class LearningEngine:
                     current_input_refs = copy.deepcopy(required)
             neighborhood = (select_neighborhood(
                 conn, service, principal, brain, target, through_sequence=through,
-                required_event_refs=required, policy=service.semantic_processor.policy,
+                required_event_refs=required, policy=selection_policy,
                 learning_input_refs=required if window is not None and input_contract is not None else (),
                 input_contract_version=input_contract,
             ) if required or not windowed else Neighborhood((), (), (), {"source_count": 0}))

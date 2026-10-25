@@ -41,6 +41,11 @@ class RuntimeClaim(RuntimeBody):
     expected_revision: RuntimeRevision | None = None
 
 
+class RuntimeLearningRetry(RuntimeBody):
+    request_id: RuntimeIdentifier
+    expected_fence: RuntimeCounter
+
+
 class RuntimeRenew(RuntimeBody):
     lease_token: RuntimeIdentifier
     lease_seconds: RuntimeLeaseSeconds = 30
@@ -339,13 +344,26 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
 
     @app.get("/v1/brains/{brain_id}/runtime/status")
     def runtime_status(brain_id: str, principal: Principal = Depends(authenticate)):
+        from .learning_progress import sanitize_learning_progress
+
         result = turn_store().status(principal, brain_id)
         fields = {
             "brain_id", "durable_sequence", "indexed_sequence", "dependency_generation",
             "scope_generation", "turn_count", "active_lease_count", "stage_counts", "pending_job_count",
             "response_review_counts", "response_review_calls",
         }
-        return {key: value for key, value in result.items() if key in fields}
+        public = {key: value for key, value in result.items() if key in fields}
+        if "learning_progress" in result:
+            public["learning_progress"] = sanitize_learning_progress(result["learning_progress"])
+        return public
+
+    @app.get("/v1/brains/{brain_id}/runtime/learning-progress")
+    def learning_progress(brain_id: str, principal: Principal = Depends(authenticate)):
+        from .learning_progress import sanitize_learning_progress
+
+        return sanitize_learning_progress(job_store().learning_progress(
+            principal, brain_id, configured=getattr(service, "semantic_processor", None) is not None,
+        ))
 
     @app.get("/v1/brains/{brain_id}/runtime/jobs")
     def list_jobs(brain_id: str, request: Request, principal: Principal = Depends(authenticate)):
@@ -356,6 +374,19 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     @app.get("/v1/brains/{brain_id}/runtime/jobs/{job_id}")
     def get_job(brain_id: str, job_id: str, principal: Principal = Depends(authenticate)):
         return job_metadata(job_store().get(principal, brain_id, job_id))
+
+    @app.post("/v1/brains/{brain_id}/runtime/jobs/{job_id}/retry-learning")
+    async def retry_learning(
+        brain_id: str, job_id: str, request: Request, principal: Principal = Depends(authenticate),
+    ):
+        body = await runtime_body(request, RuntimeLearningRetry)
+        from starlette.concurrency import run_in_threadpool
+
+        if getattr(service, "semantic_processor", None) is None:
+            await run_in_threadpool(job_store().get, principal, brain_id, job_id)
+            raise DomainError("dependency_unavailable", "Model-driven learning is not configured.")
+        result = await run_in_threadpool(job_store().retry_learning, principal, brain_id, job_id, **body)
+        return job_metadata(result)
 
     @app.post("/v1/brains/{brain_id}/runtime/turns", status_code=201)
     async def begin_turn(

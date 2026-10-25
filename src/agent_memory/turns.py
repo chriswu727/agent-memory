@@ -214,6 +214,8 @@ class TurnStore:
             return [{**row, "occurred_at": row["occurred_at"].isoformat()} for row in reversed(rows)]
 
     def status(self, principal, brain_id):
+        from .learning_progress import learning_progress
+
         with self._transaction(principal, brain_id) as (conn, brain):
             params = (principal.tenant_id, principal.principal_id, brain_id)
             counts = conn.execute(
@@ -238,6 +240,10 @@ class TurnStore:
                 "stage_counts": {row["stage"]: row["count"] for row in counts}, "pending_job_count": jobs,
                 "response_review_counts": {row["status"]: row["count"] for row in reviews},
                 "response_review_calls": sum(row["count"] for row in reviews),
+                "learning_progress": learning_progress(
+                    conn, principal, brain_id,
+                    configured=getattr(self.service, "semantic_processor", None) is not None,
+                ),
             }
 
     def claim(self, principal, brain_id, turn_id, *, worker_id, lease_seconds=30, expected_revision=None):

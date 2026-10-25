@@ -67,6 +67,11 @@ export type ScopeOptions = {
   requestId?: string;
 };
 export type BranchOptions = ScopeOptions & { conversationId: string; branchId: string };
+export type RetryLearningOptions = {
+  requestId: string;
+  expectedFence: number;
+  brainId?: string;
+};
 export type PrepareOptions = BranchOptions & Partial<Omit<PreparePayload,
   "turn_id" | "recall_plan" | "evidence_mode" | "expected_dependency_generation"
 >> & PrepareRecallSelection;
@@ -393,6 +398,15 @@ export class MemoryClient {
   }
   work(brainId?: string): Promise<JsonObject> {
     return this.#request("POST", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/work`);
+  }
+  learningProgress(brainId?: string): Promise<JsonObject> {
+    return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/runtime/learning-progress`);
+  }
+  retryLearning(jobId: string, options: RetryLearningOptions): Promise<JsonObject> {
+    const brain = encodeURIComponent(this.#scope(options).brain_ref);
+    return this.#request("POST", `v1/brains/${brain}/runtime/jobs/${encodeURIComponent(jobId)}/retry-learning`, {
+      request_id: options.requestId, expected_fence: options.expectedFence,
+    });
   }
 
   async observe(text: string, options: BranchOptions & {

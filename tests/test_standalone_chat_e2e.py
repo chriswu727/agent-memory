@@ -79,6 +79,14 @@ def test_chat_processes_recall_restart_deduplicate_and_block_unknown_generation(
         assert first.returncode == 0, first.stderr
         assert first.stdout == "Understood.\n"
         assert len(calls) == 1
+        progress = subprocess.run([
+            executable, "-m", "agent_memory.cli", "desktop", "learning-status",
+            "--directory", str(profile.directory),
+        ], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30)
+        assert progress.returncode == 0, progress.stderr
+        assert json.loads(progress.stdout)["provider_state"] == "not_configured"
+        assert json.loads(progress.stdout)["open_window_count"] == 0
+        assert len(calls) == 1
         with open_client(profile.directory, start_service=False) as memory:
             assert len(memory.dashboard()["events"]) == 2
         assert desktop.stop(profile.directory)["data_preserved"]

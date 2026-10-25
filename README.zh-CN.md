@@ -375,7 +375,8 @@ result = memory.recall(
 
 | GET 路径（前缀 `/v1/brains/{brain_id}/runtime`） | 内容 |
 | --- | --- |
-| `/status` | 持久化与索引进度、待处理任务数、轮次阶段、活动租约数 |
+| `/status` | 持久化与索引进度、学习进度、旧版未完成任务计数、轮次阶段、活动租约数 |
+| `/learning-progress` | 整个大脑的学习区间、可运行/等待重试/运行中/受阻计数及最早缺口 |
 | `/turns?limit=100` | 最近轮次，最多 200 条 |
 | `/turns/{turn_id}` | 当前阶段、修订、来源版本、上下文占用、回忆计划、累计调用额度、恢复状态 |
 | `/turns/{turn_id}/history?limit=100` | 有序阶段日志，最多 200 条 |
@@ -390,6 +391,22 @@ result = memory.recall(
 认知任务列表和详情的 `learning_summary` 只返回处理状态、提议结果、接受与发布数量、固定采样限制和拒绝原因计数。例如任务 `completed` 但 `learning_outcome=no_proposals` 表示处理结束但没有提议；`accepted_counts` 有值也不代表已写入长期记忆，需再看 `published_counts`。`published_counts.pattern_views` 统计本次可用的组织视图，`belief_relations` 统计发布的认识关系，不代表客观事实数量或累计学习次数。`learning_window` 显示输入区间、尝试与成功处理位置，以及是否仍有待处理区间；`pending_sequence_span` 是序列跨度，不能当成消息条数。摘要不包含原文、模型解释或来源 ID；原认知结果因来源失效被清空后，待处理区间仍可独立展示。
 
 `learning_summary.consolidation` 单独统计比较目标、尝试、核验成立、明确不变、未解决和去重数量，并只公开固定原因枚举。`no_change` 是模型本次决定，不代表已经证实“没有共同点”；`satisfied` 要求存在通过核验的概括关系，不能仅靠任务完成或模型自报。
+
+`learning_progress` 汇总所有后台输入区间，不受最近 200 个任务的列表限制。它分别报告模型配置与处理状态，在有效续接或恢复任务已接手时避免重复计数，并提供最多八个最早受阻示例及其任务 ID 和 fence。失效或缺失的交接会被报告为覆盖不完整。这些是处理诊断，不是消息条数，也不衡量模型理解了多少。原有 `pending_job_count` 仍包含历史取消和失效任务；应通过 `learning_progress` 查找可处理的工作。索引已追上最新输入时，语义学习仍可能存在缺口。
+
+排除受阻原因后，可向 `POST /v1/brains/{brain_id}/runtime/jobs/{job_id}/retry-learning` 提交 `{"request_id":"recover-1","expected_fence":1}`。fence 必须匹配受阻任务；重复相同 request ID 和 fence 返回同一个恢复任务，给同一个父任务提交不同授权会冲突。响应是恢复任务当前的公开元数据。服务必须配置认知模型。此操作只排队，本身不发起模型请求；普通排队中、运行中或仍可自动重试的任务不能被手动重复创建。
+
+恢复会在原区间尚未处理的部分重新读取有效来源，并保留父任务的结果、调用次数、输入字节预留及不确定结果。每个恢复批次最多两次模型调用、196,608 输入字节，同时受整个大脑的滚动额度约束。成功批次可在原区间内按相同单批限制继续处理，因此两次调用**不是**多批区间的总授权。后来的消息不能扩大恢复区间。提供方失败后，单批额度不足以安全重试时会停止，需再次显式请求恢复；来源变化仍走正常的失效与重建流程。恢复已排队不代表学习成功或产生了新认识。
+
+桌面服务可用以下命令读取已保存的配置；服务需要已经运行，命令不会隐式启动 worker：
+
+```sh
+agent-memory desktop learning-status
+agent-memory desktop learning-status --job JOB_ID
+agent-memory desktop retry-learning JOB_ID --expected-fence 1 --request-id recover-1
+```
+
+使用监控返回的任务 ID 和 fence。若恢复响应丢失，应复用完全相同的 request ID 和 fence。Python 提供 `RuntimeClient(memory).learning_progress()`、`.job(job_id)` 和 `.retry_learning(job_id, request_id="recover-1", expected_fence=1)`；TypeScript 提供 `memory.learningProgress()` 和 `memory.retryLearning(jobId, {requestId: "recover-1", expectedFence: 1})`。两个 SDK 都不会自动重试此写入操作。
 
 ## 当前底层接口
 
@@ -495,6 +512,8 @@ TypeScript 测试与类型检查命令见 `sdk/typescript/package.json`。没有
 GitHub Actions 仅保留手动触发，不在 push 或 pull request 时自动运行。日常开发优先执行与修改相关的本地检查；发布前按改动影响验证，避免重复运行云 CI。
 
 [独立聊天验收记录](evaluations/standalone-chat-2026-10-24.md) 包含安装包、真实数据库和本地模拟提供方的验证，覆盖直接聊天、重启恢复、去重及显式取消。确定性提供方不用于衡量语义学习质量。
+
+[后台学习恢复验收记录](evaluations/learning-recovery-2026-10-24.md) 记录了受阻区间监控、显式恢复、预算与不确定状态的保留，以及尚待解决的架构缺口。
 
 接口结构校验、确定性回归测试、真实 MCP 协议往返和数据库测试，只验证各自覆盖的行为。完整架构中的 52 个系统场景尚不能据此宣称全部通过，也未宣称在长期记忆质量上超过任何基线。
 

@@ -1,7 +1,8 @@
 from psycopg.types.json import Jsonb
 
-from .helpers import digest
+from .helpers import DomainError, digest
 from .semantic import EPISODE_SCOPE_INPUT_VERSION
+from .turns import _identifier
 
 WINDOW_SIZE = 8
 SAMPLING_RESERVE_BYTES = 2048
@@ -21,9 +22,10 @@ def pending_window(payload):
             "has_more": True, "processing_succeeded": False, "status": "pending"}
 
 
-def enqueue_window(conn, service, principal, brain, target, start, end, *, coalesce=False, origin=None):
+def enqueue_window(conn, service, principal, brain, target, start, end, *, coalesce=False, origin=None,
+                   lineage=None):
     payload = {"target": {key: target[key] for key in ("conversation_ref", "branch_ref")},
-               "from_sequence": start, "through_sequence": end}
+               "from_sequence": start, "through_sequence": end, **(lineage or {})}
     bounds(payload)
     params = service._params(principal, brain["id"])
     if coalesce:
@@ -34,8 +36,10 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
             "ORDER BY (payload->>'through_sequence')::bigint DESC,created_at DESC,id LIMIT 1 FOR UPDATE",
             (*params, target["conversation_ref"], target["branch_ref"]),
         ).fetchone()
-        if rows and rows["state"] == "queued" and rows["attempts"] == 0:
+        if (rows and rows["state"] == "queued" and rows["attempts"] == 0
+                and not any(key in rows["payload"] for key in ("recovery_parent_job_id", "recovery_root_job_id"))):
             previous = rows["payload"]
+            payload = {**previous, **payload}
             payload["from_sequence"] = min(previous.get("from_sequence", previous["through_sequence"]), start)
             payload["through_sequence"] = max(previous["through_sequence"], end)
             conn.execute(
@@ -44,11 +48,13 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
                 (Jsonb(payload), *params, rows["id"]),
             )
             return rows["id"]
-    identifier = "consolidate:" + digest([brain["id"], payload, origin])
+    identity = {key: payload[key] for key in ("target", "from_sequence", "through_sequence")}
+    identifier = "consolidate:" + digest([brain["id"], identity, origin])
+    budget = payload.get("recovery_budget", {})
     conn.execute(
-        "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,payload,state) "
-        "VALUES(%s,%s,%s,%s,'consolidate',%s,'queued') ON CONFLICT DO NOTHING",
-        (*params, identifier, Jsonb(payload)),
+        "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,payload,state,max_model_calls,max_input_bytes) "
+        "VALUES(%s,%s,%s,%s,'consolidate',%s,'queued',%s,%s) ON CONFLICT DO NOTHING",
+        (*params, identifier, Jsonb(payload), budget.get("max_model_calls"), budget.get("max_input_bytes")),
     )
     return identifier
 
@@ -106,9 +112,15 @@ def record_progress(conn, service, principal, brain, job, window, *, succeeded):
     if succeeded:
         payload = {**job["payload"], "processed_through_sequence": window["processed_through_sequence"]}
         if window["has_more"]:
+            lineage = {"continuation_parent_job_id": job["id"]}
+            if "recovery_root_job_id" in payload:
+                lineage["recovery_root_job_id"] = payload["recovery_root_job_id"]
+            if "recovery_budget" in payload:
+                lineage["recovery_budget"] = payload["recovery_budget"]
             payload["continuation_job_id"] = enqueue_window(
                 conn, service, principal, brain, payload["target"],
                 window["processed_through_sequence"] + 1, window["through_sequence"], origin=job["id"],
+                lineage=lineage,
             )
         conn.execute(
             "UPDATE memory_jobs SET payload=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
@@ -128,10 +140,31 @@ def recover_windows(conn, service, principal, brain):
     ).fetchall()
     for row in rows:
         payload = row["payload"]
-        start, end = bounds(payload)
-        end = payload.get("processed_through_sequence", end)
-        replacement = enqueue_window(conn, service, principal, brain, payload["target"], start, end,
-                                     origin=["recovery", row["id"]])
+        try:
+            start, end = bounds(payload)
+            target = {key: _identifier(payload["target"][key]) for key in ("conversation_ref", "branch_ref")}
+            processed = payload.get("processed_through_sequence", start - 1)
+            if type(processed) is not int or not start - 1 <= processed <= end:
+                continue
+            if processed >= start:
+                end = processed
+            if "recovery_root_job_id" in payload:
+                _identifier(payload["recovery_root_job_id"])
+            if "recovery_budget" in payload and payload["recovery_budget"] != {
+                    "max_model_calls": 2, "max_input_bytes": 196608}:
+                continue
+        except (DomainError, KeyError, TypeError, ValueError):
+            continue
+        lineage = {"recovery_parent_job_id": row["id"]}
+        if "recovery_budget" in payload:
+            lineage["recovery_budget"] = payload["recovery_budget"]
+        replacement = enqueue_window(conn, service, principal, brain, target, start, end,
+                                     origin=["recovery", row["id"]],
+                                     lineage=lineage)
+        conn.execute(
+            "UPDATE memory_jobs SET payload=payload || %s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+            (Jsonb({"recovery_root_job_id": payload.get("recovery_root_job_id", replacement)}), *params, replacement),
+        )
         conn.execute(
             "UPDATE memory_jobs SET payload=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
             (Jsonb({**payload, "recovery_job_id": replacement}), *params, row["id"]),
