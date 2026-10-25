@@ -23,6 +23,7 @@ from uuid import uuid4
 import httpx
 
 from . import __version__
+from .build_identity import BUILD_ID, SCHEMA_ID
 from .config import configured_service
 from .helpers import Principal
 from .local_profile import (
@@ -124,7 +125,7 @@ def _compose(profile, *arguments: str) -> None:
 
 def _fingerprint(profile) -> str:
     values = {"database_port": profile.database_port, "api_port": profile.api_port,
-              "cognition": profile.cognition, "version": __version__}
+              "cognition": profile.cognition, "version": __version__, "build_id": BUILD_ID}
     return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
 
 
@@ -161,7 +162,9 @@ def _probe(profile) -> dict | None:
                 and document.get("state") in {"ready", "degraded", "stopping"}
                 and document.get("instance_id") == identity["instance_id"]
                 and isinstance(document.get("configuration"), str)
-                and document.get("database") in {"ready", "brain_missing", "unavailable"}
+                and document.get("database") in {
+                    "ready", "brain_missing", "unavailable", "incompatible", "migration_required",
+                }
                 and document.get("worker") in {"starting", "ready", "busy", "retrying", "failed", "stopped", "stalled"}
                 and (not document["ready"] or (
                     document["state"] == "ready" and document["database"] == "ready"
@@ -177,7 +180,7 @@ def _base_status(profile) -> dict:
             "installation_id": profile.installation_id, "base_url": profile.base_url,
             "cognition": "configured" if profile.cognition else "not_configured",
             "host_adapter": "not_verified", "mcp": "tools_only",
-            "version": __version__}
+            "version": __version__, "build_id": BUILD_ID, "schema_id": SCHEMA_ID}
 
 
 def _supervisor_active(profile) -> bool:
@@ -202,12 +205,28 @@ def status(directory: Path | None = None) -> dict:
             "database": "not_checked", "worker": "not_checked"}
 
 
+def _check_database(profile, *, require_current=False) -> dict:
+    from .storage import Database, SchemaCompatibilityError
+
+    try:
+        return Database(profile.database_url, profile.migration_database_url).check_compatibility(
+            require_current=require_current,
+        )
+    except SchemaCompatibilityError:
+        raise DesktopError("database_schema_incompatible", "This installation cannot use the database schema. Install a compatible release; the existing service and data were preserved.") from None
+    except Exception:
+        raise DesktopError("database_unavailable", "Database compatibility could not be checked. Check the database before retrying; the existing service and data were preserved.") from None
+
+
 def _prepare_database(profile) -> None:
     from .cli import bootstrap
     from .service import MemoryService
     from .storage import Database
 
+    if _port_open(profile.database_port):
+        _check_database(profile)
     _compose(profile, "up", "--detach", "--wait", "--wait-timeout", "90")
+    _check_database(profile)
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             bootstrap(profile.settings(), app_password=profile.app_password)
@@ -294,6 +313,8 @@ def stop(directory: Path | None = None) -> dict:
 def restart(directory: Path | None = None) -> dict:
     profile = load_profile(directory)
     with profile_lock(profile.directory / "lifecycle", timeout=360):
+        if _probe(profile) is not None or _port_open(profile.database_port):
+            _check_database(profile)
         stop(profile.directory)
         return start(profile.directory)
 
@@ -324,6 +345,7 @@ class LocalSupervisor:
         self.worker_state = "starting"
         self.last_progress = time.monotonic()
         self.server = None
+        self.configuration = _fingerprint(profile)
 
     def log(self, event):
         self.logger.info(json.dumps({"time": round(time.time(), 3), "event": event,
@@ -356,7 +378,7 @@ class LocalSupervisor:
     def snapshot(self):
         from psycopg.conninfo import make_conninfo
 
-        from .storage import Database
+        from .storage import Database, SchemaCompatibilityError, schema_status
 
         database = "unavailable"
         try:
@@ -364,11 +386,17 @@ class LocalSupervisor:
                 Principal(self.profile.tenant_id, self.profile.principal_id),
             ) as connection:
                 connection.execute("SET LOCAL statement_timeout = '2000'")
-                row = connection.execute(
-                    "SELECT id FROM memory_brains WHERE id=%s AND tenant_id=%s AND owner_id=%s",
-                    (self.profile.brain_id, self.profile.tenant_id, self.profile.principal_id),
-                ).fetchone()
-                database = "ready" if row else "brain_missing"
+                schema = schema_status(connection)
+                if schema["state"] != "current":
+                    database = "migration_required"
+                else:
+                    row = connection.execute(
+                        "SELECT id FROM memory_brains WHERE id=%s AND tenant_id=%s AND owner_id=%s",
+                        (self.profile.brain_id, self.profile.tenant_id, self.profile.principal_id),
+                    ).fetchone()
+                    database = "ready" if row else "brain_missing"
+        except SchemaCompatibilityError:
+            database = "incompatible"
         except Exception:
             pass
         worker = self.worker_state
@@ -381,7 +409,7 @@ class LocalSupervisor:
         return {**_base_status(self.profile), "ready": ready,
                 "state": "stopping" if self.stopped.is_set() else "ready" if ready else "degraded",
                 "database": database, "worker": worker,
-                "instance_id": self.instance_id, "configuration": _fingerprint(self.profile)}
+                "instance_id": self.instance_id, "configuration": self.configuration}
 
     def app(self):
         from fastapi import Header, HTTPException
@@ -431,6 +459,7 @@ def run(directory: Path | None = None) -> None:
     if os.name != "nt":
         os.umask(0o077)
     with profile_lock(profile.directory / "supervisor", timeout=0):
+        _check_database(profile, require_current=True)
         logger, handler = _logger(profile)
         supervisor = LocalSupervisor(profile, logger)
         supervisor.worker = threading.Thread(target=supervisor.work, name="memory-worker", daemon=True)

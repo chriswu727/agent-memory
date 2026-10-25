@@ -295,7 +295,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             "unauthorized": 401, "not_found_or_forbidden": 404,
             "version_conflict": 409, "idempotency_conflict": 409,
             "lease_conflict": 409, "stage_conflict": 409, "turn_terminal": 409,
-            "scope_conflict": 409,
+            "scope_conflict": 409, "provider_uncertain": 409,
             "source_unavailable": 409, "context_stale": 409,
             "response_review_required": 409, "response_review_uncertain": 409, "response_review_blocked": 409,
             "dependency_unavailable": 503, "budget_exceeded": 413,
@@ -365,6 +365,10 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         if "learning_progress" in result:
             public["learning_progress"] = sanitize_learning_progress(result["learning_progress"])
         return public
+
+    @app.get("/v1/brains/{brain_id}/runtime/cognitive-usage")
+    def cognitive_usage(brain_id: str, principal: Principal = Depends(authenticate)):
+        return job_store().cognitive_usage(principal, brain_id)
 
     @app.get("/v1/brains/{brain_id}/runtime/learning-progress")
     def learning_progress(brain_id: str, principal: Principal = Depends(authenticate)):

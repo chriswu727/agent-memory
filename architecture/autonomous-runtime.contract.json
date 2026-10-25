@@ -24,7 +24,7 @@
     "turn_ownership": "Each turn has exactly one lifecycle orchestrator; plugins and model proxies must not duplicate capture, injection, or generation",
     "continuity": "An authorized model or adapter change can bind the original brain; uninstalling an adapter does not delete core data",
     "identity_mapping": "Cross-platform participants and conversations are linked explicitly through trusted configuration only; do not merge by nickname or model inference or automatically cross private/group-chat scopes",
-    "current_boundary": "The core, desktop chat command, and open_agent Python sessions have no QQ-framework dependency. The direct entry supports synchronous Chat Completions text with local session serialization and explicit recovery. Cross-host session serialization, a model-compatible gateway, and QQ adapter plugins have not shipped"
+    "current_boundary": "The core, desktop chat command, and open_agent Python sessions have no QQ-framework dependency. The direct entry supports synchronous Chat Completions text, durable database reservations for conversation/branch exclusion across hosts, and explicit recovery with delivery receipts. All API processes must be upgraded together; external delivery remains dependent on host acknowledgements and idempotency. A model-compatible gateway and QQ adapter plugins have not shipped"
   },
   "full_integration_requirements": [
     "Authenticated stable agent, participant, conversation, branch, and message identifiers",

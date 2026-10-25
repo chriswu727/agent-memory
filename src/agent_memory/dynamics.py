@@ -39,7 +39,7 @@ def _counter(value, name):
 
 @dataclass(frozen=True)
 class AccessPolicy:
-    version: str = "contextual-access-v1"
+    version: str = "contextual-access-v2"
     half_life_days: Mapping[str, float] = field(default_factory=lambda: {
         "episode_fragment": 14.0, "episode_outline": 60.0, "semantic_anchor": 365.0,
         "schema": 180.0, "procedure": 90.0,
@@ -118,15 +118,18 @@ def access_state(memory: Mapping, usage: Mapping | None, *, at: datetime | str,
     if successes + failures > uses:
         raise ValueError("External outcomes cannot exceed external uses")
     utility = (1 + successes) / (2 + successes + failures)
-    last_external = usage.get("last_external_use_at")
+    last_external = usage.get("last_reinforcement_at")
+    if last_external is None and not failures:
+        last_external = usage.get("last_external_use_at")
     if last_external is not None:
         last_external = _time(last_external)
-    if uses and last_external is not None:
+    reinforcing_uses = uses - failures
+    if reinforcing_uses and last_external is not None:
         external_age = max(0, (reference_time - last_external).total_seconds() / 86400)
-        frequency = -math.expm1(-uses / policy.external_use_scale)
+        frequency = -math.expm1(-reinforcing_uses / policy.external_use_scale)
         activation += policy.external_gain * frequency * math.exp2(-external_age / policy.external_half_life_days)
         reasons.append("external_use")
-    elif uses:
+    elif reinforcing_uses:
         reasons.append("external_use_time_unknown")
     if successes or failures:
         reasons.append("external_outcome_utility")

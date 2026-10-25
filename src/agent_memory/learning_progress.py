@@ -1,7 +1,7 @@
 from collections import Counter, deque
 from datetime import UTC, datetime
 
-from .jobs import FAILURE_CODES
+from .jobs import FAILURE_CODES, LEARNING_OUTCOMES, PROCESSING_STATUSES, REJECTION_REASONS
 
 _MAX_INTEGER = 2**63 - 1
 _EXAMPLE_LIMIT = 8
@@ -16,6 +16,75 @@ _COUNTS = (
     "window_count", "open_window_count", "runnable_count", "waiting_retry_count", "running_count",
     "blocked_count", "unknown_count",
 )
+_ACCEPTED = ("claims", "situation_updates", "episode_actions", "belief_links")
+_PUBLISHED = {"claims": "memory_versions", "episode_versions": "episode_versions",
+              "pattern_views": "pattern_view_ids", "belief_relations": "belief_relation_versions"}
+_OUTCOME_COUNTS = ("job_count", "evaluated_job_count", "unevaluated_job_count", "unknown_job_count")
+_OUTCOME_LIMITATIONS = frozenset({
+    "missing_result", "invalid_result", "invalidated_result", "invalid_metadata", "invalid_summary",
+})
+_OUTCOME_REASONS = frozenset({
+    "no_accepted_proposals", "partial_acceptance", "accepted_without_publication", "unavailable_result",
+})
+
+
+def _safe_counts(value, allowed, *, required=False):
+    if not isinstance(value, dict):
+        return {key: 0 for key in allowed} if required else {}, False
+    valid = (not set(value) - set(allowed) and all(_integer(count) for count in value.values())
+             and (not required or set(value) == set(allowed)))
+    return {key: value.get(key, 0) if _integer(value.get(key, 0)) else 0 for key in sorted(allowed)
+            if required or _integer(value.get(key)) and value[key]}, valid
+
+
+def _safe_outcome_example(value):
+    result = _safe_window(value)
+    if result is None or not _integer(value.get("fence")):
+        return None
+    enums = (("processing_status", PROCESSING_STATUSES | {"unknown"}),
+             ("learning_outcome", LEARNING_OUTCOMES | {"unknown"}), ("reason", _OUTCOME_REASONS))
+    if any(not isinstance(value.get(key), str) or value[key] not in allowed for key, allowed in enums):
+        return None
+    return {**result, "fence": value["fence"], **{key: value[key] for key, _ in enums}}
+
+
+def _sanitize_outcomes(value, job_count):
+    value = value if isinstance(value, dict) else {}
+    complete = value.get("counts_complete") is True and value.get("basis") == "retained_latest_job_results"
+    result = {"basis": "retained_latest_job_results"}
+    for key in _OUTCOME_COUNTS:
+        result[key] = value[key] if _integer(value.get(key)) else 0
+        complete = complete and _integer(value.get(key))
+    for key, allowed, required in (
+        ("processing_status_counts", PROCESSING_STATUSES, False),
+        ("learning_outcome_counts", LEARNING_OUTCOMES, False),
+        ("accepted_counts", _ACCEPTED, True), ("published_counts", _PUBLISHED, True),
+        ("rejection_reason_counts", REJECTION_REASONS, False),
+        ("limitation_counts", _OUTCOME_LIMITATIONS, False),
+    ):
+        result[key], valid = _safe_counts(value.get(key), allowed, required=required)
+        complete = complete and valid
+    examples = value.get("examples")
+    complete = complete and isinstance(examples, list) and type(value.get("examples_truncated")) is bool
+    examples = examples if isinstance(examples, list) else []
+    result["examples"] = [safe for item in examples[:_EXAMPLE_LIMIT]
+                          if (safe := _safe_outcome_example(item)) is not None]
+    result["examples_truncated"] = value.get("examples_truncated") is True or len(examples) > _EXAMPLE_LIMIT
+    complete = complete and len(result["examples"]) == min(len(examples), _EXAMPLE_LIMIT)
+    known = result["evaluated_job_count"] + result["unevaluated_job_count"]
+    complete = complete and (
+        result["job_count"] == job_count == known + result["unknown_job_count"]
+        and sum(result["processing_status_counts"].values()) == known
+        and sum(result["learning_outcome_counts"].values()) == known
+        and sum(result["processing_status_counts"].get(key, 0) for key in ("completed", "partial"))
+        == result["evaluated_job_count"]
+        and result["learning_outcome_counts"].get("not_evaluated", 0) == result["unevaluated_job_count"]
+        and not result["unknown_job_count"] and not result["limitation_counts"]
+    )
+    result["counts_complete"] = bool(complete)
+    if not complete and not result["limitation_counts"]:
+        result["limitation_counts"] = {"invalid_summary": 1}
+    return result
 
 
 def _integer(value, minimum=0):
@@ -117,7 +186,114 @@ def sanitize_learning_progress(value):
     result["counts_complete"] = complete
     if not complete and not result["limitation_counts"]:
         result["limitation_counts"] = {"invalid_summary": 1}
+    result["semantic_outcomes"] = _sanitize_outcomes(value.get("semantic_outcomes"), result["window_count"])
     return result
+
+
+def _outcome_record(row):
+    if row["issues"]:
+        return None, "invalid_metadata"
+    if row["invalidated"]:
+        return None, "invalidated_result"
+    absent = not row.get("has_result") or row.get("result_object") is True and not row.get("has_status")
+    if absent:
+        if (row["state"] == "queued" and row["attempts"] == 0
+                or row["state"] == "running" and row["attempts"] == 1):
+            return {"processing_status": "not_evaluated", "learning_outcome": "not_evaluated",
+                    "accepted_counts": dict.fromkeys(_ACCEPTED, 0),
+                    "published_counts": dict.fromkeys(_PUBLISHED, 0), "rejection_reason_counts": {}}, None
+        return None, "missing_result"
+    status, outcome = row.get("processing_status"), row.get("learning_outcome")
+    accepted, accepted_valid = _safe_counts(row.get("accepted_counts"), _ACCEPTED, required=True)
+    published, published_valid = _safe_counts(row.get("published_counts"), _PUBLISHED, required=True)
+    reasons, reasons_valid = _safe_counts(row.get("rejection_reason_counts"), REJECTION_REASONS)
+    if (row.get("result_object") is not True or row.get("publication_object") is not True
+            or not isinstance(status, str) or status not in PROCESSING_STATUSES
+            or not isinstance(outcome, str) or outcome not in LEARNING_OUTCOMES
+            or not (accepted_valid and published_valid and reasons_valid)
+            or not _integer(row.get("rejected_count")) or sum(reasons.values()) != row["rejected_count"]):
+        return None, "invalid_result"
+    evaluated = status in {"completed", "partial"}
+    expected = ("accepted_proposals" if sum(accepted.values()) else "no_accepted_proposals" if status == "partial"
+                else "no_proposals" if status == "completed" else "not_evaluated")
+    if (outcome != expected or status == "completed" and row["rejected_count"]
+            or status == "partial" and not row["rejected_count"]
+            or not evaluated and (sum(accepted.values()) or sum(published.values()))
+            or sum(published.values()) and row["state"] != "completed"):
+        return None, "invalid_result"
+    return {"processing_status": status, "learning_outcome": outcome, "accepted_counts": accepted,
+            "published_counts": published, "rejection_reason_counts": reasons}, None
+
+
+def _outcomes(windows):
+    result = dict.fromkeys(_OUTCOME_COUNTS, 0)
+    result.update(basis="retained_latest_job_results", job_count=len(windows), counts_complete=True,
+                  accepted_counts=Counter(dict.fromkeys(_ACCEPTED, 0)),
+                  published_counts=Counter(dict.fromkeys(_PUBLISHED, 0)),
+                  processing_status_counts=Counter(), learning_outcome_counts=Counter(),
+                  rejection_reason_counts=Counter(), limitation_counts=Counter())
+    examples = []
+    for identifier, row in windows.items():
+        record, limitation = _outcome_record(row)
+        reason = None
+        if limitation:
+            result["unknown_job_count"] += 1
+            result["limitation_counts"][limitation] += 1
+            reason = "unavailable_result"
+        else:
+            evaluated = record["processing_status"] in {"completed", "partial"}
+            result["evaluated_job_count" if evaluated else "unevaluated_job_count"] += 1
+            for key in ("processing_status", "learning_outcome"):
+                result[key + "_counts"][record[key]] += 1
+            for key in ("accepted_counts", "published_counts", "rejection_reason_counts"):
+                result[key].update(record[key])
+            if record["learning_outcome"] == "no_accepted_proposals":
+                reason = "no_accepted_proposals"
+            elif record["learning_outcome"] == "accepted_proposals":
+                reason = ("accepted_without_publication" if not sum(record["published_counts"].values())
+                          else "partial_acceptance" if record["processing_status"] == "partial" else None)
+        if reason:
+            example = _safe_outcome_example({
+                "job_id": identifier, "fence": row["fence"], "from_sequence": row["window_start"],
+                "through_sequence": row["window_end"], "processed_through_sequence": row["processed"],
+                "created_at": row["created_at"], "reason": reason,
+                "processing_status": record["processing_status"] if record else "unknown",
+                "learning_outcome": record["learning_outcome"] if record else "unknown",
+            })
+            if example:
+                examples.append(example)
+    examples.sort(key=lambda item: (item["from_sequence"], item["created_at"], item["job_id"]))
+    result.update(examples=examples[:_EXAMPLE_LIMIT], examples_truncated=len(examples) > _EXAMPLE_LIMIT)
+    return _sanitize_outcomes(result, len(windows))
+
+
+def _array_length(expression, *, optional=False, element_type="object"):
+    absent = f"WHEN {expression} IS NULL THEN 0 " if optional else ""
+    return (f"CASE {absent}WHEN jsonb_typeof({expression})='array' THEN CASE WHEN NOT EXISTS "
+            f"(SELECT 1 FROM jsonb_array_elements({expression}) AS element "
+            f"WHERE jsonb_typeof(element)<>'{element_type}') THEN jsonb_array_length({expression}) END END")
+
+
+def _outcome_projection():
+    accepted = ",".join(f"'{key}',{_array_length('result->' + repr(key))}" for key in _ACCEPTED)
+    published = ",".join(f"'{key}'," + _array_length(
+        "result #> " + repr("{publication," + field + "}"), optional=True,
+        element_type="string" if key == "pattern_views" else "object",
+    ) for key, field in _PUBLISHED.items())
+    reasons = ",".join(f"'{reason}',count(*) FILTER (WHERE item->>'reason'='{reason}')"
+                       for reason in sorted(REJECTION_REASONS))
+    return (
+        "result IS NOT NULL AS has_result,jsonb_typeof(result)='object' AS result_object,"
+        "result ? 'status' AS has_status,result->'status' AS processing_status,"
+        "result->'learning_outcome' AS learning_outcome,"
+        "jsonb_typeof(result->'publication')='object' AS publication_object,"
+        f"jsonb_build_object({accepted}) AS accepted_counts,"
+        f"jsonb_build_object({published}) AS published_counts,"
+        f"{_array_length('result->' + repr('rejected'))} AS rejected_count,"
+        f"(SELECT jsonb_build_object({reasons}) FROM jsonb_array_elements("
+        "CASE WHEN jsonb_typeof(result->'rejected')='array' THEN result->'rejected' ELSE '[]'::jsonb END"
+        ") AS item) AS rejection_reason_counts"
+    )
 
 
 def _cycles(edges):
@@ -294,7 +470,8 @@ def _summary(rows, *, configured):
         result["oldest_pending_window"] = min(oldest, key=lambda item: item[:3])[3]
     result["blocked_examples"] = [item[3] for item in sorted(blocked, key=lambda item: item[:3])[:_EXAMPLE_LIMIT]]
     result["blocked_examples_truncated"] = len(blocked) > _EXAMPLE_LIMIT
-    result.update(blocked_reason_counts=dict(reasons), limitation_counts=dict(limitations))
+    result.update(blocked_reason_counts=dict(reasons), limitation_counts=dict(limitations),
+                  semantic_outcomes=_outcomes(windows))
     return sanitize_learning_progress(result)
 
 
@@ -302,6 +479,8 @@ def learning_progress(connection, principal, brain_id, *, configured: bool):
     """Count windows, ordered by pending source sequence, without claiming semantic coverage.
 
     Runnable means claimable, not guaranteed to fit the model budget. Creation times refer to jobs.
+    Semantic totals count retained latest job results, not every attempt or currently usable memories.
+    Evaluated includes partial structural rejection; it does not assert verification of every proposal.
     """
     if type(configured) is not bool:
         raise ValueError("Learning provider configuration must be a boolean")
@@ -314,7 +493,7 @@ def learning_progress(connection, principal, brain_id, *, configured: bool):
         "payload->'continuation_job_id' AS continuation_id,payload->'recovery_job_id' AS recovery_id,"
         "payload ? 'continuation_job_id' AS has_continuation,payload ? 'recovery_job_id' AS has_recovery,"
         "payload->'continuation_parent_job_id' AS continuation_parent,"
-        "payload->'recovery_parent_job_id' AS recovery_parent "
+        "payload->'recovery_parent_job_id' AS recovery_parent," + _outcome_projection() + " "
         "FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND kind='consolidate' "
         "AND payload ? 'from_sequence'",
         (principal.tenant_id, principal.principal_id, brain_id),

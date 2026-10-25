@@ -94,6 +94,8 @@ def configured_service(settings: Settings):
     from .service import MemoryService
     from .storage import Database
 
+    database = Database(settings.database_url)
+    database.check_compatibility(require_current=True)
     with ExitStack() as resources:
         processor, embedding = None, None
         if settings.cognition_base_url is not None:
@@ -108,6 +110,6 @@ def configured_service(settings: Settings):
                 model_version=settings.embedding_model_version, dimensions=settings.embedding_dimensions,
             ))
         yield MemoryService(
-            Database(settings.database_url, settings.migration_database_url),
+            database,
             semantic_processor=processor, embedding_provider=embedding,
         )

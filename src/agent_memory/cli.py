@@ -55,13 +55,15 @@ def bootstrap(settings: Settings, *, app_password: str | None = None) -> None:
     app_password = app_password or os.environ.get("MEMORY_DATABASE_APP_PASSWORD")
     if not app_password:
         raise SystemExit("MEMORY_DATABASE_APP_PASSWORD is required for local role provisioning")
+    database = Database(settings.database_url, settings.migration_database_url)
+    database.check_compatibility()
     with psycopg.connect(settings.migration_database_url) as connection:
         exists = connection.execute("SELECT 1 FROM pg_roles WHERE rolname = 'memory_app'").fetchone()
         if not exists:
             connection.execute(sql.SQL(
                 "CREATE ROLE memory_app LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD {}"
             ).format(sql.Literal(app_password)))
-    Database(settings.database_url, settings.migration_database_url).migrate()
+    database.migrate()
     with psycopg.connect(settings.migration_database_url) as connection:
         connection.execute("GRANT USAGE ON SCHEMA public TO memory_app")
         connection.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO memory_app")

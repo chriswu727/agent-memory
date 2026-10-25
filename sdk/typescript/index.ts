@@ -399,6 +399,10 @@ export class MemoryClient {
   work(brainId?: string): Promise<JsonObject> {
     return this.#request("POST", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/work`);
   }
+  cognitiveUsage(brainId?: string): Promise<JsonObject> {
+    return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/runtime/cognitive-usage`);
+  }
+
   learningProgress(brainId?: string): Promise<JsonObject> {
     return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/runtime/learning-progress`);
   }

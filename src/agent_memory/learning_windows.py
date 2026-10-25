@@ -1,7 +1,7 @@
 from psycopg.types.json import Jsonb
 
 from .helpers import DomainError, digest
-from .semantic import EPISODE_SCOPE_INPUT_VERSION
+from .semantic import COMMUNICATION_INTENT_INPUT_VERSION
 from .turns import _identifier
 
 WINDOW_SIZE = 8
@@ -60,7 +60,7 @@ def enqueue_window(conn, service, principal, brain, target, start, end, *, coale
 
 
 def select_window(conn, service, principal, brain, payload, *, policy,
-                  input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
+                  input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
     from .semantic import PROPOSAL_SCHEMA, proposal_data, request_payload
 
     start, end = bounds(payload)

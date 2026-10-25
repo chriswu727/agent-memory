@@ -65,7 +65,8 @@ def test_protection_preserves_accessibility_without_changing_facts(fields, reaso
 def test_real_external_usage_reactivates_then_decays_again():
     item = memory()
     at = START + timedelta(days=365)
-    usage = {"external_uses": 12, "successes": 8, "failures": 2, "last_external_use_at": at}
+    usage = {"external_uses": 12, "successes": 8, "failures": 2, "last_external_use_at": at,
+             "last_reinforcement_at": at}
     before = access_state(item, {}, at=at)
     after = access_state(item, usage, at=at)
     later = access_state(item, usage, at=at + timedelta(days=365))
@@ -98,10 +99,36 @@ def test_outcome_utility_changes_rank_but_not_validity_or_retention():
     unsuccessful = access_state(item, bad, at=START)
     assert successful["utility"] > unsuccessful["utility"]
     assert rank_weight(successful) > rank_weight(unsuccessful) > 0
-    assert successful["activation"] == unsuccessful["activation"]
+    assert successful["activation"] > unsuccessful["activation"]
+    assert unsuccessful["activation"] == access_state(item, {}, at=START)["activation"]
     assert item["epistemic_status"] == "supported_report"
     assert item["revision"] == 7
     assert item["dynamics"]["retention_priority"] == 0.5
+
+
+@pytest.mark.parametrize("count", [1, 20, 1000000])
+def test_negative_feedback_never_reactivates_old_memory(count):
+    at = START + timedelta(days=365)
+    unused = access_state(memory(), {}, at=at)
+    failures = access_state(memory(), {"external_uses": count, "failures": count,
+                                       "last_external_use_at": at}, at=at)
+    assert failures["activation"] == unused["activation"]
+    assert failures["tier"] == unused["tier"] == "deep"
+    assert rank_weight(failures) < rank_weight(unused)
+
+
+def test_recent_correction_does_not_refresh_previous_success():
+    at = START + timedelta(days=365)
+    positive = {"external_uses": 1, "successes": 1, "last_external_use_at": START,
+                "last_reinforcement_at": START}
+    corrected = {**positive, "external_uses": 2, "failures": 1, "last_external_use_at": at}
+    before, after = access_state(memory(), positive, at=at), access_state(memory(), corrected, at=at)
+    assert after["activation"] == before["activation"]
+    assert rank_weight(after) < rank_weight(before)
+    del corrected["last_reinforcement_at"]
+    unknown = access_state(memory(), corrected, at=at)
+    assert unknown["activation"] == access_state(memory(), {}, at=at)["activation"]
+    assert "external_use_time_unknown" in unknown["reasons"]
 
 
 def test_missing_external_timestamp_does_not_make_frequency_permanently_fresh():

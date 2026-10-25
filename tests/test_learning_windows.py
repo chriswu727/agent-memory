@@ -348,13 +348,17 @@ def test_fixed_request_budget_exhaustion_does_not_retry_the_same_oversized_snaps
     assert claim(learning, failed["id"]) is None
 
 
-def test_expired_lease_reclaims_the_same_snapshot_and_keeps_unknown_call_charged(learning):
+def test_legacy_expired_lease_reclaims_the_same_snapshot_and_keeps_unknown_call_charged(learning):
     observations(learning, 8)
     learning.service.semantic_processor = SemanticProcessor(
         learning.propose, learning.verify, policy=replace(SemanticPolicy(), max_model_calls=4),
     )
     first = claim(learning)
     _, snapshot = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, first)
+    snapshot.pop("operation_settlement_policy")
+    with learning.database.transaction(learning.principal) as conn:
+        conn.execute("UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND brain_id=%s AND id=%s",
+                     (Jsonb(snapshot), learning.principal.tenant_id, learning.brain, first["id"]))
     store = JobStore(learning.database)
     store.reserve_operation(learning.principal, learning.brain, first["id"], lease_token=first["lease_token"],
                             fence=first["fence"], operation_id="interrupted-proposal", request_fingerprint=digest("request"),
@@ -368,13 +372,14 @@ def test_expired_lease_reclaims_the_same_snapshot_and_keeps_unknown_call_charged
     assert second["id"] == first["id"] and second["fence"] == first["fence"] + 1
     completed = execute(learning, second)
     assert completed["model_calls"] == 3 and completed["attempts"] == 2
+    assert "operation_settlement_policy" not in completed["result"]
     assert completed["result"]["source_snapshot"] == snapshot["source_snapshot"]
     assert store.get_operation(learning.principal, learning.brain, first["id"], "interrupted-proposal")["outcome"] == "uncertain"
     with pytest.raises(DomainError):
         store.complete(learning.principal, learning.brain, first["id"], lease_token=first["lease_token"], fence=first["fence"])
 
 
-def test_reclaimed_unknown_call_stops_before_provider_when_pair_budget_is_insufficient(learning):
+def test_unsettled_call_stops_before_provider_even_when_configured_budget_increases(learning):
     observations(learning, 1)
     first = claim(learning)
     LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, first)
@@ -389,8 +394,9 @@ def test_reclaimed_unknown_call_stops_before_provider_when_pair_budget_is_insuff
     learning.service.semantic_processor = SemanticProcessor(
         learning.propose, learning.verify, policy=replace(SemanticPolicy(), max_model_calls=8),
     )
-    stopped = execute(learning, claim(learning, first["id"]))
-    assert stopped["state"] == "cancelled" and stopped["last_error"] == "budget_exceeded"
+    assert claim(learning, first["id"]) is None
+    stopped = learning.job(first["id"])
+    assert stopped["state"] == "cancelled" and stopped["last_error"] == "provider_uncertain"
     assert stopped["model_calls"] == 1 and stopped["max_model_calls"] == 2
     assert stopped["result"]["learning_window"]["processed_through_sequence"] == 0
     assert learning.calls == []

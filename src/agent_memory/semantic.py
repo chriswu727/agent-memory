@@ -146,6 +146,7 @@ _VERIFICATION_VALIDATOR = Draft202012Validator(VERIFICATION_SCHEMA)
 GENERAL_PROPOSAL_MODE = "general-v1"
 ORIENT_PROPOSAL_MODE = "orient-v1"
 EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
+COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -344,6 +345,31 @@ _ORIENT_VERIFY_INSTRUCTIONS = (
     "unknown or missing time cannot support unlimited validity. Preserve unknown and conflicting evidence rather "
     "than guessing. Your assessment is fallible and never a truth certificate."
 )
+_COMMUNICATION_INTENT_INSTRUCTIONS = (
+    "Separate what the user reports from what the user asks you to do. current_input_refs authorizes source "
+    "citations; it does not classify those sources as requests. A preference, preference change, autobiographical "
+    "report or personal plan is not itself a request for assistance, storage or action. 'I prefer tea now' reports "
+    "a preference; do not turn it into an open loop or a requested goal. 'Please remember that I prefer tea' "
+    "includes an actual request: describe the request to remember, not just the preference as a requested goal. "
+    "These are meaning distinctions, not keyword rules. A question or clear implicit request can be a request "
+    "without an imperative. Describe only the answer or action actually sought, preserving uncertainty about "
+    "its subject. A quoted request, recalled past request or imagined request is not a current request. "
+    "For mixed input, keep the requested action separate from self-reported content; do not attach unrelated "
+    "reported preferences or inferred intentions to the task. Represent a useful, supported current self-report "
+    "with source_content; otherwise no situation update is needed. Empty situation_updates is valid and does "
+    "not erase the original message or prevent separate background learning. A conditional preference does not "
+    "show that the condition currently holds. If intent is unclear, omit the proposed request rather than "
+    "manufacturing a task. Preserve genuine requests when supported. Do not output extra classification fields."
+)
+_COMMUNICATION_INTENT_VERIFY_INSTRUCTIONS = (
+    "Current-input authorization establishes which utterances may be cited, never that their content is a "
+    "request. Distinguish a self-reported preference, change or personal plan from asking the assistant to "
+    "answer or act. For current_request, the entire proposed answer or action must actually be sought in the "
+    "bound utterance; an accurate restatement of reported content does not establish request intent. Clear "
+    "implicit questions can qualify; quoted, historical or imagined requests cannot. In mixed input, verify "
+    "only the described current request without adopting unrelated reports or presuppositions. Do not repair "
+    "a mistaken request into a source-content update. Unknown intent remains unknown."
+)
 
 
 def _json(value):
@@ -365,30 +391,37 @@ def _episode_members(sources, scope):
 
 def proposal_data(sources, assertions, working_state, episodes, sampling, belief_relations, consolidation_plan=None,
                   *, current_input_refs=(), proposal_mode=GENERAL_PROPOSAL_MODE, scope=None, learning_input_refs=(),
-                  input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
+                  input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
     sources, assertions, belief_relations = list(sources), list(assertions), list(belief_relations)
     proposal_schema(proposal_mode)
     validate_input_contract(input_contract_version)
     if proposal_mode == ORIENT_PROPOSAL_MODE:
-        return {"proposal_mode": proposal_mode, "sources": sources, "existing_assertions": assertions,
+        data = {"proposal_mode": proposal_mode, "sources": sources, "existing_assertions": assertions,
                 "working_state": working_state, "sampling": sampling, "registry": CORE_REGISTRY.to_dict(),
                 "belief_relations": belief_relations, "current_input_refs": list(current_input_refs)}
-    plan = (plan_consolidation(sources, assertions, belief_relations, sampling)
-            if consolidation_plan is None else consolidation_plan)
-    data = {"sources": sources, "existing_assertions": assertions,
-            "working_state": working_state, "episodes": list(episodes), "sampling": sampling,
-            "registry": CORE_REGISTRY.to_dict(), "belief_relations": belief_relations, "consolidation_plan": plan,
-            "current_input_refs": list(current_input_refs)}
-    if input_contract_version == EPISODE_SCOPE_INPUT_VERSION:
-        scope = scope if scope is not None else working_state.get("scope")
-        data.update(learning_input_refs=copy.deepcopy(list(learning_input_refs)),
-                    episode_operation_scope=copy.deepcopy(scope),
-                    episode_eligible_member_refs=_episode_members(sources, scope))
+    else:
+        plan = (plan_consolidation(sources, assertions, belief_relations, sampling)
+                if consolidation_plan is None else consolidation_plan)
+        data = {"sources": sources, "existing_assertions": assertions,
+                "working_state": working_state, "episodes": list(episodes), "sampling": sampling,
+                "registry": CORE_REGISTRY.to_dict(), "belief_relations": belief_relations, "consolidation_plan": plan,
+                "current_input_refs": list(current_input_refs)}
+        if input_contract_version in (EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION):
+            scope = scope if scope is not None else working_state.get("scope")
+            data.update(learning_input_refs=copy.deepcopy(list(learning_input_refs)),
+                        episode_operation_scope=copy.deepcopy(scope),
+                        episode_eligible_member_refs=_episode_members(sources, scope))
+    if input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION:
+        data["communication_intent_contract"] = {
+            "version": COMMUNICATION_INTENT_INPUT_VERSION,
+            "current_input_citations_authorized": bool(current_input_refs),
+            "reference_semantics": "citation_authority_not_request_evidence",
+        }
     return data
 
 
 def validate_input_contract(version):
-    if version not in (None, EPISODE_SCOPE_INPUT_VERSION):
+    if version not in (None, EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION):
         raise ValueError("Unknown cognitive input contract")
 
 
@@ -399,15 +432,20 @@ def proposal_schema(mode):
 
 
 def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GENERAL_PROPOSAL_MODE,
-                    input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
+                    input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
     proposal_schema(proposal_mode)
     validate_input_contract(input_contract_version)
     if proposal_mode == ORIENT_PROPOSAL_MODE:
         instructions = _ORIENT_INSTRUCTIONS if phase == "proposal" else _ORIENT_VERIFY_INSTRUCTIONS
     else:
         instructions = _INSTRUCTIONS if phase == "proposal" else _VERIFY_INSTRUCTIONS
-        if phase == "proposal" and input_contract_version == EPISODE_SCOPE_INPUT_VERSION:
+        if phase == "proposal" and input_contract_version in (
+            EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION,
+        ):
             instructions += " " + _EPISODE_SCOPE_INSTRUCTIONS
+    if input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION:
+        instructions += " " + (_COMMUNICATION_INTENT_INSTRUCTIONS if phase == "proposal"
+                               else _COMMUNICATION_INTENT_VERIFY_INSTRUCTIONS)
     messages = ({"role": "system", "content": instructions + "\nResponse JSON schema:\n" + _json(schema)},
                 {"role": "user", "content": _json(data)})
     size = len(_json({"messages": messages, "response_schema": schema,
@@ -511,7 +549,7 @@ class CognitiveBatch:
     current_input_refs: tuple[dict, ...] = field(default=(), repr=False)
     proposal_mode: str = GENERAL_PROPOSAL_MODE
     learning_input_refs: tuple[dict, ...] = field(default=(), repr=False)
-    input_contract_version: str | None = EPISODE_SCOPE_INPUT_VERSION
+    input_contract_version: str | None = COMMUNICATION_INTENT_INPUT_VERSION
 
 
 @dataclass(frozen=True)
@@ -794,7 +832,7 @@ class SemanticProcessor:
         self.verify = verify
         self.policy = policy or SemanticPolicy()
 
-    def process(self, batch: CognitiveBatch, *, reserve, check=lambda: None,
+    def process(self, batch: CognitiveBatch, *, reserve, check=lambda: None, on_call_result=lambda **_: None,
                 prior_model_calls=0, prior_input_bytes=0) -> SemanticResult:
         try:
             output_schema = proposal_schema(batch.proposal_mode)
@@ -956,16 +994,34 @@ class SemanticProcessor:
             input_bytes += size
             check()
             if time.monotonic() - started >= policy.max_wall_time_ms / 1000:
+                on_call_result(phase=phase, outcome="failed", usage=None, response_fingerprint=None)
                 return None, "budget_exhausted"
             request = replace(request, timeout_seconds=(policy.max_wall_time_ms / 1000)
                               - (time.monotonic() - started))
             if request.timeout_seconds <= 0:
+                on_call_result(phase=phase, outcome="failed", usage=None, response_fingerprint=None)
                 return None, "budget_exhausted"
+            from .provider_usage import reported_usage, usage_marker
+
+            previous_call_id = usage_marker(provider)
             try:
                 raw = provider(request)
             except Exception:
+                on_call_result(phase=phase, outcome="uncertain",
+                               usage=reported_usage(provider, previous_call_id=previous_call_id),
+                               response_fingerprint=None)
                 check()
                 return None, "provider_unavailable"
+            response_fingerprint = None
+            if isinstance(raw, str) and len(raw) <= policy.max_response_bytes:
+                try:
+                    if len(raw.encode("utf-8")) <= policy.max_response_bytes:
+                        response_fingerprint = digest(raw)
+                except UnicodeError:
+                    pass
+            on_call_result(phase=phase, outcome="completed",
+                           usage=reported_usage(provider, previous_call_id=previous_call_id),
+                           response_fingerprint=response_fingerprint)
             check()
             if time.monotonic() - started >= policy.max_wall_time_ms / 1000:
                 return None, "budget_exhausted"

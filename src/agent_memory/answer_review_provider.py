@@ -6,6 +6,7 @@ from .recall_provider import ChatCompletionsRecallReasoner, RecallProviderError
 
 class ChatCompletionsAnswerReviewProvider(ChatCompletionsRecallReasoner):
     def __call__(self, request: AnswerReviewRequest) -> str:
+        self._last_usage, self._last_request_id = None, None
         if request.phase != "answer_review":
             raise ValueError("Unknown answer review request phase")
         try:

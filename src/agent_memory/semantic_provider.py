@@ -13,6 +13,7 @@ class SemanticProviderError(RuntimeError):
 
 class ChatCompletionsSemanticProvider(ChatCompletionsRecallReasoner):
     def __call__(self, request: CognitiveRequest) -> str:
+        self._last_usage, self._last_request_id = None, None
         if request.phase not in {"proposal", "verification"}:
             raise ValueError("Unknown cognitive request phase")
         try:

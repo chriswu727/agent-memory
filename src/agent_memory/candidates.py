@@ -171,7 +171,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                                weights={method: 0.5 if method == "association" else 1.0 for method in rankings},
                                limit=512)
         usage_rows = conn.execute(
-            "SELECT memory_id,memory_revision,external_uses,successes,failures,last_external_use_at "
+            "SELECT memory_id,memory_revision,external_uses,successes,failures,last_external_use_at,last_reinforcement_at "
             "FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
             "AND (memory_id,memory_revision) IN (SELECT * FROM unnest(%s::text[],%s::bigint[]))",
             (*params, [item["memory_id"] for item in ranked], [item["revision"] for item in ranked]),

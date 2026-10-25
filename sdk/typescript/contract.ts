@@ -718,6 +718,7 @@ export type RecallTrace = {
   "scope": BoundScope;
   "turn_id": string | null;
   "memory_id": Identifier;
+  "memory_revision"?: number;
   "kind": "candidate_hit" | "context_selected" | "quoted" | "background_influence" | "user_reintroduced" | "user_confirmed" | "user_corrected" | "observed_outcome";
   "source": "server_instrumentation" | "model_estimate" | "user_message" | "tool_observation";
   "feedback_event_id": string | null;

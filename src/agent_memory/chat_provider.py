@@ -4,9 +4,11 @@ import copy
 import json
 import math
 import re
+import threading
 import time
 import zlib
 from typing import Any, Literal
+from uuid import uuid4
 
 import httpx
 
@@ -75,7 +77,7 @@ def _reject_constant(value: str) -> None:
 def _usage(value: Any) -> dict | None:
     if not isinstance(value, dict):
         return None
-    if any(type(value.get(key)) is not int or value[key] < 0 for key in _USAGE_FIELDS):
+    if any(type(value.get(key)) is not int or not 0 <= value[key] <= 2**63 - 1 for key in _USAGE_FIELDS):
         return None
     if value["total_tokens"] != value["prompt_tokens"] + value["completion_tokens"]:
         return None
@@ -98,7 +100,7 @@ def _usage(value: Any) -> dict | None:
         selected = {}
         for field in fields:
             if field in detail:
-                if type(detail[field]) is not int or detail[field] < 0:
+                if type(detail[field]) is not int or not 0 <= detail[field] <= 2**63 - 1:
                     return None
                 maximum = value[key.removesuffix("_details")]
                 if field != "rejected_prediction_tokens" and detail[field] > maximum:
@@ -164,6 +166,7 @@ class ChatCompletionsGenerator:
         self.max_output_tokens = max_output_tokens
         self.timeout_seconds = timeout_seconds
         self.max_response_bytes = max_response_bytes
+        self._call_metadata = threading.local()
         self._last_usage: dict | None = None
         self._last_request_id: str | None = None
         self._http = httpx.Client(
@@ -176,12 +179,32 @@ class ChatCompletionsGenerator:
         )
 
     @property
+    def _last_usage(self) -> dict | None:
+        return getattr(self._call_metadata, "usage", None)
+
+    @_last_usage.setter
+    def _last_usage(self, value: dict | None) -> None:
+        self._call_metadata.usage = value
+
+    @property
+    def _last_request_id(self) -> str | None:
+        return getattr(self._call_metadata, "request_id", None)
+
+    @_last_request_id.setter
+    def _last_request_id(self, value: str | None) -> None:
+        self._call_metadata.request_id = value
+
+    @property
     def last_usage(self) -> dict | None:
         return copy.deepcopy(self._last_usage)
 
     @property
     def last_request_id(self) -> str | None:
         return self._last_request_id
+
+    @property
+    def last_call_id(self) -> str | None:
+        return getattr(self._call_metadata, "call_id", None)
 
     def close(self) -> None:
         self._http.close()
@@ -225,18 +248,28 @@ class ChatCompletionsGenerator:
         return bytes(data)
 
     def __call__(self, request: ModelRequest) -> str:
+        if not isinstance(request, ModelRequest):
+            self._last_usage, self._last_request_id = None, None
+            raise ChatProviderError("invalid_request")
+        return self._complete(request.messages, max_output_tokens=self.max_output_tokens,
+                              timeout_seconds=self.timeout_seconds)
+
+    def _complete(self, messages, *, max_output_tokens, timeout_seconds, json_mode=False) -> str:
         self._last_usage, self._last_request_id = None, None
+        self._call_metadata.call_id = uuid4().hex
         if self._http.is_closed:
             raise ChatProviderError("provider_closed")
-        deadline = time.monotonic() + self.timeout_seconds
+        deadline = time.monotonic() + timeout_seconds
         try:
-            if (not isinstance(request, ModelRequest) or not isinstance(request.messages, tuple)
-                    or not request.messages or any(not isinstance(item, dict) for item in request.messages)):
+            if (not isinstance(messages, tuple) or not messages
+                    or any(not isinstance(item, dict) for item in messages)):
                 raise ValueError
             body = {
-                "model": self._model, "messages": list(request.messages),
-                "max_tokens": self.max_output_tokens, "stream": False,
+                "model": self._model, "messages": list(messages),
+                "max_tokens": max_output_tokens, "stream": False,
             }
+            if json_mode:
+                body["response_format"] = {"type": "json_object"}
             if self._thinking is not None:
                 body["thinking"] = {"type": self._thinking}
             _validate_json(body)
@@ -247,7 +280,7 @@ class ChatCompletionsGenerator:
         try:
             with self._http.stream(
                 "POST", "chat/completions", content=payload,
-                headers={"Content-Type": "application/json"}, timeout=self.timeout_seconds,
+                headers={"Content-Type": "application/json"}, timeout=timeout_seconds,
             ) as response:
                 self._last_request_id = _request_id(response.headers.get("x-request-id"))
                 self._check_deadline(deadline)

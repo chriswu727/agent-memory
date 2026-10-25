@@ -653,7 +653,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         result["recall_traces"].append({
             "trace_id": uid(), "recall_id": result["recall_id"],
             "retrieval_snapshot_id": snapshot["snapshot_id"], "scope": copy.deepcopy(scope),
-            "turn_id": None, "memory_id": memory["memory_id"], "kind": "candidate_hit",
+            "turn_id": None, "memory_id": memory["memory_id"], "memory_revision": memory["revision"], "kind": "candidate_hit",
             "source": "server_instrumentation", "feedback_event_id": None,
             "evidence_refs": copy.deepcopy(memory["evidence_refs"]),
             "recorded_at": timestamp, "allowed_effect": "none",
@@ -1127,7 +1127,7 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
                 result["recall_traces"].append({
                     "trace_id": trace_id, "recall_id": recall_result["recall_id"],
                     "retrieval_snapshot_id": snapshot["snapshot_id"], "scope": copy.deepcopy(scope),
-                    "turn_id": payload["turn_id"], "memory_id": memory["memory_id"],
+                    "turn_id": payload["turn_id"], "memory_id": memory["memory_id"], "memory_revision": memory["revision"],
                     "kind": "context_selected", "source": "server_instrumentation",
                     "feedback_event_id": None, "evidence_refs": copy.deepcopy(refs),
                     "recorded_at": timestamp, "allowed_effect": "activation_only",

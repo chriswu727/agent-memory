@@ -5,7 +5,7 @@ from . import cognition
 from .candidates import _eligible, _scope_clause
 from .helpers import DomainError, digest
 from .retrieval import resolve_dependency_closure
-from .semantic import EPISODE_SCOPE_INPUT_VERSION
+from .semantic import COMMUNICATION_INTENT_INPUT_VERSION
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ def _references(memory):
 
 class _Selector:
     def __init__(self, conn, service, principal, brain, target, through, policy, *,
-                 learning_input_refs=(), input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
+                 learning_input_refs=(), input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
         self.conn, self.service, self.principal, self.brain = conn, service, principal, brain
         self.target, self.through, self.policy = target, through, policy
         self.learning_input_refs = copy.deepcopy(tuple(learning_input_refs))
@@ -339,7 +339,7 @@ class _Selector:
 
 def select_neighborhood(conn, service, principal, brain, target, *, through_sequence,
                         required_event_refs, policy, learning_input_refs=(),
-                        input_contract_version=EPISODE_SCOPE_INPUT_VERSION):
+                        input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
     selector = _Selector(conn, service, principal, brain, target, through_sequence, policy,
                          learning_input_refs=learning_input_refs, input_contract_version=input_contract_version)
     rows = conn.execute(

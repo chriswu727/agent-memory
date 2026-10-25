@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_memory import api, cli, config, embeddings, semantic_provider, service
+from agent_memory import api, cli, config, embeddings, semantic_provider, service, storage
 from agent_memory.config import Settings, configured_service
 from agent_memory.helpers import Principal
 
@@ -118,6 +118,7 @@ def test_embedding_dimensions_must_fit_the_persistent_index(dimensions):
 @pytest.mark.parametrize("thinking", [None, "enabled", "disabled"])
 def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_closes_it(monkeypatch, thinking):
     opened, closed = [], []
+    monkeypatch.setattr(storage.Database, "check_compatibility", lambda *args, **kwargs: None)
 
     class Provider:
         def __init__(self, *args, **kwargs):
@@ -153,6 +154,7 @@ def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_cl
 
 
 def test_default_factory_constructs_no_external_provider(monkeypatch):
+    monkeypatch.setattr(storage.Database, "check_compatibility", lambda *args, **kwargs: None)
     def forbidden(*args, **kwargs):
         pytest.fail("Unconfigured provider must not be created")
 

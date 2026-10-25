@@ -10,7 +10,10 @@ from agent_memory.local_profile import LocalProfileError, ensure_profile
 
 
 @pytest.fixture
-def supervisor(tmp_path):
+def supervisor(tmp_path, monkeypatch):
+    from agent_memory.storage import Database
+
+    monkeypatch.setattr(Database, "check_compatibility", lambda *args, **kwargs: None)
     profile = ensure_profile(tmp_path / "profile")
     return LocalSupervisor(profile, logging.getLogger("desktop-test"))
 

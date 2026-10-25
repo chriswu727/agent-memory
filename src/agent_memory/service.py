@@ -247,13 +247,9 @@ class MemoryService:
         )
         conn.execute("DELETE FROM memory_embeddings WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND memory_id=ANY(%s::text[])",
                      (*params, affected))
-        conn.execute("DELETE FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND memory_id=ANY(%s::text[])",
-                     (*params, affected))
-        conn.execute(
-            "DELETE FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND memory_id IN "
-            "(SELECT document->>'memory_id' FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-            "AND document->>'feedback_event_id'=ANY(%s::text[]))", (*params, *params, list(event_ids)),
-        )
+        from .feedback import invalidate_contributions
+
+        invalidate_contributions(conn, params, event_ids=event_ids, memory_ids=set(affected) | set(memory_ids))
         return affected
 
     def _dependent_events(self, conn, principal, brain, event_ids):
@@ -827,6 +823,8 @@ class MemoryService:
             )
 
     def _feedback(self, conn, principal, brain, target, payload, events):
+        from .feedback import record_feedback
+
         traces = []
         lookup = {e["event_id"]: e for e in events}
         for proposal in payload.get("recall_feedback", []):
@@ -834,7 +832,7 @@ class MemoryService:
             if kind in ("candidate_hit", "context_selected", "quoted"):
                 raise DomainError("invalid_evidence", "Internal trace kinds can only be emitted by service instrumentation.")
             memory = conn.execute(
-                "SELECT id,revision FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s "
+                "SELECT id,revision,document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s "
                 "AND is_current AND NOT deleted AND NOT suppressed AND NOT invalidated",
                 (*self._params(principal, brain["id"]), proposal["memory_id"]),
             ).fetchone()
@@ -857,6 +855,9 @@ class MemoryService:
                     raise DomainError("invalid_evidence", "Feedback must be an actual response in this context.")
                 if required_role == "tool" and event["origin_verification"] != "verified_producer":
                     raise DomainError("invalid_evidence", "Tool outcomes require a registered, verified producer.")
+                if required_role == "user" and (event["origin"] != "user_statement"
+                                                 or event["origin_verification"] == "unverified_import"):
+                    raise DomainError("invalid_evidence", "User feedback requires an original received statement.")
                 self._evidence(proposal["evidence_refs"], events)
                 if not any(r["event_id"] == event["event_id"] for r in proposal["evidence_refs"]):
                     raise DomainError("invalid_evidence", "Feedback evidence must refer to the external event.")
@@ -868,54 +869,15 @@ class MemoryService:
                 source = "tool_observation" if required_role == "tool" else "user_message"
             trace = {"trace_id": uid(), "recall_id": proposal["recall_id"], "retrieval_snapshot_id": "feedback:" + proposal["recall_id"],
                      "scope": self._scope(principal, brain, target), "turn_id": payload["turn_id"], "memory_id": proposal["memory_id"],
+                     "memory_revision": memory["revision"],
                      "kind": kind, "source": source, "feedback_event_id": proposal["feedback_event_id"] if source != "model_estimate" else None,
                      "evidence_refs": proposal["evidence_refs"], "recorded_at": now(),
                      "allowed_effect": "none" if source == "model_estimate" else "external_reassessment"}
             traces.append(trace)
-            if source != "model_estimate":
+            if source != "model_estimate" and kind in {"user_confirmed", "user_corrected"}:
                 params = self._params(principal, brain["id"])
-                used = conn.execute(
-                    "SELECT id,document FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                    "AND document->>'recall_id'=%s AND document->>'memory_id'=%s "
-                    "AND document->>'kind' IN ('context_selected','quoted') "
-                    "AND document #>> '{scope,conversation_id}'=%s AND document #>> '{scope,branch_id}'=%s LIMIT 1",
-                    (*params, proposal["recall_id"], memory["id"], target.get("conversation_ref"), target.get("branch_ref")),
-                ).fetchone()
-                if used and cognition._stamp(event["system_time"]["recorded_at"]) <= cognition._stamp(used["document"]["recorded_at"]):
-                    raise DomainError("invalid_evidence", "Feedback must follow the recalled context.")
-                delivered = None
-                if used and used["document"].get("turn_id"):
-                    delivered = conn.execute(
-                        "SELECT output_event_refs FROM memory_runtime_turns WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                        "AND turn_id=%s AND conversation_id=%s AND branch_id=%s AND stage IN ('delivered','committed','completed')",
-                        (*params, used["document"]["turn_id"], target.get("conversation_ref"), target.get("branch_ref")),
-                    ).fetchone()
-                preceding = conn.execute(
-                    "SELECT id,revision FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                    "AND conversation_id=%s AND branch_id=%s AND sequence<%s AND is_current AND NOT retired AND NOT suppressed "
-                    "AND NOT deleted AND document #>> '{observed,actor_role}'='assistant' "
-                    "AND document #>> '{observed,delivery_state}' IN ('delivered','partially_delivered') ORDER BY sequence DESC LIMIT 1",
-                    (*params, target.get("conversation_ref"), target.get("branch_ref"), event["sequence"]),
-                ).fetchone()
-                follows_delivery = (delivered and preceding and
-                    {"event_id": preceding["id"], "revision": preceding["revision"]} in delivered["output_event_refs"])
-                applied = conn.execute(
-                    "SELECT id FROM memory_traces WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                    "AND document->>'memory_id'=%s AND document->>'feedback_event_id'=%s AND applied_at IS NOT NULL LIMIT 1",
-                    (*params, memory["id"], proposal["feedback_event_id"]),
-                ).fetchone()
-                if used and follows_delivery and not applied and kind in {"user_confirmed", "user_corrected", "observed_outcome"}:
-                    conn.execute(
-                        "INSERT INTO memory_access_state(tenant_id,owner_id,brain_id,memory_id,memory_revision,"
-                        "external_uses,successes,failures,last_external_use_at,last_feedback_event_id) "
-                        "VALUES(%s,%s,%s,%s,%s,1,%s,%s,now(),%s) "
-                        "ON CONFLICT(tenant_id,brain_id,memory_id,memory_revision) DO UPDATE SET "
-                        "revision=memory_access_state.revision+1,external_uses=memory_access_state.external_uses+1,"
-                        "successes=memory_access_state.successes+EXCLUDED.successes,failures=memory_access_state.failures+EXCLUDED.failures,"
-                        "last_external_use_at=now(),last_feedback_event_id=EXCLUDED.last_feedback_event_id",
-                        (*params, memory["id"], memory["revision"], int(kind == "user_confirmed"),
-                         int(kind == "user_corrected"), proposal["feedback_event_id"]),
-                    )
+                if record_feedback(conn, self, principal, brain, target,
+                                   self._rebind(memory["document"], principal, brain), proposal, event):
                     self._save_traces(conn, principal, brain, [trace])
                     conn.execute("UPDATE memory_traces SET applied_at=now() WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                                  (*params, trace["trace_id"]))

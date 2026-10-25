@@ -1,9 +1,38 @@
 from contextlib import contextmanager
-from importlib.resources import files
-from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
+
+from .build_identity import MIGRATIONS, SCHEMA_ID
+
+
+class SchemaCompatibilityError(RuntimeError):
+    code = "database_schema_incompatible"
+
+    def __init__(self):
+        super().__init__("The database schema is not supported by this installation; use a compatible release.")
+
+
+def schema_status(conn, *, require_current: bool = False) -> dict:
+    names = tuple(name for name, _ in MIGRATIONS)
+    exists = conn.execute("SELECT to_regclass('memory_migrations') AS name").fetchone()["name"]
+    if exists:
+        applied = tuple(row["name"] for row in conn.execute("SELECT name FROM memory_migrations ORDER BY name"))
+        if applied != names[:len(applied)]:
+            raise SchemaCompatibilityError()
+    else:
+        existing_tables = conn.execute(
+            "SELECT 1 FROM pg_class WHERE relnamespace=current_schema()::regnamespace "
+            "AND relname LIKE 'memory\\_%' ESCAPE '\\' AND relkind IN ('r','p') LIMIT 1"
+        ).fetchone()
+        if existing_tables:
+            raise SchemaCompatibilityError()
+        applied = ()
+    pending = len(names) - len(applied)
+    if require_current and pending:
+        raise SchemaCompatibilityError()
+    return {"state": "current" if not pending else "migration_required" if exists else "uninitialized",
+            "schema_id": SCHEMA_ID, "applied_count": len(applied), "pending_count": pending}
 
 
 class Database:
@@ -11,27 +40,25 @@ class Database:
         self.dsn = dsn
         self.migration_dsn = migration_dsn or dsn
 
+    def check_compatibility(self, *, require_current: bool = False) -> dict:
+        with psycopg.connect(self.migration_dsn, row_factory=dict_row, connect_timeout=5) as conn:
+            conn.execute("SET TRANSACTION READ ONLY")
+            conn.execute("SET LOCAL statement_timeout = '5000'")
+            return schema_status(conn, require_current=require_current)
+
     def migrate(self):
-        migration_root = Path(__file__).resolve().parents[2] / "migrations"
-        if not migration_root.is_dir():
-            migration_root = files("agent_memory").joinpath("resources/migrations")
-        migrations = sorted(
-            (entry for entry in migration_root.iterdir() if entry.name.endswith(".sql")),
-            key=lambda entry: entry.name,
-        )
-        if not migrations:
-            raise RuntimeError("No database migrations were packaged.")
         with psycopg.connect(self.migration_dsn, row_factory=dict_row) as conn:
             conn.execute("SELECT pg_advisory_xact_lock(770419510)")
+            schema_status(conn)
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS memory_migrations "
                 "(name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())"
             )
             existing = {r["name"] for r in conn.execute("SELECT name FROM memory_migrations")}
-            for migration in migrations:
-                if migration.name not in existing:
-                    conn.execute(migration.read_text(), prepare=False)
-                    conn.execute("INSERT INTO memory_migrations (name) VALUES (%s)", (migration.name,))
+            for name, content in MIGRATIONS:
+                if name not in existing:
+                    conn.execute(content.decode("utf-8"), prepare=False)
+                    conn.execute("INSERT INTO memory_migrations (name) VALUES (%s)", (name,))
 
     @contextmanager
     def transaction(self, principal):

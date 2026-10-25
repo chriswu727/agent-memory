@@ -4,10 +4,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from psycopg.types.json import Jsonb
+from test_learning import learning as learning
+from test_semantic import claim, encoded, proposals
 
 from agent_memory.config import Settings
 from agent_memory.helpers import Principal, uid
+from agent_memory.jobs import JobStore, summarize_learning
+from agent_memory.learning import LearningEngine
 from agent_memory.learning_progress import _summary, learning_progress, sanitize_learning_progress
+from agent_memory.semantic import SemanticProcessor
 from agent_memory.service import MemoryService
 from agent_memory.storage import Database
 
@@ -260,11 +265,12 @@ def stored():
             with database.transaction(principal) as connection:
                 connection.execute(
                     "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,state,payload,created_at,"
-                    "attempts,fence,last_error,available_at,lease_expires_at) "
-                    "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    "attempts,fence,last_error,available_at,lease_expires_at,result) "
+                    "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                     (principal.tenant_id, principal.principal_id, brain, identifier, kind, state, Jsonb(document),
                      fields.get("created_at", AT), fields.get("attempts", 0), fields.get("fence", 0),
-                     fields.get("last_error"), fields.get("available_at", AT), fields.get("lease_expires_at")),
+                     fields.get("last_error"), fields.get("available_at", AT), fields.get("lease_expires_at"),
+                     Jsonb(fields["result"]) if fields.get("result") is not None else None),
                 )
             return identifier
 
@@ -342,3 +348,226 @@ def test_database_counts_are_tenant_owner_and_brain_scoped(stored):
 def test_configuration_validation_precedes_database_access():
     with pytest.raises(ValueError, match="boolean"):
         learning_progress(None, None, None, configured=1)
+
+
+def outcome_row(identifier="job", *, status="completed", accepted=0, published=0, reasons=None):
+    outcome = ("accepted_proposals" if accepted else "no_accepted_proposals" if status == "partial"
+               else "no_proposals" if status == "completed" else "not_evaluated")
+    return window(identifier, processed=40, state="completed", has_result=True, result_object=True,
+                  has_status=True, processing_status=status, learning_outcome=outcome, publication_object=True,
+                  accepted_counts={"claims": accepted, "situation_updates": 0, "episode_actions": 0, "belief_links": 0},
+                  published_counts={"claims": published, "episode_versions": 0, "pattern_views": 0, "belief_relations": 0},
+                  rejected_count=sum((reasons or {}).values()), rejection_reason_counts=reasons or {})
+
+
+def semantic_result(*, status="completed", accepted=0, published=0, reasons=()):
+    return {
+        "status": status, "learning_outcome": "accepted_proposals" if accepted else
+        "no_accepted_proposals" if status == "partial" else "no_proposals" if status == "completed" else "not_evaluated",
+        "claims": [{"statement": "private-claim"}] * accepted, "situation_updates": [],
+        "episode_actions": [], "belief_links": [], "rejected": [{"reason": reason} for reason in reasons],
+        "publication": {"memory_versions": [{"memory_id": "private-memory", "revision": 1}] * published,
+                        "episode_versions": [], "pattern_view_ids": [], "belief_relation_versions": []},
+        "sources": [{"body": "private-source-body"}],
+    }
+
+
+def test_historical_outcomes_distinguish_noop_rejection_partial_and_unpublished_results():
+    rows = [outcome_row("noop"), outcome_row("rejected", status="partial",
+            reasons={"request_intent_unconfirmed": 1}), outcome_row("published", accepted=2, published=2),
+            outcome_row("unpublished", accepted=1), outcome_row("partial", status="partial", accepted=1,
+            published=1, reasons={"semantic_support_unconfirmed": 1}), window("pending")]
+    summary = summarize(*rows)
+    result = summary["semantic_outcomes"]
+    assert result["basis"] == "retained_latest_job_results" and result["counts_complete"]
+    assert result["job_count"] == 6 and result["evaluated_job_count"] == 5
+    assert result["unevaluated_job_count"] == 1 and result["unknown_job_count"] == 0
+    assert result["learning_outcome_counts"] == {
+        "accepted_proposals": 3, "no_accepted_proposals": 1, "no_proposals": 1, "not_evaluated": 1,
+    }
+    assert result["accepted_counts"]["claims"] == 4 and result["published_counts"]["claims"] == 3
+    assert result["rejection_reason_counts"] == {"request_intent_unconfirmed": 1, "semantic_support_unconfirmed": 1}
+    assert {example["reason"] for example in result["examples"]} == {
+        "no_accepted_proposals", "partial_acceptance", "accepted_without_publication",
+    }
+    assert summary["open_window_count"] == 1 and summary["counts_complete"]
+    assert sanitize_learning_progress(summary) == summary
+
+
+def test_old_completed_rejection_remains_visible_after_two_hundred_new_completed_jobs():
+    old = outcome_row("old-rejection", status="partial", reasons={"semantic_support_unconfirmed": 1})
+    rows = [outcome_row(f"new-{index}", accepted=1, published=1) for index in range(205)]
+    for index, row in enumerate(rows):
+        row.update(window_start=index + 41, window_end=index + 41, processed=index + 41)
+    summary = summarize(*rows, old)
+    result = summary["semantic_outcomes"]
+    assert summary["open_window_count"] == 0 and summary["counts_complete"]
+    assert result["job_count"] == 206 and result["counts_complete"]
+    assert result["learning_outcome_counts"]["no_accepted_proposals"] == 1
+    assert result["examples"][0]["job_id"] == "old-rejection"
+
+
+@pytest.mark.parametrize("fields,limitation", [
+    ({"has_result": False}, "missing_result"),
+    ({"result_object": False}, "invalid_result"),
+    ({"processing_status": []}, "invalid_result"),
+    ({"learning_outcome": "private-outcome"}, "invalid_result"),
+    ({"accepted_counts": {"claims": True}}, "invalid_result"),
+    ({"publication_object": False}, "invalid_result"),
+    ({"published_counts": {"claims": 2**63}}, "invalid_result"),
+    ({"rejected_count": 1, "rejection_reason_counts": {"private-reason": 1}}, "invalid_result"),
+    ({"learning_outcome": "accepted_proposals"}, "invalid_result"),
+    ({"state": "superseded"}, "invalidated_result"),
+    ({"state": "cancelled", "last_error": "source_unavailable"}, "invalidated_result"),
+])
+def test_missing_malformed_and_invalidated_results_are_unknown(fields, limitation):
+    row = outcome_row()
+    row.update(fields)
+    result = summarize(row)["semantic_outcomes"]
+    assert result["unknown_job_count"] == 1 and not result["counts_complete"]
+    assert result["limitation_counts"] == {limitation: 1}
+    assert result["evaluated_job_count"] == 0
+    assert sum(result["accepted_counts"].values()) == sum(result["published_counts"].values()) == 0
+    assert "private-" not in json.dumps(result)
+
+
+def test_recovery_counts_job_results_once_without_claiming_unique_input_or_memory_totals():
+    parent = outcome_row("parent", accepted=1, published=1)
+    parent.update(processed=8, continuation_id="child")
+    child = outcome_row("child", accepted=1, published=1)
+    child.update(window_start=9, continuation_parent="parent")
+    result = summarize(parent, child)
+    assert result["open_window_count"] == 0 and result["semantic_outcomes"]["counts_complete"]
+    assert result["semantic_outcomes"]["evaluated_job_count"] == 2
+    assert result["semantic_outcomes"]["published_counts"]["claims"] == 2
+    parent.update(state="superseded", recovery_id="recovery")
+    recovery = outcome_row("recovery", accepted=1, published=1)
+    recovery.update(window_end=8, processed=8, recovery_parent="parent")
+    result = summarize(parent, child, recovery)
+    assert result["open_window_count"] == 0 and result["counts_complete"]
+    assert not result["semantic_outcomes"]["counts_complete"]
+    assert result["semantic_outcomes"]["unknown_job_count"] == 1
+    assert result["semantic_outcomes"]["published_counts"]["claims"] == 2
+
+
+@pytest.mark.parametrize("field,value", [
+    ("job_count", True), ("unknown_job_count", 2**63), ("accepted_counts", {"claims": "private-count"}),
+    ("processing_status_counts", {"private-status": 1}), ("examples", [{"body": "private-body"}]),
+    ("examples_truncated", []), ("basis", "private-basis"),
+])
+def test_outcome_sanitizer_rejects_malformed_aggregates_without_leaking_content(field, value):
+    summary = summarize(outcome_row())
+    summary["semantic_outcomes"][field] = value
+    safe = sanitize_learning_progress(summary)
+    assert not safe["semantic_outcomes"]["counts_complete"]
+    assert safe["counts_complete"] and "private-" not in json.dumps(safe)
+    assert sanitize_learning_progress(safe) == safe
+
+
+@pytest.mark.parametrize("reason", [[], {}, True, "private-reason"])
+def test_outcome_examples_require_fixed_reasons(reason):
+    summary = summarize(outcome_row(status="partial", reasons={"invalid_proposal": 1}))
+    summary["semantic_outcomes"]["examples"][0]["reason"] = reason
+    result = sanitize_learning_progress(summary)["semantic_outcomes"]
+    assert result["examples"] == [] and not result["counts_complete"]
+    assert "private-" not in json.dumps(result)
+
+
+def test_outcome_examples_are_bounded_ordered_and_private_fields_removed():
+    rows = [outcome_row(f"rejection-{index}", status="partial", reasons={"invalid_proposal": 1})
+            for index in range(12)]
+    for index, row in enumerate(rows):
+        row.update(window_start=index + 1, window_end=index + 1, processed=index + 1)
+    summary = summarize(*reversed(rows))
+    result = summary["semantic_outcomes"]
+    assert len(result["examples"]) == 8 and result["examples_truncated"]
+    assert result["examples"][0]["job_id"] == "rejection-0"
+    result["examples"][0].update(source_id="private-source", body="private-body")
+    assert "private-" not in json.dumps(sanitize_learning_progress(summary))
+
+
+def test_request_intent_rejection_is_not_lost_in_existing_per_job_monitoring():
+    result = summarize_learning(semantic_result(status="partial", reasons=["request_intent_unconfirmed"]))
+    assert result["rejection_reason_counts"] == {"request_intent_unconfirmed": 1}
+
+
+@pytest.mark.integration
+def test_database_historical_semantic_gap_survives_more_than_two_hundred_new_jobs(stored):
+    old = stored.add(start=1, end=1, processed=1, state="completed",
+                     result=semantic_result(status="partial", reasons=["request_intent_unconfirmed"]))
+    for number in range(205):
+        stored.add(start=number + 2, end=number + 2, processed=number + 2, state="completed",
+                   result=semantic_result(accepted=1, published=1))
+    summary = stored.progress()
+    result = summary["semantic_outcomes"]
+    assert summary["open_window_count"] == 0 and summary["counts_complete"]
+    assert result["counts_complete"] and result["evaluated_job_count"] == 206
+    assert result["published_counts"]["claims"] == 205
+    assert result["examples"][0]["job_id"] == old
+    assert result["rejection_reason_counts"] == {"request_intent_unconfirmed": 1}
+    assert "private-" not in json.dumps(summary)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("field,value", [
+    ("claims", ["private-invalid-claim"]), ("claims", {"body": "private-claim"}),
+    ("rejected", [{"reason": {"body": "private-reason"}}]),
+    ("rejected", ["private-rejection"]), ("publication", {"memory_versions": None}),
+    ("publication", {"pattern_view_ids": [True]}), ("learning_outcome", None),
+])
+def test_database_projection_marks_malformed_results_unknown(stored, field, value):
+    result = semantic_result()
+    result[field] = value
+    stored.add(processed=40, state="completed", result=result)
+    summary = stored.progress()["semantic_outcomes"]
+    assert summary["unknown_job_count"] == 1 and not summary["counts_complete"]
+    assert "private-" not in json.dumps(summary)
+
+
+@pytest.mark.integration
+def test_worker_rejection_publication_restart_and_source_erasure_have_distinct_outcomes(learning):
+    def propose(request):
+        sources = json.loads(request.messages[-1]["content"])["sources"]
+        source = next((item for item in sources if item["observed"]["content"]["text"]
+                       == "I prefer evening walks."), sources[0])
+        return encoded(proposals(claim(source, statement=source["observed"]["content"]["text"],
+                                       conditions={"op": "always"})))
+
+    def reject(request):
+        response = json.loads(learning.verify(request))
+        for assessment in response["assessments"]:
+            for verdict in assessment["relations"]:
+                verdict["verdict"] = "unknown"
+        return encoded(response)
+
+    def work():
+        job = JobStore(learning.database).claim(learning.principal, learning.brain, worker_id=uid(),
+                                               kinds=["consolidate"], lease_seconds=120)
+        assert job is not None
+        LearningEngine(learning.service)._execute(learning.principal, learning.brain, job)
+        return learning.job(job["id"])
+
+    def progress():
+        database = Database(Settings.from_env().database_url)
+        with database.transaction(learning.principal) as connection:
+            return learning_progress(connection, learning.principal, learning.brain, configured=True)
+
+    learning.observe("I prefer early morning walks.")
+    learning.service.semantic_processor = SemanticProcessor(propose, reject)
+    failed = work()
+    assert failed["state"] == "completed" and failed["result"]["publication"]["memory_versions"] == []
+    rejected = progress()
+    assert rejected["open_window_count"] == 0
+    assert rejected["semantic_outcomes"]["learning_outcome_counts"] == {"no_accepted_proposals": 1}
+    assert rejected["semantic_outcomes"]["counts_complete"]
+    receipt = learning.observe("I prefer evening walks.", conversation="new-conversation")
+    learning.service.semantic_processor = SemanticProcessor(propose, learning.verify)
+    accepted = work()
+    assert accepted["result"]["publication"]["memory_versions"]
+    published = progress()["semantic_outcomes"]
+    assert published["published_counts"]["claims"] == 1 and published["counts_complete"]
+    learning.memory.forget(receipt["accepted_event_ids"], kind="events", mode="erase_content", expected_scope_generation=1)
+    erased = progress()["semantic_outcomes"]
+    assert not erased["counts_complete"] and erased["unknown_job_count"] >= 1
+    assert erased["limitation_counts"]["invalidated_result"] >= 1
+    assert erased["published_counts"]["claims"] == 0

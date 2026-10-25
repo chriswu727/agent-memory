@@ -184,9 +184,16 @@ def test_transport_failures_are_sanitized_and_not_retried(exception, code):
 
 
 def test_elapsed_budget_is_checked_between_response_chunks(monkeypatch):
-    timestamps = iter([0.0, 1.0, 3.0])
-    monkeypatch.setattr("agent_memory.recall_provider.time.monotonic", lambda: next(timestamps))
-    stream = TrackedStream([b" "] * 3)
+    clock = {"now": 0.0}
+    monkeypatch.setattr("agent_memory.chat_provider.time.monotonic", lambda: clock["now"])
+
+    class DelayedStream(TrackedStream):
+        def __iter__(self):
+            for chunk in super().__iter__():
+                clock["now"] += 1.5
+                yield chunk
+
+    stream = DelayedStream([b" "] * 3)
     with provider(lambda request: httpx.Response(200, stream=stream)) as reason:
         with pytest.raises(RecallProviderError, match="timeout"):
             reason(REQUEST)

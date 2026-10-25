@@ -44,7 +44,7 @@ def completion(**changes):
             "completion_tokens_details": {"reasoning_tokens": 6},
         },
         "choices": [{"finish_reason": "stop", "message": {
-            "content": '{"claims":[]}', "reasoning_content": "private reasoning",
+            "role": "assistant", "content": '{"claims":[]}', "reasoning_content": "private reasoning",
         }}], **changes,
     }
 

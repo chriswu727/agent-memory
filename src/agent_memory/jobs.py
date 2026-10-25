@@ -7,6 +7,7 @@ from psycopg.types.json import Jsonb
 from .helpers import DomainError
 from .turns import _hash, _identifier, _integer
 
+NO_UNSETTLED_RETRY_POLICY = "no_unsettled_retry-v1"
 FAILURE_CODES = frozenset({
     "provider_failed", "provider_uncertain", "invalid_proposal", "source_unavailable",
     "context_stale", "superseded", "budget_exceeded", "cancelled", "dependency_unavailable", "internal_error",
@@ -34,7 +35,7 @@ LEARNING_LIMITATIONS = frozenset({
 REJECTION_REASONS = frozenset({
     "incomplete_history_package", "invalid_proposal", "verification_unavailable",
     "semantic_support_unconfirmed", "relation_support_unconfirmed", "linked_claim_unconfirmed",
-    "instance_support_unconfirmed", "evidence_selection_unconfirmed",
+    "instance_support_unconfirmed", "evidence_selection_unconfirmed", "request_intent_unconfirmed",
 })
 CONSOLIDATION_REASONS = frozenset({
     "verified_abstraction", "no_verified_abstraction", "not_attempted", "insufficient_shared_meaning",
@@ -263,6 +264,12 @@ class JobStore:
             return retry_learning(self, conn, principal, brain_id, job_id,
                                   request_id=request_id, expected_fence=expected_fence)
 
+    def cognitive_usage(self, principal, brain_id):
+        from .cognitive_usage import cognitive_usage
+
+        with self._transaction(principal, brain_id) as conn:
+            return cognitive_usage(conn, principal, brain_id)
+
     def learning_progress(self, principal, brain_id, *, configured):
         from .learning_progress import learning_progress
 
@@ -305,11 +312,26 @@ class JobStore:
             ).fetchone()
             if row is None:
                 return None
-            conn.execute(
+            snapshot = row["result"] if isinstance(row["result"], dict) else {}
+            settlement_policy = snapshot.get("operation_settlement_policy")
+            unsupported_policy = (
+                row["result"] is not None and not isinstance(row["result"], dict)
+                or "operation_settlement_policy" in snapshot and settlement_policy != NO_UNSETTLED_RETRY_POLICY
+            )
+            unsettled = conn.execute(
                 "UPDATE memory_cognitive_operations SET outcome='uncertain' "
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND job_id=%s AND outcome='reserved'",
                 (*params, row["id"]),
-            )
+            ).rowcount
+            if unsupported_policy or settlement_policy == NO_UNSETTLED_RETRY_POLICY and unsettled:
+                # A lost settlement cannot distinguish an unsent request from a paid response.
+                conn.execute(
+                    "UPDATE memory_jobs SET state='cancelled',last_error=%s,"
+                    "lease_token_digest=NULL,lease_expires_at=NULL,worker_id=NULL,updated_at=clock_timestamp() "
+                    "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
+                    ("dependency_unavailable" if unsupported_policy else "provider_uncertain", *params, row["id"]),
+                )
+                return None
             token = secrets.token_urlsafe(32)
             row = conn.execute(
                 "UPDATE memory_jobs SET state='running',attempts=attempts+1,fence=fence+1,worker_id=%s,"

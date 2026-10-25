@@ -4184,6 +4184,10 @@
         "memory_id": {
           "$ref": "#/$defs/Identifier"
         },
+        "memory_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
         "kind": {
           "type": "string",
           "enum": [

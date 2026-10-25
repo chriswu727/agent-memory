@@ -3,6 +3,23 @@ import assert from "node:assert/strict";
 import { MemoryClient, MemoryHttpError } from "./index.ts";
 import type { RetryLearningOptions } from "./index.ts";
 
+test("cognitive usage preserves unknown totals and encodes the brain identity", async () => {
+  const requests: { url: string; init?: RequestInit }[] = [];
+  const summary = { reservation_count: 2, usage_unknown_count: 1, counts_complete: false };
+  const client = new MemoryClient({
+    baseUrl: "http://memory.test/", apiKey: "test-key", brainId: "brain /?#",
+    fetch: async (input, init) => {
+      requests.push({ url: String(input), init });
+      return Response.json(summary);
+    },
+  });
+  assert.deepEqual(await client.cognitiveUsage(), summary);
+  assert.equal(requests[0].url, "http://memory.test/v1/brains/brain%20%2F%3F%23/runtime/cognitive-usage");
+  assert.equal(requests[0].init?.method, "GET");
+  assert.equal(requests[0].init?.body, undefined);
+  assert.equal(new Headers(requests[0].init?.headers).get("Authorization"), "Bearer test-key");
+});
+
 test("learning progress uses the runtime endpoint and preserves an incomplete summary", async () => {
   const requests: { url: string; init?: RequestInit }[] = [];
   const summary = { brain_id: "brain", state_counts: { cancelled: 1 }, pending_sequence_span: 12 };
