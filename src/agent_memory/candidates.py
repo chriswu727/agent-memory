@@ -100,7 +100,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
         rows, truncated = lexical_rows(conn, params, target, text, limit=scan_limit)
         if not cognition.speech_requested({**query, "query": text}):
             rows = [row for row in rows if not assistant_speech(row["document"])]
-        score_text = LexicalScorer(text, [row["document"]["statement"] for row in rows])
+        score_text = LexicalScorer.from_memories(text, [row["document"] for row in rows])
         lexical = [(score_text(text, row["document"]["statement"]), row)
                    for row in rows]
         lexical = [(score, row) for score, row in lexical if score > 0]

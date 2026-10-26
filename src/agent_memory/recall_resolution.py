@@ -3,10 +3,10 @@ from __future__ import annotations
 import copy
 
 from .dynamics import access_state
-from .source_composition import SOURCE_COMPOSITION_INPUT_VERSION
+from .source_composition import SOURCE_COMPOSITION_INPUT_VERSIONS
 
 RESOLUTION_INPUT_VERSION = "recall-resolution-v1"
-RESOLUTION_INPUT_VERSIONS = (RESOLUTION_INPUT_VERSION, SOURCE_COMPOSITION_INPUT_VERSION)
+RESOLUTION_INPUT_VERSIONS = (RESOLUTION_INPUT_VERSION, *SOURCE_COMPOSITION_INPUT_VERSIONS)
 RESOLUTION_POLICY = "cue-sensitive-resolution-v1"
 SUMMARY_SCHEMA = {
     "type": "object", "additionalProperties": False,

@@ -441,7 +441,19 @@ export type RecallItem = {
   "display_mode": "explicit_recollection" | "background_context" | "do_not_surface";
 };
 
+export type SourcePassage = {
+  policy_version: "bounded-source-context-v1";
+  evidence_ref: EvidenceRef;
+  actor_role: "user" | "operator";
+  delivery_state: "received";
+  world: MemoryAssertion["world"];
+  text: string;
+  recorded_at: string;
+  anchor_memory_versions: MemoryVersion[];
+};
+
 export type RecallResult = {
+  "source_passages"?: SourcePassage[];
   "model_context"?: string;
   "context_format"?: "compact-memory-v1";
   "belief_relations"?: BeliefRelationAssessment[];

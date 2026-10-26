@@ -126,7 +126,7 @@ The current context still has a limit. The runtime selects memory within that bu
 
 [Source-preserving recall resolution](architecture/recall-resolution.md) explains encoding, cue expansion and upgrade compatibility. Existing memories without a verified short expression keep their full view; an upgrade does not run a paid rewrite of the archive.
 
-[Source-faithful composition](architecture/source-composition.md) separates factual event details from writing style and adds a required participant-action check to new episode verification. Host instructions and model assessments remain fallible; installing memory tools alone cannot enforce an arbitrary agent's writing behavior.
+[Source-faithful composition](architecture/source-composition.md) separates factual details from writing style and requires participant-action checks for new claims, short views and episodes. Bounded original-source context can retain a scene together with its expressed meaning. Host instructions and model assessments remain fallible; installing memory tools alone cannot enforce an arbitrary agent's writing behavior.
 
 ## Local operation
 
@@ -162,6 +162,8 @@ The [varied longitudinal diagnostic](evaluations/v1-2026-10-26-longitudinal-roun
 The [repair follow-up](evaluations/v1-2026-10-26-longitudinal-repairs.md) addresses source-act rejection, distinctive-cue ranking, adjacent source meaning, assistant-speech attribution, indexed/tail rank calibration and a slow episode-neighbor query. Its [architecture notes](architecture/longitudinal-repairs.md) explain compatibility and remaining limits. The original longitudinal failures remain preserved; these repairs do not establish a new full acceptance pass.
 
 The [source-preserving resolution follow-up](evaluations/v1-2026-10-26-recall-resolution.md) adds optional verified short expressions, cue-driven expansion and smaller local encoding inputs. Original records remain stored. Scoped checks cover expansion, persistence and erasure; real-model diagnostics still include an unsupported card detail, ambiguous episode wording and no demonstrated automatic summary formation in the small encoding case. These results do not pass longitudinal acceptance.
+
+The [subsequent release scenario](evaluations/v1-2026-10-26-release-longitudinal.md) stopped after eleven delivered replies. Two captions omitted stored personal meaning, an ordinary assistant-speech summary confused actors, and a malformed citation stopped learning. Its original evidence and usage remain preserved. Prospective repairs extend verification beyond episodes and expose bounded complete source messages; local checks alone do not establish a new behavioral pass.
 
 Version 0.1.0 remains in [release closeout](docs/releasing.md): scope is frozen while the observed defects are repaired and acceptance is completed. The [changelog](CHANGELOG.md) remains an unreleased draft.
 

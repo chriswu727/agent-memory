@@ -328,3 +328,29 @@ test("shortened recall agrees with Python while full source detail stays inspect
   delete recall.model_context;
   assert.equal(recalledContext(recall), expected);
 });
+
+test("bounded original source contexts agree with Python including pinned and inactive anchors", () => {
+  const python = fileURLToPath(new URL("../../.venv/bin/python", import.meta.url));
+  const raw = execFileSync(python, ["-c", [
+    "import copy,json,sys",
+    "sys.path.insert(0,'tests')",
+    "from test_source_context import recall",
+    "from agent_memory.context_views import render_recall",
+    "_,_,result=recall()",
+    "pinned=copy.deepcopy(result)",
+    "pinned['items'][0]['memory']['dynamics']['user_pinned']=True",
+    "inactive=copy.deepcopy(result)",
+    "inactive['source_passages'][0]['anchor_memory_versions']=[{'memory_id':'absent','revision':1}]",
+    "print(json.dumps([{'result':r,'expected':render_recall(r)} for r in (result,pinned,inactive)]))",
+  ].join("\n")], { cwd: fileURLToPath(new URL("../../", import.meta.url)), encoding: "utf8" });
+  const cases = JSON.parse(raw);
+  for (const { result, expected } of cases) {
+    delete result.model_context;
+    delete result.usage;
+    assert.equal(recalledContext(result), expected);
+  }
+  assert.equal(JSON.parse(cases[0].expected).memories.length, 0);
+  assert.equal(JSON.parse(cases[1].expected).memories.length, 1);
+  assert.equal(JSON.parse(cases[2].expected).source_passages, undefined);
+  assert.ok(JSON.parse(cases[2].expected).memories.length > 0);
+});

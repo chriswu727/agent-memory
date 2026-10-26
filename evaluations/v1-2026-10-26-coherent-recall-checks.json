@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "runtime_build": "1a418e3a7e5446f3b69cd50437e36454556cd405492cf4dc5ff9c96141a1890e",
+  "full_source": {
+    "passed": 5578,
+    "failed": 0,
+    "skipped": 4,
+    "seconds": 543.2,
+    "log": "full-final.log",
+    "warning": "Python fork in a multi-threaded journal test"
+  },
+  "installed": {
+    "passed": 340,
+    "log": "installed-delivery-final.log"
+  },
+  "desktop": {
+    "passed": 4,
+    "log": "desktop-delivery-final.log",
+    "source_skips_executed": 4
+  },
+  "typescript": {
+    "passed": 39,
+    "strict_typecheck": "passed",
+    "cross_language_source_context_parity": "passed"
+  },
+  "artifacts": {
+    "runtime_files": 122,
+    "source_sdist_wheel_installed_match": true
+  },
+  "offline_reproduction": {
+    "old_context_bytes": 7623,
+    "new_context_bytes": 7266,
+    "budget_bytes": 7579,
+    "expressed_meaning_recovered": true,
+    "provider_calls": 0,
+    "source_unchanged": true
+  },
+  "lint_and_whitespace": "passed",
+  "earlier_failures_retained": {
+    "first_integrated_run": "12 failed, 4037 passed, 3 skipped; explicitly interrupted after reproducible defects, not a complete run",
+    "schema_sharing_first_followup": "11 failed, 38 passed: new citation definitions overwrote existing condition definitions; repaired by merging, original log retained",
+    "last_scoped_followup": "78 passed then interrupted to avoid duplicating the unchanged full-scenario harness check also run in the final full suite",
+    "typescript": "Initial legacy projections failed on absent derivation even without passages; both language paths now short-circuit when no passages exist; final 39 passed"
+  },
+  "behavioral_acceptance": "Not established by local checks. Original paid campaign failed and remains closed."
+}

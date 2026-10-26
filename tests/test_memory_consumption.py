@@ -150,7 +150,7 @@ def test_tentative_suggestion_guidance_keeps_unknown_preference_unchanged(monkey
     prompt = runtime._prompt("turn", "Could we adjust the response format?", packet)
     view = json.loads(prompt.memory_context)
     content = next(block["content"] for block in view["blocks"] if "memory_ref" in block["content"])
-    assert MEMORY_CONSUMPTION_VERSION == "memory-consumption-v7"
+    assert MEMORY_CONSUMPTION_VERSION == "memory-consumption-v8"
     assert HISTORICAL_SUGGESTION_BOUNDARY in prompt.messages[0]["content"]
     assert content["use"] == "conditional_memory_not_current_rule"
     assert content["applicability"]["value"] == "unknown"

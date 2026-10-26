@@ -6,7 +6,12 @@ from psycopg.types.json import Jsonb
 from test_candidates import candidates as candidates
 from test_candidates import key
 
-from agent_memory.lexical_candidates import MAX_QUERY_TERMS, lexical_rows, passage_score
+from agent_memory.lexical_candidates import (
+    MAX_QUERY_TERMS,
+    LexicalScorer,
+    lexical_rows,
+    passage_score,
+)
 from agent_memory.service import _vector
 
 
@@ -20,6 +25,24 @@ class RecordingConnection:
 
     def fetchall(self):
         return []
+
+
+def test_repeated_representations_of_one_source_do_not_change_topic_frequency():
+    from test_cognition import event
+
+    from agent_memory import cognition
+
+    first = cognition.extract_event(event("The blue map belongs to Mara."))[0]
+    other = cognition.extract_event(event("The green cup belongs to Leo.", 2))[0]
+    baseline = LexicalScorer.from_memories("blue green", [first, other])
+    aliases = [{**first, "memory_id": f"alias-{number}"} for number in range(40)]
+    repeated = LexicalScorer.from_memories("blue green", [first, other, *aliases])
+    independent = cognition.extract_event(event("The blue map belongs to Mara.", 3))[0]
+    separate = LexicalScorer.from_memories("blue green", [first, other, independent])
+    assert repeated.weights == baseline.weights
+    assert repeated("blue green", first["statement"]) == baseline("blue green", first["statement"])
+    assert separate.weights != baseline.weights
+    assert separate.weights[0]["blue"] < separate.weights[0]["green"]
 
 
 def test_passage_score_does_not_accumulate_cues_from_unrelated_sentences():

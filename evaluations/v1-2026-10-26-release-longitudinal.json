@@ -1,0 +1,117 @@
+{
+  "status": "failed_closed_do_not_resume",
+  "runtime_build": "2b8b435205db9debfe849b4c474fa9aed991ecc4fad2745ea00eb61cdda6abd4",
+  "plan_sha256": "d616d59c0b0c632a0460e243d7ac50aea575808712370623eef7b89ea9122c7c",
+  "terminal_head_sha256": "3b31f5d6ec30048a12957cae10e1d5af03e513d2908a54ec32db8bb2094df8cc",
+  "turns_delivered": 11,
+  "turns_learning_complete": 10,
+  "sessions_complete": 5,
+  "usage": {
+    "completed_calls": 46,
+    "reserved_calls": 46,
+    "reserved_output_tokens": 539136,
+    "usage_confirmed_calls": 46,
+    "usage_totals": {
+      "completion_tokens": 180389,
+      "prompt_cache_hit_tokens": 89344,
+      "prompt_cache_miss_tokens": 224007,
+      "prompt_tokens": 313351,
+      "total_tokens": 493740
+    },
+    "usage_unknown_calls": 0
+  },
+  "reviewer": "Implementing Codex source and whole-answer reviewer, separate from tested DeepSeek; not a blinded panel.",
+  "all_delivered_answers_reviewed": true,
+  "published_derived_versions_reviewed": 37,
+  "episode_organizations_reviewed": 9,
+  "reference_checks": 273,
+  "whole_answers": {
+    "passed_turns": [
+      "zine-outline",
+      "zine-next",
+      "map-account",
+      "sam-work",
+      "sam-family",
+      "one-week-only",
+      "tiny-task",
+      "fiction-scene",
+      "fiction-choice"
+    ],
+    "failed_turns": {
+      "first-caption": "Scene and actors retained, but source-expressed trust/capability meaning omitted from requested caption. Meaning was absent from the actual host context.",
+      "caption-tone": "Retains the same meaning omission. A later revision does not erase it."
+    },
+    "assistance": "One authored assisted introduction and one preventive correction; neither is an unaided success."
+  },
+  "publication_defect": {
+    "memory_id": "semantic-60f7a1c0c3209ab6e995b2b8e1aa3201",
+    "revision": 1,
+    "kind": "agent_said",
+    "reason": "Coordinated wording places spreading the map and marking the path under Aunt Mara, whereas the actual source draft assigns marking to the user. Speaker attribution and the episode-specific facet did not protect ordinary claims.",
+    "summary": "Only an assistant-speech short view formed; no personal-memory summary formation demonstrated."
+  },
+  "required_processing_failure": {
+    "turn_id": "caption-tone",
+    "reason": "Proposal used revision instead of required event_revision in three evidence references; original source-composition-v1 schema rejected it. No verifier call and no proposal publication.",
+    "accounting_defect": "All transport usage known, but RecordedProvider raised before returning malformed text to SemanticProcessor; original operation remained uncertain/provider_unavailable. Preserve original status, no retry or retrospective settlement."
+  },
+  "mechanical_gate_observation": "The fifth participant-action facet vetoed a fiction episode. It did not apply to ordinary claims in this runtime.",
+  "timing": {
+    "actual_elapsed_seconds": 1675.904199,
+    "completed_invocation_seconds": 1438.5198272489943,
+    "between_invocation_seconds": [
+      237.391237
+    ]
+  },
+  "future_work": "Prospective versioned citation alias and claim/short-view participant verification, bounded original-source context, deterministic replay then a separately frozen fresh-brain campaign. Original allowance is closed and unused reservation expires.",
+  "local_checks": {
+    "passed": true,
+    "runtime_build": "2b8b435205db9debfe849b4c474fa9aed991ecc4fad2745ea00eb61cdda6abd4",
+    "full_source": {
+      "log": "full-final.log",
+      "result": {
+        "runtime_build": "2b8b435205db9debfe849b4c474fa9aed991ecc4fad2745ea00eb61cdda6abd4",
+        "exit_code": 1
+      },
+      "passed": 5493,
+      "failed": 1,
+      "skipped": 4,
+      "warning": "Python fork in a multithreaded test process",
+      "remaining_failure": "tests/test_longitudinal_learning.py::test_later_input_can_use_only_its_existing_allocation_to_fund_untouched_history",
+      "resolution": "Explicitly limit the initial fixture to its two current-exchange sources, then keep the existing larger donor capacity. Shorter prompts legitimately repaid all history under the previous incidental limits. No production ceiling or test assertion was raised or removed."
+    },
+    "affected_followup": {
+      "log": "debt-fixture-explicit.log",
+      "passed": 19,
+      "failed": 0
+    },
+    "installed": {
+      "log": "installed-delivery.log",
+      "passed": 300
+    },
+    "desktop": {
+      "log": "desktop-delivery.log",
+      "passed": 4,
+      "source_skips_executed": 4
+    },
+    "artifacts": {
+      "runtime_files": 121,
+      "source_sdist_wheel_installed_match": true
+    },
+    "lint_and_whitespace": "pass",
+    "earlier_failures_retained": [
+      "initial.log",
+      "focused.log",
+      "new-tests.log",
+      "new-tests-fixed.log",
+      "full-source.log",
+      "affected-final.log",
+      "budget-regression.log",
+      "debt-fixture-final.log",
+      "build.log",
+      "install.log"
+    ],
+    "verification_note": "The final full run had one fixture setup failure; the affected file subsequently passed all 19 tests. Do not describe the full run as all green. The prior full run and unstable overlapping checks remain retained. No provider keys in verification subprocesses; no paid model or subscription tests."
+  },
+  "source_commit": "ef4567b57528d1112080afcb1eb6014c98f196bc"
+}

@@ -4,7 +4,7 @@ import copy
 
 from . import cognition
 from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSIONS
-from .source_composition import SOURCE_COMPOSITION_INPUT_VERSION
+from .source_composition import SOURCE_COMPOSITION_INPUT_VERSIONS
 
 MAX_EPISODE_EVIDENCE = 32
 EPISODE_SOURCE_VIEW_INPUT_VERSION = "episode-source-view-v1"
@@ -89,7 +89,7 @@ def episode_fidelity_schema(base_schema, episode_proposal_ids, *, input_contract
     if identifiers:
         assessment = schema["properties"]["assessments"]["items"]
         fidelity = copy.deepcopy(ORGANIZATION_FIDELITY_SCHEMA)
-        if input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION:
+        if input_contract_version in SOURCE_COMPOSITION_INPUT_VERSIONS:
             fidelity["properties"]["participant_actions"] = {"enum": ["supports", "contradicts", "unknown"]}
             fidelity["required"].append("participant_actions")
         assessment["properties"]["organization_fidelity"] = fidelity
@@ -110,7 +110,7 @@ def episode_fidelity_supported(assessment, proposal_id, references, *, input_con
         return False
     fidelity = assessment["organization_fidelity"]
     required = set(ORGANIZATION_FIDELITY_SCHEMA["required"])
-    if input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION:
+    if input_contract_version in SOURCE_COMPOSITION_INPUT_VERSIONS:
         required.add("participant_actions")
     if (not isinstance(fidelity, dict) or set(fidelity) != required
             or any(value != "supports" for value in fidelity.values())):

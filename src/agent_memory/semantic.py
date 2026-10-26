@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import math
 import time
 from collections.abc import Callable, Mapping
@@ -102,9 +103,15 @@ from .recall_resolution import (
     summary_verification_schema,
 )
 from .source_composition import (
+    CLAUSE_VERIFY_INSTRUCTIONS,
+    COHERENT_ENCODING_INSTRUCTIONS,
+    COMPOSITION_V2_INPUT_VERSION,
     PARTICIPANT_ACTIONS,
     PARTICIPANT_VERIFY_INSTRUCTIONS,
-    SOURCE_COMPOSITION_INPUT_VERSION,
+    SOURCE_COMPOSITION_INPUT_VERSIONS,
+    canonical_references,
+    compatible_reference_schema,
+    participant_verification_schema,
 )
 from .temporal import validate_valid_during
 from .verification_sources import (
@@ -112,6 +119,8 @@ from .verification_sources import (
     SHARED_VERIFICATION_INSTRUCTIONS,
     shared_verification_sources,
 )
+
+logger = logging.getLogger(__name__)
 
 TruthValue = Literal["true", "false", "unknown"]
 
@@ -232,7 +241,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = SOURCE_COMPOSITION_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = COMPOSITION_V2_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -554,19 +563,24 @@ def proposal_schema(mode, *, input_contract_version=None):
             "recall_summary": copy.deepcopy(SUMMARY_SCHEMA),
             "retention_priority": {"type": "number", "minimum": 0, "maximum": 1},
         })
+    if input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+        base = compatible_reference_schema(base)
     if mode in BOUNDED_MODES:
         result = bounded_proposal_schema(mode, base, input_contract_version=input_contract_version)
         return prune_definitions(result) if input_contract_version in RESOLUTION_INPUT_VERSIONS else result
     if mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):
         raise ValueError("Unknown cognitive proposal mode")
-    return ORIENT_PROPOSAL_SCHEMA if mode == ORIENT_PROPOSAL_MODE else base
+    if mode == ORIENT_PROPOSAL_MODE:
+        return (compatible_reference_schema(ORIENT_PROPOSAL_SCHEMA)
+                if input_contract_version == COMPOSITION_V2_INPUT_VERSION else ORIENT_PROPOSAL_SCHEMA)
+    return base
 
 
 def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GENERAL_PROPOSAL_MODE,
                     input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
     proposal_schema(proposal_mode)
     validate_input_contract(input_contract_version)
-    bounded_history = (input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION
+    bounded_history = (input_contract_version in SOURCE_COMPOSITION_INPUT_VERSIONS
                        and proposal_mode == HISTORY_INTEGRATION_MODE)
     if proposal_mode == ORIENT_PROPOSAL_MODE:
         instructions = _ORIENT_INSTRUCTIONS if phase == "proposal" else _ORIENT_VERIFY_INSTRUCTIONS
@@ -622,7 +636,7 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
         )
     if input_contract_version in RESOLUTION_INPUT_VERSIONS:
         instructions += " " + (RESOLUTION_INSTRUCTIONS if phase == "proposal" else RESOLUTION_VERIFY_INSTRUCTIONS)
-    if input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+    if input_contract_version in SOURCE_COMPOSITION_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         has_episodes = "organization_fidelity" in schema.get("properties", {}).get(
             "assessments", {}).get("items", {}).get("properties", {})
         if phase == "verification" and has_episodes:
@@ -630,6 +644,11 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
             instructions += " " + PARTICIPANT_VERIFY_INSTRUCTIONS
         else:
             instructions += " " + PARTICIPANT_ACTIONS
+    if input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+        if phase == "verification":
+            instructions += " " + CLAUSE_VERIFY_INSTRUCTIONS
+        elif proposal_mode != ORIENT_PROPOSAL_MODE:
+            instructions += " " + COHERENT_ENCODING_INSTRUCTIONS
     if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
             and proposal_mode not in BOUNDED_MODES):
         data = shared_verification_sources(data)
@@ -1267,7 +1286,12 @@ class SemanticProcessor:
                 return None, "budget_exhausted"
             try:
                 validator = Draft202012Validator(schema, format_checker=FormatChecker())
-                return _parse(raw, validator, policy.max_response_bytes), None
+                parsed = _parse(raw, validator, policy.max_response_bytes)
+                if phase == "proposal" and batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+                    parsed, count = canonical_references(parsed)
+                    if count:
+                        logger.info("Canonicalized %s declared citation aliases in batch %s", count, batch.batch_id)
+                return parsed, None
             except (ValueError, TypeError, UnicodeError, RecursionError):
                 return None, "invalid_response"
 
@@ -1442,6 +1466,9 @@ class SemanticProcessor:
                 for field in ("supporting_evidence_indices", "instance_verdicts", "request_verdict"):
                     properties.pop(field, None)
                 properties["link_verdict"] = {"type": "null"}
+        if batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+            verification_schema = participant_verification_schema(
+                verification_schema, [item["proposal_id"] for group, item, _ in eligible if group != "episode_actions"])
         verified, error = invoke("verification", verification_data, verification_schema, self.verify)
         if error:
             return result(error)
@@ -1494,6 +1521,10 @@ class SemanticProcessor:
             if (batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS and group != "episode_actions"
                     and not citation_coverage_supported(assessment)):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "citation_coverage_unconfirmed"})
+                continue
+            if (group != "episode_actions" and batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION
+                    and assessment.get("participant_actions_verdict") != "supports"):
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "participant_actions_unconfirmed"})
                 continue
             if (group == "episode_actions" and batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS
                     and not episode_fidelity_supported(assessment, item["proposal_id"], references,

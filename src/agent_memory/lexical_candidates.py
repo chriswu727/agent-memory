@@ -4,17 +4,37 @@ from . import cognition
 
 MAX_QUERY_TERMS = 128
 MAX_TERM_LENGTH = 256
-LEXICAL_RANK_VERSION = "bounded-frequency-passage-v1"
+LEXICAL_RANK_VERSION = "source-origin-frequency-passage-v2"
 
 
 class LexicalScorer:
-    def __init__(self, query, texts):
+    def __init__(self, query, texts, *, origins=None):
         self.query_terms = cognition._terms(query)
-        documents = {tuple(frozenset(part) for part in cognition._terms(text)) for text in texts}
+        if origins is None:
+            documents = {tuple(frozenset(part) for part in cognition._terms(text)) for text in texts}
+        else:
+            grouped = {}
+            for text, keys in zip(texts, origins, strict=True):
+                terms = cognition._terms(text)
+                for key in keys:
+                    document = grouped.setdefault(key, [set(), set(), set()])
+                    for present, part in zip(document, terms, strict=True):
+                        present.update(part)
+            documents = list(grouped.values())
         frequencies = [Counter(term for document in documents for term in document[index])
                        for index in range(3)]
         self.weights = [{term: (1 + len(documents)) / (1 + frequency[term])
                          for term in query} for query, frequency in zip(self.query_terms, frequencies, strict=True)]
+
+    @classmethod
+    def from_memories(cls, query, memories):
+        memories = list(memories)
+        origins = [
+            {("source", ref["event_id"], ref["event_revision"], ref["source_content_sha256"])
+             for ref in memory["evidence_refs"] if ref["relationship"] == "supports"}
+            or {("memory", memory["memory_id"], memory["revision"])}
+            for memory in memories]
+        return cls(query, [memory["statement"] for memory in memories], origins=origins)
 
     def _score(self, terms):
         scores = [sum(weight[term] for term in query & present) / max(1, sum(weight.values()))

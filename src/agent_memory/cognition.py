@@ -685,9 +685,9 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     include_speech = speech_requested({**request, "query": query})
     from .lexical_candidates import LexicalScorer
 
-    score_text = LexicalScorer(query, [memory["statement"] for memory in candidates
-                                     if _scope_allows(memory["scope"], scope)
-                                     and (include_speech or not assistant_speech(memory))]) if not selecting else None
+    score_text = LexicalScorer.from_memories(query, [memory for memory in candidates
+                                                   if _scope_allows(memory["scope"], scope)
+                                                   and (include_speech or not assistant_speech(memory))]) if not selecting else None
     validation_cache = {}
     if not coverage["read_fence_satisfied"] or history_status == "unavailable":
         candidates = []
@@ -857,6 +857,12 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     from .recall_resolution import defer_source_details
 
     defer_source_details(result["items"])
+    from .source_context import build_passages, retain_active_passages
+
+    passages = build_passages(result["items"], event_map, scope, state, request,
+                              cutoff=cutoff, excluded=excluded, worlds=worlds)
+    if passages:
+        result["source_passages"] = passages
     groups = connected_item_groups(result["items"])
     limit = request["budget"]["max_context_tokens"]
     if _measure(result) > limit and result["items"]:
@@ -872,13 +878,29 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             candidates = admitted | {item["memory"]["memory_id"] for item in group}
             result["items"] = [item for item in original_items if item["memory"]["memory_id"] in candidates]
             refresh_beliefs(result["items"])
-            if _measure(result) <= limit:
+            fits = _measure(result) <= limit
+            if not fits and result.get("source_passages"):
+                from .source_context import active_passages
+
+                previous_versions = {(item["memory"]["memory_id"], item["memory"]["revision"])
+                                     for item in original_items if item["memory"]["memory_id"] in admitted}
+                old_passages = result["source_passages"]
+                newly_active = {passage["evidence_ref"]["event_id"] for passage in active_passages(result)
+                                if not any((ref["memory_id"], ref["revision"]) in previous_versions
+                                           for ref in passage["anchor_memory_versions"])}
+                result["source_passages"] = [passage for passage in old_passages
+                                             if passage["evidence_ref"]["event_id"] not in newly_active]
+                fits = _measure(result) <= limit
+                if not fits:
+                    result["source_passages"] = old_passages
+            if fits:
                 admitted = candidates
         result["items"] = [item for item in original_items if item["memory"]["memory_id"] in admitted]
         result["recall_traces"] = [trace for trace in original_traces if trace["memory_id"] in admitted]
         refresh_beliefs(result["items"])
     if _measure(result) > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the minimal recall envelope")
+    retain_active_passages(result)
     factor_relations(result)
     if _measure(result) > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the final recall envelope")
@@ -1235,11 +1257,52 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             applicable = content["use"] == "source_attributed_applicable_memory"
         memory_rows.append({"section": "relevant_memory" if applicable else "conditional_memory",
                             "content": content, "references": references, "memory": memory})
-    units = [[(block, [])] for block in blocks]
-    units.extend(atomic_units(_pattern_context_units(
-        memory_rows, [] if "recall_plan" in payload else state.get("pattern_views", []),
+    from .source_context import active_passages, covering_passage, passage_content
+
+    passages = [] if "recall_plan" in payload else active_passages(result["recall_results"][0])
+    source_units, retained_rows, emitted_sources, source_fallbacks = [], [], set(), {}
+    row_order = {(row["memory"]["memory_id"], row["memory"]["revision"]): index
+                 for index, row in enumerate(memory_rows)}
+    items_by_version = {(item["memory"]["memory_id"], item["memory"]["revision"]): item
+                        for item in result["recall_results"][0]["items"]}
+    for row in memory_rows:
+        memory = row["memory"]
+        passage = covering_passage(items_by_version[(memory["memory_id"], memory["revision"])], passages)
+        if passage is None:
+            retained_rows.append(row)
+            continue
+        key = (passage["evidence_ref"]["event_id"], passage["evidence_ref"]["event_revision"])
+        if key in emitted_sources:
+            continue
+        emitted_sources.add(key)
+        provenance = [(other["memory"], other["references"]) for other in memory_rows
+                      if covering_passage(items_by_version[(other["memory"]["memory_id"], other["memory"]["revision"])],
+                                          [passage]) is not None]
+        unit = [(("verbatim_evidence", _serialized(passage_content(passage)),
+                  [copy.deepcopy(passage["evidence_ref"])]), provenance)]
+        source_units.append((row_order[(memory["memory_id"], memory["revision"])], unit))
+        source_fallbacks[id(unit)] = [
+            [((other["section"], _serialized(other["content"]), other["references"]),
+              [(other["memory"], other["references"])])]
+            for other in memory_rows if covering_passage(
+                items_by_version[(other["memory"]["memory_id"], other["memory"]["revision"])], [passage]) is not None]
+    for passage in passages:
+        key = (passage["evidence_ref"]["event_id"], passage["evidence_ref"]["event_revision"])
+        if key not in emitted_sources:
+            position = min((row_order[(ref["memory_id"], ref["revision"])]
+                            for ref in passage["anchor_memory_versions"]
+                            if (ref["memory_id"], ref["revision"]) in row_order), default=len(row_order)) + 0.5
+            source_units.append((position, [(("verbatim_evidence", _serialized(passage_content(passage)),
+                                              [copy.deepcopy(passage["evidence_ref"])]), [])]))
+    regular_units = atomic_units(_pattern_context_units(
+        retained_rows, [] if "recall_plan" in payload else state.get("pattern_views", []),
         scope, historical_events, snapshot, excluded, state.get("superseded_evidence_refs", []),
-    ), belief_membership))
+    ), belief_membership)
+    ranked_units = [(min((row_order.get((memory["memory_id"], memory["revision"]), len(row_order))
+                          for _, provenance in unit for memory, _ in provenance), default=len(row_order)), unit)
+                    for unit in regular_units]
+    units = [[(block, [])] for block in blocks]
+    units.extend(unit for _, unit in sorted([*ranked_units, *source_units], key=lambda value: value[0]))
     uncertainty = {
         "recall_status": recall_result["status"],
         "historical_evidence_status": snapshot["historical_evidence_status"],
@@ -1264,8 +1327,12 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
     result["blocks"] = [uncertainty_block()]
     if estimate_tokens(render_context(result)) > limit:
         raise DomainError("budget_exceeded", "Budget cannot hold the context safety envelope")
+    from collections import deque
+
     emitted = []
-    for unit in units:
+    pending_units = deque(units)
+    while pending_units:
+        unit = pending_units.popleft()
         for (section, text, refs), _ in unit:
             result["blocks"].append({
                 "section": section, "text": text, "evidence_refs": copy.deepcopy(refs),
@@ -1276,6 +1343,7 @@ def prepare(scope: dict, payload: dict, working: dict, recall_result: dict, stat
             result["usage"]["stopped_by"] = "context_limit"
             uncertainty["context_truncated"] = True
             result["blocks"][0] = uncertainty_block()
+            pending_units.extendleft(reversed(source_fallbacks.get(id(unit), [])))
             continue
         trace_ids = set()
         for _, provenance in unit:

@@ -41,6 +41,7 @@ from .semantic import (
     proposal_schema,
     validate_input_contract,
 )
+from .source_composition import COMPOSITION_V2_INPUT_VERSION
 
 
 def _error():
@@ -252,6 +253,9 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
                 if coverage_required and (len(assessments) != 1 or not citation_coverage_supported(assessments[0])):
                     raise DomainError("invalid_evidence", "Citation coverage assessment is unsupported")
+                if (group != "episode_actions" and batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION
+                        and (len(assessments) != 1 or assessments[0].get("participant_actions_verdict") != "supports")):
+                    raise DomainError("invalid_evidence", "Participant-action assessment is unsupported")
                 evidence = references
                 abstract = group == "belief_links" and item["kind"] == "abstracts"
                 if item["proposal_id"] in abstraction_parents:

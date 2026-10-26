@@ -133,16 +133,52 @@ def test_known_provider_failure_stops_even_when_usage_is_known(evaluation, tmp_p
         assert "Private provider text" not in json.dumps(journal.events)
 
 
+@pytest.mark.parametrize("known_usage", [True, False])
+def test_malformed_completed_response_is_not_mislabeled_as_uncertain_when_usage_is_known(
+        evaluation, tmp_path, known_usage):
+    from test_bounded_learning_semantics import local_batch
+    from test_cognition import event
+
+    calls, operations = [], []
+
+    def respond(request):
+        calls.append(request)
+        body = {"choices": [{"finish_reason": "stop", "message": {
+            "role": "assistant", "content": '{"unexpected": true}'}}]}
+        if known_usage:
+            body["usage"] = {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}
+        return httpx.Response(200, json=body)
+
+    with evaluation.CampaignJournal(tmp_path / "run", evaluation.plan()) as journal:
+        with evaluation.MeteredTransport(journal.path / "calls.jsonl",
+                                          transport=httpx.MockTransport(respond)) as meter:
+            with evaluation.ChatCompletionsSemanticProvider(
+                    "https://provider.test", "fake-key", "fake-model", transport=meter) as provider:
+                wrapped = evaluation.RecordedProvider(journal, meter, provider, "cognition")
+                result = evaluation.SemanticProcessor(wrapped, forbidden).process(
+                    local_batch(event("A report.")), reserve=lambda **_: None,
+                    on_call_result=lambda **value: operations.append(value))
+                assert result.status == ("invalid_response" if known_usage else "provider_unavailable")
+                assert operations[0]["outcome"] == ("completed" if known_usage else "uncertain")
+                expected_usage = {"input_tokens": 10, "output_tokens": 2, "total_tokens": 12} if known_usage else None
+                assert operations[0]["usage"] == expected_usage
+                with pytest.raises(evaluation.CampaignStopped,
+                                   match="provider_failure" if known_usage else "unknown_provider_usage"):
+                    evaluation.RecordedProvider(journal, meter, forbidden, "host")(None)
+                assert len(calls) == meter.summary()["reserved_calls"] == 1
+
+
 def test_schema_failure_is_retained_and_stops_dependent_work(evaluation, tmp_path):
     from agent_memory.semantic import CognitiveRequest
 
     with evaluation.CampaignJournal(tmp_path / "run", evaluation.plan()) as journal:
         request = CognitiveRequest("request", "proposal", (), {"type": "object", "required": ["value"]}, 10, 1)
         meter = Meter()
-        with pytest.raises(evaluation.CampaignStopped, match="provider_failure"):
-            evaluation.RecordedProvider(journal, meter, lambda _: "{}", "cognition")(request)
+        assert evaluation.RecordedProvider(journal, meter, lambda _: "{}", "cognition")(request) == "{}"
         assert journal.events[-1]["payload"]["response"] == "{}"
         assert journal.events[-1]["payload"]["evaluation_stop"] == "invalid_response"
+        with pytest.raises(evaluation.CampaignStopped, match="provider_failure"):
+            evaluation.boundary(journal, meter)
 
 
 def add_transcript(evaluation, journal, session_index, turn_index, choice_id=None):

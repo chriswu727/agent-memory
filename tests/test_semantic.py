@@ -77,6 +77,9 @@ def verifier(request):
                        "verdict": evidence["reference"]["relationship"]}
                       for evidence in candidate["evidence"]],
         **({"citation_coverage_verdict": "supports"} if "citation_scope" in candidate else {}),
+        **({"participant_actions_verdict": "supports"}
+           if candidate["group"] != "episode_actions" and "participant_actions_verdict" in
+           request.response_schema["properties"]["assessments"]["items"]["properties"] else {}),
         **({"organization_fidelity": dict.fromkeys(request.response_schema["properties"]["assessments"]["items"]["properties"]
                                                      ["organization_fidelity"]["required"], "supports")}
            if candidate["group"] == "episode_actions" and "organization_fidelity" in

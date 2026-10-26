@@ -4,6 +4,7 @@ import copy
 import json
 
 from .helpers import DomainError, digest
+from .source_context import active_passages, covering_passage, passage_content
 
 FORMAT = "compact-memory-v1"
 
@@ -157,14 +158,18 @@ class _Projection:
 def recall_context_view(result):
     projection = _Projection(result.get("belief_relations", []))
     memories = []
+    passages = active_passages(result)
     for item in result["items"]:
-        if item["display_mode"] == "do_not_surface":
+        if item["display_mode"] == "do_not_surface" or covering_passage(item, passages):
             continue
         content = projection.content(memory_content(item))
         content["sources"] = projection.references(item["memory"]["evidence_refs"])
         content["display_mode"] = item["display_mode"]
         memories.append(content)
+    source_views = [{**passage_content(passage), "sources": projection.references([passage["evidence_ref"]])}
+                    for passage in passages]
     return projection.finish({
+        **({"source_passages": source_views} if source_views else {}),
         "memories": memories, "status": result["status"], "next_step": result["next_step"],
         "unknowns": result["unknowns"], "ambiguities": result["ambiguities"], "conflicts": result["conflicts"],
         "limitations": result["coverage"]["limitations"],

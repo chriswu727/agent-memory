@@ -63,7 +63,8 @@ def test_public_policy_restart_and_bounded_recovery_repairs_timeout_without_data
         if request.extensions["timeout"]["read"] < 31:
             raise httpx.ReadTimeout("private-provider-timeout", request=request)
         if "proposals" in data:
-            content = verifier(SimpleNamespace(messages=body["messages"]))
+            schema = json.loads(body["messages"][0]["content"].split("Response JSON schema:\n", 1)[1])
+            content = verifier(SimpleNamespace(messages=body["messages"], response_schema=schema))
         else:
             source = next(item for item in data["sources"] if item["observed"]["actor_role"] == "user")
             content = encoded(proposals(proposed_claim(
