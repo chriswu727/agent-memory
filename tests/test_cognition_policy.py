@@ -51,7 +51,7 @@ def test_policy_defaults_are_unchanged_and_do_not_enable_a_provider(policy_env):
     assert changed.semantic_policy().max_model_calls == default.semantic_policy().max_model_calls == 2
 
 
-@pytest.mark.parametrize("field,cap", [("max_wall_time_ms", 300000), ("max_output_tokens", 32768),
+@pytest.mark.parametrize("field,cap", [("max_wall_time_ms", 600000), ("max_output_tokens", 32768),
                                      ("max_response_bytes", 65536)])
 @pytest.mark.parametrize("value", [0, -1, True, 1.0, "123", None, {}, []])
 def test_direct_limits_reject_wrong_types_and_values(field, cap, value):

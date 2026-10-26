@@ -18,7 +18,17 @@ The owner selected MIT on 2026-10-26. Licensing is resolved; behavioral acceptan
 
 The current technical baseline is commit `18a969921d8da30b8ec84f94dec7d699292a8ba4`, runtime build `4f9655bd59349144ec973c9747661edcab55018ac248da5576ccf952462bf3dc`. The [preparation report](../evaluations/v1-2026-10-25-learning-preparation.md) records the full source run's two fixture failures, their successful affected-file follow-up, installed checks and four desktop flows. It must not be summarized as an all-green full run. Earlier real-model failures remain failures; local engineering evidence does not pass G4.
 
-## Bounded longitudinal follow-up
+## Completed varied diagnostic and remaining blockers
+
+The [2026-10-26 varied diagnostic](../evaluations/v1-2026-10-26-longitudinal-round.md) reached the final authored session on one persistent brain: all 33 inputs were attempted, 32 replies completed learning, and one sleep-overlapping timeout remains failed. Fifteen sessions completed and one is partial. The last fourteen inputs ran in a separately frozen diagnostic tail after the original journal closed; this is not a clean primary-campaign pass. Fictional span was 56 days; actual primary-to-tail calendar duration was about three hours twenty minutes, including sleep and review gaps.
+
+The time-allowance candidate is based on `f1daa5b3e92a88a666b78f9410be1f3dbbdc7f80`, runtime build `eceb600da38d0607ec065540e4cc0ffd6f49422616fe2322c96d201cd0d7ee73`. The report binds its exact patch, scoped source/installed checks, 117 packaged runtime-file hashes, source reviews, full journals and usage. No fresh full regression suite is claimed.
+
+Whole-sequence review records 27 passes (three assisted), two partial results and four failures. Five isolated cue probes and eighteen zero-model access-age retrievals are complete as exploratory diagnostics. G4 remains failed: repair declarative-source rejection, missed meaningful recall, assistant-origin contamination and language continuity; assess unnecessary clarification and cognitive processing cost using the retained evidence. Access-age classifications alone did not demonstrate the intended forgetting behavior. Final packaging and stable publication remain pending.
+
+This round used 153 real calls with **1,710,383 known tokens and two unknown-usage calls**, including the closed initial time-budget failure. The original primary and tail share their original 248-call ceiling; auxiliary probes used five of fifteen allowed calls. No paid answer reviewer was used. The earlier stopped plan-review attempt below remains separate and closed. No further paid execution is active; locally verified repairs and a newly frozen bounded plan are required before another acceptance run.
+
+## Historical proposed longitudinal follow-up
 
 The [2026-10-26 preparation record](../evaluations/v1-2026-10-26-closeout.md) stopped at the independent plan-review call: it timed out with unknown usage. No primary session or auxiliary diagnostic started. The proposed ceilings below are preserved for audit; unused capacity is not permission to resume or retry that stopped attempt.
 

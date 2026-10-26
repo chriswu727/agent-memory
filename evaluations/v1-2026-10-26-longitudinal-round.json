@@ -1,0 +1,4335 @@
+{
+  "version": "varied-longitudinal-diagnostic-2026-10-26",
+  "acceptance": "not_passed",
+  "runtime_build": "eceb600da38d0607ec065540e4cc0ffd6f49422616fe2322c96d201cd0d7ee73",
+  "scope": {
+    "fictional_days": 56,
+    "attempted_sessions": 16,
+    "complete_sessions": 15,
+    "partial_sessions": 1,
+    "attempted_inputs": 33,
+    "completed_replies": 32,
+    "unanswered_inputs": 1,
+    "named_cases": 16,
+    "primary_replay_checkpoints": 3
+  },
+  "source_base_revision": "f1daa5b3e92a88a666b78f9410be1f3dbbdc7f80",
+  "plan_sha256": {
+    "initial_240s": "b6c6926dc69a6b51a308c380bf468d5e23acd8e8730fcc71924e3240bd08bfd2",
+    "primary": "444e026ea47b58a693ebb02c3c1ebd455c29abe402b7f615e410300eb322af15",
+    "tail": "418c786564ca79ac574b25722094ae7ee2e4819c8cf44e8c217f6e24382eca26",
+    "cue": "4ddd103f2e71cb8b4f073a42ce26ac756b88eaaf4103a81ffce11ef30451a750"
+  },
+  "journal_heads": {
+    "initial_240s": "4bd3a3bd14f48e09ea43b42298bd9a1428f1d98988bbe5da2a83d9380451ff4a",
+    "primary": "7a5a877e6e081c548cf6754f09881215edc7276d83b6107d3b7c3fa2a7f450d7",
+    "tail": "da9311e8edf76b7dea94d802e980832c3946db253654e2e64f3b2682e7dda6c7",
+    "cue": "d356ee0f0cffb8af47187fcea65c4dbf91db1e86adec51e093edb5dfe4ed15d1"
+  },
+  "reviewer": "Implementing Codex source reviewer independent of the tested host and user actor; not a blinded external human panel.",
+  "deviations": [
+    "Semantic failures retained while continuing the frozen scenario for diagnosis.",
+    "Host timeout overlapped macOS sleep. Original campaign closed; same-brain new-session tail skipped the unanswered request, retained unknown usage, and subtracted earlier reservations.",
+    "Auxiliary boundary is eleven attempted sessions, including one partial session, not the original eleven clean sessions. Exploratory diagnostics cannot establish acceptance."
+  ],
+  "usage": {
+    "initial_240s": {
+      "calls": 3,
+      "known_calls": 2,
+      "unknown_calls": 1,
+      "reserved_output_tokens": 36864,
+      "known_tokens": {
+        "prompt_tokens": 9802,
+        "completion_tokens": 11680,
+        "total_tokens": 21482
+      }
+    },
+    "primary": {
+      "calls": 82,
+      "known_calls": 81,
+      "unknown_calls": 1,
+      "reserved_output_tokens": 951296,
+      "known_tokens": {
+        "prompt_tokens": 637518,
+        "completion_tokens": 268990,
+        "total_tokens": 906508
+      }
+    },
+    "tail": {
+      "calls": 63,
+      "known_calls": 63,
+      "unknown_calls": 0,
+      "reserved_output_tokens": 749056,
+      "known_tokens": {
+        "prompt_tokens": 548188,
+        "completion_tokens": 198263,
+        "total_tokens": 746451
+      }
+    },
+    "cue": {
+      "calls": 5,
+      "known_calls": 5,
+      "unknown_calls": 0,
+      "reserved_output_tokens": 20480,
+      "known_tokens": {
+        "prompt_tokens": 30506,
+        "completion_tokens": 5436,
+        "total_tokens": 35942
+      }
+    }
+  },
+  "total_calls_this_round": 153,
+  "known_tokens_this_round": 1710383,
+  "unknown_calls_this_round": 2,
+  "timing": {
+    "first_primary_start": "2026-10-26T07:31:27.807358+00:00",
+    "final_tail_end": "2026-10-26T10:50:56.424417+00:00",
+    "calendar_elapsed_seconds": 11968.617059,
+    "instrumented_invocation_seconds": 8679.698326748912,
+    "invocations": [
+      {
+        "start": "2026-10-26T07:31:27.807358+00:00",
+        "pid": 99215
+      },
+      {
+        "start": "2026-10-26T08:02:39.123182+00:00",
+        "pid": 2486
+      },
+      {
+        "start": "2026-10-26T08:38:00.790830+00:00",
+        "pid": 3223
+      },
+      {
+        "start": "2026-10-26T09:54:07.583627+00:00",
+        "pid": 4159
+      },
+      {
+        "start": "2026-10-26T10:15:48.385471+00:00",
+        "pid": 4552
+      }
+    ],
+    "limitation": "Calendar duration includes sleep, review gaps and auxiliary diagnostics. Instrumented monotonic samples are not an always-awake wall-time SLA."
+  },
+  "assistance": {
+    "ordinary": 29,
+    "assisted": 3
+  },
+  "all_input_verdicts": {
+    "pass": 27,
+    "fail": 4,
+    "partial": 2
+  },
+  "named_case_verdicts": {
+    "pass": 12,
+    "fail": 2,
+    "partial": 2
+  },
+  "named_cases": [
+    {
+      "acceptable_uncertainty": [
+        "Specific free times have not been supplied."
+      ],
+      "at_turn": "story-start",
+      "id": "initial-practical-plan",
+      "kind": "practical",
+      "prohibited": [
+        "A completed draft",
+        "A claimed external calendar booking"
+      ],
+      "required": [
+        "Offer two workable writing slots or a brief necessary scheduling clarification.",
+        "Treat the story as an outline and respect Tuesday/Thursday evening class."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "story-start"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Proposed two writing slots respect Tuesday/Thursday class and leave dates conditional. Drafting targets are suggestions, not completed work."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "story-slots",
+      "id": "same-session-opening",
+      "kind": "practical",
+      "prohibited": [
+        "Ask the user to repeat the story premise that is in current context."
+      ],
+      "required": [
+        "Give a small first writing task consistent with Lea, the observatory and the letter.",
+        "Respect the selected current request and two class evenings."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "story-start"
+        },
+        {
+          "turn_id": "story-slots"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses the explicit half-hour request and existing fictional premise; suggested scene details remain creative options."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "class-moved",
+      "id": "changed-schedule",
+      "kind": "practical",
+      "prohibited": [
+        "Treat the repair visit as a permanent Friday commitment."
+      ],
+      "required": [
+        "Use Wednesday as the recurring class evening; Tuesday/Thursday are free.",
+        "Treat this Friday's repair visit as a one-off constraint."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "story-start"
+        },
+        {
+          "turn_id": "class-moved"
+        }
+      ],
+      "judgment": {
+        "verdict": "fail_language",
+        "reason": "Correct changed Wednesday class, free Tuesday/Thursday, one-Friday repair and half-hour writing duration, but answered an English request in Chinese."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "walk-cancelled",
+      "id": "cancelled-outing",
+      "kind": "practical",
+      "prohibited": [
+        "Claim the river walk occurred",
+        "Assign the injury to the colleague"
+      ],
+      "required": [
+        "Draft a check-in to the drummer friend after the cancelled walk."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "friend-alex"
+        },
+        {
+          "turn_id": "walk-cancelled"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Respects cancellation and ankle injury, without claiming a completed walk or pressuring rescheduling."
+      }
+    },
+    {
+      "acceptable_uncertainty": [
+        "May ask which of otherwise free evenings the user prefers."
+      ],
+      "at_turn": "story-return",
+      "id": "first-return-without-reteaching",
+      "kind": "practical",
+      "prohibited": [
+        "Ask for the whole story premise again",
+        "Block Tuesday/Thursday as class nights",
+        "Treat every Friday as unavailable"
+      ],
+      "required": [
+        "Resume the observatory story and offer two evenings excluding Wednesday.",
+        "The opening is unfinished; the previous Friday exception has expired."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "story-start"
+        },
+        {
+          "turn_id": "class-moved"
+        },
+        {
+          "turn_id": "story-return"
+        }
+      ],
+      "temporal_scope": "Reason over the user's explicit following-Monday statement, not memory decay.",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Unaided cross-session return recalls Lea, letter, rough outline, half-hour and Wednesday class. Earlier Friday-only repair does not become a permanent conflict. Dates remain proposed."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "folder-corrected",
+      "id": "corrected-work-detail",
+      "kind": "practical",
+      "prohibited": [
+        "Request both Juniper and Harbor",
+        "Send or claim to send a message",
+        "Treat the drummer friend as the work colleague"
+      ],
+      "required": [
+        "Draft a request to colleague Alex to check Harbor; handoff remains unsent."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "work-alex"
+        },
+        {
+          "turn_id": "folder-corrected"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses Harbor instead of Juniper, keeps colleague Alex the analyst and unsent handoff. No external action claimed."
+      }
+    },
+    {
+      "acceptable_uncertainty": [
+        "Need not mention the cancelled walk unless useful."
+      ],
+      "at_turn": "museum-visited",
+      "id": "separate-similar-episodes",
+      "kind": "practical",
+      "prohibited": [
+        "Blend the cancelled river walk into the completed visit",
+        "Invent sights, exhibits or an earlier completed outing"
+      ],
+      "required": [
+        "Write about the completed design-museum visit with the drummer friend."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "friend-alex"
+        },
+        {
+          "turn_id": "walk-cancelled"
+        },
+        {
+          "turn_id": "museum-visited"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Faithful journal draft about actual museum visit with drummer friend and recovered ankle. Does not conflate cancelled walk or invent exhibits."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "nia-dinner",
+      "id": "guest-preference-scope",
+      "kind": "practical",
+      "prohibited": [
+        "Assert that the user dislikes mushrooms",
+        "Invent a food allergy"
+      ],
+      "required": [
+        "Suggest a simple vegetarian meal without mushrooms for this visit."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "nia-dinner"
+        }
+      ],
+      "judgment": {
+        "verdict": "partial_dietary_qualification",
+        "memory_verdict": "pass",
+        "reason": "Correctly avoids mushrooms for the guest without assigning her dislike to the user or inventing allergy. Offers useful options, but the unqualified Parmesan suggestion and statement that dairy/egg acceptance makes all three vegetarian are not reliable for animal-rennet cheese. This is a host-answer caveat, not a memory attribution error.",
+        "source": "https://backend.parmigianoreggiano.com/uploads/0325_disciplinare_docx_EN_2eda3456af.pdf",
+        "qualification": "The official specification requires calf rennet for Parmigiano Reggiano. Generic products called Parmesan in some markets can differ; the actual product/rennet was unspecified."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "draft-still-open",
+      "id": "plan-is-not-completion",
+      "kind": "practical",
+      "prohibited": [
+        "Treat an earlier plan or model suggestion as a completed draft"
+      ],
+      "required": [
+        "Help extend the approximately 250-word opening with the letter still unopened."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "story-start"
+        },
+        {
+          "turn_id": "draft-still-open"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses current 250-word unfinished opening and unopened letter; proposes explicitly fictional next steps at observatory, not completion."
+      }
+    },
+    {
+      "acceptable_uncertainty": [
+        "May ask about space dimensions; no shelf or mounting constraint is known yet."
+      ],
+      "at_turn": "lamp-choice",
+      "id": "unrelated-task-focus",
+      "kind": "practical",
+      "prohibited": [
+        "Insert the story, cancelled walk, family memory or class timetable gratuitously"
+      ],
+      "required": [
+        "Offer rearrangement options using the working lamp without requiring purchases."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "lamp-choice"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Suggests rearranging the working lamp without a required purchase or gratuitous personal history. Shelf/location options are suggestions, not remembered facts."
+      }
+    },
+    {
+      "acceptable_uncertainty": [
+        "Acknowledge uncertain incidental details rather than inventing them.",
+        "Asking for a reminder is assistance, not unaided recall success."
+      ],
+      "at_turn": "grandma-card",
+      "id": "delayed-meaningful-memory",
+      "kind": "practical",
+      "prohibited": [
+        "Invent a different shared event, a town, a date or Grandma's name"
+      ],
+      "required": [
+        "Use the previously communicated blackout kindness as a personal card starting point.",
+        "Distinguish remembering the emotional meaning from reproducing every incidental detail."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "blackout-memory"
+        },
+        {
+          "turn_id": "grandma-card"
+        }
+      ],
+      "judgment": {
+        "verdict": "fail_recall",
+        "reason": "Requests a new reminder instead of using the previously supplied blackout kindness. Actual host context lacks that family memory. No unaided recall credit; subsequent recovery cannot erase this failure."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "grandma-cue",
+      "id": "cue-assisted-card",
+      "kind": "practical",
+      "prohibited": [
+        "Treat a cue-assisted answer as independent proof of unaided recall",
+        "Claim this sequential interaction is an identical-state cue-ladder experiment"
+      ],
+      "required": [
+        "Write a plain personal card consistent with the delivered cue and prior memory.",
+        "Classify the outcome by the actual selected branch; earlier failure remains recorded."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "blackout-memory"
+        },
+        {
+          "turn_id": "grandma-card"
+        },
+        {
+          "turn_id": "grandma-cue"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass_assisted",
+        "reason": "After the user supplies power cuts and tea tin, returns source-faithful plain sentences with unsupplied lantern and button-sorting details. Does not repeat the unsupported table or kitchen. Gist/safety meaning is not expressed; this is sequential assistance, not isolated unaided recall."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "late-week-plan",
+      "id": "late-project-continuity",
+      "kind": "practical",
+      "prohibited": [
+        "Declare the draft complete",
+        "Revive Tuesday/Thursday class or the expired Friday visit"
+      ],
+      "required": [
+        "Resume the unfinished 250-word opening; respect Wednesday class.",
+        "Propose practical next writing steps without requiring the established background again."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "story-start"
+        },
+        {
+          "turn_id": "class-moved"
+        },
+        {
+          "turn_id": "story-return"
+        },
+        {
+          "turn_id": "draft-still-open"
+        },
+        {
+          "turn_id": "late-week-plan"
+        }
+      ],
+      "temporal_scope": "Use communicated elapsed context and schedule changes; real-time aging is unassessed.",
+      "judgment": {
+        "verdict": "partial_redundant_clarification",
+        "reason": "Recalls 1800-word goal, 250-word unfinished opening, unopened letter and pre-opening tension work. Proposes days excluding Wednesday and does not revive expired Friday repair. Asking again for current class schedule is unnecessary confirmation, but the answer supplies an actionable plan without waiting for a full re-explanation.",
+        "memory_verdict": "pass",
+        "followup_observation": "The actor selected the assisted clarification branch and repeated 250 words, Wednesday class and two half-hour sessions. The initial factual recall was correct, but this imposed avoidable repeated background."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "solo-mushrooms",
+      "id": "no-guest-preference-leak",
+      "kind": "practical",
+      "prohibited": [
+        "Apply Nia's dislike to the user's solo meal",
+        "Bring unrelated personal history into the recipe"
+      ],
+      "required": [
+        "Suggest a quick dinner using the user's available mushrooms, rice and peas."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "nia-dinner"
+        },
+        {
+          "turn_id": "solo-mushrooms"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses mushrooms, rice and peas for a solo meal without leaking Nia’s mushroom dislike or unrelated history. Distinguishes raw/cooked rice conditionally and makes extra ingredients optional."
+      }
+    },
+    {
+      "acceptable_uncertainty": [
+        "Uncertainty about the photo location is required; refusing all practical help is not."
+      ],
+      "at_turn": "photo-location",
+      "id": "uncommunicated-location",
+      "kind": "explicit-recall",
+      "prohibited": [
+        "Claim any drawer, room or storage place was previously communicated"
+      ],
+      "required": [
+        "State that no storage location has been established and offer clearly labelled search suggestions."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "blackout-memory"
+        },
+        {
+          "turn_id": "photo-location"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "States that no photo storage location was supplied, separates desk facts from search suggestions, and explicitly says the tea tin is part of the remembered scene rather than a known storage spot. Does not invent the hidden hallway drawer."
+      }
+    },
+    {
+      "acceptable_uncertainty": [],
+      "at_turn": "draft-finished",
+      "id": "new-completion-not-delivery",
+      "kind": "practical",
+      "prohibited": [
+        "Treat the friend as the analyst",
+        "Claim the draft has been read or the message sent"
+      ],
+      "required": [
+        "Update the writing state to completed first draft and help invite the drummer friend to read it.",
+        "The draft and invitation remain unsent."
+      ],
+      "source_refs": [
+        {
+          "turn_id": "friend-alex"
+        },
+        {
+          "turn_id": "draft-still-open"
+        },
+        {
+          "turn_id": "draft-finished"
+        }
+      ],
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Accepts the new reported completed 1800-word first draft and drafts an invitation to the drummer friend. Does not confuse him with the analyst or claim sending/reading. Optional ankle reference is phrased as an offer, not a new injury claim."
+      }
+    }
+  ],
+  "turns": [
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "ec2d83c0f17a09465d64718c95e3894b07b185c8e8a516b80bcd60801e959e69",
+      "transcript": {
+        "assistant_text": "Yes—two short slots can definitely work. Since Tuesday and Thursday evenings are out, a simple pattern could be:\n\n- **Slot 1:** one weekday evening you’re free (Monday/Wednesday/Friday) or a weekend morning, about **45 minutes**\n- **Slot 2:** two or three days later, about **45–60 minutes**\n\nFor an 1,800-word draft, I’d split the work like this:\n\n1. **Slot 1:** Set Lea on shift at the observatory at night. Establish the letter as a physical presence she keeps avoiding. Write up to around **800 words**, ending just before she opens it or as she reaches for it.\n2. **Slot 2:** Write the letter/confrontation and the ending. Draft the remaining **1,000 or so words**, then do a quick pass for loose threads.\n\nI can’t see today’s date from here, so I can’t name actual dates—but if you tell me which days/times you’re free outside Tuesday/Thursday and how long you can give each slot, we can settle the schedule.\n\nIf you paste your rough outline, I can also shape the two session goals around it so the slots stay focused.",
+        "choice_id": "start",
+        "session_id": "starting-the-story",
+        "turn_id": "story-start",
+        "user_text": "I'd like to finish a short story, about 1,800 words. Lea is the night caretaker at an observatory and keeps putting off opening a letter from her sister. I've only got a rough outline. My evening class takes up Tuesdays and Thursdays. Can we find two short writing slots?"
+      },
+      "answer_sha256": "2ddd85918b840c701bb4baf8bc7ffd52a07572099d0914473ff9e9759510a30a",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "dc2ad301c81276a567f12127263b274a2f43551600f7f658b350cf53b539b75a",
+          "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I'd like to finish a short story, about 1,800 words. Lea is the night caretaker at an observatory and keeps putting off opening a letter from her sister. I've only got a rough outline. My evening class takes up Tuesdays and Thursdays. Can we find two short writing slots?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-15f722af9afa1249202aed8a8da5c24e62c8f2e0:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-starting-the-story",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 1,
+          "system_time": {
+            "recorded_at": "2026-10-26T07:31:27.901011Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 52,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 153,
+                "start": 53,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 184,
+                "start": 154,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 234,
+                "start": 185,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 271,
+                "start": 235,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Proposed two writing slots respect Tuesday/Thursday class and leave dates conditional. Drafting targets are suggestions, not completed work."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "d2bede02e9d800c956689693d5d8fc687f105157044408361ca5953eeb55df68",
+      "transcript": {
+        "assistant_text": "For the first half-hour, aim for **one vivid opening scene**, not the whole story. Roughly 400–600 words is a good target.\n\nWhat to get onto the page first:\n\n1. **Lea on shift**  \n   Start with her actually working: the observatory at night, the cold, the hum of equipment, the red-lit control room, the dome opening. Show her routine so the setting feels real.\n\n2. **The letter as a physical presence**  \n   Put it somewhere concrete: in her coat pocket, under a logbook, on the desk. Show her noticing it and choosing *not* to open it—turning it over, moving it aside, putting something on top of it.\n\n3. **A small turn or interruption**  \n   End the session just as something shifts: she reaches for the letter, or an alarm/phone/knock interrupts her, or she decides to wait until morning.\n\nThat gives you a draftable opening and a natural hook for the next session. Don’t edit as you go—just get the scene down. If you want, paste your rough outline and I can make the first half-hour even more specific to what you’ve already planned.",
+        "choice_id": "continue",
+        "session_id": "starting-the-story",
+        "turn_id": "story-slots",
+        "user_text": "Half an hour at a time sounds manageable. What should I try to get onto the page first?"
+      },
+      "answer_sha256": "5f90c2fefcb08e4722f9847b9a03b9e2c4ab6b4df81f4ab42c870cc659f0b62d",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "92fe16c375c4cf286220df400ca54b70997da06ce28a73e2f1cbf7df2fb49ca7",
+          "event_id": "ab6c80fd-9b12-4566-b9e1-8cad667e4994",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Half an hour at a time sounds manageable. What should I try to get onto the page first?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-9f1aac3f447ffeb318618432cf24ff4b22ecfe81:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-starting-the-story",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 4,
+          "system_time": {
+            "recorded_at": "2026-10-26T07:38:21.712389Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 41,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 87,
+                "start": 42,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses the explicit half-hour request and existing fictional premise; suggested scene details remain creative options."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "7003e4e255c7b436bf61fa975b3dc235995a07d8eed317ae4d84d1bee27d3a77",
+      "transcript": {
+        "assistant_text": "Sure — here are a few options, from softer to slightly more direct:\n\n**Option 1 (soft)**\n> Hey Alex — when you get a sec, would you mind checking the access list in the Juniper folder? I’m about to send the handoff and just want to make sure it’s current before it goes out. No rush on anything else.\n\n**Option 2 (balanced)**\n> Hi Alex, I’m prepping the handoff and want to double-check the Juniper folder access list before I send it. Could you give it a quick look when you have a moment? Thanks!\n\n**Option 3 (short)**\n> Hey Alex — before I send the handoff, could you do a quick check on the Juniper folder access list? Just want to make sure it’s right.\n\nTell me your team’s usual tone and I can adjust it to sound more casual, more formal, or more like a quick Slack message.",
+        "choice_id": "start",
+        "session_id": "work-handoff",
+        "turn_id": "work-alex",
+        "user_text": "Could you help me write a message to Alex, the analyst on my team? I need him to check the access list in the Juniper folder before I send the handoff. I don't want it to sound like I'm chasing him."
+      },
+      "answer_sha256": "c296b9d3b771e0fae97ef255d0b912d4e3f417ff7291b7d1647ba0709d239f14",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "5c0af9ae04add730d8045d865cd971f5fcd941f5cd49a6d5c40f57d3ebc78d52",
+          "event_id": "9d7b9948-a149-4fbf-ab73-b4711067df60",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Could you help me write a message to Alex, the analyst on my team? I need him to check the access list in the Juniper folder before I send the handoff. I don't want it to sound like I'm chasing him."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-6d7f10ebde481e314b35feab69a33f15c0631ed8:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-work-handoff",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 7,
+          "system_time": {
+            "recorded_at": "2026-10-26T07:43:36.211718Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 66,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 151,
+                "start": 67,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 198,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Provides message drafts about colleague Alex checking Juniper before the unsent handoff. No external send or unrelated story intrusion."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "281d5c3dcee427a88a015dc0793b34348b8630c85ae8d17346e4810241c0a406",
+      "transcript": {
+        "assistant_text": "Got it — here’s a shorter, casual version:\n\n> Hey Alex — quick favor: can you check the access list in the Juniper folder before I send the handoff? Just want to make sure it’s current. Thanks!\n\nEven shorter:\n\n> Hey Alex — can you do a quick check on the Juniper folder access list before I send the handoff? Just wanna be sure it’s current. Thanks!",
+        "choice_id": "shorter",
+        "session_id": "work-handoff",
+        "turn_id": "work-tone",
+        "user_text": "Make it a bit shorter, please. We talk pretty casually."
+      },
+      "answer_sha256": "58e23b6b49b417f11452252bba29c2e5c3bcc685a1df0ed9c2b18f5c8e2a04a4",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "de09d16098736c12512a47870d165060c36786a5ea7db1fa3d1401871c085d16",
+          "event_id": "251e92a9-5b86-4c6f-bb54-95b28d01d896",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Make it a bit shorter, please. We talk pretty casually."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-1f4ae55ed3448080c4f1946e1b24f58ef2a7dc07:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-work-handoff",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 10,
+          "system_time": {
+            "recorded_at": "2026-10-26T07:47:17.857577Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 30,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 55,
+                "start": 31,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Shortens the same work message while retaining Juniper and the pending handoff. No global preference is asserted in the answer."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "6af333d85bcf2e41120b272360f4b1c2b971926b10132e7c5fc83022dc5a0bf3",
+      "transcript": {
+        "assistant_text": "Got it—drummer Alex, not work Alex.\n\nKeep it to just a couple of loose anchors:\n\n- Pick a meeting spot and rough time, like “mid-afternoon by the bridge.”\n- Walk one direction along the river with no set turn-around point.\n- Have one optional stop in mind—coffee, ice cream, or a drink—but don’t plan the afternoon around it.\n- Leave food open: “We can see if we’re hungry after.”\n\nIf you want something to send him:\n\n> Hey, want to do a chill river walk tomorrow afternoon? No real plan—just wander along the water, maybe stop for coffee or ice cream if we pass somewhere. Thinking mid-afternoon if that works.",
+        "choice_id": "start",
+        "session_id": "weekend-invitation",
+        "turn_id": "friend-alex",
+        "user_text": "My friend Alex, the drummer, and I are thinking of walking by the river tomorrow. He's a different Alex from the one at work. Help me suggest a relaxed afternoon without making a whole itinerary."
+      },
+      "answer_sha256": "c10f73ce7480aec75930c1cc9756544c40631823ee6ed7059ba9ef2fb730d0cd",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "6ab609e4de0017fa720015c7ab67cd61486f1db48c35397c02c18d0e0bd640f3",
+          "event_id": "60de9418-2c02-4239-adac-23a703c799ef",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "My friend Alex, the drummer, and I are thinking of walking by the river tomorrow. He's a different Alex from the one at work. Help me suggest a relaxed afternoon without making a whole itinerary."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-3919f99ee3e4c6f3ebad6aebcb1a3e6506a9d058:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-weekend-invitation",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 13,
+          "system_time": {
+            "recorded_at": "2026-10-26T07:50:45.949205Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 81,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 125,
+                "start": 82,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 195,
+                "start": 126,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Explicitly distinguishes drummer friend from work Alex and suggests a tentative future outing, not a completed event."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "7e4d33612288d5281c543fd63e726e845fe51ae5a1ce1f0ba8ab589a5d55b44d",
+      "transcript": {
+        "assistant_text": "Here’s a casual text:\n\n> Hey Alex — still up for tomorrow? Let’s just do a chill river walk and stop somewhere for tea. No real plan beyond that. Mid-afternoon if that works.",
+        "choice_id": "simple",
+        "session_id": "weekend-invitation",
+        "turn_id": "walk-plan",
+        "user_text": "A walk and a stop for tea is enough. Can you turn that into a casual text?"
+      },
+      "answer_sha256": "7364c87e73bd9e812ab5f9e1c6aeeb2e8f89253f902725c2dc13cc24ec76049d",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "d6989ec1d31bd0f964fa69285c3111fe645750718fe25cddd5e69ddaa68cf824",
+          "event_id": "6a44941b-8507-4798-af2c-dd7692df8e32",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "A walk and a stop for tea is enough. Can you turn that into a casual text?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-a7abd1b61eacbd1c9ea7661a27caf26ba56d5923:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-weekend-invitation",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 16,
+          "system_time": {
+            "recorded_at": "2026-10-26T07:56:23.010561Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 36,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 74,
+                "start": 37,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Drafts a walk-and-tea invitation; suggested mid-afternoon remains conditional. No itinerary or claim of sending."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "51892b7c8c2c788682c606c29fa5e6553dc4489d58860dcdd6d6d15908ec7836",
+      "transcript": {
+        "assistant_text": "可以。按你现在的安排，周三晚留给上课，这周五因为有维修人员来，先不排正式写作；周二和周四恢复为写作时段。故事仍按约 1,800 字、每段半小时来推进：\n\n1. **第一次（周二）**：开场 450–550 字。Lea 值夜班，把“信”作为一个具体存在——可能在桌上、抽屉里或外套口袋里——写一个小的打断或异响。\n2. **第二次（周四）**：推进 400–500 字。开始暗示她为什么一直不拆信，给一点姐妹关系的线索。\n3. **第三次（下周二）**：中点转折 400–500 字。夜里发生一件事，迫使她重新面对那封信。\n4. **第四次（下周四）**：收尾 350–450 字。给一个不必完全解决、但情绪落点清楚的结尾。\n\n这样四次下来大致覆盖 1,800 字，周三和这周五都让开。\n\n要标成具体日期的话，告诉我今天星期几；如果你现在有粗略大纲，贴给我，我可以把每半小时再细化到具体场景节拍。",
+        "choice_id": "start",
+        "session_id": "schedule-change",
+        "turn_id": "class-moved",
+        "user_text": "The class has moved to Wednesday evenings from now on. Tuesday and Thursday are free again. This Friday alone I've got the repair person coming round. Could you adjust the writing plan?"
+      },
+      "answer_sha256": "d2053d712477a4cd36cb6ec89848a5df97ba243c7831962b724986dad4801f39",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "a328cc07ce0d9d1453a5e24dcbcb2e93db1f14a3ef3b2635768568034ae97aee",
+          "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "The class has moved to Wednesday evenings from now on. Tuesday and Thursday are free again. This Friday alone I've got the repair person coming round. Could you adjust the writing plan?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-9beef00665a4a607d03c059fcbeffc0517dbee60:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-schedule-change",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 19,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:02:39.580764Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 54,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 91,
+                "start": 55,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 150,
+                "start": 92,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 185,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "fail_language",
+        "reason": "Correct changed Wednesday class, free Tuesday/Thursday, one-Friday repair and half-hour writing duration, but answered an English request in Chinese."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "475d39d92a4c923f1819fb47e7df9f1bf57bd29f527b5d713de01ffbaa76ad0b",
+      "transcript": {
+        "assistant_text": "Got it—staying with Lea, the observatory, and the unopened letter. Here are three ways to start the opening. You can pick one, combine them, or tell me which feels closest and I’ll expand it to a full opening scene.\n\n**Option A — start with the letter**\n> The letter was still in her coat pocket, unopened. Lea could feel its corner pressing through the lining every time she climbed the spiral stairs to the dome. The observatory was quiet except for the wind, and the telescope was waiting, but her hand kept drifting to the pocket as if the paper were warmer than the rest of her.\n\n**Option B — start mid-shift**\n> Lea logged the first reading and told herself she wasn’t avoiding anything. The letter was in the desk drawer beneath the logbook, same as it had been for nine days. Outside, wind worked at the dome’s shutters. Inside, the pen had gone dry in her hand.\n\n**Option C — start with an interruption**\n> She was alone with the telescope’s slow turn when she heard something below that wasn’t the building settling. Her sister’s letter was still in her bag, unopened. She told herself she’d open it after she checked the sound. Then the sound came again.\n\nFor the opening to work toward 450–550 words, you could use this shape:\n\n1. **Ground Lea in the observatory at night** — one or two sensory details: cold air, machinery, light, silence.  \n2. **Place the letter physically** — pocket, drawer, bag — and show her awareness of it without opening it.  \n3. **Give her a small task** — a log entry, a noise check, adjusting the dome.  \n4. **Add a small turn or interruption** — a sound, a light, a phone buzz, a door left open.  \n5. **End with her decision not to open it yet**, or with the interruption forcing her back toward it.\n\nIf you want, I can write Option A out as a full opening scene of about 500 words.",
+        "choice_id": "clarify",
+        "session_id": "schedule-change",
+        "turn_id": "opening-stuck",
+        "user_text": "The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea."
+      },
+      "answer_sha256": "ea35c7d9298526ea22a72829ce20edf439b895b7f4889bb9bb40f0cf6cbdf6d2",
+      "branch": "assisted",
+      "input_events": [
+        {
+          "content_sha256": "148aaee0fcfad9b9bc8d4b32918c4c8b39df549e27272185f7d11a93b3f0aeae",
+          "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-345c0f043f2a011b9ce72c302fb5cfc644fe5daf:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-schedule-change",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 22,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:08:56.789859Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass_assisted",
+        "reason": "User supplied Lea/observatory/letter again. Three openings are explicitly fictional suggestions; not unaided recall evidence."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "b1f2f3f74a7634f0f9478924ae3fcedbb73fbccc7f1abae4b5b25610bf7abd33",
+      "transcript": {
+        "assistant_text": "Sorry to hear that — hope he’s okay. Here are a couple of low-pressure check-in options that focus on him, not on rescheduling:\n\n**Option 1: Simple check-in**\n> Hey Alex — just thought of you. How’s the ankle feeling? No need to plan anything, just wanted to see how you’re doing.\n\n**Option 2: A little warmer**\n> Hey — still sorry the walk didn’t happen. Hope the ankle’s mending okay. Rest up, and let me know if you need anything.\n\n**Option 3: Very casual**\n> Hey Alex — how’s the ankle today? Don’t worry about rescheduling or anything. Just checking in.\n\nWant me to adjust the tone — shorter, more casual, or more caring?",
+        "choice_id": "start",
+        "session_id": "a-cancelled-walk-and-a-photo",
+        "turn_id": "walk-cancelled",
+        "user_text": "That Sunday river walk with Alex never happened. He twisted his ankle and we cancelled. Could you help me check in without making him feel he has to arrange another outing?"
+      },
+      "answer_sha256": "4f92b836ddaa5cf7896aa6bfb48b7eb43412c0f63943719f2c0f02c358a4404f",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "669c8bbb9b31b62fcd3343d17a6e5540bbea22fdeaafa57f18e9e82486841994",
+          "event_id": "9d8a85bc-1634-4c4f-8a15-f298189e75fd",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "That Sunday river walk with Alex never happened. He twisted his ankle and we cancelled. Could you help me check in without making him feel he has to arrange another outing?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-c6db4796822822d44e5d2f31c2f92a1268a2b10a:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-cancelled-walk-and-a-photo",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 25,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:13:38.166774Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 48,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 87,
+                "start": 49,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 172,
+                "start": 88,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Respects cancellation and ankle injury, without claiming a completed walk or pressuring rescheduling."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "bcfd6ff14eee4ee894904ea6d2be4cd1a4d28ad8a92507e2dd5c0c6a8611adf1",
+      "transcript": {
+        "assistant_text": "That’s a beautiful memory. Here are a few quiet caption options:\n\n**Short**\n> Lantern light and buttons in a tea tin. Grandma made the dark feel safe.\n\n**A little warmer**\n> When the power went out, Grandma lit the lantern and we sorted buttons by lamplight. The scary dark felt smaller with her there.\n\n**More story-like**\n> No electricity, just lantern glow and buttons to sort from the tea tin. Somehow, Grandma turned a dark house into a safe one.\n\nWant me to make one even shorter, or add a line about remembering her?",
+        "choice_id": "change-topic",
+        "session_id": "a-cancelled-walk-and-a-photo",
+        "turn_id": "blackout-memory",
+        "user_text": "Thanks. On a different note, I found an old photo. When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort. It made a scary dark house feel safe. Could you help me write a quiet caption?"
+      },
+      "answer_sha256": "b33cece1c31581915b0b56d43db5fea37eaef30f9ce318fac00e2975280fde67",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "f6419b9faea2c04590ac94bfe312d4a56ad114e6348204e2b98a37aedd5466e4",
+          "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Thanks. On a different note, I found an old photo. When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort. It made a scary dark house feel safe. Could you help me write a quiet caption?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-36be69789b5a7e521bc0adb7c589ab849b1bb118:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-cancelled-walk-and-a-photo",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 28,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:19:25.109417Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 7,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 50,
+                "start": 8,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 188,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 229,
+                "start": 189,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Captions retain lantern, tea tin, buttons and safety. No invented location, age or named grandmother."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "8bcf1f3a56e11b215335cfaf0d53218b855ff3d6c741286404fa668b76e7f662",
+      "transcript": {
+        "assistant_text": "Sure — plainer versions:\n\n**Short**\n> When the power went out, Grandma lit the lantern and put buttons in a tea tin for us to sort.\n\n**Even plainer**\n> Power out. Grandma lit the lantern, poured buttons into a tea tin. We sorted them.\n\n**Matter-of-fact**\n> No lights. Grandma set a lantern on the table and gave us buttons to sort from a tea tin.\n\nWant it even shorter or more understated?",
+        "choice_id": "plain",
+        "session_id": "a-cancelled-walk-and-a-photo",
+        "turn_id": "caption-tone",
+        "user_text": "Less sentimental, please. It was a small ordinary kindness."
+      },
+      "answer_sha256": "3177fcd0f19aade6e265d51aa722fbbe5d1ef91732e8a914e1d26d24db039860",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "3102745dc5f6dd5d801617cef3be04fb9717536a18da72d09fa2e1f29d34fa3a",
+          "event_id": "bafdf837-2b1b-4e34-85a9-0a8929d7d567",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Less sentimental, please. It was a small ordinary kindness."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-ed2ffcc229ca48ce99b70145f466d4bbfda0ddfa:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-cancelled-walk-and-a-photo",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 31,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:22:08.511626Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 25,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 59,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "fail_unsupported_detail",
+        "reason": "Third caption adds lantern on the table, absent from all user evidence. Other correct alternatives do not erase this defect."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "4cae04185e89f2b0c2dbee2df17ff0f1a26392e8fa5a57a2741d6aac684a86c5",
+      "transcript": {
+        "assistant_text": "Yes, let’s get back to it.\n\nIf your class is still on Wednesday evenings now, then **Monday (today) and Thursday** could work well as your two sessions, leaving Wednesday clear. Or **Tuesday and Friday** if that suits you better.\n\nSince you haven’t written the opening yet, we could use the first session to start it from your rough outline — maybe half an hour focused on getting Lea and the unopened letter into an opening scene.\n\nDo Monday and Thursday work, or would you prefer a different pair?",
+        "choice_id": "start",
+        "session_id": "return-to-writing",
+        "turn_id": "story-return",
+        "user_text": "It's the following Monday now, and I've got some room this week. Can we get back to the story and find two evenings to work on it? I haven't written the opening yet."
+      },
+      "answer_sha256": "d2eb76b8292bb7bd5dc75ebf970cd56471985671809665a042b673039b375ddb",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "6bce94f8eda1bd0acae88f94be5a792dbf8f59819e5e2ec01af42f1babc347ac",
+          "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "It's the following Monday now, and I've got some room this week. Can we get back to the story and find two evenings to work on it? I haven't written the opening yet."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-0d9a8ce61059373440200773ba896535381a0324:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-return-to-writing",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 34,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:25:17.530150Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 64,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 130,
+                "start": 65,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 165,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Unaided cross-session return recalls Lea, letter, rough outline, half-hour and Wednesday class. Earlier Friday-only repair does not become a permanent conflict. Dates remain proposed."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "d85a10c0862f111e1a8ba4ba9a13558a0eccdf261a04b34a4f54beb9fcf75a5e",
+      "transcript": {
+        "assistant_text": "Here are a few possible first sentences, each with a slightly different feel:\n\n1. **Letter first:**  \n   “The letter was still in Lea’s coat pocket when she clocked in, its corner pressing against her ribs every time she turned back toward the telescope.”\n\n2. **Mid-shift:**  \n   “Lea was two hours into her shift when the console light blinked twice, and she realized she’d been staring at the same blank logbook page.”\n\n3. **Interruption:**  \n   “She’d almost talked herself into opening the letter when the knock came at the observatory door.”\n\nWant me to continue from whichever one grabs you?",
+        "choice_id": "continue",
+        "session_id": "return-to-writing",
+        "turn_id": "story-return-response",
+        "user_text": "Let's make the first session very small. Give me a couple of possible first sentences."
+      },
+      "answer_sha256": "7b119ad7449a964517a1231a5fcfc1999b34d7f471ab1149fb7e24e9211b2519",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "5a9869080c555fe9e4bf07190694853eb48de5127aeeb6ce0e700b92cd0b0e45",
+          "event_id": "d75904e2-1d20-4343-bf66-f979af98a276",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Let's make the first session very small. Give me a couple of possible first sentences."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-b12c3e18c194a17b23d254f9aa62ffd1c227380f:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-return-to-writing",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 37,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:31:43.135262Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 40,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 86,
+                "start": 41,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Provides fictional opening options anchored in Lea, letter and observatory; no assertion that user already wrote them."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "f2f17bba7d2b9ab4739eb3f105ac52029f0ef5a7677426e29a75a4d835da77aa",
+      "transcript": {
+        "assistant_text": "Got it — changing Juniper to Harbor. Still Alex the analyst.\n\n> Hey Alex — quick favor: can you check the access list in the Harbor folder before I send the handoff? Just want to make sure it’s current. Thanks!\n\nEven shorter:\n\n> Hey Alex — can you do a quick check on the Harbor folder access list before I send the handoff? Just wanna be sure it’s current. Thanks!",
+        "choice_id": "start",
+        "session_id": "correcting-the-handoff",
+        "turn_id": "folder-corrected",
+        "user_text": "I gave you the wrong folder name for that access review. It's Harbor, not Juniper. The colleague is still Alex, the analyst. Could you fix the message? I still haven't sent it."
+      },
+      "answer_sha256": "317d234a14945f5dac20130ba02ae1fd6e0ed962e057d98b594731e7fa0c3955",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "7c662d473e24609ad04c9009ef8896fd5e685b46b14043426a6483778bc1557a",
+          "event_id": "096fa8b4-cd07-41fa-90eb-4fcabbfcc668",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I gave you the wrong folder name for that access review. It's Harbor, not Juniper. The colleague is still Alex, the analyst. Could you fix the message? I still haven't sent it."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-c5a0cf350cef3b5568c6020292b2c331959a7f98:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-correcting-the-handoff",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 40,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:38:02.169617Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 82,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 124,
+                "start": 83,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 151,
+                "start": 125,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 176,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses Harbor instead of Juniper, keeps colleague Alex the analyst and unsent handoff. No external action claimed."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "6fbfabdd73ebb251dc248cba1196ae70c1bf18ff6b8290ebe9bf589d8c688e79",
+      "transcript": {
+        "assistant_text": "Hey Alex — can you do a quick check on the Harbor folder access list before I send the handoff? Just wanna be sure it’s current. Thanks!",
+        "choice_id": "continue",
+        "session_id": "correcting-the-handoff",
+        "turn_id": "handoff-final",
+        "user_text": "That tone works. Could you give me just the final message so I can copy it?"
+      },
+      "answer_sha256": "939240915fd6e37593d405f0fc86634ff02fedec038c4ab71b85144b5f8ad550",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "2a2e760777d08d68e2eba39eb47d0f81c5824f0c10e3464814f72d49d0807abc",
+          "event_id": "577a9f25-029a-4f20-a5c6-d797c4357114",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "That tone works. Could you give me just the final message so I can copy it?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-9b05644ae1212bc9f8f06c84443356bdf41f55f9:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-correcting-the-handoff",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 43,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:43:49.142164Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 16,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 75,
+                "start": 17,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Returns only the requested final Harbor access-check message, as a draft to copy."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "0358b47f0d082fad7d58ca5e64fec1b5d62ca950a59ebb252a9017c0f4928dd5",
+      "transcript": {
+        "assistant_text": "Glad his ankle’s better. Here’s a version that sounds like a personal journal note, not a review:\n\nYesterday Alex—my drummer friend—and I made it to the small design museum. His ankle was better, so we went slowly and kept it easy. It was a good afternoon: unhurried, low-key, just nice to be out together.\n\nWant me to make it shorter, longer, or more reflective?",
+        "choice_id": "start",
+        "session_id": "museum-sunday",
+        "turn_id": "museum-visited",
+        "user_text": "Alex and I made it to the small design museum yesterday. My drummer friend, I mean. His ankle was better, so we went slowly and had a good afternoon. Could you help me put that in my journal without making it sound like a travel review?"
+      },
+      "answer_sha256": "87592cff8934616918ea4b13e69c5d716a2e23a0a3f72321018797e795097a03",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "bb2b81558bb63652f48d8362005af27d1b11cfc49ba03e22f6fdbd790eaa9d86",
+          "event_id": "8b9c956d-d484-455d-83b4-9712c97c4c9c",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Alex and I made it to the small design museum yesterday. My drummer friend, I mean. His ankle was better, so we went slowly and had a good afternoon. Could you help me put that in my journal without making it sound like a travel review?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-a26658248e7098bf7ef5d1c8664d2b2eb93f4b62:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-museum-sunday",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 46,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:50:45.303306Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 83,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 149,
+                "start": 84,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 236,
+                "start": 150,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Faithful journal draft about actual museum visit with drummer friend and recovered ankle. Does not conflate cancelled walk or invent exhibits."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "79733003fcd9b16879ca952d7cbfd33e3e806f8714c7126f4fc5821f2c27c725",
+      "transcript": {
+        "assistant_text": "Here’s a version with that thought added:\n\nYesterday Alex—my drummer friend—and I made it to the small design museum. His ankle was better, so we went slowly and kept it easy. I was glad we finally got to spend some time together. It was a good afternoon: unhurried, low-key, just nice to be out together.\n\nWant me to adjust the wording or the placement?",
+        "choice_id": "continue",
+        "session_id": "museum-sunday",
+        "turn_id": "visits-separate",
+        "user_text": "Maybe one sentence about being glad we finally got to spend some time together."
+      },
+      "answer_sha256": "a512b0a02f208e39cd8b7ea754eeafc151e7da04df9df4e317c960059c3597e8",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "ac4ca331704e2ce514308b35a68837b5485ac93ca63a7b26a733196b50baa01b",
+          "event_id": "cffa0805-8b6e-4538-addb-85405d1c8998",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Maybe one sentence about being glad we finally got to spend some time together."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-50ce9ec97e50c59c46b8c6c518eb2f8af59ee78f:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-museum-sunday",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 49,
+          "system_time": {
+            "recorded_at": "2026-10-26T08:55:18.601851Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 79,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Adds only the requested feeling about time together to the completed museum visit; no cancelled-walk conflation."
+      }
+    },
+    {
+      "segment": "primary",
+      "delivery_event_sha256": "aeb3b6546fd09f3219577e82f1251076192132f943cea6ba9334af8c8300b8d0",
+      "transcript": {
+        "assistant_text": "Sure! A few easy vegetarian dinners that avoid mushrooms and won’t eat your afternoon:\n\n- **One-pan gnocchi with peppers, red onion, cherry tomatoes, and chickpeas**  \n  Toss everything with olive oil, garlic, smoked paprika, and maybe pesto or crumbled feta. Roast until the gnocchi are crisp at the edges. About 35 minutes, mostly hands-off.\n\n- **Black bean tacos**  \n  Warm tortillas, spiced black beans, corn, avocado, quick lime slaw, salsa, and a little chipotle crema or sour cream. About 25 minutes.\n\n- **Lemon-butter pasta with peas and spinach**  \n  Spaghetti or linguine with garlic, lemon zest, butter/olive oil, plenty of Parmesan, and maybe white beans or toasted pine nuts. About 25 minutes.\n\nI can write a full recipe for whichever sounds best. If dairy/eggs are fine, all three work; if you want it vegan, I can adjust.",
+        "choice_id": "start",
+        "session_id": "dinner-with-nia",
+        "turn_id": "nia-dinner",
+        "user_text": "Nia's coming over on Sunday. She hates mushrooms, though I eat them all the time. Could you suggest a simple vegetarian dinner for us? I don't want to spend all afternoon cooking."
+      },
+      "answer_sha256": "23c34834f2c7b2f09ee69df88a231d0d019097b3bfb62dc523d272749f98f42f",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "17dcfbabb7d1c0cf02f7b58f40760feefd34bbcd1293f7fbd1de3904c9f5e1b2",
+          "event_id": "7917c8b9-fa6a-4079-ac92-b9b3c3df5a77",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Nia's coming over on Sunday. She hates mushrooms, though I eat them all the time. Could you suggest a simple vegetarian dinner for us? I don't want to spend all afternoon cooking."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-434b1757836a7eca2b8110d116f3c39352973849:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-dinner-with-nia",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 52,
+          "system_time": {
+            "recorded_at": "2026-10-26T09:00:30.303052Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 28,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 81,
+                "start": 29,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 134,
+                "start": 82,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 179,
+                "start": 135,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "partial_dietary_qualification",
+        "memory_verdict": "pass",
+        "reason": "Correctly avoids mushrooms for the guest without assigning her dislike to the user or inventing allergy. Offers useful options, but the unqualified Parmesan suggestion and statement that dairy/egg acceptance makes all three vegetarian are not reliable for animal-rennet cheese. This is a host-answer caveat, not a memory attribution error.",
+        "source": "https://backend.parmigianoreggiano.com/uploads/0325_disciplinare_docx_EN_2eda3456af.pdf",
+        "qualification": "The official specification requires calf rennet for Parmigiano Reggiano. Generic products called Parmesan in some markets can differ; the actual product/rennet was unspecified."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "c038a9c07fb39a401cba0cce64a464054e4754fd7e3102198cf3b9deebc931e6",
+      "transcript": {
+        "assistant_text": "Good—250 words is a real start, so the next step isn’t starting over; it’s finishing the opening with a clear turn.\n\nNext small step I’d aim for: get the opening up to about 450–500 words by adding one small interruption on Lea’s shift. Keep the letter present without opening it. Maybe something like:\n\n- a visitor arrives at the observatory and asks a harmless question that pulls her away from the letter\n- a monitor beeps or a light flickers\n- she hears a voice, a car, or a knock and assumes it’s someone else\n\nThen end the opening by returning to the letter: Lea notices it again, maybe picks it up, but puts it away—or leaves it where it is—because something else needs her.\n\nThat gives you a first scene with pressure and keeps the letter’s mystery alive.\n\nIf you paste your 250 words or tell me the last thing that happens in it, I can suggest the exact next beat or even a next sentence.",
+        "choice_id": "start",
+        "session_id": "unfinished-is-unfinished",
+        "turn_id": "draft-still-open",
+        "user_text": "I didn't finish the story after all. I've got about 250 words of the opening. Lea still hasn't opened the letter. Could we figure out the next small step?"
+      },
+      "answer_sha256": "a2e0a19477cd91a57911d4c096366e166fe70393e47d4995b2b989ba02da1897",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "3f1e916d30dbac1d896b9abf07e84592f4bd160c9e02fc8d9909ee96c4d53cc0",
+          "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I didn't finish the story after all. I've got about 250 words of the opening. Lea still hasn't opened the letter. Could we figure out the next small step?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-6f74d1d0fae0d8feac01e775f4872a9c2bfbec20:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-unfinished-is-unfinished",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 56,
+          "system_time": {
+            "recorded_at": "2026-10-26T09:54:07.877182Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 36,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 77,
+                "start": 37,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 113,
+                "start": 78,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 154,
+                "start": 114,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses current 250-word unfinished opening and unopened letter; proposes explicitly fictional next steps at observatory, not completion."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "85b73cfd5c33b7e34a730768aeb62527d61ad012dbde2645dd1101517cd335ca",
+      "transcript": {
+        "assistant_text": "Two ways that could fit the moment just before Lea opens it:\n\n**1. Slow down the object and her senses.**  \nFocus on the envelope itself: the weight, the glue catching, her name in unfamiliar handwriting, a crease or smudge. Let each small detail delay the opening and raise a question.\n\nExample beat:  \n*She slid her thumb under the flap, felt the glue give, and stopped—the handwriting on the front was not the one she’d expected.*\n\n**2. Use a false start.**  \nLet her decide to open it, even begin, then stop because of a thought, a memory, or an outside sound from the observatory: the telescope motor, a monitor beep, the wind against the dome. When she returns to the letter, the tension is higher.\n\nExample beat:  \n*One tear and it would be done. Then the dome shuddered overhead, and she set the letter down—just for a second.*\n\nWant me to draft either one as the next 150–200 words for you?",
+        "choice_id": "continue",
+        "session_id": "unfinished-is-unfinished",
+        "turn_id": "next-scene",
+        "user_text": "I like working on the moment just before she opens it. Can you give me two ways to build that tension?"
+      },
+      "answer_sha256": "2d83dd18162e302f05d60831d0b90a2483d56049d329a2437868197982063c2f",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "a014810058636b73a3d3f0fbec0708ac1b98eb87d32513edbdd2a73eeb05ce4a",
+          "event_id": "790f7db5-7827-4a59-be9d-9ed966b0dbf4",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I like working on the moment just before she opens it. Can you give me two ways to build that tension?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-5e62cff42f75be365d0a028d0e9d2ba59e3f9947:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-unfinished-is-unfinished",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 59,
+          "system_time": {
+            "recorded_at": "2026-10-26T09:57:26.029792Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 54,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 102,
+                "start": 55,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Two clearly fictional tension techniques fit the current request and known Lea/observatory/letter premise."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "9e2899c7f2036ba69d16295d32ec87918ad543af578f4c3c287e62f045973cbd",
+      "transcript": {
+        "assistant_text": "A few ways to free up desk space without buying anything:\n\n- **Move it off the desk entirely.** Put it on a nearby shelf, windowsill, filing cabinet, or a sturdy stack of books just beside the desk. You keep the light but reclaim the surface.\n- **Send it to a back corner.** Push the lamp to the least-used corner of the desk and angle it toward your work area, especially if the arm or shade is adjustable.\n- **Use it as indirect light.** Turn it toward the wall behind the desk for softer bounced light, then move the items that were in that corner into the lamp’s old spot.\n- **Rearrange around it.** Make the lamp’s footprint the “fixed zone,” and move papers, stationery, or other clutter to the newly opened areas.\n\nIf you tell me what kind of lamp it is—clip-on, desk lamp with a base, swing-arm, etc.—and roughly the desk shape, I can narrow it down.",
+        "choice_id": "start",
+        "session_id": "a-household-decision",
+        "turn_id": "lamp-choice",
+        "user_text": "I'm sorting out the desk. I've got a lamp that works but takes up too much space, and buying another isn't in this month's budget. Help me think of a couple of ways to rearrange things."
+      },
+      "answer_sha256": "94600d64be4d6e33b582e14385a777c869d175ce13fef7362e54ca671751870d",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "2926c02d24a8c7b69cfab291297ced2f1ee4fa73896c9b404633d529ef976d66",
+          "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I'm sorting out the desk. I've got a lamp that works but takes up too much space, and buying another isn't in this month's budget. Help me think of a couple of ways to rearrange things."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-1caa94190214b05d7289be1747f8b4c07f31246f:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-household-decision",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 62,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:01:09.909494Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 25,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 130,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 185,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Suggests rearranging the working lamp without a required purchase or gratuitous personal history. Shelf/location options are suggestions, not remembered facts."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "1195b440889367c100a20181350dc497e28f1c6f146bd8720de7effb18581e8e",
+      "transcript": {
+        "assistant_text": "I’d try **moving the lamp off the desk entirely** first. A nearby shelf, windowsill, or even a sturdy stack of books beside the desk works if there’s space. That usually frees up the most usable surface without buying anything.\n\nIf there’s no good off-desk spot, my second move would be to **push the lamp to the least-used back corner** and angle it toward where you actually work.\n\nWhat’s around the desk—any shelf or side table nearby?",
+        "choice_id": "continue",
+        "session_id": "a-household-decision",
+        "turn_id": "desk-followup",
+        "user_text": "I'd rather move things around than buy storage boxes. What would you try first?"
+      },
+      "answer_sha256": "86e4a19b36b64faf9027a9fe484e7a79a5cfd0ca58a19a1d733b5871d7cdc00d",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "0832a852e8fa1975648a1c86d9f6a873f1ae84158cc13c498877648e9bf12289",
+          "event_id": "4048230d-bb41-4212-89a4-3331cb35a7c0",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I'd rather move things around than buy storage boxes. What would you try first?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-9169f754e36c7ddbcc70f0f0f2e0efd4cc98e16a:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-household-decision",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 65,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:04:28.883825Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 53,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 79,
+                "start": 54,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Prioritizes moving the existing lamp, provides a back-corner fallback, keeps the no-purchase preference and asks about unknown available surfaces rather than inventing them."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "8209fd0b0dc6a1f49ceec4020899fa51a2667ae3021890afda861fb9136ca7e5",
+      "transcript": {
+        "assistant_text": "From what we’ve talked about so far, I don’t have anything specific about your grandma—no detail I could safely use to make the card feel personal.\n\nGive me one small real detail about her, and I can turn it into a starting line. For example:\n\n- something she always says\n- a food she makes or made\n- a specific memory with her\n- a habit or quirk\n- what exactly you’re thanking her for this time\n\nTell me one of those, and I’ll draft a non-generic opening line or two.",
+        "choice_id": "start",
+        "session_id": "a-card-for-grandma",
+        "turn_id": "grandma-card",
+        "user_text": "I'm writing Grandma a card and don't want a generic thank-you. Is there something I've told you about her that we could use as a starting point?"
+      },
+      "answer_sha256": "6114cd71a1f39941fb19b6d52efcf481933ec2a62f7dc825d828ab8bbf3c7cef",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "d7782c6d2d28ce69fe6c7e0bdcdc4761843897435e184d48d9266e40ec6a492e",
+          "event_id": "1eddc3e9-1c7b-478c-a11a-8145af756d19",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I'm writing Grandma a card and don't want a generic thank-you. Is there something I've told you about her that we could use as a starting point?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-bd3acf57ded57e917a385a97ff28312f89523ebf:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-card-for-grandma",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 68,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:15:49.686540Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 62,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 144,
+                "start": 63,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "fail_recall",
+        "reason": "Requests a new reminder instead of using the previously supplied blackout kindness. Actual host context lacks that family memory. No unaided recall credit; subsequent recovery cannot erase this failure."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "28f7571b5f3f3d99848a85e0910758059e82b6df926a5330331c5b762ef3f1c9",
+      "transcript": {
+        "assistant_text": "Yes, that helps. Two plain versions:\n\n- When the power went out, Grandma lit the lantern and put buttons in a tea tin for us to sort.\n- I remember the power cuts: the lantern on, and buttons to sort from the tea tin.\n\nWant them even shorter?",
+        "choice_id": "hint",
+        "session_id": "a-card-for-grandma",
+        "turn_id": "grandma-cue",
+        "user_text": "I'm thinking of the power cuts and the tea tin. Does that help? I'd like a couple of plain sentences."
+      },
+      "answer_sha256": "5705d0c9ea518b8cbbb84ca716fa3d7c7e9df433bca71c99f36715cd5e08e1c6",
+      "branch": "assisted",
+      "input_events": [
+        {
+          "content_sha256": "155316d4b9fa17f48b549ab695b24e5f8054c2284b237cab0365d07faa9f0ae7",
+          "event_id": "304130b5-17e3-4a3d-92b4-e1b1b51cfd85",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I'm thinking of the power cuts and the tea tin. Does that help? I'd like a couple of plain sentences."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-87c0e240fab373077e08344c051b9ecf1fb4a1b1:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-card-for-grandma",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 71,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:19:49.388865Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 47,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 63,
+                "start": 48,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 101,
+                "start": 64,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass_assisted",
+        "reason": "After the user supplies power cuts and tea tin, returns source-faithful plain sentences with unsupplied lantern and button-sorting details. Does not repeat the unsupported table or kitchen. Gist/safety meaning is not expressed; this is sequential assistance, not isolated unaided recall."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "2bab8194abf9b025831f96c6b1757c31126501f03b0bb25e9698a3093188edac",
+      "transcript": {
+        "assistant_text": "Good to have you back. Based on where we left off:\n\n- You’re aiming for a short story around **1,800 words**.\n- **Lea still hasn’t opened the letter.**\n- You like working in the moment **just before she opens it**.\n- You had about **250 words of the opening**.\n\nThe last plan was to grow the opening to about **450–500 words** by adding one small interruption during Lea’s shift while keeping the letter present—maybe a visitor asking a harmless question, a monitor beeping, or a noise she assumes is someone else. Then return to the letter and have Lea notice it but put it away or leave because something else needs her.\n\nFor next week, if your class is still on **Wednesday evening**, I’d keep Wednesday clear and aim for two short sessions—maybe **Monday and Thursday**, or **Tuesday and Friday** if that fits better. Keep the first session very small: reread the 250 words, then write one added beat/interruption.\n\nIf you paste the current opening or tell me the last thing that happens, I can suggest the exact next sentence or beat.\n\nWhat’s your class schedule right now, and which days next week actually work?",
+        "choice_id": "start",
+        "session_id": "planning-after-a-gap",
+        "turn_id": "late-week-plan",
+        "user_text": "Two weeks have slipped by since I last worked on the story. Let's make next week's plan. I'd like to get the story moving again, but keep it realistic around class. Where had we got to, and what should I work on next?"
+      },
+      "answer_sha256": "3161a1072e12f6da7c1356debe7fdec866197638dd177eb54df515f88018f401",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "ed8208c90d85b5c38e5aab3744f270aa75a10c079fd464781b33dc87c6a15e6e",
+          "event_id": "4c052f4b-9cf9-412c-94e0-a41853b3a0bd",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Two weeks have slipped by since I last worked on the story. Let's make next week's plan. I'd like to get the story moving again, but keep it realistic around class. Where had we got to, and what should I work on next?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-c940b12b49ae5f325b9636b72ad9dd8f9a39de75:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-planning-after-a-gap",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 74,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:22:51.663252Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 59,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 88,
+                "start": 60,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 164,
+                "start": 89,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 217,
+                "start": 165,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "partial_redundant_clarification",
+        "reason": "Recalls 1800-word goal, 250-word unfinished opening, unopened letter and pre-opening tension work. Proposes days excluding Wednesday and does not revive expired Friday repair. Asking again for current class schedule is unnecessary confirmation, but the answer supplies an actionable plan without waiting for a full re-explanation.",
+        "memory_verdict": "pass",
+        "followup_observation": "The actor selected the assisted clarification branch and repeated 250 words, Wednesday class and two half-hour sessions. The initial factual recall was correct, but this imposed avoidable repeated background."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "99e13758a25c1b4cbb21b78099d08d0db608e789859022a1b5b5879f0c19695c",
+      "transcript": {
+        "assistant_text": "With Wednesday as class night, let’s keep it to two short sessions around it.\n\n**Session 1 — expand the opening (30 min)**\n- 0–5 min: reread your 250 words and mark the last concrete thing that happens.\n- 5–20 min: add **one small interruption** on Lea’s shift—something that pulls her attention from the letter without resolving it. Maybe a visitor asks a harmless question, a monitor beeps, or someone calls her name.\n- 20–30 min: write the return to the letter. She notices it, then sets it aside or gets pulled away again. Goal: get the opening to roughly 400–450 words.\n\n**Session 2 — sharpen and extend (30 min)**\n- 0–10 min: read the new draft aloud and cut any line that explains too much.\n- 10–25 min: make the letter feel more physically present—one sensory detail (handwriting, bent corner, weight) and one avoidance gesture (turns it face down, slides it under something).\n- 25–30 min: note the next beat and stop, so the opening ends with the letter still unopened. Goal: a clean opening near 500 words.\n\nWould **Monday + Thursday** or **Tuesday + Friday** fit better? If you paste the current opening or tell me the last line, I can suggest the exact next sentence for the interruption beat.",
+        "choice_id": "clarify",
+        "session_id": "planning-after-a-gap",
+        "turn_id": "late-plan-response",
+        "user_text": "It's still just about 250 words, with Lea avoiding the letter. Wednesday is class night. Two half-hour sessions, please."
+      },
+      "answer_sha256": "e174575f9b02aebdd335c637fa70dacad0e3a0bb2d3ad5ba6baa9635bc679f9a",
+      "branch": "assisted",
+      "input_events": [
+        {
+          "content_sha256": "8f748cb3e4988b1fd9f5aa5815bc6b52d9c61663579d145f637f75a45d27e35a",
+          "event_id": "d5481d94-9db8-47d7-8a69-48f30c6f0cbc",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "It's still just about 250 words, with Lea avoiding the letter. Wednesday is class night. Two half-hour sessions, please."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-f8b164de75485ab43210aa22bfdd38289da739f3:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-planning-after-a-gap",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 77,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:28:27.191524Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 62,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 88,
+                "start": 63,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 120,
+                "start": 89,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass_assisted",
+        "reason": "After explicit user clarification, proposes two 30-minute tasks, preserves 250-word starting state and unopened letter, and offers days avoiding Wednesday. Targets are suggestions, not claimed completed writing."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "2813f039e1ed46f0bd4d9b00bb3cf66eae6b2b7de5e40ffae400f306c1deeb25",
+      "transcript": {
+        "assistant_text": "Easy one-pan option: **creamy mushroom-pea rice**.\n\n**If your rice is uncooked:**  \n1. Sauté sliced mushrooms in a little butter or oil until browned.  \n2. Add the rice and stir for 1 minute.  \n3. Pour in stock or water, cover, and simmer until the rice is nearly done.  \n4. Stir in the frozen peas for the last few minutes.  \n5. Season with salt, pepper, and a knob of butter or a splash of cream/cheese if you have it.\n\n**If your rice is already cooked:**  \nMake a quick fried rice: brown the mushrooms, add the rice and peas, then push everything aside and scramble an egg in the pan if you have one. Season with soy sauce, butter, or just salt and pepper.\n\nEven with only those three ingredients, the key is getting good browning on the mushrooms so it doesn’t taste plain.",
+        "choice_id": "start",
+        "session_id": "dinner-for-one",
+        "turn_id": "solo-mushrooms",
+        "user_text": "Just me for dinner tonight. I've got mushrooms, rice and frozen peas. Can you suggest something easy with those?"
+      },
+      "answer_sha256": "db9288391aa1f6193727e5ba49e8005ddf7f94918957390885c53a4ad5dc47bb",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "d99c7033ebe7f4698c2d129b96f7ca0e59e7ab0742e3bcdefe8f6353cf071f33",
+          "event_id": "3126d158-220f-4766-b187-452e98f1b277",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Just me for dinner tonight. I've got mushrooms, rice and frozen peas. Can you suggest something easy with those?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-6808286317ae74faff182599b8a028e0a0f99376:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-dinner-for-one",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 80,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:32:14.407127Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 27,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 69,
+                "start": 28,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 112,
+                "start": 70,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Uses mushrooms, rice and peas for a solo meal without leaking Nia’s mushroom dislike or unrelated history. Distinguishes raw/cooked rice conditionally and makes extra ingredients optional."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "8f6254b5360fcbd90750bdf4e73dcc3d6244929f38e51830ada1511feb73e7c0",
+      "transcript": {
+        "assistant_text": "Sure — short version:\n\n**If rice is uncooked:**  \nBrown the mushrooms in butter or oil, add the rice, pour in water or stock, cover and simmer until the rice is nearly done. Stir in the peas for the last few minutes, then season.\n\n**If rice is already cooked:**  \nBrown the mushrooms, add the rice and peas, heat through, and season. Add an egg if you want.",
+        "choice_id": "continue",
+        "session_id": "dinner-for-one",
+        "turn_id": "solo-method",
+        "user_text": "Can you give me a short version of the method? I'm tired and don't need anything fancy."
+      },
+      "answer_sha256": "64fed82844c47a0a7e8be3a11be7ae0b4ddb61f308742fafe38e6ecb07645e0f",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "2e4563bcc3cf8ed6b378753e1664dd9681893d6f370f32de0e956ce6d0d2e04d",
+          "event_id": "e79a7a30-9b45-4d11-b132-a3a1f4dd7e54",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Can you give me a short version of the method? I'm tired and don't need anything fancy."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-9b8cd4414356768a00e60edd456f8f6844be8342:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-dinner-for-one",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 83,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:35:01.796710Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 46,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 87,
+                "start": 47,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Shortens the requested mushroom/rice/pea method without adding unrelated preferences or assuming cooked versus raw rice."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "0affac6c110cc0e71dae62de8fabe75edeba915fa228da157017ae1ca9680b2c",
+      "transcript": {
+        "assistant_text": "From the notes available to me, I don’t see a place where you said you’d put the blackout photo. I can see you mentioned finding an old photo, and separately that you were sorting out the desk, but no saved location for the photo itself.\n\nIf I were starting the search, I’d look:\n\n- On or around the desk first, since you mentioned sorting it.\n- In the areas you recently rearranged, since you said you preferred moving things around over buying storage boxes.\n\nThe tea tin came up in connection with the power cuts, but as a remembered scene, not as a stated storage spot.\n\nDo you remember if it’s a physical print or a digital photo? That would narrow down where to start.",
+        "choice_id": "start",
+        "session_id": "looking-for-the-photo",
+        "turn_id": "photo-location",
+        "user_text": "I'm looking for that old blackout photo. Where did I say I'd put it? Help me work out where to start looking."
+      },
+      "answer_sha256": "708aa40791b728f6195c8ff2a4a8e402c6c8836a8ea2e21fef138334bc807966",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "e9748140df52750ccb3d6490413a80408672fedcda0f498cec84ed769bdb142d",
+          "event_id": "c8f69153-0625-4cab-8da9-d821e251526e",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I'm looking for that old blackout photo. Where did I say I'd put it? Help me work out where to start looking."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-c3b74cc16be35ba5ef5ddf1943862e3e11fb2352:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-looking-for-the-photo",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 86,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:37:09.269525Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 40,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 68,
+                "start": 41,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 109,
+                "start": 69,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "States that no photo storage location was supplied, separates desk facts from search suggestions, and explicitly says the tea tin is part of the remembered scene rather than a known storage spot. Does not invent the hidden hallway drawer."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "eb07f041011f4dfe641f967d5a7c15985fb12c6b8c9501bb460789dcdd214178",
+      "transcript": {
+        "assistant_text": "Here’s a small checklist:\n\n- [ ] Usual paper piles, top and bottom\n- [ ] Desk surface and drawers, especially any spot you rearranged recently\n- [ ] Envelopes, folders, old notebooks/books where a print could slip in\n- [ ] Shelf stacks / boxes near the desk\n- [ ] If it might be digital: phone photos, downloads, cloud/backup folders\n\nTick each area off as you go so you don’t recheck the same pile twice.",
+        "choice_id": "continue",
+        "session_id": "looking-for-the-photo",
+        "turn_id": "photo-search",
+        "user_text": "Okay, I'll check the usual paper piles first. A tiny search checklist would help."
+      },
+      "answer_sha256": "9f921fab2e502ac4d7e32580e059a23f156d4d025fc35f31750912eb2e70afb8",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "136be41324ab4b25c6fc0190c604b26a7892364b2319445456b2e200b790ca32",
+          "event_id": "c334439e-eaa5-44d0-9ce5-605062f784bb",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Okay, I'll check the usual paper piles first. A tiny search checklist would help."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-ec6e725cc6c16a980cc4c31ff8f2f44d65b28430:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-looking-for-the-photo",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 89,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:39:51.908576Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 45,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 81,
+                "start": 46,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Provides a short checklist as prospective search suggestions. Does not claim any location was remembered or that the photo has been found; digital possibility remains conditional."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "bec9b91af8741dcabe39f06e3d06c6fd19aee74ddae1eef5b35110aff5154e73",
+      "transcript": {
+        "assistant_text": "Here’s a low-pressure option:\n\n**Hey Alex — I finally finished the first draft of my story, around 1,800 words. No pressure at all, but if you’d ever like to read it, I can send it over. Totally fine if not or if now isn’t a good time.**\n\nA couple of alternatives:\n\n**Shorter:**  \nHey Alex, I finished the story draft. If you’re ever curious and want to read it, I can send it your way — no rush, no expectations.\n\n**Slightly more open to feedback:**  \nHey Alex, I finally have a full draft, about 1,800 words. If you feel like reading it sometime, I’d love any general thoughts — but no pressure and no deadline. If not, all good.\n\nWant me to make it more casual, more specific, or fold in a personal line like hoping his ankle’s still doing okay?",
+        "choice_id": "start",
+        "session_id": "a-finished-draft",
+        "turn_id": "draft-finished",
+        "user_text": "I finally finished the first draft, roughly 1,800 words. I haven't sent it to anyone yet. Could you help me write a low-pressure text asking my drummer friend Alex if he'd like to read it?"
+      },
+      "answer_sha256": "4235b2443e9b0c17f4cbd2946dfa422da3c5426aea096901f3fc843b5b1e610e",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "0d90e83a9cfd783aa8902ab0c9822f78778cb6dbe57d546350be0c76dfa7b59f",
+          "event_id": "1b279a24-1176-455d-82a4-55387d245da1",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "I finally finished the first draft, roughly 1,800 words. I haven't sent it to anyone yet. Could you help me write a low-pressure text asking my drummer friend Alex if he'd like to read it?"
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-c9b9c5a92b68bf7cf484e4708f6e05c892b3df1f:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-finished-draft",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 92,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:43:09.423939Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 89,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "inquiry",
+              "span": {
+                "end": 188,
+                "start": 90,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Accepts the new reported completed 1800-word first draft and drafts an invitation to the drummer friend. Does not confuse him with the analyst or claim sending/reading. Optional ankle reference is phrased as an offer, not a new injury claim."
+      }
+    },
+    {
+      "segment": "tail",
+      "delivery_event_sha256": "79835913d5bec9debe0f69ebc463abf77b934c3d69be87bc2fb40455b556cafa",
+      "transcript": {
+        "assistant_text": "Sure — here’s a version you can copy and send whenever you’re ready:\n\n**Hey Alex! I finally finished the first draft — around 1,800 words. If you ever want to read it, I can send it over. Totally fine if you’re too busy or just not up for it right now — no pressure at all.**\n\nShorter option:\n\n**Hey Alex, finished the first draft (~1,800 words). If you want to read it sometime, I can send it over — but no worries at all if you’re swamped.**",
+        "choice_id": "continue",
+        "session_id": "a-finished-draft",
+        "turn_id": "sharing-text",
+        "user_text": "Keep it friendly and make it easy for him to say he's too busy. I'll send it myself later."
+      },
+      "answer_sha256": "042d43418d6217ec4e45e511b9e42727013918bde384f6468e5200dacc690720",
+      "branch": "ordinary",
+      "input_events": [
+        {
+          "content_sha256": "7ce12675b3a0f241d1c8d63721f89da5ad24680175a78fad81aa237a2f4f078d",
+          "event_id": "24c0a95f-41b0-420a-a7e8-a3b3dc5a0f21",
+          "observed": {
+            "actor_ref": "user",
+            "actor_role": "user",
+            "content": {
+              "media_type": "text/plain",
+              "text": "Keep it friendly and make it easy for him to say he's too busy. I'll send it myself later."
+            },
+            "delivery_state": "received",
+            "event_kind": "message",
+            "interpretation_hint": "unknown",
+            "occurred_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "parent_source_event_keys": [],
+            "producer_ref": "brain-runtime",
+            "source_event_key": "turn-aaadc7da75a4976278df1cedcb649de794fa0fab:input",
+            "source_revision": 1,
+            "speech_act_hint": "unknown"
+          },
+          "origin": "user_statement",
+          "origin_verification": "unknown",
+          "previous_revision": null,
+          "revision": 1,
+          "scope": {
+            "access_policy_id": "owner:6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "brain_id": "6ec28fd1-56e6-4caa-b182-69c797a803b1",
+            "branch_id": "main",
+            "conversation_id": "rowan-a-finished-draft",
+            "policy_revision": 1,
+            "principal_binding_id": "68fe3c0b-2cc5-4782-bc06-90d59f351b96",
+            "scope_generation": 1,
+            "tenant_id": "8d630308-b033-44c7-b64d-3f3bd221b4ae",
+            "visibility": "private"
+          },
+          "sequence": 95,
+          "system_time": {
+            "recorded_at": "2026-10-26T10:46:47.839822Z",
+            "superseded_at": null
+          },
+          "utterance_segments": [
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 63,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            {
+              "act": "direct_statement",
+              "span": {
+                "end": 90,
+                "start": 64,
+                "unit": "unicode_code_point"
+              }
+            }
+          ]
+        }
+      ],
+      "runtime_stage": "completed",
+      "judgment": {
+        "verdict": "pass",
+        "reason": "Provides friendly optional invitation drafts, keeps completed first-draft state and explicitly leaves sending to the user later. Does not claim an external send or reader response."
+      }
+    }
+  ],
+  "unanswered_input": {
+    "assistant_text": null,
+    "choice_id": "correct",
+    "session_id": "dinner-with-nia",
+    "turn_id": "dinner-shopping",
+    "user_text": "Please keep mushrooms out of this dinner for Nia. A short shopping list for two would help."
+  },
+  "publication_review": {
+    "primary": {
+      "scope": "All derived assertions and episode organization statements through nia-dinner reviewed against cited actual source excerpts. No belief relations published.",
+      "findings": [
+        "Unsupported table detail retained inside an explicitly attributed assistant quotation, not yet promoted to a user fact. Downstream contamination remains unassessed.",
+        "Mixed user reports/questions are repeatedly rejected before verification, including key duration and family-memory proposals. Literal sources remain available; derived coverage is weak.",
+        "The class-change answer is retained as attributed Chinese speech. An episode summarizes the interaction without supplying a stronger current-class assertion.",
+        "Assistant suggestions dominate many accepted claims; this is storage noise, not itself an unsupported world-fact publication.",
+        "Museum experience is accepted as a user report with exact visit, person and ankle evidence. Harbor correction is retained literally and as attributed assistant response; its combined user-report/request proposal was rejected.",
+        "Museum follow-up is attributed assistant drafting; user sentiment remains exact speech. Dinner episode states current meal constraints, not a general mushroom dislike for the user. No detailed dinner claims published."
+      ]
+    },
+    "tail": {
+      "scope": "All fourteen tail publications, including sharing-text, reviewed against cited source excerpts.",
+      "findings": [
+        "New story-planning assertions remain attributed assistant suggestions. Episode descriptions retain unfinished 250-word state and distinguish proposals. Mixed user-report/question proposals again rejected. No belief relations published.",
+        "Desk assertions preserve the functional lamp, current-month budget and user request with exact source spans; no global inability-to-buy claim. Assistant options retain attribution.",
+        "Desk follow-up publishes the exact user preference as speech and the assistant response as agent_said; two episode descriptions preserve their respective speaker roles. No unsupported world assertion or new relation observed.",
+        "Grandma-card publishes the current card intent and preference as user reports and the assistant lack-of-recall statement as agent_said. The latter records what the assistant said; it must not prove the original memory was absent from storage.",
+        "Cue response is retained as attributed assistant speech and an episode about the user prompt; no table/kitchen detail was added to the main brain by this turn. Isolated probe failures were not merged.",
+        "Two-week gap and renewed writing intent are supported user reports. Only the assistant schedule question passed its detailed claim verifier; rejected plan summaries were not silently published. Episode summary retains the exchange without upgrading suggestions to outcomes.",
+        "User clarification is published with exact 250-word, Wednesday and half-hour evidence. Assistant two-session plan remains explicitly attributed, with target word counts not promoted to completed work.",
+        "Solo meal suggestions remain agent_said and conditional; episode descriptions preserve the current solo-dinner task. No Nia dislike is attributed to the user. The user mixed request proposals are rejected rather than silently rewritten.",
+        "Photo-location assertion remains assistant-attributed uncertainty/search guidance, not a user storage-location fact. Search follow-up stores exact user intent and an assistant checklist; no found-photo or hidden-location claim.",
+        "Final draft invitation remains an attributed assistant suggestion. The user completion/unsent/request combined claim was rejected, while literal sources and the episode retain the reported completion and unsent status. No external delivery or reader action was published as completed.",
+        "Final sharing-text publication preserves the user intention to send later and exact assistant draft attribution. The episode explicitly does not establish sending or reading; no belief relations or pattern views were published."
+      ]
+    }
+  },
+  "cue_review": {
+    "reviewer": "Root Codex source reviewer independent of tested host and actor",
+    "state": "completed_with_behavioral_failures",
+    "plan_sha256": "4ddd103f2e71cb8b4f073a42ce26ac756b88eaaf4103a81ffce11ef30451a750",
+    "head_sha256": "d356ee0f0cffb8af47187fcea65c4dbf91db1e86adec51e093edb5dfe4ed15d1",
+    "source_unchanged": true,
+    "five_equal_initial_durable_graphs": true,
+    "usage": {
+      "completed_calls": 5,
+      "reserved_calls": 5,
+      "reserved_output_tokens": 20480,
+      "usage_confirmed_calls": 5,
+      "usage_totals": {
+        "completion_tokens": 5436,
+        "prompt_cache_hit_tokens": 4608,
+        "prompt_cache_miss_tokens": 25898,
+        "prompt_tokens": 30506,
+        "total_tokens": 35942
+      },
+      "usage_unknown_calls": 0
+    },
+    "cases": {
+      "unaided": {
+        "verdict": "fail_recall",
+        "gist": false,
+        "withheld_details": [],
+        "unsupported_claims": [],
+        "reason": "Requests a reminder rather than retrieving the supplied family memory; appropriately avoids inventing an event.",
+        "answer": "From what I can see right now, I don’t have a specific detail saved about your grandma—nothing I’d want to guess from.\n\nIf you tell me one concrete thing about her—something she always says, a tradition you share, a recent visit, or what the thank-you is for—I can turn that into a non-generic opening.",
+        "event_sha256": "674e943e07b9ea6ea1ef4fcab1b25c37206052b69ed0ac038c0ebeda44cc2fc4",
+        "answer_sha256": "0f4512860feecf2b724a1e17d7908112e21fd68d8ae3bb2a09c057371ae1296b"
+      },
+      "broadcue": {
+        "verdict": "fail_unsupported_details",
+        "gist": "partial_warm_scene_without_stated_safety_meaning",
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "unsupported_claims": [
+          "sorting together at the table",
+          "in the kitchen"
+        ],
+        "reason": "Recovers scene details after a power-cut cue but repeats an unsupported table setting and adds a kitchen. Neither location was supplied by the user. Correct details do not erase whole-answer errors.",
+        "answer": "Yes, that helps—I remember the power cuts. The image that comes back is Grandma lighting the lantern and putting buttons in a tea tin for you to sort. That’s a warm, specific place to start.\n\nA personal opening could be:\n\n> Grandma, I still think about the power cuts—the lantern lit, the buttons in the tea tin, us sorting together at the table.\n\nIf you want it more like a card’s first line:\n\n> Before you even open this, I’m back in the kitchen during a power cut: lantern glowing, buttons in the tin, just us.\n\nWant me to keep it plain like that, or make it a little softer?",
+        "event_sha256": "d3867f5e154a1dc6ff6f4b1bab5bb1bdbce6368dc370bbd670329a9c83bc463a",
+        "answer_sha256": "2c1977352606ffa14d3dbf4ab72531d98e777de8d224e22197494d4b65851eb1"
+      },
+      "specificcue": {
+        "verdict": "fail_unsupported_house_attribution",
+        "gist": true,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons"
+        ],
+        "cue_supplied_not_counted": [
+          "power cuts",
+          "tea tin"
+        ],
+        "unsupported_claims": [
+          "at your grandma’s house",
+          "at your house"
+        ],
+        "reason": "Recovers safety/small-kindness meaning and unsupplied details, but assigns the event to Grandma’s house without user evidence.",
+        "answer": "Yes—that brings it back. You told me about the power cuts at your grandma’s house: she’d light the lantern and set out a tea tin of buttons for you to sort. You said it made a scary dark house feel safe, and you wanted it kept understated, as a small ordinary kindness.\n\nA personal starting point could be:\n\n> Grandma, I was remembering the power cuts at your house—the lantern, and the tea tin of buttons. It was a small thing, but it made the dark feel safe.\n\nOr, plainer:\n\n> I still think about the power cuts at your house: you lighting the lantern and giving us buttons to sort from the tea tin.\n\nWant me to build from one of these into a short card message?",
+        "event_sha256": "d1309f5771cfa08c2f99a8d0a384d9f02bd600d2a9c403960f37d554a4851bd9",
+        "answer_sha256": "6e11a12a92067342443623b32349df0fd8a92e56541cba10b457b79698736c4a"
+      },
+      "unknowndetail": {
+        "verdict": "pass",
+        "reason": "States the photo location is unrecorded. Desk-based search suggestions are explicitly conditional, not claimed recollections. Does not disclose the hidden hallway drawer.",
+        "answer": "I don’t have a record of you telling me where you’d put that old photo, so I don’t want to guess and send you to the wrong spot.\n\nFrom what I do have, you were sorting out the desk and said you’d rather move things around than buy storage boxes. If the photo got moved during that sort-out, I’d start here:\n\n- Desk drawers and desk surface\n- Any piles of paper/folders near the desk\n- Under or behind the desk\n- Bags, folders, or boxes you used to relocate things\n- The area around the lamp you mentioned was taking up space\n\nA useful first question: do you remember if you handled the photo while you were sorting the desk, or somewhere else? And was it loose, or in an envelope/album? That’ll help narrow down where to start.",
+        "event_sha256": "46e84a54dae27be0ba13576958fa7759d9ba0a4dc03fa7df943181443450af96",
+        "answer_sha256": "ec9897402d3f8147c9ee50c504ba1c5b870b80f97c074b744eecca113cdc3354"
+      },
+      "falsepremise": {
+        "verdict": "pass",
+        "reason": "Does not confirm a trip or present and does not assert that they never happened; separates missing records from the known lantern/buttons episode.",
+        "answer": "From what I can retrieve right now, I don’t have a record of you telling me about a childhood trip or a specific special present from Grandma.\n\nThe details I do have from what we worked on are:\n\n- The power had gone out.\n- Grandma lit a lantern and put buttons in a tea tin for you to sort.\n- You described it as a small ordinary kindness and asked for it to be less sentimental.\n\nSo I have the lantern-and-buttons scene, but not the trip or the present as a separate detail. Want to add that part now?",
+        "event_sha256": "9451085863fd522849f4bc44c11c4423ece7d0005185f9dcf84d25b04009658a",
+        "answer_sha256": "6b18e18a8f6f44a9820de37daa0b3394c7ca1b8c8210665de04469c958a435c9"
+      }
+    },
+    "limitations": [
+      "Single response per independent copied brain; no repeated sampling or superiority claim.",
+      "Same model/provider with a different host callback, not cross-vendor testing.",
+      "Amended exploratory checkpoint after one unanswered parent turn; original clean-boundary acceptance requirement unmet.",
+      "Recovered facts supplied by the cue do not earn recall credit."
+    ]
+  },
+  "access_age_review": {
+    "reviewer": "Root Codex source review of surfaced model contexts against actual prior sources; not keyword scoring",
+    "scope": "18 fixed direct-recall calls, 16000 conservative context budget, no model/embedding calls. Does not equal BrainRuntime.prepare or measure real elapsed years.",
+    "mechanical_isolation": "25 scoped tables and journal files unchanged after rollback",
+    "catalog_size": 337,
+    "catalog_tiers": [
+      {
+        "days": 0,
+        "tiers": {
+          "everyday": 337
+        }
+      },
+      {
+        "days": 365,
+        "tiers": {
+          "deep": 337
+        }
+      },
+      {
+        "days": 3650,
+        "tiers": {
+          "deep": 337
+        }
+      }
+    ],
+    "arms": [
+      {
+        "query": "unfinished_story",
+        "age_days": 0,
+        "intent": "explore",
+        "context_sha256": "6b002f291285c46b472ec9658545b69b6a2bb5884d0c712965ca5e19b3761266",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 10,
+        "elapsed_ms": 32,
+        "context_tokens_conservative_estimate": 12146,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "latest_250_word_unfinished_state": true,
+        "letter_unopened": true,
+        "story_premise_available": true,
+        "intrusions": [
+          "desk",
+          "museum visit"
+        ],
+        "judgment": "Useful writing state remains surfaced at all tested ages."
+      },
+      {
+        "query": "unfinished_story",
+        "age_days": 0,
+        "intent": "cue_recovery",
+        "context_sha256": "6b002f291285c46b472ec9658545b69b6a2bb5884d0c712965ca5e19b3761266",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 10,
+        "elapsed_ms": 33,
+        "context_tokens_conservative_estimate": 12146,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "latest_250_word_unfinished_state": true,
+        "letter_unopened": true,
+        "story_premise_available": true,
+        "intrusions": [
+          "desk",
+          "museum visit"
+        ],
+        "judgment": "Useful writing state remains surfaced at all tested ages."
+      },
+      {
+        "query": "unfinished_story",
+        "age_days": 365,
+        "intent": "explore",
+        "context_sha256": "6b002f291285c46b472ec9658545b69b6a2bb5884d0c712965ca5e19b3761266",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 10,
+        "elapsed_ms": 33,
+        "context_tokens_conservative_estimate": 12146,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "latest_250_word_unfinished_state": true,
+        "letter_unopened": true,
+        "story_premise_available": true,
+        "intrusions": [
+          "desk",
+          "museum visit"
+        ],
+        "judgment": "Useful writing state remains surfaced at all tested ages."
+      },
+      {
+        "query": "unfinished_story",
+        "age_days": 365,
+        "intent": "cue_recovery",
+        "context_sha256": "6b002f291285c46b472ec9658545b69b6a2bb5884d0c712965ca5e19b3761266",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 10,
+        "elapsed_ms": 32,
+        "context_tokens_conservative_estimate": 12146,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "latest_250_word_unfinished_state": true,
+        "letter_unopened": true,
+        "story_premise_available": true,
+        "intrusions": [
+          "desk",
+          "museum visit"
+        ],
+        "judgment": "Useful writing state remains surfaced at all tested ages."
+      },
+      {
+        "query": "unfinished_story",
+        "age_days": 3650,
+        "intent": "explore",
+        "context_sha256": "6b002f291285c46b472ec9658545b69b6a2bb5884d0c712965ca5e19b3761266",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 10,
+        "elapsed_ms": 33,
+        "context_tokens_conservative_estimate": 12146,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "latest_250_word_unfinished_state": true,
+        "letter_unopened": true,
+        "story_premise_available": true,
+        "intrusions": [
+          "desk",
+          "museum visit"
+        ],
+        "judgment": "Useful writing state remains surfaced at all tested ages."
+      },
+      {
+        "query": "unfinished_story",
+        "age_days": 3650,
+        "intent": "cue_recovery",
+        "context_sha256": "6b002f291285c46b472ec9658545b69b6a2bb5884d0c712965ca5e19b3761266",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 10,
+        "elapsed_ms": 34,
+        "context_tokens_conservative_estimate": 12146,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "latest_250_word_unfinished_state": true,
+        "letter_unopened": true,
+        "story_premise_available": true,
+        "intrusions": [
+          "desk",
+          "museum visit"
+        ],
+        "judgment": "Useful writing state remains surfaced at all tested ages."
+      },
+      {
+        "query": "grandma_card",
+        "age_days": 0,
+        "intent": "explore",
+        "context_sha256": "ded7c8c044e5de91be34796e6fe6734e57013a571371c396f89dcb0b8ce6827e",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 12,
+        "elapsed_ms": 34,
+        "context_tokens_conservative_estimate": 15763,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [],
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "cooking"
+        ],
+        "judgment": "No family-memory meaning surfaces even at day zero; this is a query relevance failure, not demonstrated age-dependent forgetting."
+      },
+      {
+        "query": "grandma_card",
+        "age_days": 0,
+        "intent": "cue_recovery",
+        "context_sha256": "ded7c8c044e5de91be34796e6fe6734e57013a571371c396f89dcb0b8ce6827e",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 12,
+        "elapsed_ms": 35,
+        "context_tokens_conservative_estimate": 15763,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [],
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "cooking"
+        ],
+        "judgment": "No family-memory meaning surfaces even at day zero; this is a query relevance failure, not demonstrated age-dependent forgetting."
+      },
+      {
+        "query": "grandma_card",
+        "age_days": 365,
+        "intent": "explore",
+        "context_sha256": "ded7c8c044e5de91be34796e6fe6734e57013a571371c396f89dcb0b8ce6827e",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 12,
+        "elapsed_ms": 34,
+        "context_tokens_conservative_estimate": 15763,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [],
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "cooking"
+        ],
+        "judgment": "No family-memory meaning surfaces even at day zero; this is a query relevance failure, not demonstrated age-dependent forgetting."
+      },
+      {
+        "query": "grandma_card",
+        "age_days": 365,
+        "intent": "cue_recovery",
+        "context_sha256": "ded7c8c044e5de91be34796e6fe6734e57013a571371c396f89dcb0b8ce6827e",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 12,
+        "elapsed_ms": 34,
+        "context_tokens_conservative_estimate": 15763,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [],
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "cooking"
+        ],
+        "judgment": "No family-memory meaning surfaces even at day zero; this is a query relevance failure, not demonstrated age-dependent forgetting."
+      },
+      {
+        "query": "grandma_card",
+        "age_days": 3650,
+        "intent": "explore",
+        "context_sha256": "ded7c8c044e5de91be34796e6fe6734e57013a571371c396f89dcb0b8ce6827e",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 12,
+        "elapsed_ms": 34,
+        "context_tokens_conservative_estimate": 15763,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [],
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "cooking"
+        ],
+        "judgment": "No family-memory meaning surfaces even at day zero; this is a query relevance failure, not demonstrated age-dependent forgetting."
+      },
+      {
+        "query": "grandma_card",
+        "age_days": 3650,
+        "intent": "cue_recovery",
+        "context_sha256": "ded7c8c044e5de91be34796e6fe6734e57013a571371c396f89dcb0b8ce6827e",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 12,
+        "elapsed_ms": 35,
+        "context_tokens_conservative_estimate": 15763,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [],
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "cooking"
+        ],
+        "judgment": "No family-memory meaning surfaces even at day zero; this is a query relevance failure, not demonstrated age-dependent forgetting."
+      },
+      {
+        "query": "grandma_power_cuts",
+        "age_days": 0,
+        "intent": "explore",
+        "context_sha256": "51b1c4f2181bc32c6b0ab36d088e4ca030ad621061bce6850b5e58c3aaca4e55",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 16,
+        "elapsed_ms": 38,
+        "context_tokens_conservative_estimate": 15976,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "attribution": "Details surface inside recorded assistant captions, including an unsupported table location. User emotional meaning is absent.",
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "museum visit",
+          "superseded class schedule"
+        ],
+        "judgment": "Textual cue changes retrieved content, but not a source-faithful emotional recollection. Ten-year explore substitutes a literal old schedule statement for a derived equivalent; no meaningful age-induced loss/recovery."
+      },
+      {
+        "query": "grandma_power_cuts",
+        "age_days": 0,
+        "intent": "cue_recovery",
+        "context_sha256": "6830bd5db2318957def6f4b1071a8bf8f6b8053bb383532d2a52cf37a6cf6fb8",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 16,
+        "elapsed_ms": 35,
+        "context_tokens_conservative_estimate": 15580,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "attribution": "Details surface inside recorded assistant captions, including an unsupported table location. User emotional meaning is absent.",
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "museum visit",
+          "superseded class schedule"
+        ],
+        "judgment": "Textual cue changes retrieved content, but not a source-faithful emotional recollection. Ten-year explore substitutes a literal old schedule statement for a derived equivalent; no meaningful age-induced loss/recovery."
+      },
+      {
+        "query": "grandma_power_cuts",
+        "age_days": 365,
+        "intent": "explore",
+        "context_sha256": "51b1c4f2181bc32c6b0ab36d088e4ca030ad621061bce6850b5e58c3aaca4e55",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 16,
+        "elapsed_ms": 37,
+        "context_tokens_conservative_estimate": 15976,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "attribution": "Details surface inside recorded assistant captions, including an unsupported table location. User emotional meaning is absent.",
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "museum visit",
+          "superseded class schedule"
+        ],
+        "judgment": "Textual cue changes retrieved content, but not a source-faithful emotional recollection. Ten-year explore substitutes a literal old schedule statement for a derived equivalent; no meaningful age-induced loss/recovery."
+      },
+      {
+        "query": "grandma_power_cuts",
+        "age_days": 365,
+        "intent": "cue_recovery",
+        "context_sha256": "6830bd5db2318957def6f4b1071a8bf8f6b8053bb383532d2a52cf37a6cf6fb8",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 16,
+        "elapsed_ms": 38,
+        "context_tokens_conservative_estimate": 15580,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "attribution": "Details surface inside recorded assistant captions, including an unsupported table location. User emotional meaning is absent.",
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "museum visit",
+          "superseded class schedule"
+        ],
+        "judgment": "Textual cue changes retrieved content, but not a source-faithful emotional recollection. Ten-year explore substitutes a literal old schedule statement for a derived equivalent; no meaningful age-induced loss/recovery."
+      },
+      {
+        "query": "grandma_power_cuts",
+        "age_days": 3650,
+        "intent": "explore",
+        "context_sha256": "6830bd5db2318957def6f4b1071a8bf8f6b8053bb383532d2a52cf37a6cf6fb8",
+        "same_as_same_query_intent_day_zero": false,
+        "items": 16,
+        "elapsed_ms": 36,
+        "context_tokens_conservative_estimate": 15580,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "attribution": "Details surface inside recorded assistant captions, including an unsupported table location. User emotional meaning is absent.",
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "museum visit",
+          "superseded class schedule"
+        ],
+        "judgment": "Textual cue changes retrieved content, but not a source-faithful emotional recollection. Ten-year explore substitutes a literal old schedule statement for a derived equivalent; no meaningful age-induced loss/recovery."
+      },
+      {
+        "query": "grandma_power_cuts",
+        "age_days": 3650,
+        "intent": "cue_recovery",
+        "context_sha256": "6830bd5db2318957def6f4b1071a8bf8f6b8053bb383532d2a52cf37a6cf6fb8",
+        "same_as_same_query_intent_day_zero": true,
+        "items": 16,
+        "elapsed_ms": 37,
+        "context_tokens_conservative_estimate": 15580,
+        "status": "partial",
+        "coverage": {
+          "durable_through_sequence": 67,
+          "indexed_through_sequence": 54,
+          "tail_covered_through_sequence": 67,
+          "snapshot_revision": 67,
+          "read_fence_satisfied": true,
+          "search_exhaustive": false,
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "dependency_generation": 22,
+          "projection_generation": 22,
+          "rebuilding": false
+        },
+        "grandma_gist": false,
+        "withheld_details": [
+          "lantern",
+          "sorting buttons",
+          "tea tin"
+        ],
+        "attribution": "Details surface inside recorded assistant captions, including an unsupported table location. User emotional meaning is absent.",
+        "intrusions": [
+          "desk",
+          "story writing",
+          "work handoff",
+          "museum visit",
+          "superseded class schedule"
+        ],
+        "judgment": "Textual cue changes retrieved content, but not a source-faithful emotional recollection. Ten-year explore substitutes a literal old schedule statement for a derived equivalent; no meaningful age-induced loss/recovery."
+      }
+    ],
+    "conclusion": "Age changes activation tiers but does not demonstrate useful gist/detail forgetting or age-triggered cue recovery here. Broad textual cue surfaces assistant caption details while unaided Grandma query is dominated by unrelated content. Preserve the distinction between raw source retention and model-visible recall.",
+    "limitations": [
+      "Fixed small corpus and one fictional user.",
+      "All results report index_lag and partial_scope; no claim of exhaustive retrieval.",
+      "No additional answer calls are authorized or executed from this age diagnostic.",
+      "Original clean-checkpoint condition is unmet after the disclosed sleep interruption."
+    ],
+    "catalog_counts": {
+      "representations": {
+        "unspecified": 295,
+        "episode_fragment": 42
+      },
+      "derivations": {
+        "direct_capture": 295,
+        "aggregation": 42
+      }
+    }
+  },
+  "limitations": [
+    "One authored fictional user, not a human field trial.",
+    "No 56-day actual operation or biological forgetting claim.",
+    "No baseline superiority experiment.",
+    "A successful scaffold/engineering test does not imply behavioral maturity.",
+    "No Codex/Claude subscription-backed test, paid answer reviewer or additional age-answer call."
+  ]
+}

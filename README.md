@@ -152,7 +152,9 @@ The [memory-quality verification baseline](evaluations/v1-2026-10-25-memory-effi
 
 The [latest preparation follow-up](evaluations/v1-2026-10-25-learning-preparation.md) removes repeated working-state reads and comparison discovery while preserving model-facing plans. The configured model owns semantic memory decisions; the runtime retains evidence and lifecycle constraints.
 
-Version 0.1.0 is now in [release closeout](docs/releasing.md): scope is frozen while longitudinal acceptance and final packaging are completed. The [changelog](CHANGELOG.md) remains an unreleased draft.
+The [varied longitudinal diagnostic](evaluations/v1-2026-10-26-longitudinal-round.md) exercised all 33 inputs across sixteen sessions on one persistent brain, with 32 completed replies and one preserved timeout. The scenario spans 56 fictional days, not 56 days of actual operation. It exposed missed meaningful recall, unsupported remembered details, language drift and high cognitive cost. Isolated cue and access-age diagnostics are recorded with raw evidence; **behavioral acceptance did not pass**.
+
+Version 0.1.0 remains in [release closeout](docs/releasing.md): scope is frozen while the observed defects are repaired and acceptance is completed. The [changelog](CHANGELOG.md) remains an unreleased draft.
 
 Known limits remain visible: a model can treat historical information as current fact, retrieval can include irrelevant material, and semantic verification can reject valid proposals. Full longitudinal acceptance and real elapsed-time aging remain incomplete. Streaming, tool loops, multimodal input, native one-click installation, and full integration into arbitrary AI clients are not currently delivered; Windows/Linux desktop acceptance has not been run on actual machines. Personality and emotion modeling are future research.
 

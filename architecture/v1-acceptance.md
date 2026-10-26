@@ -43,7 +43,7 @@ Assess useful help throughout the timeline: continuing unfinished work, adapting
 
 Every required case must satisfy its frozen factual and task constraints under independent whole-answer/source review. Record unnecessary clarification and re-teaching separately from unaided success. All required categories, delays and continuity boundaries must be exercised, with no unresolved critical memory, publication or isolation defect. Invalid or unexecuted cases cannot pass. A final correct state cannot erase an earlier unsupported publication. Preserve actual sources, deliveries, learning outcomes, usage and pending work; G2–G3's evidence and finite spending rules continue to apply.
 
-The new runner supplies session-aware learning checks, a bounded interactive user and safe manual continuation between sessions. Full source-backed live review, isolated cue comparisons, model-callback continuity within this scenario and age-dependent evidence remain incomplete. G4 stays unpassed. No scheduled task or live campaign is started by updating this document.
+The runner supplies session-aware learning checks, a bounded interactive user and safe manual continuation between sessions. The [amended varied diagnostic](../evaluations/v1-2026-10-26-longitudinal-round.md) now includes source-backed review through the final authored session, isolated cue comparisons and an alternate core callback on restored copies. Its failures, interrupted main segment and exploratory access-age results do not establish a clean acceptance pass, cross-vendor continuity or useful age-dependent forgetting. G4 stays unpassed. No scheduled task or live campaign is started by updating this document.
 
 ### G5 — Keep local overhead bounded
 
@@ -80,6 +80,8 @@ That command does not implement the new G4. Its sixteen-exchange checkpoint, sam
 The replacement runner and commands are documented in the [implementation status](longitudinal-memory-evaluation.md#implemented-runner-and-remaining-acceptance-work). Its private journal preserves persistent sessions, exact interactive branches, distributed review evidence, source checks and cumulative spending. See the [verification report](../evaluations/v1-2026-10-25-longitudinal-harness.md) for the executed scope and missing acceptance evidence; runner completion alone never passes G4.
 
 ## Progress checkpoint
+
+The latest [2026-10-26 varied diagnostic](../evaluations/v1-2026-10-26-longitudinal-round.md) exercised sixteen sessions and all 33 authored inputs: 32 replies completed required learning, and one timeout remains unanswered. Original failure journals are closed; a separately frozen same-brain tail completed the remaining fourteen inputs without retrying the failed request or resetting its allowance. The report preserves semantic failures, both procedural amendments, five isolated cue probes and eighteen zero-model access-age retrievals. Meaningful recall, unsupported recalled detail, language continuity and cognitive cost require repairs. Paid execution for this diagnostic has stopped; diagnose and verify those repairs locally before proposing another finite real-model run. No maturity threshold is lowered.
 
 The [local acceptance checkpoint](../evaluations/v1-2026-10-25-local-acceptance.md) records the bounded-attention, private-funding, capability and speech-attribution repairs, exact artifact identity, full regression and necessary fixture follow-up. Local retrieval and capability measurements meet their recorded budgets.
 

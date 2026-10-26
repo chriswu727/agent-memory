@@ -18,14 +18,14 @@ def add_commands(actions):
     change = actions.add_parser(
         "configure-cognition-policy", help="Save cognition limits for the next service restart",
         description="Save cognition limits for new jobs after a service restart. Desktop connections allow a "
-        "315-second response wait to cover frozen jobs with a 300-second policy. Other hosts must configure "
+        "615-second response wait to cover frozen jobs with a 600-second policy. Other hosts must configure "
         "their memory API response timeout to cover the server policy; the Python SDK default remains 30 seconds.",
     )
     change.add_argument("--directory", type=Path, default=None)
     change.add_argument("--preset", choices=("reasoning",),
                         help="Explicitly select 240000 ms, 16384 output tokens and 65536 decoded bytes")
     change.add_argument("--max-wall-time-ms", type=int,
-                        help="Total proposal and verification time per batch, from 1 to 300000 milliseconds")
+                        help="Total proposal and verification time per batch, from 1 to 600000 milliseconds")
     change.add_argument("--max-output-tokens", type=int,
                         help="Output token cap per model request, from 1 to 32768")
     change.add_argument("--max-response-bytes", type=int,

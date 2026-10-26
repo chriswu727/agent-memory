@@ -51,6 +51,7 @@ def test_plan_is_offline_and_includes_every_role_without_repetitive_turn_target(
     assert planned["provider"]["reasoning_effort"] == "high"
     assert planned["provider_envelope_bytes"] == 262144
     assert planned["semantic_policy"]["max_response_bytes"] == 65536
+    assert planned["semantic_policy"]["max_wall_time_ms"] == 600000
     assert not planned["aging_assessed"]
     assert planned["time_mode"] == "narrative_order_only"
     assert all(path.endswith(".py") for path in planned["code_fingerprints"])

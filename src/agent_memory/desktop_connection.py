@@ -8,8 +8,8 @@ import httpx
 
 from .client import MemoryClient
 
-# Frozen jobs may retain a 300-second deadline after the current policy is lowered.
-_RPC_TIMEOUT = httpx.Timeout(30, connect=5, read=315, pool=5)
+# Frozen jobs may retain a 600-second deadline after the current policy is lowered.
+_RPC_TIMEOUT = httpx.Timeout(30, connect=5, read=615, pool=5)
 
 
 def mcp_config(directory: Path | None = None) -> dict:

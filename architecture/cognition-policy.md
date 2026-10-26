@@ -37,7 +37,7 @@ Inspection returns machine-readable effective values:
 
 The values are saved in a strict private `cognition-policy.json`, independently of version 1 provider/profile settings. No credential is included in inspection output. A changed policy requires restarting an existing service; configuration reports `restart_required_if_running`, and desktop status detects the configuration mismatch. Setup uses its existing start/restart behavior unless `--no-start` is supplied.
 
-For a separately deployed API, the equivalent environment variables are `MEMORY_COGNITION_MAX_WALL_TIME_MS=240000`, `MEMORY_COGNITION_MAX_OUTPUT_TOKENS=16384`, and `MEMORY_COGNITION_MAX_RESPONSE_BYTES=65536`. API hosts must coordinate their HTTP response deadline with the service policy. Desktop runtime connections allow a 315-second read wait, five-second connection/pool waits, and a 30-second write wait. The general Python SDK still defaults to 30 seconds. The maximum supported batch wall time is 300 seconds, including for frozen older jobs after the current configuration is lowered.
+For a separately deployed API, the equivalent environment variables are `MEMORY_COGNITION_MAX_WALL_TIME_MS=240000`, `MEMORY_COGNITION_MAX_OUTPUT_TOKENS=16384`, and `MEMORY_COGNITION_MAX_RESPONSE_BYTES=65536`. API hosts must coordinate their HTTP response deadline with the service policy. Desktop runtime connections allow a 615-second read wait, five-second connection/pool waits, and a 30-second write wait. The general Python SDK still defaults to 30 seconds. The maximum supported batch wall time is 600 seconds, including for frozen older jobs after the current configuration is lowered.
 
 ## Recorded evidence and limits
 

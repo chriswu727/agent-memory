@@ -248,7 +248,7 @@ def test_completed_nonwindow_job_with_failed_verifier_does_not_suppress_retry(le
     assert len(recovered.consolidation_plan["objectives"]) == 1
 
 
-@pytest.mark.parametrize("wall_time_ms", [30_000, 120_001, 240_000, 300_000])
+@pytest.mark.parametrize("wall_time_ms", [30_000, 120_001, 240_000, 300_000, 600_000])
 def test_model_call_lease_covers_the_configured_deadline_without_sleep(learning, wall_time_ms):
     inspected = []
 

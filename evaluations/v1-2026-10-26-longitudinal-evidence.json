@@ -1,0 +1,327 @@
+{
+  "version": "longitudinal-evidence-bundle-v1",
+  "archive": "artifacts/v1-2026-10-26-longitudinal-evidence.tar.gz",
+  "archive_bytes": 7662432,
+  "archive_sha256": "23cb93bbaf2c62d10d59d332bf7114fca5305ccc2fcc12e009f6cd628c396bf5",
+  "runtime_build": "eceb600da38d0607ec065540e4cc0ffd6f49422616fe2322c96d201cd0d7ee73",
+  "source_base_revision": "f1daa5b3e92a88a666b78f9410be1f3dbbdc7f80",
+  "scope": "Synthetic scenario data and exact evaluation ledgers. No provider credentials, personal configuration, captured hidden reasoning or unrelated user data. Local path metadata may appear in the frozen plans.",
+  "secret_scan": "All included raw bytes checked against configured credential values and API-key pattern before compression; no matches.",
+  "entries": [
+    {
+      "name": "access-age/bound-plan.json",
+      "bytes": 1698909,
+      "sha256": "7dfbe76e551c0468359bdf4bb8f22c6bf9b4f0478d474f2e32fa1f47ed3c9aa7"
+    },
+    {
+      "name": "access-age/catalog-age-states.json",
+      "bytes": 345942,
+      "sha256": "25a50a28ae4e99e70fbe755edd0281a5cedb14ff57095bfcf1530162c44dc5c3"
+    },
+    {
+      "name": "access-age/results.json",
+      "bytes": 2301560,
+      "sha256": "c422a0395e523ca01b5fb386cdd0f378c46e58064bd72ed35bcce9bcf34c3591"
+    },
+    {
+      "name": "access-age/review.json",
+      "bytes": 24120,
+      "sha256": "575adafda317263fc6acd31c89006c191a2510c9c8b6707f4826f74f0779b8be"
+    },
+    {
+      "name": "cue/broadcue-archive.json",
+      "bytes": 1694675,
+      "sha256": "db3bec8feb566f5449ad0c5171821cd6042233268bb89d52c27ec462a39b7ae2"
+    },
+    {
+      "name": "cue/calls.jsonl",
+      "bytes": 3611,
+      "sha256": "ec44088cf991d9159a24347cc46e2aefb1f6286de4b049e1bf4e84c806a47c17"
+    },
+    {
+      "name": "cue/falsepremise-archive.json",
+      "bytes": 1694675,
+      "sha256": "cd189b181a025700ed2844a58dc52797630f6c659bb49eb18234907d122b8e18"
+    },
+    {
+      "name": "cue/head.json",
+      "bytes": 193,
+      "sha256": "4a78044e6463750f08e863c020f3c5c3e40afcde57022ff940577b5776e507fd"
+    },
+    {
+      "name": "cue/journal.jsonl",
+      "bytes": 2480132,
+      "sha256": "9830276d65acdc68a41434da6633e24355e1801b170cf17eec1da9f34fb543cc"
+    },
+    {
+      "name": "cue/plan.json",
+      "bytes": 144170,
+      "sha256": "3f451284a63bbd47ac85b068632f73baf5ab313c326be1dfd50ef196c08c58fe"
+    },
+    {
+      "name": "cue/source-archive.json",
+      "bytes": 1696080,
+      "sha256": "1c012f869ca59663a94ae15662953cf9dd70ab46e2fbce348f05b270e741b26b"
+    },
+    {
+      "name": "cue/specificcue-archive.json",
+      "bytes": 1694675,
+      "sha256": "4f5869b8dcdb9eb04bcf42ad1215863ac1e125c9b8c078199999dc7a2fafacb8"
+    },
+    {
+      "name": "cue/unaided-archive.json",
+      "bytes": 1694675,
+      "sha256": "faf4510faae5d15c9019bc296b87e6b9dd85e9c8e7e6286871278c3ca833a353"
+    },
+    {
+      "name": "cue/unknowndetail-archive.json",
+      "bytes": 1694675,
+      "sha256": "eb3b0f100d082e6178ca922d75dde8af5e6c1cc1df3bd899d69ddf153610dbf2"
+    },
+    {
+      "name": "executors/access_age.py",
+      "bytes": 7785,
+      "sha256": "751134488fdc7bf3b70da14eae15fa6c7e99d4c61ee03c1563c716b15d550adf"
+    },
+    {
+      "name": "executors/access_age_diagnostic.py",
+      "bytes": 14688,
+      "sha256": "659a4ae190d83402f65389f2c5c046c6d9f3f2a5d0a06edfdd7702be55e042a7"
+    },
+    {
+      "name": "executors/diagnostic_binding.py",
+      "bytes": 3872,
+      "sha256": "b8a8d674ecba9b41da263f08fc67a0da70330fd874bfcf86754f9dbfaed5aa31"
+    },
+    {
+      "name": "executors/final_report_data.py",
+      "bytes": 8331,
+      "sha256": "ecfd64228c19febae0c931001a47752be39c4ad1cefca0dd2b46e8c5290b3524"
+    },
+    {
+      "name": "executors/metrics.py",
+      "bytes": 3570,
+      "sha256": "241a7cfe84aed722759342b484ee5a05016799a0b61a67ba8b90a149d816bbce"
+    },
+    {
+      "name": "executors/review_prefix.py",
+      "bytes": 3135,
+      "sha256": "828278bf7680fe1d8012291864cf4f4b7f528ad16771d081f86cfa3de754113c"
+    },
+    {
+      "name": "executors/run_cues.py",
+      "bytes": 1367,
+      "sha256": "47185f6c1516d795cea3dc45637cecb56b572ab3722f713b29295779a85fb3e9"
+    },
+    {
+      "name": "executors/tail_runner.py",
+      "bytes": 9281,
+      "sha256": "0446d687e0229f3a1e069e501602d5bd3a7478cf2063c737042b83f6dda9cd69"
+    },
+    {
+      "name": "initial_240s/calls.jsonl",
+      "bytes": 1897,
+      "sha256": "d4caac95f19550937246aaf3e14ea6d0d10b10dfe10fa774137ba6120c5a07c7"
+    },
+    {
+      "name": "initial_240s/head.json",
+      "bytes": 193,
+      "sha256": "cf906f296c4947119543aed472fcd20e2c493497ac6a78ef6f7bd09ded6c7b69"
+    },
+    {
+      "name": "initial_240s/journal.jsonl",
+      "bytes": 177661,
+      "sha256": "831c06375cda464a20959f29279ac84e2f93a611fa8d996516db4672899a5199"
+    },
+    {
+      "name": "initial_240s/plan.json",
+      "bytes": 24463,
+      "sha256": "c22f4f4258d46ffaa585fba0339a6ffb5adcc018d9bb8cca81c546d4929f41ac"
+    },
+    {
+      "name": "local-verification/artifacts.json",
+      "bytes": 11701,
+      "sha256": "c4968ed24000d4967f96d4f4861c211be2e739b8451b20dd4430d819e6b8d7dc"
+    },
+    {
+      "name": "local-verification/focused.log",
+      "bytes": 2227,
+      "sha256": "55501f5b7c8a91470ea5486fb9c4367e5f62a0e355ea3f8490ccf9609c8cccd6"
+    },
+    {
+      "name": "local-verification/installed.log",
+      "bytes": 99,
+      "sha256": "9a49f8448003a408fae9de1ee2e82e79bcbc43c2c07b625648b25018fbf09510"
+    },
+    {
+      "name": "local-verification/slow-provider-final.log",
+      "bytes": 98,
+      "sha256": "f62856bf55710418544da7bb61bc3570a1a293c4053b2e85426b8068f0b37ac6"
+    },
+    {
+      "name": "local-verification/slow-provider-fixed.log",
+      "bytes": 3665,
+      "sha256": "15caa56af3c5bb5596df5cb60c4ab6d919dd65dc85918cc147f483665dab7c53"
+    },
+    {
+      "name": "primary/calls.jsonl",
+      "bytes": 58658,
+      "sha256": "bca92c8f166f593c36ddb90d337306fb38248061f39d6439af3ff8d67c7bbd58"
+    },
+    {
+      "name": "primary/head.json",
+      "bytes": 194,
+      "sha256": "38048664519bcdfb203dcf53a3cc03d761fed694d481a208c39fd17614f13734"
+    },
+    {
+      "name": "primary/journal.jsonl",
+      "bytes": 23684633,
+      "sha256": "14c0f01983cc547500f42cdf8c46507674fc755d8186c6eac85fb2c9bc8575d4"
+    },
+    {
+      "name": "primary/plan.json",
+      "bytes": 24463,
+      "sha256": "d37c9997cb35a832d25ba5708731be72e68c78b24abd258ab6674aa2ca4410c5"
+    },
+    {
+      "name": "review/candidate.patch",
+      "bytes": 20146,
+      "sha256": "3bce6acf0753f9dbf492c6cdd602f25fbff558399a07da9a5230dc1c87958e66"
+    },
+    {
+      "name": "review/caption-tone-answer-review.json",
+      "bytes": 1133,
+      "sha256": "72edb1d8cdb9e2bd4f097946c6b24cee62497ef32daad28d9e2d0fa785887977"
+    },
+    {
+      "name": "review/class-moved-answer-review.json",
+      "bytes": 1379,
+      "sha256": "71c087356f3b2d0edf80230155df96380be3958bc7df427b60ba565308fea9aa"
+    },
+    {
+      "name": "review/cue-bound-review.json",
+      "bytes": 249018,
+      "sha256": "79f2eabbbd30118fbbdf7ab0912c213b3bb0c5ccd7ecf4e037ddfd04111f8931"
+    },
+    {
+      "name": "review/cue-review.json",
+      "bytes": 6826,
+      "sha256": "3a93a2b39f54966a4cef9d379c9c38700bf316af1aef26bfe29b7529e7175e8e"
+    },
+    {
+      "name": "review/diagnostic-continuation-amendment.json",
+      "bytes": 1831,
+      "sha256": "b0dc5198a9f946435cabbf453af92354f4a50fc8f01807ec8255965f773aae3d"
+    },
+    {
+      "name": "review/final-data.json",
+      "bytes": 189346,
+      "sha256": "b947ad26da452bda4bd5e08f2ef8b911a20a45fd48109c93c5852da180763e8c"
+    },
+    {
+      "name": "review/frozen-plan.json",
+      "bytes": 70835,
+      "sha256": "73b3520727814584f590ddeab5b526352dd4b2f9036ae967af2b547715ab561f"
+    },
+    {
+      "name": "review/half-hour-rejection.json",
+      "bytes": 610,
+      "sha256": "68152c1a7c11bac723c6fc90c989554b690708dc9d11c44e07a24ff8c189e827"
+    },
+    {
+      "name": "review/isolated-temporal-claim-rejection.json",
+      "bytes": 1227,
+      "sha256": "083496be22a720a4419e5fc23b730dc26da9ad07997a39d76f35ac939d424874"
+    },
+    {
+      "name": "review/lexical-diagnostic.json",
+      "bytes": 7571,
+      "sha256": "e67246e6fc7d978bb5801baffaf092171d2eaf623cc4f6a52a4fce9fb9bc96aa"
+    },
+    {
+      "name": "review/main-terminal-metrics.json",
+      "bytes": 6699,
+      "sha256": "08aee46e19de35983b7229f8d14dc07bb4ee79cafce3bd98aa28870016d2a1c3"
+    },
+    {
+      "name": "review/main-terminal-review.json",
+      "bytes": 6561,
+      "sha256": "0dcdd2d513b520c4a1133964fa5f215a4ea571babca5f03031d247f3e7761801"
+    },
+    {
+      "name": "review/post-timeout-audit.json",
+      "bytes": 13728,
+      "sha256": "248b72c76d7148aca5e8a94033d368e1d04d4ea27057e0935af4b6ec0a38dc81"
+    },
+    {
+      "name": "review/pre-execution-review.json",
+      "bytes": 2425,
+      "sha256": "09cdec249324e82e8275f80e83f8cd5021812699360e32fcb33ad00afea54155"
+    },
+    {
+      "name": "review/stage-11-review.json",
+      "bytes": 9160,
+      "sha256": "8f63e1a40e957839711cd3d119b8d53860f09628812923599f4234fedfc5e54d"
+    },
+    {
+      "name": "review/stage-3-review.json",
+      "bytes": 4077,
+      "sha256": "edc6c6f003a11870634dcfc1af6b5d493f76f94d601d241032d691d617ad8f18"
+    },
+    {
+      "name": "review/stage-6-review.json",
+      "bytes": 7113,
+      "sha256": "35808bbf234de5ba57691c59591938e0eb817d3753aca4aedb63fc5d7993692d"
+    },
+    {
+      "name": "review/tail-final-metrics.json",
+      "bytes": 5819,
+      "sha256": "1380d4ee95843a4e467827f6d5744b0f70226ca9204de6bcd5cb5be60873c079"
+    },
+    {
+      "name": "review/tail-judgments.json",
+      "bytes": 6937,
+      "sha256": "fccefd10b7afa625bebe27eafe7997959122e4df4afa33d0ad00612932d79129"
+    },
+    {
+      "name": "review/tail-plan.json",
+      "bytes": 70044,
+      "sha256": "d5b9d04e687b67d66b66ab3151d1f46a1859953e3c13457e6643d47169ccf3f6"
+    },
+    {
+      "name": "review/tail-preflight.json",
+      "bytes": 828,
+      "sha256": "a79a0b7fce49cde0d80366e31dfdcc2289f4db6bbf2c9d7b0b312916986dc1db"
+    },
+    {
+      "name": "review/temporal-clause-diagnostic.json",
+      "bytes": 1226,
+      "sha256": "374a6030355ae7d58db00525e1a5f0dcbb5368a776041733c2590bcd428d25d7"
+    },
+    {
+      "name": "tail/calls.jsonl",
+      "bytes": 45344,
+      "sha256": "6dba583c378385c58abc85fa145bd487e6f55ce03407e5c4485807e7ea2782c9"
+    },
+    {
+      "name": "tail/head.json",
+      "bytes": 194,
+      "sha256": "06005c353838921d30c3623855bc05e8c555a2aa050f23c58c6dd36721af9830"
+    },
+    {
+      "name": "tail/journal.jsonl",
+      "bytes": 38396221,
+      "sha256": "0de3d3c42c7d84000469b79bd0150b12f9060567dc843b32649de6095db8893c"
+    },
+    {
+      "name": "tail/plan.json",
+      "bytes": 55234,
+      "sha256": "bbc5a1ac5df0042eb20559cfc6f800e6d53be24a5d276d10a075224c0526567f"
+    },
+    {
+      "name": "review/sleep-timestamps.json",
+      "bytes": 794,
+      "sha256": "d0bab7e38a6afaf2741a651c09578369aa3a563c7d6b2c76cea1536bd34faa4e"
+    }
+  ]
+}

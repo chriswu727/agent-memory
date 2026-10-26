@@ -338,11 +338,11 @@ def live(source_path, output):
             api_settings = Settings(database_url=database.dsn,
                                     api_keys={hashlib.sha256(token.encode()).hexdigest(): principal})
             url = stack.enter_context(loopback_server(create_app(api_settings, service=service)))
-            source_memory = stack.enter_context(MemoryClient(url, token, binding["brain_id"], timeout=315))
+            source_memory = stack.enter_context(MemoryClient(url, token, binding["brain_id"], timeout=615))
             source_runner = longitudinal.SessionRunner(
                 source_journal, source_memory, service, principal, None, None, None)
             return run_diagnostics(journal, meter, source_memory, source_runner.snapshot,
-                                   lambda: MemoryClient(url, token, timeout=315), host)
+                                   lambda: MemoryClient(url, token, timeout=615), host)
 
 
 def inspect(output):

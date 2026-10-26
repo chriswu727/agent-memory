@@ -25,7 +25,7 @@ def saved_policy(policy=ORIGINAL):
     None, [], {}, {"version": "unknown", "limits": asdict(ORIGINAL)},
     {"version": "semantic-policy-v1", "limits": {}},
     {"version": "semantic-policy-v1", "limits": {**asdict(ORIGINAL), "max_output_tokens": True}},
-    {"version": "semantic-policy-v1", "limits": {**asdict(ORIGINAL), "max_wall_time_ms": 300001}},
+    {"version": "semantic-policy-v1", "limits": {**asdict(ORIGINAL), "max_wall_time_ms": 600001}},
     {"version": "semantic-policy-v1", "limits": {**asdict(ORIGINAL), "private": "private-content"}},
     {"version": "semantic-policy-v1", "limits": asdict(ORIGINAL), "extra": 1},
 ])
@@ -76,7 +76,9 @@ def save_snapshot(learning, job, snapshot):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("mode", ["learning", "orientation"])
-def test_new_snapshot_keeps_exact_effective_limits_after_engine_restart(learning, monkeypatch, mode):
+@pytest.mark.parametrize("wall_time_ms", [240_000, 600_000])
+def test_new_snapshot_keeps_exact_effective_limits_after_engine_restart(learning, monkeypatch, mode, wall_time_ms):
+    policy = SemanticPolicy(**{**asdict(ORIGINAL), "max_wall_time_ms": wall_time_ms})
     calls = []
 
     def propose(request):
@@ -87,12 +89,12 @@ def test_new_snapshot_keeps_exact_effective_limits_after_engine_restart(learning
                 "WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                 (*learning.service._params(learning.principal, learning.brain), job["id"]),
             ).fetchone()["remaining"]
-        assert remaining > 240
+        assert remaining > wall_time_ms / 1000
         return encoded({"situation_updates": []} if mode == "orientation" else proposals())
 
-    learning.service.semantic_processor = SemanticProcessor(propose, policy=ORIGINAL)
+    learning.service.semantic_processor = SemanticProcessor(propose, policy=policy)
     job, snapshot = prepare(learning, monkeypatch, mode)
-    assert snapshot["semantic_policy"] == saved_policy()
+    assert snapshot["semantic_policy"] == saved_policy(policy)
     changed = SemanticPolicy(max_model_calls=0, max_output_tokens=1, max_wall_time_ms=1, max_response_bytes=1)
     learning.service.semantic_processor = SemanticProcessor(propose, policy=changed)
     engine = LearningEngine(learning.service)
@@ -101,9 +103,9 @@ def test_new_snapshot_keeps_exact_effective_limits_after_engine_restart(learning
     engine._execute(learning.principal, learning.brain, job)
     completed = learning.job(job["id"])
     assert completed["state"] == "completed" and completed["model_calls"] == 1
-    assert completed["result"]["semantic_policy"] == saved_policy()
+    assert completed["result"]["semantic_policy"] == saved_policy(policy)
     assert len(calls) == 1 and calls[0].max_output_tokens == ORIGINAL.max_output_tokens
-    assert 239 < calls[0].timeout_seconds <= 240
+    assert wall_time_ms / 1000 - 1 < calls[0].timeout_seconds <= wall_time_ms / 1000
     assert learning.service.semantic_processor.policy == changed
 
 

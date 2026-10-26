@@ -646,7 +646,7 @@ class SemanticPolicy:
         caps = {"max_sources": 128, "max_assertions": 128, "max_episodes": 64,
                 "max_proposals": 72, "max_model_calls": 8, "max_input_bytes": 1048576,
                 "max_request_bytes": 524288, "max_response_bytes": 65536,
-                "max_output_tokens": 32768, "max_wall_time_ms": 300000}
+                "max_output_tokens": 32768, "max_wall_time_ms": 600000}
         for key, cap in caps.items():
             value = getattr(self, key)
             if type(value) is not int or not (0 if key == "max_model_calls" else 1) <= value <= cap:

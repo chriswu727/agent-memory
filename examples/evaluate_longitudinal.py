@@ -61,13 +61,13 @@ def plan():
     turns = [turn for session in story["sessions"] for turn in session["turns"]]
     actor_calls = sum(len(turn["choices"]) > 1 for turn in turns)
     semantic = SemanticPolicy(max_output_tokens=16384, max_response_bytes=65536,
-                              max_wall_time_ms=240000)
+                              max_wall_time_ms=600000)
     cognitive_calls = len(turns) * 6
     files = ("evaluate_longitudinal.py", "longitudinal_scenario.py", "longitudinal_journal.py",
              "longitudinal_learning.py", "evaluation_support.py", "evaluation_host.py",
              "evaluate_deepseek.py", "evaluate_conversation.py")
     return {
-        "version": "longitudinal-execution-v4", "scenario": story, "runtime_build": BUILD_ID,
+        "version": "longitudinal-execution-v5", "scenario": story, "runtime_build": BUILD_ID,
         "code_fingerprints": {name: digest((ROOT / "examples" / name).read_text()) for name in files},
         "provider": {"base_url": "https://api.deepseek.com", "model": "deepseek-v4-pro",
                      "thinking": "enabled", "reasoning_effort": "high"},
@@ -479,7 +479,7 @@ def live(output, *, continuing=False, sessions=1):
             api_settings = Settings(database_url=database.dsn,
                                     api_keys={hashlib.sha256(token.encode()).hexdigest(): principal})
             url = stack.enter_context(loopback_server(create_app(api_settings, service=service)))
-            memory = stack.enter_context(MemoryClient(url, token, timeout=315))
+            memory = stack.enter_context(MemoryClient(url, token, timeout=615))
             if initial:
                 memory.brain_id = initial["brain_id"]
                 if RuntimeClient(memory).cognitive_budget()["policy"] != planned["brain_budget"]:
