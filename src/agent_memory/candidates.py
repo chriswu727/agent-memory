@@ -93,7 +93,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
         roots = [key for key in requested if key in documents]
         signals = {}
     else:
-        from .lexical_candidates import lexical_rows
+        from .lexical_candidates import lexical_rows, passage_score
         from .source_candidates import SOURCE_ROUTE_VERSION, source_candidates
 
         rows, truncated = lexical_rows(conn, params, target, text, limit=scan_limit)
@@ -106,6 +106,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
             [service._rebind(row["document"], principal, brain) for _, row in lexical[:candidate_limit]],
             source_limit=min(64, candidate_limit), scan_limit=scan_limit,
             through_sequence=brain["durable_sequence"],
+            score_text=passage_score,
         )
         truncated = truncated or source_truncated
         lexical.extend(bridged)

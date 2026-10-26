@@ -73,6 +73,24 @@ def test_root_context_or_unrelated_span_cannot_supply_a_source_keyword_match(can
     assert key(other_span) not in state["candidate_versions"]
 
 
+def test_broad_citation_does_not_inflate_concentration_of_disconnected_query_cues(candidates):
+    focused = candidates.add("The kiln workshop starts on Tuesday.")
+    wanted = derived(candidates, focused, statement="The user supplied the schedule.")
+    text = "The kiln is blue.\nThe workshop has windows.\nTuesday was rainy."
+    broad = candidates.add(text)
+    parent = copy.deepcopy(broad)
+    parent["evidence_refs"][0]["span"]["end"] = len(text)
+    parent["disclosure_basis"]["support_paths"][0]["evidence_refs"] = copy.deepcopy(parent["evidence_refs"])
+    distractor = derived(candidates, parent, statement="The user described the room and weather.")
+    memories, state = candidates.query("kiln workshop Tuesday")
+    signals = state["rank_signals"]
+    assert signals[key(wanted)][0]["score"] > 2 * signals[key(distractor)][0]["score"]
+    assert state["candidate_versions"].index(key(wanted)) < state["candidate_versions"].index(key(distractor))
+    returned = next(memory for memory in memories if key(memory) == key(distractor))
+    assert returned["evidence_refs"] == distractor["evidence_refs"]
+    assert returned["statement"] == distractor["statement"]
+
+
 @pytest.mark.parametrize("damage", ["revision", "hash", "span", "context_only", "contradicts", "branch", "conversation", "retracted"])
 def test_source_route_checks_exact_reference_and_assertion_scope(candidates, damage):
     captured = candidates.add("备考时需要安静。")

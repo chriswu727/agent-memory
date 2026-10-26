@@ -1,0 +1,805 @@
+{
+  "version": "memory-efficiency-paired-verifier-v1",
+  "tested_build_id": "0f70a9b8191a86bcae5030864a415cd991fc67a19e024d9cc2400b0e44f7fa1b",
+  "scope": "Two fixed verifier controls with paired formats; no database publication or longitudinal acceptance.",
+  "plan_sha256": "97d89110cfd3c7a98a83d5d54752945da8733c6d9cbc7b7e900e430057b68ab2",
+  "ledger_sha256": "9dc762b47e97adb9dac9118ced5b2e4f20eaaece03fc3611ba0147a33c2bf67f",
+  "raw_report_sha256": "4ee850662a98545f9c4ccba7b4ab8e504fdd2e20111fcf34313203d88e83f271",
+  "provider": {
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "reasoning_effort": "low",
+    "timeout_seconds": 240,
+    "max_envelope_bytes": 262144
+  },
+  "usage": {
+    "reserved_calls": 4,
+    "completed_calls": 4,
+    "reserved_output_tokens": 65536,
+    "usage_confirmed_calls": 4,
+    "usage_unknown_calls": 0,
+    "usage_totals": {
+      "prompt_tokens": 70004,
+      "completion_tokens": 19604,
+      "total_tokens": 89608,
+      "prompt_cache_hit_tokens": 27648,
+      "prompt_cache_miss_tokens": 42356
+    }
+  },
+  "observations": [
+    {
+      "case": "complete_options",
+      "contract": "citation-provenance-v1",
+      "primary_passed": true,
+      "target": {
+        "proposal_id": "claim-assistant-options",
+        "proposal_verdict": "supports",
+        "link_verdict": null,
+        "relations": [
+          {
+            "evidence_index": 0,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 1,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 2,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 3,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 4,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 5,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 6,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 7,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 8,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 9,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 10,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 11,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 12,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 13,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 14,
+            "verdict": "supports"
+          }
+        ],
+        "citation_coverage_verdict": "supports"
+      },
+      "request_sha256": "79ff841afafca77ade62fee0cc3849b21f4e945ba818e7ac208cfed758e65600",
+      "usage": {
+        "prompt_tokens": 24768,
+        "completion_tokens": 7847,
+        "total_tokens": 32615,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 22976,
+        "prompt_tokens_details": {
+          "cached_tokens": 1792
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 7248
+        }
+      },
+      "assessments": [
+        {
+          "proposal_id": "claim-user-tone-pref",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "unknown"
+        },
+        {
+          "proposal_id": "claim-assistant-options",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 4,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 5,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 6,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 7,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 8,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 9,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 10,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 11,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 12,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 13,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 14,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "episode-rowan-work-handoff-create",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            }
+          ],
+          "organization_fidelity": {
+            "attribution": "supports",
+            "modality": "supports",
+            "specificity": "supports",
+            "boundary": "supports"
+          }
+        }
+      ]
+    },
+    {
+      "case": "complete_options",
+      "contract": "shared-verification-sources-v1",
+      "primary_passed": true,
+      "target": {
+        "proposal_id": "claim-assistant-options",
+        "proposal_verdict": "supports",
+        "link_verdict": null,
+        "relations": [
+          {
+            "evidence_index": 0,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 1,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 2,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 3,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 4,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 5,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 6,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 7,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 8,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 9,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 10,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 11,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 12,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 13,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 14,
+            "verdict": "supports"
+          }
+        ],
+        "citation_coverage_verdict": "supports"
+      },
+      "request_sha256": "be5a60609fbad7cac64526486a809c6766278f0aa5c79d3d5cbae2ede6df603c",
+      "usage": {
+        "prompt_tokens": 10445,
+        "completion_tokens": 2799,
+        "total_tokens": 13244,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 8653,
+        "prompt_tokens_details": {
+          "cached_tokens": 1792
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2199
+        }
+      },
+      "assessments": [
+        {
+          "proposal_id": "claim-user-tone-pref",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-options",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 4,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 5,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 6,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 7,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 8,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 9,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 10,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 11,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 12,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 13,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 14,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "episode-rowan-work-handoff-create",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            }
+          ],
+          "organization_fidelity": {
+            "attribution": "supports",
+            "modality": "supports",
+            "specificity": "supports",
+            "boundary": "supports"
+          }
+        }
+      ]
+    },
+    {
+      "case": "missing_letter_excerpt",
+      "contract": "citation-provenance-v1",
+      "primary_passed": true,
+      "target": {
+        "proposal_id": "claim-assistant-e0befa-elements",
+        "proposal_verdict": "unknown",
+        "link_verdict": null,
+        "relations": [
+          {
+            "evidence_index": 0,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 1,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 2,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 3,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 4,
+            "verdict": "supports"
+          }
+        ],
+        "citation_coverage_verdict": "unknown"
+      },
+      "request_sha256": "424a474cfd5cb2769c9d3cad52761c5b9cf2e43f0757609f88ba3cb696d27f80",
+      "usage": {
+        "prompt_tokens": 21981,
+        "completion_tokens": 4760,
+        "total_tokens": 26741,
+        "prompt_cache_hit_tokens": 21888,
+        "prompt_cache_miss_tokens": 93,
+        "prompt_tokens_details": {
+          "cached_tokens": 21888
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3985
+        }
+      },
+      "assessments": [
+        {
+          "proposal_id": "claim-user-7142-manageable",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-half-hour",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-lea-scene",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-word-count",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-elements",
+          "proposal_verdict": "unknown",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 4,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "unknown"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-closing",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "episode-action-continue-7142-e0befa",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            }
+          ],
+          "organization_fidelity": {
+            "attribution": "supports",
+            "modality": "supports",
+            "specificity": "supports",
+            "boundary": "supports"
+          }
+        }
+      ]
+    },
+    {
+      "case": "missing_letter_excerpt",
+      "contract": "shared-verification-sources-v1",
+      "primary_passed": true,
+      "target": {
+        "proposal_id": "claim-assistant-e0befa-elements",
+        "proposal_verdict": "unknown",
+        "link_verdict": null,
+        "relations": [
+          {
+            "evidence_index": 0,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 1,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 2,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 3,
+            "verdict": "supports"
+          },
+          {
+            "evidence_index": 4,
+            "verdict": "supports"
+          }
+        ],
+        "citation_coverage_verdict": "unknown"
+      },
+      "request_sha256": "90fc65fe5cc314a535e9412e5e92fa66bf30943fde16dfd48ad1fdc6c2174a88",
+      "usage": {
+        "prompt_tokens": 12810,
+        "completion_tokens": 4198,
+        "total_tokens": 17008,
+        "prompt_cache_hit_tokens": 2176,
+        "prompt_cache_miss_tokens": 10634,
+        "prompt_tokens_details": {
+          "cached_tokens": 2176
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3423
+        }
+      },
+      "assessments": [
+        {
+          "proposal_id": "claim-user-7142-manageable",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-half-hour",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-lea-scene",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-word-count",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-elements",
+          "proposal_verdict": "unknown",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 4,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "unknown"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-closing",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "episode-action-continue-7142-e0befa",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            }
+          ],
+          "organization_fidelity": {
+            "attribution": "supports",
+            "modality": "supports",
+            "specificity": "supports",
+            "boundary": "supports"
+          }
+        }
+      ]
+    }
+  ],
+  "paired_totals": {
+    "baseline": {
+      "prompt_tokens": 46749,
+      "completion_tokens": 12607,
+      "total_tokens": 59356
+    },
+    "shared_sources": {
+      "prompt_tokens": 23255,
+      "completion_tokens": 6997,
+      "total_tokens": 30252
+    }
+  },
+  "primary_checks_passed": true,
+  "whole_packet_quality_passed": false,
+  "default_promotion": "rejected",
+  "supplemental_fidelity": {
+    "preregistered": "The unchanged claim-user-tone-pref cites a pronoun but names Alex; record this separate citation-fidelity concern. A supporting verdict must not be described as whole-packet success.",
+    "observed": "Baseline citation coverage was unknown for claim-user-tone-pref; shared-source coverage was supports although its cited pronoun did not establish the name Alex.",
+    "interpretation": "One paired observation is not a deterministic causal regression; it is insufficient evidence for default promotion.",
+    "proposal_statement": "The user stated they did not want the message to sound like they were chasing Alex.",
+    "cited_excerpts": [
+      "I don't want it to sound like I'm chasing him."
+    ],
+    "evidence_refs": [
+      {
+        "event_id": "fd16ac33-5c7e-4a7f-a011-2795ffa5fe8c",
+        "event_revision": 1,
+        "relationship": "supports",
+        "source_content_sha256": "5c0af9ae04add730d8045d865cd971f5fcd941f5cd49a6d5c40f57d3ebc78d52",
+        "span": {
+          "end": 198,
+          "start": 152,
+          "unit": "unicode_code_point"
+        }
+      }
+    ]
+  },
+  "initial_harness_failure": {
+    "reason": "Local validation rejected list messages instead of the required tuple.",
+    "reserved_calls": 0,
+    "completed_calls": 0,
+    "paid_retry": false,
+    "record_preserved": true
+  },
+  "limitations": [
+    "Two fixed verifier controls, not end-to-end or longitudinal acceptance.",
+    "No paid retries, response revision, database mutation or memory publication.",
+    "Cached input remains counted; cache differences prevent inferring proportional price savings.",
+    "Shared sources remain experimental; fresh jobs retain citation-provenance-v1."
+  ],
+  "evidence_archive": {
+    "path": "v1-2026-10-25-memory-efficiency-verifier.evidence.tar.gz",
+    "sha256": "2823ab4b4a64d9ed2a05b9cba72c8641a2272efa633b09432120a4851613a75e",
+    "files": {
+      "plan.json": "c802d331e931ecd7c8b44e163ec19b87218ba68a41d825386ffc28d9bf500c0d",
+      "report.json": "4ee850662a98545f9c4ccba7b4ab8e504fdd2e20111fcf34313203d88e83f271",
+      "calls.jsonl": "9dc762b47e97adb9dac9118ced5b2e4f20eaaece03fc3611ba0147a33c2bf67f",
+      "runner.py": "fe2b1d1735c3b63b3ce3087bc1e9d30bdb38d980c240c81df11f9b3b3cca58fa",
+      "initial-preflight-report.json": "c8b289671073602a37969ff58a659ff390e62a9e28aea6155bc4ec5558f97be2"
+    },
+    "credentials_or_hidden_reasoning": false
+  }
+}

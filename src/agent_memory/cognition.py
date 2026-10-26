@@ -289,8 +289,12 @@ def _terms(text: str) -> tuple[set[str], set[str], set[str]]:
 
 
 def _lexical_score(query: str, text: str) -> float:
-    q_words, q_pairs, q_chars = _terms(query)
-    words, pairs, chars = _terms(text)
+    return _lexical_score_terms(_terms(query), _terms(text))
+
+
+def _lexical_score_terms(query_terms, text_terms) -> float:
+    q_words, q_pairs, q_chars = query_terms
+    words, pairs, chars = text_terms
     word_score = len(q_words & words) / max(1, len(q_words))
     pair_score = len(q_pairs & pairs) / max(1, len(q_pairs))
     char_overlap = len(q_chars & chars)

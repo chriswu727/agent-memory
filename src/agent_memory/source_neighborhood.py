@@ -6,7 +6,7 @@ from . import cognition
 from .contracts import validate
 from .helpers import DomainError
 
-SOURCE_NEIGHBORHOOD_VERSION = "bounded-source-neighborhood-v1"
+SOURCE_NEIGHBORHOOD_VERSION = "bounded-source-neighborhood-v2"
 
 
 def _superseded_references(conn, params, event_ids, limit):
@@ -44,14 +44,15 @@ def source_neighborhood_candidates(conn, service, principal, brain, target, seed
             raise ValueError("Source neighborhood limits must be positive bounded integers")
     if type(through_sequence) is not int or through_sequence < 0:
         raise ValueError("Source neighborhood requires an explicit sequence cutoff")
-    scores, truncated = {}, False
+    scores, seed_versions, truncated = {}, set(), False
     for score, memory in seeds:
         if type(score) not in (int, float) or not math.isfinite(score) or score <= 0:
             raise ValueError("Source neighborhood seeds require finite positive relevance")
         key = (memory["memory_id"], memory["revision"])
+        seed_versions.add(key)
         if key not in scores and len(scores) == seed_limit:
             truncated = True
-            break
+            continue
         scores[key] = max(score, scores.get(key, 0))
     if not scores:
         return [], truncated
@@ -110,16 +111,18 @@ def source_neighborhood_candidates(conn, service, principal, brain, target, seed
             matched[identifier] = max(supported)
     if not matched:
         return [], truncated
-    # Validate the nearest raw current records after selection so hidden records remain adjacency barriers.
+    # Keep hidden records as barriers; the tagged branch key indexes NULL without conflating it with a string.
     neighbors = conn.execute(
         "SELECT seed.id AS seed_id,near.* FROM memory_events seed CROSS JOIN LATERAL ("
         "(SELECT e.* FROM memory_events e WHERE e.tenant_id=seed.tenant_id AND e.owner_id=seed.owner_id "
         "AND e.brain_id=seed.brain_id AND e.conversation_id=seed.conversation_id "
-        "AND e.branch_id IS NOT DISTINCT FROM seed.branch_id AND e.is_current AND e.sequence<seed.sequence "
+        "AND COALESCE('value:' || e.branch_id,'null')=COALESCE('value:' || seed.branch_id,'null') "
+        "AND e.is_current AND e.sequence<seed.sequence "
         "ORDER BY e.sequence DESC LIMIT 1) UNION ALL "
         "(SELECT e.* FROM memory_events e WHERE e.tenant_id=seed.tenant_id AND e.owner_id=seed.owner_id "
         "AND e.brain_id=seed.brain_id AND e.conversation_id=seed.conversation_id "
-        "AND e.branch_id IS NOT DISTINCT FROM seed.branch_id AND e.is_current AND e.sequence>seed.sequence "
+        "AND COALESCE('value:' || e.branch_id,'null')=COALESCE('value:' || seed.branch_id,'null') "
+        "AND e.is_current AND e.sequence>seed.sequence "
         "ORDER BY e.sequence LIMIT 1)) near "
         "WHERE seed.tenant_id=%s AND seed.owner_id=%s AND seed.brain_id=%s AND seed.is_current "
         "AND seed.id=ANY(%s::text[]) AND seed.conversation_id IS NOT NULL "
@@ -151,7 +154,7 @@ def source_neighborhood_candidates(conn, service, principal, brain, target, seed
     superseded, overflow = _superseded_references(conn, params, events, scan_limit)
     if overflow:
         return [], True
-    exclusions = excluded | scores.keys()
+    exclusions = excluded | seed_versions
     rows = conn.execute(
         "SELECT a.document,a.event_ids,a.is_current FROM memory_assertions a CROSS JOIN LATERAL ("
         "SELECT max(hit.score) AS relevance FROM unnest(%s::text[],%s::bigint[],%s::text[],%s::float8[]) "

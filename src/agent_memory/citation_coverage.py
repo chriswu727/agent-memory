@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import copy
 
+from .verification_sources import SHARED_VERIFICATION_INPUT_VERSION
+
 CITATION_COVERAGE_INPUT_VERSION = "citation-coverage-v1"
 CITATION_PROVENANCE_INPUT_VERSION = "citation-provenance-v1"
-CITATION_COVERAGE_INPUT_VERSIONS = (CITATION_COVERAGE_INPUT_VERSION, CITATION_PROVENANCE_INPUT_VERSION)
+CITATION_PROVENANCE_INPUT_VERSIONS = (CITATION_PROVENANCE_INPUT_VERSION, SHARED_VERIFICATION_INPUT_VERSION)
+CITATION_COVERAGE_INPUT_VERSIONS = (CITATION_COVERAGE_INPUT_VERSION, *CITATION_PROVENANCE_INPUT_VERSIONS)
 CITATION_COVERAGE_VERIFY_INSTRUCTIONS = (
     "Each non-episode proposal has a server-derived citation_scope. Return its separate required "
     "citation_coverage_verdict: supports only when THIS proposal's numbered positive excerpts jointly "
@@ -74,7 +77,7 @@ def citation_scope(references, *, evidence_selection=None, input_contract_versio
         "context_authority": "qualifications_and_counterevidence_only",
         "other_proposals_authority": "none",
     }
-    if input_contract_version == CITATION_PROVENANCE_INPUT_VERSION:
+    if input_contract_version in CITATION_PROVENANCE_INPUT_VERSIONS:
         scope["context_authority"] = "qualifications_and_counterevidence_except_listed_provenance"
         scope["provenance_authority"] = {
             "fields": ["observed.actor_role", "observed.delivery_state"],

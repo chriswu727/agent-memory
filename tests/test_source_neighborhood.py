@@ -228,3 +228,13 @@ def test_seed_cap_deduplicates_versions_and_source_cap_deduplicates_references(c
     assert found == {key(reply): 0.9} and not truncated
     found, truncated = route(candidates, [(0.9, strong), (0.8, strong), (0.2, weak)], seed_limit=1)
     assert found == {key(reply): 0.9} and truncated
+
+
+def test_capped_direct_seeds_cannot_self_boost_or_consume_neighbor_capacity(candidates):
+    anchor = candidates.add("The writing class schedule.")
+    direct = candidates.add("Tuesday works.")
+    contextual = derived(candidates, direct, memory_id="zzz-contextual-detail")
+    found, truncated = route(candidates, [(0.9, anchor), (0.2, direct)], seed_limit=1, scan_limit=1)
+    assert found == {key(contextual): 0.9}
+    assert key(direct) not in found
+    assert truncated

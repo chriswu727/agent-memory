@@ -21,7 +21,7 @@ from agent_memory.citation_coverage import (
 from agent_memory.consolidation import _check_result
 from agent_memory.helpers import DomainError, digest
 from agent_memory.learning import LearningEngine
-from agent_memory.semantic import SemanticProcessor
+from agent_memory.semantic import LATEST_INPUT_CONTRACT_VERSION, SemanticProcessor
 
 LEGACY_REQUEST_HASHES = {
     "general": ("7876b7255f78a0444335ea44261ad9898d63ff81f8702ee23630ccd0186cbfe5",
@@ -121,11 +121,12 @@ def test_provenance_does_not_override_binding_delivery_or_external_fact_guards(d
 
 @pytest.mark.integration
 @pytest.mark.parametrize("kind", ["orient", "manual"])
-def test_frozen_coverage_v1_snapshot_keeps_exact_request_contract_after_restart(learning, kind):
+@pytest.mark.parametrize("frozen_contract", [CITATION_COVERAGE_INPUT_VERSION, VERSION])
+def test_frozen_citation_snapshot_keeps_exact_request_contract_after_restart(learning, kind, frozen_contract):
     engine, job = snapshot_job(learning, kind)
     current, snapshot = engine._snapshot(learning.principal, learning.brain, job)
-    assert current.input_contract_version == VERSION
-    snapshot["input_contract_version"] = CITATION_COVERAGE_INPUT_VERSION
+    assert current.input_contract_version == LATEST_INPUT_CONTRACT_VERSION
+    snapshot["input_contract_version"] = frozen_contract
     with learning.database.transaction(learning.principal) as connection:
         if kind == "manual":
             brain = learning.service._brain(connection, learning.principal, learning.brain)
@@ -136,7 +137,7 @@ def test_frozen_coverage_v1_snapshot_keeps_exact_request_contract_after_restart(
                             learning.brain, job["id"]))
     selected = [LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, job) for _ in range(2)]
     assert selected[0] == selected[1]
-    assert selected[0][0].input_contract_version == CITATION_COVERAGE_INPUT_VERSION
+    assert selected[0][0].input_contract_version == frozen_contract
     assert selected[0][1] == snapshot
     calls = []
     processor = SemanticProcessor(lambda request: calls.append(request) or json.dumps({"situation_updates": []}))

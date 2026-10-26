@@ -1,5 +1,6 @@
 import copy
 import json
+from collections import Counter
 from dataclasses import replace
 
 import pytest
@@ -10,7 +11,7 @@ from test_learning import learning as learning
 from test_learning_neighborhood import link_exception, publish, source, versions
 from test_semantic import encoded, proposals, reference
 
-from agent_memory import cognition
+from agent_memory import cognition, learning_packages
 from agent_memory.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION
 from agent_memory.belief_store import _insert, _relation_id, assertion_fingerprint
 from agent_memory.consolidation import publish_semantic
@@ -31,6 +32,7 @@ from agent_memory.local_semantics import (
     LOCAL_OBSERVATION_MODE,
     bounded_verification_context,
 )
+from agent_memory.neighborhood import _Selector
 from agent_memory.semantic import (
     EPISODE_FIDELITY_INPUT_VERSION,
     VERIFICATION_SCHEMA,
@@ -131,6 +133,66 @@ def test_history_closure_expands_exceptions_attached_only_to_a_derived_memory_pa
     assert sources[1]["observed"]["content"]["text"] in messages[-1]["content"]
     assert len(body["existing_assertions"]) == 3 and len(body["sources"]) == 4
     assert body["integration_manifest"]["unresolved_discovery"] is True
+    assert learning.calls == []
+
+
+@pytest.mark.parametrize("edge", ["legacy", "belief", "both"])
+def test_shared_history_expands_each_exact_memory_once_without_changing_complete_packages(learning, monkeypatch, edge):
+    current, _, memories, _ = history_graph(learning, edge=edge)
+    manifest = manifest_for(current, *reversed(memories))
+    original_expand = _Selector.assertion_package
+    original_complete = learning_packages.complete_history_package
+    calls = []
+
+    def expand(selector, root, **kwargs):
+        calls.append((root["memory_id"], root["revision"]))
+        return original_expand(selector, root, **kwargs)
+
+    def uncached(selector, root, *, expansions=None):
+        return original_complete(selector, root)
+
+    monkeypatch.setattr(_Selector, "assertion_package", expand)
+    with monkeypatch.context() as patch:
+        patch.setattr(learning_packages, "complete_history_package", uncached)
+        previous = integrate(learning, manifest)
+    previous_calls = Counter(calls)
+    calls.clear()
+    current_result = integrate(learning, manifest)
+    assert current_result == previous
+    assert current_result[1] == manifest and not current_result[2]["objectives"]
+    assert sum(previous_calls.values()) == 7
+    assert Counter(calls) == {key: 1 for key in previous_calls}
+    assert len(calls) == 3 and learning.calls == []
+
+
+def test_deferred_shared_history_does_not_leak_unselected_source_or_dependents(learning):
+    current, sources, memories, _ = history_graph(learning)
+    parent, exception, derived = memories
+    manifest = manifest_for(current, derived, parent, exception)
+    package, selected, deferred = integrate(learning, manifest, policy=replace(SemanticPolicy(), max_sources=3))
+    assert versions(package) == {(item["memory_id"], item["revision"]) for item in (parent, exception)}
+    assert {item["event_id"] for item in package.sources} == {
+        current["event_id"], sources[0]["event_id"], sources[1]["event_id"],
+    }
+    assert selected["objectives"] == manifest["objectives"][1:]
+    assert deferred["objectives"] == manifest["objectives"][:1]
+    assert len(package.belief_relations) == 1 and learning.calls == []
+
+
+def test_history_expansion_reuse_ends_before_sources_can_be_deleted(learning):
+    current, sources, memories, _ = history_graph(learning)
+    manifest = manifest_for(current, *reversed(memories))
+    assert integrate(learning, manifest)[1] == manifest
+    learning.memory.forget([sources[1]["event_id"]], kind="events", mode="erase_content",
+                           expected_scope_generation=1)
+    updated_manifest = manifest_for(current, memories[-1])
+    package, selected, deferred = integrate(learning, updated_manifest)
+    assert {item["event_id"] for item in package.sources} == {
+        current["event_id"], sources[0]["event_id"], sources[2]["event_id"],
+    }
+    assert versions(package) == {(item["memory_id"], item["revision"]) for item in (memories[0], memories[2])}
+    assert all(item["scope"]["scope_generation"] == 2 for item in package.sources)
+    assert package.belief_relations == () and selected == updated_manifest and deferred["objectives"] == []
     assert learning.calls == []
 
 

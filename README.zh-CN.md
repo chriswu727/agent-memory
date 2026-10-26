@@ -47,7 +47,7 @@ agent-memory desktop chat --conversation writing-followup
 
 请 Agent 帮你安排下一次写作。这个练习可以让你观察早先的反馈是否帮助了新的请求，无需手动调用保存或搜索工具。新会话沿用同一个大脑，不是不同用户之间的隐私边界。如果学习仍在等待或已被阻塞，请先检查状态，再解读结果。
 
-这是一个建议亲自尝试的练习，不是预先录制的结果，也不保证一定能回忆成功。[最新真实模型诊断](evaluations/v1-2026-10-25-preference-use.md)记录了一个相关案例：模型成功使用了半小时偏好，但整段回答仍存在质量问题。
+这是一个建议亲自尝试的练习，不是预先录制的结果，也不保证一定能回忆成功。[有界真实模型诊断](evaluations/v1-2026-10-25-preference-use.md)记录了一个相关案例：模型成功使用了半小时偏好，但整段回答仍存在质量问题。
 
 <a id="automatic-integration"></a>
 <a id="python-integration"></a>
@@ -149,11 +149,11 @@ agent-memory desktop start
 
 当前候选版本支持**本地同步文本 Agent**，提供 Python 运行时、HTTP API、TypeScript 客户端、MCP 工具和直接终端聊天入口。核心记忆行为独立于聊天框架。桌面端到端验证目前覆盖 **macOS、uv 和 Docker** 的组合。
 
-[最新验证报告](evaluations/v1-2026-10-25-preference-use.md)记录了：
+[最新验证报告](evaluations/v1-2026-10-25-memory-efficiency.md)记录了：
 
-- 完整源码测试中 **5,147 项通过**，四项受 Docker 条件限制而跳过的测试已另行执行。
-- 隔离安装 wheel 后的重点测试中 **346 项通过**，另有四项已安装版本的桌面／聊天流程通过。这些测试组有重叠，不能相加作为独立测试总数。
-- 三项有界的 DeepSeek 宿主观察满足了六项范围有限的标准，但整段回答仍有缺陷。这不代表通过了长线验收。
+- 完整候选源码测试中 **5,234 项通过**，四项受 Docker 条件限制而跳过的测试已另行执行。随后恢复原有默认核验格式，又通过了 311 项重点源码检查。
+- 安装包检查覆盖记忆处理、迁移和桌面／聊天流程。报告区分了实验候选版本与最终默认配置；有重叠的测试组不能相加作为独立总数。
+- 四次配对 DeepSeek 核验调用测得实验性共享来源格式的输入消耗更低，但引用准确性问题阻止了它成为默认格式。此前的[有界宿主观察](evaluations/v1-2026-10-25-preference-use.md)也仍有整段回答缺陷。这些诊断均不代表通过长线验收。
 
 已知限制仍然存在：模型可能把历史信息当作当前事实，检索可能包含无关内容，语义核验也可能拒绝有效提议。完整长线验收和真实时间流逝下的老化验证尚未完成。目前尚未交付流式输出、工具循环、多模态输入、原生一键安装，以及对任意 AI 客户端的完整接入；Windows／Linux 桌面端尚未进行实机验收。性格与情绪建模属于后续研究方向。
 
@@ -169,6 +169,7 @@ agent-memory desktop start
 | [架构与验收规范](architecture/architecture.html) | 记忆结构、系统职责和完整设计。 |
 | [自动运行时契约](architecture/autonomous-runtime.contract.json) | 生命周期职责、接入要求和实现边界。 |
 | [认知预算控制](architecture/cognitive-budgets.md) | 明确的模型调用额度、用量记录和配置。 |
+| [记忆质量与效率](architecture/memory-quality-and-efficiency.md) | 实测开销、算法选择，以及未来人格与情绪研究的架构边界。 |
 | [开发设置](docs/reference.md#development-setup) | 克隆仓库后的设置、数据库迁移和后台任务处理器。 |
 | [本地验证](docs/reference.md#verification) | 测试命令和现有证据的覆盖范围。 |
 

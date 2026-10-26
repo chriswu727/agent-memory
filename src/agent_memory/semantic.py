@@ -31,6 +31,7 @@ from .citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSIONS,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
     CITATION_PROVENANCE_INPUT_VERSION,
+    CITATION_PROVENANCE_INPUT_VERSIONS,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
     citation_coverage_schema,
     citation_coverage_supported,
@@ -91,6 +92,11 @@ from .local_semantics import (
 )
 from .ontology import CORE_REGISTRY
 from .temporal import validate_valid_during
+from .verification_sources import (
+    SHARED_VERIFICATION_INPUT_VERSION,
+    SHARED_VERIFICATION_INSTRUCTIONS,
+    shared_verification_sources,
+)
 
 TruthValue = Literal["true", "false", "unknown"]
 
@@ -552,8 +558,12 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
             instructions += " " + LINK_DERIVED_INSTRUCTIONS
     if phase == "verification" and input_contract_version == CITATION_COVERAGE_INPUT_VERSION:
         instructions += " " + CITATION_COVERAGE_VERIFY_INSTRUCTIONS
-    elif phase == "verification" and input_contract_version == CITATION_PROVENANCE_INPUT_VERSION:
+    elif phase == "verification" and input_contract_version in CITATION_PROVENANCE_INPUT_VERSIONS:
         instructions += " " + CITATION_PROVENANCE_VERIFY_INSTRUCTIONS
+    if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
+            and proposal_mode not in BOUNDED_MODES):
+        data = shared_verification_sources(data)
+        instructions += " " + SHARED_VERIFICATION_INSTRUCTIONS
     messages = ({"role": "system", "content": instructions + "\nResponse JSON schema:\n" + _json(schema)},
                 {"role": "user", "content": _json(data)})
     size = len(_json({"messages": messages, "response_schema": schema,

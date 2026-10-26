@@ -4,6 +4,14 @@ MAX_QUERY_TERMS = 128
 MAX_TERM_LENGTH = 256
 
 
+def passage_score(query, text):
+    query_terms = cognition._terms(query)
+    score = max((cognition._lexical_score_terms(query_terms, cognition._terms(text[start:end]))
+                 for start, end in cognition._sentence_spans(text)), default=0.0)
+    # Character-only cues can meet the existing overlap floor only across passages.
+    return score or cognition._lexical_score_terms(query_terms, cognition._terms(text))
+
+
 def historical_support_filter(input_event_ids):
     if not input_event_ids:
         return "", ()

@@ -46,7 +46,7 @@ agent-memory desktop chat --conversation writing-followup
 
 Ask for help planning the next writing session. This lets you explore whether earlier feedback helps with a new request, without manually calling a save or search tool. A new conversation reuses the same brain; it is not a separate user's privacy boundary. If learning is pending or blocked, inspect its status before interpreting the result.
 
-This is a suggested hands-on exercise, not a prerecorded result or a guarantee of recall. The [latest real-model diagnostic](evaluations/v1-2026-10-25-preference-use.md) records a related successful use of a half-hour preference alongside remaining answer-quality defects.
+This is a suggested hands-on exercise, not a prerecorded result or a guarantee of recall. A [bounded real-model diagnostic](evaluations/v1-2026-10-25-preference-use.md) records a related successful use of a half-hour preference alongside remaining answer-quality defects.
 
 <a id="automatic-integration"></a>
 
@@ -144,11 +144,11 @@ See [updating and configuration](docs/reference.md#local-status-and-configuratio
 
 The current release candidate supports **local synchronous text agents**, with a Python runtime, HTTP API, TypeScript client, MCP tools, and a direct terminal chat entry point. Core memory behavior is independent of chat frameworks. Desktop end-to-end verification currently covers **macOS with uv and Docker**.
 
-The [latest verification report](evaluations/v1-2026-10-25-preference-use.md) records:
+The [latest verification report](evaluations/v1-2026-10-25-memory-efficiency.md) records:
 
-- **5,147 passed** in the full source suite, with four Docker-gated skips exercised separately.
-- **346 passed** in the isolated installed-wheel focused suite, plus four installed desktop/chat flows. These groups overlap and are not a unique aggregate count.
-- Three bounded DeepSeek host observations that met six narrow criteria, with remaining whole-answer defects. This is not a longitudinal acceptance pass.
+- **5,234 passed** in the full candidate source suite, with four Docker-gated skips exercised separately. Restoring the existing default verification format then passed 311 focused source checks.
+- Installed-package checks cover memory processing, migration and desktop/chat flows. The report distinguishes the experimental candidate from the final default configuration; overlapping groups are not an aggregate count.
+- Four paired DeepSeek verifier calls measured lower input use for experimental shared sources, but a citation-fidelity concern prevented default promotion. Earlier [bounded host observations](evaluations/v1-2026-10-25-preference-use.md) also retain whole-answer defects. Neither diagnostic passes longitudinal acceptance.
 
 Known limits remain visible: a model can treat historical information as current fact, retrieval can include irrelevant material, and semantic verification can reject valid proposals. Full longitudinal acceptance and real elapsed-time aging remain incomplete. Streaming, tool loops, multimodal input, native one-click installation, and full integration into arbitrary AI clients are not currently delivered; Windows/Linux desktop acceptance has not been run on actual machines. Personality and emotion modeling are future research.
 
@@ -164,6 +164,7 @@ Read the [acceptance criteria](architecture/v1-acceptance.md), [closed longitudi
 | [Architecture and acceptance specification](architecture/architecture.html) | Memory structures, system responsibilities, and the larger design. |
 | [Automatic runtime contract](architecture/autonomous-runtime.contract.json) | Lifecycle responsibilities, integration requirements, and implementation boundaries. |
 | [Cognitive budget controls](architecture/cognitive-budgets.md) | Explicit model-call allowances, accounting, and configuration. |
+| [Memory quality and efficiency](architecture/memory-quality-and-efficiency.md) | Measured costs, algorithm choices, and boundaries for future personality and emotion research. |
 | [Development setup](docs/reference.md#development-setup) | Clone-based setup, database migrations, and the worker. |
 | [Local verification](docs/reference.md#verification) | Test commands and the scope of existing evidence. |
 

@@ -1,9 +1,9 @@
 from . import cognition
 
-SOURCE_ROUTE_VERSION = "exact-word-hash-and-source-span-v4"
+SOURCE_ROUTE_VERSION = "exact-word-hash-and-source-passage-v1"
 
 
-def _matching_references(memory, events, scope, query, superseded):
+def _matching_references(memory, events, scope, query, superseded, score_text=None):
     matches = []
     if memory["lifecycle"] not in {"active", "dormant"} or not cognition._scope_allows(memory["scope"], scope):
         return matches
@@ -16,14 +16,15 @@ def _matching_references(memory, events, scope, query, superseded):
         text = cognition._content_text(event["observed"]["content"])
         if "span" in reference:
             text = text[reference["span"]["start"]:reference["span"]["end"]]
-        score = cognition._lexical_score(query, text)
+        score = (score_text or cognition._lexical_score)(query, text)
         if score > 0:
             matches.append((score, reference))
     return matches
 
 
 def source_candidates(conn, service, principal, brain, target, query, seeds, *,
-                      source_limit, scan_limit, through_sequence, excluded_versions=(), independent_of_event_ids=()):
+                      source_limit, scan_limit, through_sequence, excluded_versions=(), independent_of_event_ids=(),
+                      score_text=None):
     from .candidates import _eligible, _scope_clause
     from .lexical_candidates import historical_support_filter
 
@@ -59,7 +60,7 @@ def source_candidates(conn, service, principal, brain, target, query, seeds, *,
         if event["sequence"] <= through_sequence and cognition._scope_allows(event["scope"], scope)}
     superseded = service._superseded_evidence(conn, principal, brain, event_ids)
     seed_refs = [reference for memory in seeds
-                 for _, reference in _matching_references(memory, events, scope, query, superseded)]
+                 for _, reference in _matching_references(memory, events, scope, query, superseded, score_text)]
     if not seed_refs:
         return [], truncated
     clause, scope_params = _scope_clause("a", target)
@@ -84,7 +85,7 @@ def source_candidates(conn, service, principal, brain, target, query, seeds, *,
     ranked = []
     for row in rows[:scan_limit]:
         matches = _matching_references(service._rebind(row["document"], principal, brain),
-                                       events, scope, query, superseded)
+                                       events, scope, query, superseded, score_text)
         scores = [score for score, reference in matches
                   if any(cognition.evidence_overlaps(reference, seed) for seed in seed_refs)]
         if scores:

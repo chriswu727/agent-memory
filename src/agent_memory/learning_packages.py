@@ -140,7 +140,8 @@ def discover_manifest(conn, service, principal, brain, target, *, through_sequen
     return manifest
 
 
-def complete_history_package(selector, root):
+def complete_history_package(selector, root, *, expansions=None):
+    expansions = {} if expansions is None else expansions
     pending = {(root["memory_id"], root["revision"]): root}
     expanded, sources, memories = set(), {}, {}
     while pending:
@@ -148,7 +149,10 @@ def complete_history_package(selector, root):
         candidate = pending.pop(key)
         if key in expanded:
             continue
-        events, dependencies = selector.assertion_package(candidate)
+        expansion_key = (key, digest(candidate))
+        if expansion_key not in expansions:
+            expansions[expansion_key] = selector.assertion_package(candidate)
+        events, dependencies = expansions[expansion_key]
         sources.update(events)
         memories.update(dependencies)
         if len(sources) > selector.policy.max_sources or len(memories) > selector.policy.max_assertions:
@@ -172,6 +176,8 @@ def integration_package(conn, service, principal, brain, target, *, manifest, po
     if input_fingerprint(required.values()) != manifest["input_fingerprint"]:
         raise DomainError("context_stale", "Historical integration inputs changed.")
     selected_events, selected_memories, selected, deferred = dict(required), {}, [], []
+    # Reuse ends with this scope/cutoff snapshot; later calls must recheck source invalidation.
+    expansions = {}
     sampling = {"strategy": HISTORY_INTEGRATION_MODE, "through_sequence": manifest["through_sequence"],
                 "search_exhaustive": False, "publication_restricted": False,
                 "omitted_packages": 0, "source_count": len(required), "assertion_count": 0,
@@ -187,7 +193,8 @@ def integration_package(conn, service, principal, brain, target, *, manifest, po
                 != reference["content_sha256"]):
             raise DomainError("context_stale", "Historical comparison endpoint changed.")
         try:
-            events, memories = complete_history_package(selector, selector.memory_cache[key]["document"])
+            events, memories = complete_history_package(
+                selector, selector.memory_cache[key]["document"], expansions=expansions)
             combined_events, combined_memories = selected_events | events, selected_memories | memories
             if len(combined_events) > policy.max_sources or len(combined_memories) > policy.max_assertions:
                 raise _Incomplete("source_budget")

@@ -45,6 +45,7 @@ from agent_memory.semantic import (
     VERIFICATION_SCHEMA,
     proposal_schema,
 )
+from agent_memory.verification_sources import SHARED_VERIFICATION_INPUT_VERSION
 
 
 def case(kind):
@@ -118,11 +119,17 @@ def test_scope_keeps_full_context_and_episode_but_only_own_excerpts_can_cover_cl
         response["assessments"][0]["citation_coverage_verdict"] = "supports" if complete else "unknown"
 
     result, requests = process(data, proposed, change_assessment=check)
-    entries = json.loads(requests[1].messages[-1]["content"])["proposals"]
+    body = json.loads(requests[1].messages[-1]["content"])
+    entries = body["proposals"]
     claim_entry, episode_entry = entries
     assert claim_entry["citation_scope"] == citation_scope(selected, input_contract_version=version)
     assert claim_entry["citation_scope"]["positive_evidence_indices"] == list(range(len(selected)))
-    assert all(item["source"] == source for item in claim_entry["evidence"])
+    if version == SHARED_VERIFICATION_INPUT_VERSION:
+        assert body["verification_sources"] == [source]
+        assert all(item["source_ref"] == {"event_id": source["event_id"], "revision": source["revision"]}
+                   for item in claim_entry["evidence"])
+    else:
+        assert all(item["source"] == source for item in claim_entry["evidence"])
     assert episode_entry["evidence"][0]["excerpt"] == source["observed"]["content"]["text"]
     assert "citation_scope" not in episode_entry
     instructions = (CITATION_COVERAGE_VERIFY_INSTRUCTIONS if version == VERSION

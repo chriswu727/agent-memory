@@ -6,7 +6,7 @@ from psycopg.types.json import Jsonb
 from test_candidates import candidates as candidates
 from test_candidates import key
 
-from agent_memory.lexical_candidates import MAX_QUERY_TERMS, lexical_rows
+from agent_memory.lexical_candidates import MAX_QUERY_TERMS, lexical_rows, passage_score
 from agent_memory.service import _vector
 
 
@@ -20,6 +20,29 @@ class RecordingConnection:
 
     def fetchall(self):
         return []
+
+
+def test_passage_score_does_not_accumulate_cues_from_unrelated_sentences():
+    concentrated = passage_score("quartz vault", "The quartz vault is downstairs.")
+    dispersed = passage_score("quartz vault", "The quartz is blue.\nThe vault is upstairs.")
+    assert concentrated == 1
+    assert dispersed == 0.5
+    assert passage_score("quartz vault", "The garden is quiet.") == 0
+
+
+def test_character_only_cues_remain_reachable_when_spread_across_passages():
+    assert passage_score("安静", "心安。\n宁静。") == 0.15
+
+
+@pytest.mark.parametrize("query,text", [
+    ("not unless", "Do not visit unless invited. A separate topic follows."),
+    ("备考安静", "备考时需要安静。周末去散步。"),
+    ("workshop 2.5", "1. The workshop starts at 2.5 hours.\n2. Bring a notebook."),
+])
+def test_passage_score_retains_conditions_multilingual_cues_and_decimal_boundaries(query, text):
+    from agent_memory import cognition
+
+    assert passage_score(query, text) == cognition._lexical_score(query, text)
 
 
 def test_word_channel_is_bounded_and_uses_bound_parameters():

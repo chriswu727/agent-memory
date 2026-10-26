@@ -1,0 +1,63 @@
+{
+  "version": "retrieval-passage-priority-check-v1",
+  "source_fixture_sha256": "700020b2628a8886691ebee2be842997a0ca462b880114bdc7d99962229a345c",
+  "original_prepare_request_sha256": "9deb720387869604c1e63f7be0a30eba3b356ef95163512735f8c23f21de0051",
+  "baseline_artifact_sha256": "418e7378c9b3a2aa1631cfaabe1e90479e2ae7ce487567bb279740a7a2c7ce71",
+  "current_artifact_sha256": "d39ba98594493860548f9c5962392ff9ead2ffd07cb074b56f2b45625d66cd0f",
+  "runtime_source_hashes": {
+    "agent_memory.candidates": "7076c02e113a6dac076953f86d48ecd119c0a67a138466248e09b3c831c751f1",
+    "agent_memory.cognition": "5896e3f10b881940938ec32cc2f76a71fae06184349976b422761c372b289cd0",
+    "agent_memory.lexical_candidates": "2aa12c4470c2c6a914bba3d13e87a25048f545cecb94b9cbe5085543a0cfac0a",
+    "agent_memory.source_candidates": "a8f4cd883a032815eb3f0715d6889c5ac0a4d641b7e05471381c763ec68d4837",
+    "agent_memory.retrieval": "d743d7a256718824d4f56d89f282d41f6f75aa9b17164fe93ca20b8bc4bba0e5",
+    "agent_memory.source_neighborhood": "4f82d35b78a0f80c976a8ac8bcd520bac6f291027fa99c89806c599c4dc2722b"
+  },
+  "same_query": true,
+  "same_prepare_budget": true,
+  "same_selected_memory_versions": true,
+  "same_selected_content_and_evidence": true,
+  "database_transaction_read_only": true,
+  "model_calls": 0,
+  "embedding_calls": 0,
+  "database_mutations": 0,
+  "before": {
+    "selected_blocks": 15,
+    "context_bytes": 15920
+  },
+  "after": {
+    "selected_blocks": 15,
+    "context_bytes": 15920
+  },
+  "positions": [
+    {
+      "label": "duration_semantic",
+      "before": 5,
+      "after": 2
+    },
+    {
+      "label": "duration_literal",
+      "before": 6,
+      "after": 3
+    },
+    {
+      "label": "original_class_schedule",
+      "before": 14,
+      "after": 7
+    },
+    {
+      "label": "story_premise",
+      "before": 13,
+      "after": 6
+    },
+    {
+      "label": "unrelated_broad_river_summary",
+      "before": 2,
+      "after": 11
+    }
+  ],
+  "limitations": [
+    "The seven unrelated river/friend blocks remain; no token reduction is established.",
+    "Candidate-local information weighting was explored offline and not adopted because selected membership was unchanged.",
+    "This is a source-frozen prioritization diagnostic, not an end-to-end host answer or longitudinal acceptance."
+  ]
+}
