@@ -67,10 +67,11 @@ def plan():
              "longitudinal_learning.py", "evaluation_support.py", "evaluation_host.py",
              "evaluate_deepseek.py", "evaluate_conversation.py")
     return {
-        "version": "longitudinal-execution-v3", "scenario": story, "runtime_build": BUILD_ID,
+        "version": "longitudinal-execution-v4", "scenario": story, "runtime_build": BUILD_ID,
         "code_fingerprints": {name: digest((ROOT / "examples" / name).read_text()) for name in files},
         "provider": {"base_url": "https://api.deepseek.com", "model": "deepseek-v4-pro",
-                     "thinking": "enabled"},
+                     "thinking": "enabled", "reasoning_effort": "high"},
+        "cognitive_reasoning_effort": "low",
         "runtime_policy": asdict(RuntimePolicy(memory_context_tokens=16000, max_input_tokens=24000,
                                                recent_context_events=6, orientation_policy="on_demand")),
         "semantic_policy": asdict(semantic), "host_instructions": HOST_INSTRUCTIONS,
@@ -459,6 +460,7 @@ def live(output, *, continuing=False, sessions=1):
             provider = planned["provider"]
             cognitive = stack.enter_context(ChatCompletionsSemanticProvider(
                 provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=meter,
+                reasoning_effort=planned["cognitive_reasoning_effort"],
                 max_response_bytes=planned["provider_envelope_bytes"]))
             recorded = RecordedProvider(journal, meter, cognitive, "cognition")
             service = MemoryService(database, semantic_processor=SemanticProcessor(
@@ -466,6 +468,7 @@ def live(output, *, continuing=False, sessions=1):
             host = stack.enter_context(ChatCompletionsHost(
                 provider["base_url"], key, provider["model"], transport=meter,
                 max_output_tokens=planned["host_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"],
+                thinking=provider["thinking"], reasoning_effort=provider["reasoning_effort"],
                 max_response_bytes=planned["provider_envelope_bytes"]))
             actor = stack.enter_context(ChatCompletionsHost(
                 provider["base_url"], key, provider["model"], transport=meter,

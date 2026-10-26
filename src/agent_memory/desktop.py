@@ -135,6 +135,8 @@ def _fingerprint(profile, *, settings=None) -> str:
     settings = settings or profile.settings()
     values = {"database_port": profile.database_port, "api_port": profile.api_port,
               "cognition": profile.cognition, "cognition_policy": asdict(settings.semantic_policy()),
+              "cognition_reasoning_effort": settings.cognition_reasoning_effort,
+              "cognition_max_envelope_bytes": settings.cognition_max_envelope_bytes,
               "recovery_binding": load_binding(profile), "version": __version__, "build_id": BUILD_ID}
     return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
 

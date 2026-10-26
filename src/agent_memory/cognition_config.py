@@ -6,12 +6,15 @@ import secrets
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .chat_provider import ReasoningEffort
+from .config import validate_cognition_transport
 from .local_profile import LocalProfileError, _open_private, _pairs, load_profile, profile_lock
 from .semantic import SemanticPolicy
 
 CONFIGURATION_FILE = "cognition-policy.json"
 _MAX_CONFIGURATION_BYTES = 4096
-_FIELDS = frozenset({"max_wall_time_ms", "max_output_tokens", "max_response_bytes"})
+_SEMANTIC_FIELDS = frozenset({"max_wall_time_ms", "max_output_tokens", "max_response_bytes"})
+_FIELDS = _SEMANTIC_FIELDS | {"reasoning_effort", "max_envelope_bytes"}
 
 
 class CognitionConfigurationError(ValueError):
@@ -31,15 +34,24 @@ class CognitionPolicyConfiguration:
     max_wall_time_ms: int = 30_000
     max_output_tokens: int = 8192
     max_response_bytes: int = 32768
+    reasoning_effort: ReasoningEffort | None = None
+    max_envelope_bytes: int = 65536
 
     def __post_init__(self):
         try:
-            SemanticPolicy(**asdict(self))
+            SemanticPolicy(**{key: getattr(self, key) for key in _SEMANTIC_FIELDS})
+            validate_cognition_transport(self.reasoning_effort, None, self.max_envelope_bytes)
         except (TypeError, ValueError):
             raise CognitionConfigurationError("cognition_policy_invalid") from None
 
     def settings(self):
         return {"cognition_" + key: value for key, value in asdict(self).items()}
+
+    def validate_thinking(self, thinking):
+        try:
+            validate_cognition_transport(self.reasoning_effort, thinking, self.max_envelope_bytes)
+        except ValueError:
+            raise CognitionConfigurationError("cognition_policy_invalid") from None
 
 
 def cognition_policy_preset(name: str) -> CognitionPolicyConfiguration:
@@ -60,10 +72,12 @@ def _read(directory):
         if len(content) > _MAX_CONFIGURATION_BYTES:
             raise ValueError
         value = json.loads(content, object_pairs_hook=_pairs)
-        if (not isinstance(value, dict) or set(value) != _FIELDS | {"version"}
-                or type(value["version"]) is not int or value["version"] != 1):
+        if not isinstance(value, dict) or type(value.get("version")) is not int:
             raise ValueError
-        return CognitionPolicyConfiguration(**{key: value[key] for key in _FIELDS})
+        fields = {1: _SEMANTIC_FIELDS, 2: _FIELDS}.get(value["version"])
+        if fields is None or set(value) != fields | {"version"}:
+            raise ValueError
+        return CognitionPolicyConfiguration(**{key: value[key] for key in fields})
     except (ValueError, TypeError, RecursionError):
         raise CognitionConfigurationError("cognition_policy_invalid") from None
 
@@ -85,11 +99,12 @@ def save_cognition_policy(configuration: CognitionPolicyConfiguration,
     if type(configuration) is not CognitionPolicyConfiguration:
         raise CognitionConfigurationError("cognition_policy_invalid")
     configuration = CognitionPolicyConfiguration(**asdict(configuration))
-    content = (json.dumps({"version": 1, **asdict(configuration)}, indent=2) + "\n").encode()
+    content = (json.dumps({"version": 2, **asdict(configuration)}, indent=2) + "\n").encode()
     try:
         profile = load_profile(directory)
         with profile_lock(profile.directory):
-            load_profile(profile.directory)
+            current_profile = load_profile(profile.directory)
+            configuration.validate_thinking((current_profile.cognition or {}).get("thinking"))
             destination = profile.directory / CONFIGURATION_FILE
             if destination.exists() or destination.is_symlink():
                 descriptor = _open_private(destination, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))

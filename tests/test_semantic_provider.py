@@ -78,6 +78,32 @@ def test_semantic_adapter_inherits_safe_thinking_validation():
     assert invalid_thinking not in "".join(traceback.format_exception(error.value))
 
 
+def test_semantic_adapter_forwards_effort_for_both_phases_and_preserves_usage():
+    calls, markers = [], []
+    usage = {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}
+
+    def handle(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(200, json={**completion(), "usage": usage})
+
+    with provider(handle, thinking="enabled", reasoning_effort="low") as reason:
+        for phase in ("proposal", "verification"):
+            assert reason(replace(REQUEST, phase=phase)) == CONTENT
+            assert reason.last_usage == usage
+            markers.append(reason.last_call_id)
+    assert len(set(markers)) == len(calls) == 2
+    assert all(body["reasoning_effort"] == "low" and body["max_tokens"] == REQUEST.max_output_tokens
+               and body["response_format"] == {"type": "json_object"} for body in calls)
+
+
+@pytest.mark.parametrize("options", [{"reasoning_effort": "unknown"},
+                                     {"reasoning_effort": "low", "thinking": "disabled"}])
+def test_semantic_adapter_inherits_effort_validation_before_client_creation(monkeypatch, options):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="reasoning_effort"):
+        provider(lambda _: pytest.fail("No request expected"), **options)
+
+
 @pytest.mark.parametrize("oversized_content", [False, True])
 def test_larger_provider_envelope_does_not_increase_semantic_content_limit(oversized_content):
     policy = SemanticPolicy(max_response_bytes=65536)

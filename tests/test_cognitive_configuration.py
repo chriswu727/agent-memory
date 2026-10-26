@@ -15,7 +15,8 @@ from agent_memory.helpers import Principal
 def cognitive_env(monkeypatch):
     monkeypatch.setattr(config, "load_dotenv", lambda: None)
     for prefix in ("MEMORY_COGNITION", "MEMORY_EMBEDDING"):
-        for key in ("BASE_URL", "API_KEY", "MODEL", "MODEL_VERSION", "DIMENSIONS", "THINKING"):
+        for key in ("BASE_URL", "API_KEY", "MODEL", "MODEL_VERSION", "DIMENSIONS", "THINKING",
+                    "REASONING_EFFORT", "MAX_ENVELOPE_BYTES"):
             monkeypatch.delenv(prefix + "_" + key, raising=False)
     monkeypatch.setenv("MEMORY_DATABASE_URL", "postgresql://unused")
     return monkeypatch
@@ -147,7 +148,7 @@ def test_factory_uses_one_explicit_provider_for_proposal_and_verification_and_cl
         assert configured.semantic_processor.propose is configured.semantic_processor.verify is opened[0][2]
         assert configured.embedding_provider is opened[1][2]
         assert opened[0][0] == (settings.cognition_base_url, "cognition-token", "cognition-model")
-        assert opened[0][1] == {"thinking": thinking}
+        assert opened[0][1] == {"thinking": thinking, "reasoning_effort": None, "max_response_bytes": 65536}
         assert opened[1][1] == {"model_version": "revision-2", "dimensions": 3}
         assert closed == []
     assert closed == [opened[1][2], opened[0][2]]

@@ -67,6 +67,7 @@ def plan(source=None):
         "source_boundary": "Exactly eleven clean completed sessions, before grandma-card.",
         "runtime_build": base["runtime_build"], "code_fingerprints": files,
         "provider": base["provider"], "semantic_policy": base["semantic_policy"],
+        "cognitive_reasoning_effort": base["cognitive_reasoning_effort"],
         "runtime_policy": base["runtime_policy"], "host_instructions": base["host_instructions"],
         "provider_timeout_seconds": 240, "provider_envelope_bytes": 262144, "host_output_tokens": 4096,
         "cases": copy.deepcopy(list(CASES)), "private_review": copy.deepcopy(OBLIGATIONS),
@@ -305,12 +306,14 @@ def live(source_path, output):
             provider = planned["provider"]
             cognitive = stack.enter_context(ChatCompletionsSemanticProvider(
                 provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=meter,
+                reasoning_effort=planned["cognitive_reasoning_effort"],
                 max_response_bytes=planned["provider_envelope_bytes"]))
             recorded = BoundedProvider(journal, meter, cognitive, "cognition")
             service = MemoryService(database, semantic_processor=SemanticProcessor(
                 recorded, recorded, SemanticPolicy(**planned["semantic_policy"])))
             host = stack.enter_context(ChatCompletionsHost(
                 provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=meter,
+                reasoning_effort=provider["reasoning_effort"],
                 max_output_tokens=4096, timeout_seconds=planned["provider_timeout_seconds"],
                 max_response_bytes=planned["provider_envelope_bytes"]))
             token = uid()

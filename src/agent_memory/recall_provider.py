@@ -5,7 +5,7 @@ from typing import Literal
 
 import httpx
 
-from .chat_provider import ChatCompletionsGenerator, ChatProviderError
+from .chat_provider import ChatCompletionsGenerator, ChatProviderError, ReasoningEffort
 from .recall_control import RecallReasoningRequest
 
 _MAX_RESPONSE_BYTES = 65536
@@ -22,12 +22,14 @@ class ChatCompletionsRecallReasoner(ChatCompletionsGenerator):
     def __init__(
         self, base_url: str, api_key: str, model: str, *,
         thinking: Literal["enabled", "disabled"] | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
         max_response_bytes: int = _MAX_RESPONSE_BYTES,
         transport: httpx.BaseTransport | None = None,
     ):
         if type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 1048576:
             raise ValueError("max_response_bytes must be an integer between 1 and 1048576")
         super().__init__(base_url, api_key, model, thinking=thinking,
+                         reasoning_effort=reasoning_effort,
                          max_response_bytes=max_response_bytes, transport=transport)
 
     def __call__(self, request: RecallReasoningRequest) -> str:

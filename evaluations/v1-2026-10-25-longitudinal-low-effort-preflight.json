@@ -1,0 +1,64 @@
+{
+  "diagnostic": "explicit low effort on the known-usage failed proposal",
+  "model": "deepseek-v4-pro",
+  "thinking": "enabled",
+  "reasoning_effort": "low",
+  "outcome": "completed",
+  "proposal_counts": {
+    "claims": 7,
+    "episode_actions": 1,
+    "situation_updates": 0
+  },
+  "schema_valid": true,
+  "semantic_acceptance": "mixed_proposals_not_published",
+  "usage": {
+    "completed_calls": 1,
+    "reserved_calls": 1,
+    "reserved_output_tokens": 16384,
+    "usage_confirmed_calls": 1,
+    "usage_totals": {
+      "completion_tokens": 9731,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8905,
+      "prompt_tokens": 8905,
+      "total_tokens": 18636
+    },
+    "usage_unknown_calls": 0
+  },
+  "provider_call_seconds": 108.797595,
+  "reasoning_tokens": 7038,
+  "source_request_sha256": "39fc42d718b9b630b7dc4c543bb66a56e9cda4918ff52e3ae59b1f0050a64480",
+  "memory_mutation": false,
+  "campaign_continued": false,
+  "private_evidence_sha256": {
+    "plan.json": "5531b05406f0c55ae0faecc5255358f5b6d98a923340e4477ef1dac9a021a115",
+    "journal.jsonl": "eb9f5d22ffcc76808d0bac692d4c349406a46e12494d50ba89e29fc406c42c32",
+    "head.json": "40f9227f5f37691f94d1f799be3d5321d3e82a682beb8eb484affc5b2d407864",
+    "calls.jsonl": "803738562d82ef945abfc719096f859d3022b7f395ae41b9af6c88eb416ce2bb"
+  },
+  "initial_helper_error": {
+    "type": "invalid_request",
+    "reserved_calls": 0,
+    "cause": "JSON-loaded message list was not reconstructed as the required tuple.",
+    "retained_evidence": ".local/longitudinal-cognition-low-v1"
+  },
+  "independent_proposal_review": {
+    "supported_claims": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "supported_episode": "ep1",
+    "require_rejection": {
+      "c5": "Accurate episodic speech-act report, but ineligible under the current non-assistant inquiry-source guard (presupposition_not_evidence). Not an unsupported-world-fact oracle.",
+      "c6": "Bound assistant span267:285 is about locking the ending; asserted60\u201390minute full-draft slot appears at287:332.",
+      "c7": "Bound spans359:406 and407:434 do not support the asserted timing; supporting timing appears at453:518 and519:563."
+    },
+    "underlying_schedule_facts_present_elsewhere": true,
+    "verifier_assessed": true,
+    "published": false,
+    "supported_but_currently_ineligible_claim": "c5",
+    "verifier_observation": "c6 and c7 received unknown verdicts on the unsupported exact citations and entire proposals; c5 was excluded by deterministic prevalidation."
+  }
+}

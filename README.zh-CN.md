@@ -8,7 +8,7 @@
 
 第一版按[有限验收与停止标准](architecture/v1-acceptance.md)收尾。记忆质量改为通过[长线使用评估](architecture/longitudinal-memory-evaluation.md)验证：模拟真实用户在多个会话中的日常生活与持续任务，检查记忆能否保持连续性、是否实际帮助用户。新执行器支持十六次不规则会话、根据实际回答选择用户后续表达、正常近期上下文，以及持久化暂停与继续。[验证报告](evaluations/v1-2026-10-25-longitudinal-harness.md)将已执行的检查与尚未评估的记忆质量分开记录。故事中的时间跨度不能证明真实运行时长或记忆老化，第一版验收仍未全部通过。
 
-首次有限长线试跑在交付并编码一轮后停止：模拟用户的选择器将输出额度全部用于推理。四次调用的用量均已确认。选择器配置已修正并通过本地验证，但没有重新付费运行，也未通过完整长线验收。[试跑记录](evaluations/v1-2026-10-25-longitudinal-pilot.json)保留失败结果和证据哈希。
+[继续进行的真实测试](evaluations/v1-2026-10-25-longitudinal-followup.md)发现了响应包上限和推理耗尽输出额度两个独立问题。模拟用户选择器已通过有限真实调用验证；SDK、服务配置和桌面策略现在支持显式设置推理强度与响应包上限。候选记忆的引用依据及完整长线效果仍需独立审查。此前失败的测试和未知用量均保留，尚未通过完整长线验收。
 
 本批学习修复加入了[从来源推导的关系能力限制](architecture/relation-capabilities.md)、[每个新输入根任务最多接纳三项历史比较](architecture/history-comparison-attention.md)，以及[在既有额度内跨私有会话继续未尝试的工作](architecture/cross-conversation-learning-funding.md)。未选中的机会、已接纳的待处理工作、评估后无需修改与实际发布会分别记录。[本地验收记录](evaluations/v1-2026-10-25-local-acceptance.md)保留了安装、回归与性能证据。这些修改仍需通过修订后的长线使用验收，不能据此宣称已达到人类的回忆准确度。
 
@@ -345,6 +345,8 @@ MEMORY_COGNITION_MODEL=<your chat model>
 ```
 
 `MEMORY_COGNITION_THINKING` 可选，值为 `enabled` 或 `disabled`；不设置时沿用提供方默认行为。仅对支持 `thinking.type` 参数的提供方使用，仍须配置上面三项；单独配置开关会在启动时拒绝。输出 token 上限与响应字节上限分别控制，截断内容不能作为成功提议。
+
+`MEMORY_COGNITION_REASONING_EFFORT` 可选，转发提供方支持的推理强度（`minimal`、`low`、`medium`、`high`、`xhigh`、`max` 或 `ultra`）；不设置时沿用提供方默认值，不能与关闭思考同时指定。不同提供方支持情况不同。`MEMORY_COGNITION_MAX_ENVELOPE_BYTES` 单独限制包含隐藏推理的完整 HTTP 响应，范围为 1 至 1,048,576 bytes，默认 65,536。这两项不改变语义正文上限，也不会重试失败请求。桌面可用 `agent-memory desktop configure-cognition-policy --reasoning-effort low --max-envelope-bytes 262144` 只修改这两项，并保留现有时间、输出和正文额度，重启后生效。`--reasoning-effort default` 清除显式强度。旧策略文件仍可读取，保存使用 v2 格式。
 
 可选的 `MEMORY_COGNITION_MAX_WALL_TIME_MS`、`MEMORY_COGNITION_MAX_OUTPUT_TOKENS` 与 `MEMORY_COGNITION_MAX_RESPONSE_BYTES` 默认分别为 30,000、8,192 和 32,768，上限分别为 300,000、32,768 和 65,536。总时间包含提议与核验两阶段；输出 token 按单次请求限制，解码后的正文上限与传输层响应包上限分别计算。桌面安装可用 `agent-memory desktop cognition-policy` 查看，或用 `desktop configure-cognition-policy --max-wall-time-ms 240000 --max-output-tokens 16384 --max-response-bytes 65536` 同时保存三项后重启。示例显式提高了额度，默认值不变。
 

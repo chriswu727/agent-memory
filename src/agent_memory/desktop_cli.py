@@ -65,9 +65,25 @@ def _setup(args):
             profile = configure_cognition(profile, base_url=base_url, model=model, api_key=api_key)
     preset = getattr(args, "cognition_preset", None)
     if preset is not None:
-        from .cognition_config import cognition_policy_preset, save_cognition_policy
+        from dataclasses import replace
 
-        save_cognition_policy(cognition_policy_preset(preset), profile.directory)
+        from .cognition_config import (
+            CognitionConfigurationError,
+            CognitionPolicyConfiguration,
+            cognition_policy_preset,
+            load_cognition_policy,
+            save_cognition_policy,
+        )
+
+        try:
+            current_policy = load_cognition_policy(profile.directory)
+        except CognitionConfigurationError as error:
+            if error.code != "cognition_policy_invalid":
+                raise
+            current_policy = CognitionPolicyConfiguration()
+        selected_policy = replace(cognition_policy_preset(preset), reasoning_effort=current_policy.reasoning_effort,
+                                  max_envelope_bytes=current_policy.max_envelope_bytes)
+        save_cognition_policy(selected_policy, profile.directory)
     with profile_lock(profile.directory):
         configuration = mcp_config(profile.directory)
         path = profile.directory / "mcp.json"
@@ -83,7 +99,7 @@ def _setup(args):
     if preset is not None:
         from dataclasses import asdict
 
-        result["cognition_policy"] = asdict(cognition_policy_preset(preset))
+        result["cognition_policy"] = asdict(selected_policy)
     return result
 
 

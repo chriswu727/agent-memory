@@ -77,6 +77,30 @@ def test_thinking_is_sent_only_when_explicitly_configured(thinking):
     assert len(calls) == 1
 
 
+def test_recall_adapter_forwards_explicit_effort_with_request_budget_and_usage():
+    usage = {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}
+
+    def handle(request):
+        assert json.loads(request.content) == {
+            "model": "configured-model", "messages": list(REQUEST.messages),
+            "response_format": {"type": "json_object"}, "max_tokens": 512, "stream": False,
+            "thinking": {"type": "enabled"}, "reasoning_effort": "low",
+        }
+        return httpx.Response(200, json={**completion(), "usage": usage})
+
+    with provider(handle, thinking="enabled", reasoning_effort="low") as reason:
+        assert reason(REQUEST) == DECISION
+        assert reason.last_usage == usage
+
+
+@pytest.mark.parametrize("options", [{"reasoning_effort": "unknown"},
+                                     {"reasoning_effort": "low", "thinking": "disabled"}])
+def test_recall_adapter_inherits_effort_validation_before_client_creation(monkeypatch, options):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="reasoning_effort"):
+        provider(lambda _: pytest.fail("No request expected"), **options)
+
+
 @pytest.mark.parametrize("thinking", ["", "ENABLED", " disabled", "none", True, 1, [], {}, API_KEY])
 def test_invalid_thinking_is_rejected_before_client_creation_and_redacted(monkeypatch, thinking):
     monkeypatch.setattr(httpx, "Client", lambda **kwargs: pytest.fail("No client expected"))

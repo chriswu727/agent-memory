@@ -1,6 +1,8 @@
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
+from typing import get_args
 
+from .chat_provider import ReasoningEffort
 from .cognition_config import (
     CognitionConfigurationError,
     CognitionPolicyConfiguration,
@@ -11,7 +13,7 @@ from .cognition_config import (
 
 
 def add_commands(actions):
-    inspect = actions.add_parser("cognition-policy", help="Inspect saved cognition timeout and response limits")
+    inspect = actions.add_parser("cognition-policy", help="Inspect saved cognition limits and provider options")
     inspect.add_argument("--directory", type=Path, default=None)
     change = actions.add_parser(
         "configure-cognition-policy", help="Save cognition limits for the next service restart",
@@ -27,34 +29,51 @@ def add_commands(actions):
     change.add_argument("--max-output-tokens", type=int,
                         help="Output token cap per model request, from 1 to 32768")
     change.add_argument("--max-response-bytes", type=int,
-                        help="Decoded cognitive response cap, from 1 to 65536 bytes")
+                        help="Final cognitive content cap, from 1 to 65536 UTF-8 bytes")
+    change.add_argument("--reasoning-effort", choices=(*get_args(ReasoningEffort), "default"),
+                        help="Explicit provider effort override; default removes the override")
+    change.add_argument("--max-envelope-bytes", type=int,
+                        help="Complete decoded HTTP response envelope cap, from 1 to 1048576 bytes")
 
 
 def run(args):
     configuration = None
-    if args.desktop_command == "configure-cognition-policy":
+    changing = args.desktop_command == "configure-cognition-policy"
+    overrides = {}
+    if changing:
         limits = (args.max_wall_time_ms, args.max_output_tokens, args.max_response_bytes)
+        if args.reasoning_effort is not None:
+            overrides["reasoning_effort"] = None if args.reasoning_effort == "default" else args.reasoning_effort
+        if args.max_envelope_bytes is not None:
+            overrides["max_envelope_bytes"] = args.max_envelope_bytes
         if args.preset is not None:
             if any(value is not None for value in limits):
                 raise ValueError("--preset cannot be combined with explicit cognition limits.")
             configuration = cognition_policy_preset(args.preset)
-        else:
+        elif any(value is not None for value in limits):
             if any(value is None for value in limits):
                 raise ValueError("Choose --preset or provide all three cognition limits.")
             configuration = CognitionPolicyConfiguration(
                 max_wall_time_ms=args.max_wall_time_ms, max_output_tokens=args.max_output_tokens,
                 max_response_bytes=args.max_response_bytes,
             )
+        elif not overrides:
+            raise ValueError("Choose --preset, provide all three cognition limits, or set a provider option.")
     try:
         current = load_cognition_policy(args.directory)
     except CognitionConfigurationError as error:
         if configuration is None or error.code != "cognition_policy_invalid":
             raise
         current = None
-    changed = configuration is not None and configuration != current
-    if configuration is not None:
+    if changing:
+        if configuration is not None and current is not None:
+            configuration = replace(configuration, reasoning_effort=current.reasoning_effort,
+                                    max_envelope_bytes=current.max_envelope_bytes)
+        configuration = replace(configuration or current, **overrides)
+    changed = changing and configuration != current
+    if changing:
         current = save_cognition_policy(configuration, args.directory)
     result = {"policy": asdict(current), "scope": "semantic_orientation_and_learning"}
-    if configuration is not None:
+    if changing:
         result["restart_required_if_running"] = changed
     return result

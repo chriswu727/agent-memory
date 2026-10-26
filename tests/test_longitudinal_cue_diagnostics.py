@@ -38,6 +38,8 @@ def test_plan_is_offline_bounded_and_withholds_target_details(diagnostic, monkey
     assert planned["max_reserved_output_tokens"] == 5 * (4096 + 2 * 16384)
     assert planned["per_copy_allocation"] == {"host": 1, "cognition": 2}
     assert planned["provider"]["thinking"] == "enabled"
+    assert planned["provider"]["reasoning_effort"] == "high"
+    assert planned["cognitive_reasoning_effort"] == "low"
     assert planned["provider_envelope_bytes"] == 262144
     assert planned["semantic_policy"]["max_response_bytes"] == 65536
     assert len(planned["cases"]) == len({case["id"] for case in planned["cases"]}) == 5

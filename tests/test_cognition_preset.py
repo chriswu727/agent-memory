@@ -16,7 +16,8 @@ from agent_memory.cognition_config import (
 from agent_memory.local_profile import ensure_profile
 from agent_memory.semantic import SemanticPolicy
 
-EXPECTED = {"max_wall_time_ms": 240000, "max_output_tokens": 16384, "max_response_bytes": 65536}
+EXPECTED = {"max_wall_time_ms": 240000, "max_output_tokens": 16384, "max_response_bytes": 65536,
+            "reasoning_effort": None, "max_envelope_bytes": 65536}
 
 
 def test_named_preset_saves_exact_private_policy_without_changing_defaults(tmp_path, capsys):
@@ -29,7 +30,7 @@ def test_named_preset_saves_exact_private_policy_without_changing_defaults(tmp_p
                                    "--preset", "reasoning"))
     result = json.loads(capsys.readouterr().out)
     assert result["policy"] == EXPECTED and result["restart_required_if_running"] is True
-    assert json.loads((profile.directory / CONFIGURATION_FILE).read_text()) == {"version": 1, **EXPECTED}
+    assert json.loads((profile.directory / CONFIGURATION_FILE).read_text()) == {"version": 2, **EXPECTED}
     assert (profile.directory / CONFIGURATION_FILE).stat().st_mode & 0o777 == 0o600
     assert (profile.directory / "profile.json").read_bytes() == original
     desktop_cli.dispatch(arguments("cognition-policy", "--directory", str(profile.directory)))

@@ -26,6 +26,7 @@ from agent_memory.local_profile import configure_cognition, ensure_profile, load
 from agent_memory.semantic import SemanticPolicy
 
 CUSTOM = {"max_wall_time_ms": 240_000, "max_output_tokens": 16384, "max_response_bytes": 65536}
+PUBLIC_CUSTOM = {**CUSTOM, "reasoning_effort": None, "max_envelope_bytes": 65536}
 FLAGS = ("--max-wall-time-ms", "240000", "--max-output-tokens", "16384", "--max-response-bytes", "65536")
 
 
@@ -83,7 +84,7 @@ def test_private_policy_round_trip_preserves_profile_v1_and_ignores_ambient_envi
     monkeypatch.setenv("MEMORY_COGNITION_MAX_OUTPUT_TOKENS", "1")
     assert load_profile(profile.directory).settings().semantic_policy() == SemanticPolicy(**CUSTOM)
     document = json.loads((profile.directory / CONFIGURATION_FILE).read_bytes())
-    assert document == {"version": 1, **CUSTOM}
+    assert document == {"version": 2, **PUBLIC_CUSTOM}
     if os.name != "nt":
         assert stat.S_IMODE((profile.directory / CONFIGURATION_FILE).stat().st_mode) == 0o600
         assert stat.S_IMODE(profile.directory.stat().st_mode) == 0o700
@@ -155,13 +156,13 @@ def test_public_cli_saves_only_limits_and_reports_restart_without_network(tmp_pa
     profile = configure_cognition(profile, "https://provider.test/v1", "model", "private-provider-key")
     desktop_cli.dispatch(arguments("configure-cognition-policy", "--directory", str(profile.directory), *FLAGS))
     output = capsys.readouterr()
-    assert json.loads(output.out) == {"policy": CUSTOM, "scope": "semantic_orientation_and_learning",
+    assert json.loads(output.out) == {"policy": PUBLIC_CUSTOM, "scope": "semantic_orientation_and_learning",
                                      "restart_required_if_running": True}
     assert "private-provider-key" not in output.out + output.err
     desktop_cli.dispatch(arguments("configure-cognition-policy", "--directory", str(profile.directory), *FLAGS))
     assert json.loads(capsys.readouterr().out)["restart_required_if_running"] is False
     desktop_cli.dispatch(arguments("cognition-policy", "--directory", str(profile.directory)))
-    assert json.loads(capsys.readouterr().out)["policy"] == CUSTOM
+    assert json.loads(capsys.readouterr().out)["policy"] == PUBLIC_CUSTOM
 
 
 def test_cli_can_repair_malformed_policy_but_invalid_input_leaves_it_unchanged(tmp_path, capsys):
@@ -231,6 +232,7 @@ def test_configured_service_passes_public_policy_to_real_provider_request(monkey
         result = service.semantic_processor.process(batch(event("I chose a blue mug.")), reserve=lambda **_: None)
     assert result.status == "completed" and result.model_calls == 1
     assert json.loads(observed[0].content)["max_tokens"] == CUSTOM["max_output_tokens"]
+    assert "reasoning_effort" not in json.loads(observed[0].content)
     assert 239 < observed[0].extensions["timeout"]["read"] <= 240
 
 

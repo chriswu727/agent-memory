@@ -1,0 +1,69 @@
+{
+  "candidate_commit": "647ba07",
+  "runtime_build": "741e585815e04f21c40c169aee8dd8788f3f3f9f9fe6a44f7eeefaaaf9162824",
+  "plan_version": "longitudinal-execution-v3",
+  "requested_sessions": 2,
+  "completed_sessions": 0,
+  "delivered_turns": 1,
+  "completed_turns": 0,
+  "state": "stopped",
+  "failure": {
+    "elapsed_seconds": 185.7296858750051,
+    "error": {
+      "code": "incomplete_response",
+      "type": "SemanticProviderError"
+    },
+    "role": "cognition",
+    "usage_after": {
+      "completed_calls": 2,
+      "reserved_calls": 2,
+      "reserved_output_tokens": 20480,
+      "usage_confirmed_calls": 2,
+      "usage_totals": {
+        "completion_tokens": 17629,
+        "prompt_cache_hit_tokens": 6912,
+        "prompt_cache_miss_tokens": 2933,
+        "prompt_tokens": 9845,
+        "total_tokens": 27474
+      },
+      "usage_unknown_calls": 0
+    }
+  },
+  "usage": {
+    "completed_calls": 2,
+    "reserved_calls": 2,
+    "reserved_output_tokens": 20480,
+    "usage_confirmed_calls": 2,
+    "usage_totals": {
+      "completion_tokens": 17629,
+      "prompt_cache_hit_tokens": 6912,
+      "prompt_cache_miss_tokens": 2933,
+      "prompt_tokens": 9845,
+      "total_tokens": 27474
+    },
+    "usage_unknown_calls": 0
+  },
+  "elapsed_seconds": 205.92798525001854,
+  "cognitive_finish_reason": "length",
+  "cognitive_response_bytes": 66794,
+  "cognitive_completion_tokens": 16384,
+  "cognitive_reasoning_tokens": 16384,
+  "provider_effort": "omitted; documented default high",
+  "private_evidence_sha256": {
+    "plan.json": "587f7f9c4a98603ecee200fe5a9c0e7c0e56b1607fce5e1800cd93974491503c",
+    "journal.jsonl": "72035c23374e7e9af27d48a6d89514226e9fe3d0af7841661c7b6bcb8b652169",
+    "head.json": "96b03c7c653c098999d2f5ca5cf2481bfc83ac9f2fadcb3202e71189c46bfff2",
+    "calls.jsonl": "b4cc7c5b6399aab75ae723ea842b426b5a64e909abe9befb75a024ec3d497b38"
+  },
+  "first_answer_review": {
+    "case": "initial-practical-plan",
+    "turn": "story-start",
+    "source_boundary": "first delivered_exchange only",
+    "factual_fidelity": "No unsupported shared history, completion or booking; proposed days respect Tuesday/Thursday classes.",
+    "practical_fit": "Mixed: requested short slots, but second proposed slot is60\u201390minutes for the full1800-word draft. Exact30-minute limit not yet communicated; retain mismatch/clarification burden without inventing a hard bound.",
+    "semantic_publication": "not assessed while processing is in flight",
+    "reviewer": "independent source-and-answer inspection"
+  },
+  "full_longitudinal_acceptance": "unassessed",
+  "campaign_retried": false
+}

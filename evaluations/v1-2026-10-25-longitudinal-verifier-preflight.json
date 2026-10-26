@@ -1,0 +1,151 @@
+{
+  "diagnostic": "real verification of recorded low-effort candidates",
+  "outcome": "completed",
+  "schema_valid": true,
+  "semantic_acceptance": "scoped_candidate_gate_verified_not_published",
+  "usage": {
+    "completed_calls": 1,
+    "reserved_calls": 1,
+    "reserved_output_tokens": 16384,
+    "usage_confirmed_calls": 1,
+    "usage_totals": {
+      "completion_tokens": 4207,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 15267,
+      "prompt_tokens": 15267,
+      "total_tokens": 19474
+    },
+    "usage_unknown_calls": 0
+  },
+  "provider_call_seconds": 53.260068,
+  "reasoning_tokens": 3630,
+  "assessments": [
+    {
+      "proposal_id": "c1",
+      "proposal_verdict": "supports",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "supports"
+        }
+      ]
+    },
+    {
+      "proposal_id": "c2",
+      "proposal_verdict": "supports",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "supports"
+        }
+      ]
+    },
+    {
+      "proposal_id": "c3",
+      "proposal_verdict": "supports",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "supports"
+        }
+      ]
+    },
+    {
+      "proposal_id": "c4",
+      "proposal_verdict": "supports",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "supports"
+        }
+      ]
+    },
+    {
+      "proposal_id": "c6",
+      "proposal_verdict": "unknown",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "supports"
+        },
+        {
+          "evidence_index": 1,
+          "verdict": "supports"
+        },
+        {
+          "evidence_index": 2,
+          "verdict": "unknown"
+        }
+      ]
+    },
+    {
+      "proposal_id": "c7",
+      "proposal_verdict": "unknown",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "unknown"
+        },
+        {
+          "evidence_index": 1,
+          "verdict": "unknown"
+        }
+      ]
+    },
+    {
+      "proposal_id": "ep1",
+      "proposal_verdict": "supports",
+      "link_verdict": null,
+      "relations": [
+        {
+          "evidence_index": 0,
+          "verdict": "supports"
+        },
+        {
+          "evidence_index": 1,
+          "verdict": "supports"
+        }
+      ],
+      "organization_fidelity": {
+        "attribution": "supports",
+        "modality": "supports",
+        "specificity": "supports",
+        "boundary": "supports"
+      }
+    }
+  ],
+  "publication_performed": false,
+  "private_evidence_sha256": {
+    "plan.json": "1b99b69a71cb9083cd130dcfed7322393685de9ed0c12f53da82fd293943fdbc",
+    "journal.jsonl": "c27f91411352a58859fea6215676f9c6b484df0c2578848025dc79ac4c0bcd8d",
+    "head.json": "d3c4aa47688b3124cc006f8fbb0959b9d17234a936c1c20c4a799d701d16fbdf",
+    "calls.jsonl": "61f265a63384f62ef4651b3e51074a957d782c0293ef0b66450b2b174bf64d30"
+  },
+  "processor_replay": {
+    "status": "partial",
+    "accepted_claims": [
+      "c1",
+      "c2",
+      "c3",
+      "c4"
+    ],
+    "accepted_episode": "ep1",
+    "rejected": {
+      "c5": "invalid_proposal",
+      "c6": "semantic_support_unconfirmed",
+      "c7": "semantic_support_unconfirmed"
+    },
+    "exact_request_match_excluding_dynamic_timeout": true,
+    "no_database_or_provider_calls": true,
+    "private_evidence_sha256": {
+      "semantic-final-replay-result.json": "cee83722797c9f131cf9d884b6dee2b90158442031e075db96322b0d9c5bec8e",
+      "semantic-final-replay-method.json": "1318f4728f7be1300cb7448fddb9decdef0ca359891ffb38faa4a41e084d94af"
+    }
+  }
+}

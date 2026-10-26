@@ -88,6 +88,42 @@ def test_explicit_thinking_and_json_modes_are_independent_wire_options(thinking,
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize("effort", ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"])
+@pytest.mark.parametrize("json_mode", [False, True])
+def test_explicit_effort_is_forwarded_with_unchanged_json_and_token_options(effort, json_mode):
+    calls = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        expected = {"model": "explicit-model", "messages": list(REQUEST.messages),
+                    "max_tokens": 512, "stream": False, "thinking": {"type": "enabled"},
+                    "reasoning_effort": effort}
+        if json_mode:
+            expected["response_format"] = {"type": "json_object"}
+        assert body == expected
+        return httpx.Response(200, json=completion('{"choice_id":"continue"}'))
+
+    with host(handle, reasoning_effort=effort, json_mode=json_mode, max_output_tokens=512) as generate:
+        assert generate(REQUEST) == '{"choice_id":"continue"}'
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("effort", ["", "none", "LOW", " low", "private-detail", True, 1, [], {}])
+def test_invalid_effort_is_rejected_without_opening_client_or_exposing_value(monkeypatch, effort):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="reasoning_effort") as error:
+        host(lambda _: pytest.fail("No request expected"), reasoning_effort=effort)
+    assert "private-detail" not in str(error.value)
+
+
+@pytest.mark.parametrize("effort", ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"])
+def test_effort_is_rejected_when_host_thinking_is_disabled(monkeypatch, effort):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="thinking is disabled"):
+        host(lambda _: pytest.fail("No request expected"), reasoning_effort=effort, thinking="disabled")
+
+
 @pytest.mark.parametrize("kwargs", [
     {"thinking": None}, {"thinking": True}, {"thinking": "auto"}, {"thinking": ""},
     {"thinking": []}, {"thinking": {}},
@@ -233,11 +269,17 @@ def test_invalid_endpoint_credentials_and_model_are_redacted(url, key, model):
     assert "private-key" not in "".join(traceback.format_exception(error.value))
 
 
-def test_supplied_meter_reserves_once_and_never_persists_hidden_reasoning(tmp_path):
+@pytest.mark.parametrize("reasoning_effort", [None, "low"])
+def test_supplied_meter_reserves_once_and_never_persists_hidden_reasoning(tmp_path, reasoning_effort):
     calls = []
 
     def handle(request):
         calls.append(request)
+        body = json.loads(request.content)
+        if reasoning_effort is None:
+            assert "reasoning_effort" not in body
+        else:
+            assert body["reasoning_effort"] == reasoning_effort
         return httpx.Response(200, json={
             **completion("Delivered answer.", reasoning_content="private-thought"),
             "usage": {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13},
@@ -247,7 +289,7 @@ def test_supplied_meter_reserves_once_and_never_persists_hidden_reasoning(tmp_pa
     meter = MeteredTransport(path, max_calls=1, max_output_tokens=32,
                              transport=httpx.MockTransport(handle), capture_content=False)
     with ChatCompletionsHost("https://provider.example", "private-key", "model",
-                             transport=meter, max_output_tokens=32) as generate:
+                             transport=meter, max_output_tokens=32, reasoning_effort=reasoning_effort) as generate:
         assert generate(REQUEST) == "Delivered answer."
         with pytest.raises(HostProviderError, match="transport_error"):
             generate(REQUEST)

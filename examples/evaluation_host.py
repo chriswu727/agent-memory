@@ -13,6 +13,7 @@ from typing import Literal
 import httpx
 import uvicorn
 
+from agent_memory.chat_provider import ReasoningEffort, _validate_reasoning_effort
 from agent_memory.runtime import ModelRequest
 
 
@@ -35,6 +36,7 @@ class ChatCompletionsHost:
         max_output_tokens: int = 4096, timeout_seconds: float = 180,
         max_response_bytes: int = 65536,
         thinking: Literal["enabled", "disabled"] = "enabled", json_mode: bool = False,
+        reasoning_effort: ReasoningEffort | None = None,
     ):
         try:
             url = httpx.URL(base_url)
@@ -53,6 +55,7 @@ class ChatCompletionsHost:
             raise ValueError("thinking must be enabled or disabled")
         if type(json_mode) is not bool:
             raise ValueError("json_mode must be a boolean")
+        _validate_reasoning_effort(reasoning_effort, thinking)
         for value, name in ((max_output_tokens, "max_output_tokens"),
                             (max_response_bytes, "max_response_bytes")):
             if type(value) is not int or value < 1:
@@ -63,6 +66,7 @@ class ChatCompletionsHost:
         self.timeout_seconds = timeout_seconds
         self.max_response_bytes = max_response_bytes
         self.thinking, self.json_mode = thinking, json_mode
+        self.reasoning_effort = reasoning_effort
         self._http = httpx.Client(
             base_url=str(url).rstrip("/") + "/",
             headers={"Authorization": f"Bearer {api_key}", "Accept-Encoding": "identity"},
@@ -87,6 +91,8 @@ class ChatCompletionsHost:
         }
         if self.json_mode:
             body["response_format"] = {"type": "json_object"}
+        if self.reasoning_effort is not None:
+            body["reasoning_effort"] = self.reasoning_effort
         deadline = time.monotonic() + self.timeout_seconds
         try:
             with self._http.stream(

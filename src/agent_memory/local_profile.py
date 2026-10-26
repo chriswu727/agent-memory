@@ -409,6 +409,9 @@ def configure_cognition(
             "installation_id", "brain_id", "tenant_id", "principal_id", "api_key", "admin_password", "app_password",
         )):
             raise LocalProfileError("Profile identity changed; reload it before configuring cognition.")
+        from .cognition_config import load_cognition_policy
+
+        load_cognition_policy(profile.directory).validate_thinking(cognition["thinking"])
         result = replace(current, cognition=cognition)
         _save(result)
         return result

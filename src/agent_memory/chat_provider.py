@@ -7,7 +7,7 @@ import re
 import threading
 import time
 import zlib
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 from uuid import uuid4
 
 import httpx
@@ -29,6 +29,16 @@ _USAGE_DETAILS = {
     ),
 }
 _REQUEST_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}\Z")
+ReasoningEffort = Literal["minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
+
+
+def _validate_reasoning_effort(value, thinking):
+    if value is None:
+        return
+    if not isinstance(value, str) or value not in get_args(ReasoningEffort):
+        raise ValueError("reasoning_effort must be None or a supported effort level")
+    if thinking == "disabled":
+        raise ValueError("reasoning_effort cannot be set when thinking is disabled")
 
 
 class ChatProviderError(RuntimeError):
@@ -119,6 +129,7 @@ class ChatCompletionsGenerator:
     def __init__(
         self, base_url: str, api_key: str, model: str, *,
         thinking: Literal["enabled", "disabled"] | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
         max_output_tokens: int = 4096, timeout_seconds: float = 180,
         max_response_bytes: int = 1048576, transport: httpx.BaseTransport | None = None,
     ):
@@ -149,6 +160,7 @@ class ChatCompletionsGenerator:
             not isinstance(thinking, str) or thinking not in ("enabled", "disabled")
         ):
             raise ValueError("thinking must be None, 'enabled', or 'disabled'")
+        _validate_reasoning_effort(reasoning_effort, thinking)
         for value, name in (
             (max_output_tokens, "max_output_tokens"), (max_response_bytes, "max_response_bytes"),
         ):
@@ -163,6 +175,7 @@ class ChatCompletionsGenerator:
         if transport is not None and not isinstance(transport, httpx.BaseTransport):
             raise ValueError("transport must be a synchronous HTTP transport or None")
         self._model, self._thinking = model, thinking
+        self._reasoning_effort = reasoning_effort
         self.max_output_tokens = max_output_tokens
         self.timeout_seconds = timeout_seconds
         self.max_response_bytes = max_response_bytes
@@ -272,6 +285,8 @@ class ChatCompletionsGenerator:
                 body["response_format"] = {"type": "json_object"}
             if self._thinking is not None:
                 body["thinking"] = {"type": self._thinking}
+            if self._reasoning_effort is not None:
+                body["reasoning_effort"] = self._reasoning_effort
             _validate_json(body)
             payload = json.dumps(body, ensure_ascii=False, allow_nan=False).encode("utf-8")
         except (ValueError, TypeError, RecursionError, OverflowError):

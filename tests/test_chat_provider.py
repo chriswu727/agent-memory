@@ -83,6 +83,72 @@ def test_exact_messages_text_and_optional_thinking_are_preserved(thinking):
     assert REQUEST.messages == original and len(calls) == 1
 
 
+@pytest.mark.parametrize("effort", ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"])
+@pytest.mark.parametrize("thinking", [None, "enabled"])
+def test_explicit_reasoning_effort_is_forwarded_without_changing_other_limits(effort, thinking):
+    calls = []
+
+    def handle(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        expected = {"model": "explicit-model", "messages": list(REQUEST.messages),
+                    "max_tokens": 8192, "stream": False, "reasoning_effort": effort}
+        if thinking is not None:
+            expected["thinking"] = {"type": thinking}
+        assert body == expected
+        return httpx.Response(200, json=completion())
+
+    with generator(handle, thinking=thinking, reasoning_effort=effort, max_output_tokens=8192) as generate:
+        assert generate(REQUEST) == "There is not enough evidence."
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("effort", ["", "none", "LOW", " low", "high ", "private-detail", True, 1, [], {}])
+def test_invalid_reasoning_effort_is_redacted_and_rejected_before_client_creation(monkeypatch, effort):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="reasoning_effort") as error:
+        generator(lambda _: pytest.fail("No request expected"), reasoning_effort=effort)
+    assert "private-detail" not in str(error.value)
+
+
+@pytest.mark.parametrize("effort", ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"])
+def test_explicit_effort_cannot_silently_override_disabled_thinking(monkeypatch, effort):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="thinking is disabled"):
+        generator(lambda _: pytest.fail("No request expected"), thinking="disabled", reasoning_effort=effort)
+
+
+def test_explicit_effort_preserves_known_truncation_usage_and_resets_later_failure_metadata():
+    calls = []
+    exhausted = {"prompt_tokens": 20, "completion_tokens": 8192, "total_tokens": 8212,
+                 "completion_tokens_details": {"reasoning_tokens": 8192}}
+
+    def handle(request):
+        calls.append(json.loads(request.content))
+        if len(calls) == 1:
+            return httpx.Response(200, json={**completion("Answer."), "usage": USAGE},
+                                  headers={"x-request-id": "first"})
+        if len(calls) == 2:
+            return httpx.Response(200, json={**completion("", finish_reason="length",
+                                                         reasoning_content="private-thought"), "usage": exhausted},
+                                  headers={"x-request-id": "exhausted"})
+        raise httpx.ReadError("private-detail", request=request)
+
+    with generator(handle, thinking="enabled", reasoning_effort="low", max_output_tokens=8192) as generate:
+        assert generate(REQUEST) == "Answer."
+        first = generate.last_call_id
+        with pytest.raises(ChatProviderError, match="incomplete_response"):
+            generate(REQUEST)
+        second = generate.last_call_id
+        assert generate.last_usage == exhausted and generate.last_request_id == "exhausted"
+        with pytest.raises(ChatProviderError, match="transport_error"):
+            generate(REQUEST)
+        assert generate.last_usage is None and generate.last_request_id is None
+        assert len({first, second, generate.last_call_id}) == 3
+    assert len(calls) == 3
+    assert all(body["reasoning_effort"] == "low" and body["max_tokens"] == 8192 for body in calls)
+
+
 @pytest.mark.parametrize("value", [
     None, [], {}, {"error": {"message": "private-detail"}}, {"choices": []},
     {"choices": [None]}, {"choices": [completion()["choices"][0]] * 2},
