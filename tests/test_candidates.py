@@ -257,3 +257,50 @@ def test_actual_external_usage_changes_candidate_priority_without_mutating_asser
     returned = next(memory for memory in memories if key(memory) == key(promoted))
     assert returned["revision"] == promoted["revision"]
     assert returned["epistemic_status"] == promoted["epistemic_status"]
+
+
+def test_weak_matches_cannot_gain_strong_relevance_from_unrelated_neighborhoods(candidates):
+    anchor = candidates.add("Revise the pottery workshop timetable")
+    relevant = candidates.add("Twenty minutes is manageable")
+    candidates.edge(anchor, relevant)
+    distractors = []
+    for text in ("Revise the hiking route", "Revise the garden layout", "Revise the grocery list"):
+        seed = candidates.add(text)
+        neighbor = candidates.add("An unrelated detail")
+        candidates.edge(seed, neighbor)
+        distractors.extend([seed, neighbor])
+    _, state = candidates.query("Revise the pottery workshop timetable")
+    ordering = state["candidate_versions"]
+    assert ordering[0] == key(anchor)
+    assert all(ordering.index(key(relevant)) < ordering.index(key(item)) for item in distractors)
+    assert state["rank_signals"][key(relevant)][0]["method"] == "association"
+
+
+def test_duplicate_paths_do_not_multiply_neighbor_relevance(candidates, monkeypatch):
+    anchor = candidates.add("pottery workshop timetable")
+    neighbor = candidates.add("Twenty minutes is manageable")
+    timestamp = now()
+    monkeypatch.setattr("agent_memory.candidates.now", lambda: timestamp)
+    candidates.edge(anchor, neighbor)
+    first = candidates.query("pottery workshop timetable")[1]
+    candidates.edge(anchor, neighbor)
+    second = candidates.query("pottery workshop timetable")[1]
+    assert first["rank_signals"][key(neighbor)] == second["rank_signals"][key(neighbor)]
+
+
+def test_episode_seeds_neither_boost_themselves_nor_exhaust_neighbor_slots(candidates):
+    anchor = candidates.add("pottery workshop timetable", memory_id="a-anchor")
+    others = [candidates.add("pottery equipment", memory_id=f"b-seed-{index}") for index in range(3)]
+    detail = candidates.add("Twenty minutes is manageable", memory_id="z-detail")
+    with candidates.database.transaction(candidates.principal) as conn:
+        episode_id = uid()
+        conn.execute("INSERT INTO memory_episodes(tenant_id,owner_id,brain_id,id,revision,conversation_id,branch_id,state,document) "
+                     "VALUES(%s,%s,%s,%s,1,'current','main','closed','{}')", (*candidates.params, episode_id))
+        for position, memory in enumerate((anchor, *others, detail)):
+            conn.execute("INSERT INTO memory_episode_members(tenant_id,owner_id,brain_id,episode_id,episode_revision,"
+                         "memory_id,memory_revision,role,position) VALUES(%s,%s,%s,%s,1,%s,%s,'fragment',%s)",
+                         (*candidates.params, episode_id, *key(memory), position))
+    _, state = candidates.query("pottery workshop timetable", budget=2048)
+    assert state["candidate_versions"][:2] == [key(anchor), key(detail)]
+    assert len(state["candidate_versions"]) == 4
+    assert [signal["method"] for signal in state["rank_signals"][key(anchor)]] == ["keyword"]

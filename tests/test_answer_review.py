@@ -6,8 +6,11 @@ from dataclasses import replace
 import httpx
 import pytest
 
+from agent_memory import answer_review as answer_review_module
 from agent_memory.answer_review import (
+    ANSWER_REVIEW_VERSION,
     CHECKS,
+    HISTORICAL_SUGGESTION_BOUNDARY,
     AnswerReviewer,
     AnswerReviewError,
     AnswerReviewPolicy,
@@ -97,6 +100,39 @@ def test_host_instructions_and_memory_injection_are_review_data_not_system_autho
     payload = json.loads(request.messages[1]["content"])
     assert payload == {"host_messages": list(original.messages), "draft": injection}
     assert "ENTIRE answer" in request.messages[0]["content"]
+
+
+def test_tentative_suggestion_boundary_is_reviewer_authority_without_rewriting_host_data():
+    context = json.dumps({"statement": "The user reported preferring a single example.",
+                          "use": "conditional_memory_not_current_rule",
+                          "applicability": {"value": "unknown", "conflict": False}})
+    original = prompt("Can we adjust the explanation?", context)
+    draft = "Based on your earlier feedback, we could start with one example."
+    request = reviewer(assessment()).prepare(original, draft)
+    assert ANSWER_REVIEW_VERSION == "answer-grounding-v2"
+    assert request.messages[0]["content"].count(HISTORICAL_SUGGESTION_BOUNDARY) == 1
+    assert json.loads(request.messages[1]["content"]) == {
+        "host_messages": list(original.messages), "draft": draft,
+    }
+
+
+@pytest.mark.parametrize("field,previous", [
+    ("ANSWER_REVIEW_VERSION", "answer-grounding-v1"),
+    ("ANSWER_REVIEW_INSTRUCTIONS", "Previous review protocol."),
+])
+def test_protocol_upgrade_preserves_old_bound_request_and_rejects_it_before_provider(field, previous, monkeypatch):
+    calls = []
+    guard = AnswerReviewer(lambda request: calls.append(request), reviewer_id="stable-reviewer")
+    with monkeypatch.context() as old:
+        old.setattr(answer_review_module, field, previous)
+        request = guard.prepare(prompt(), "Historical feedback could inform a tentative suggestion.")
+    saved = copy.deepcopy(request)
+    current = guard.prepare(prompt(), "Historical feedback could inform a tentative suggestion.")
+    assert current.request_fingerprint != request.request_fingerprint
+    assert current.policy_fingerprint != request.policy_fingerprint
+    with pytest.raises(AnswerReviewError, match="review_policy_changed"):
+        guard.evaluate(request)
+    assert request == saved and not calls
 
 
 def test_exact_request_draft_and_policy_changes_get_distinct_review_identities():

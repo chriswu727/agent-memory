@@ -154,7 +154,8 @@ def test_source_route_is_bounded_and_does_not_expand_without_a_literal_hit(candi
         derived(candidates, captured)
     _, state = candidates.query("备考", budget=2048)
     assert len(state["candidate_versions"]) == 4
-    assert state["source_truncated"]
+    assert state["candidate_truncated"]
+    assert not state["source_truncated"]
     assert candidates.query("zygomatic")[1]["candidate_versions"] == []
 
 

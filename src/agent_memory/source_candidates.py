@@ -1,6 +1,6 @@
 from . import cognition
 
-SOURCE_ROUTE_VERSION = "exact-word-hash-and-source-span-v3"
+SOURCE_ROUTE_VERSION = "exact-word-hash-and-source-span-v4"
 
 
 def _matching_references(memory, events, scope, query, superseded):

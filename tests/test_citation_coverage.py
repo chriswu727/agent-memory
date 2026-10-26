@@ -25,7 +25,10 @@ from agent_memory.citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSION as VERSION,
 )
 from agent_memory.citation_coverage import (
+    CITATION_COVERAGE_INPUT_VERSIONS,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
+    CITATION_PROVENANCE_INPUT_VERSION,
+    CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
     citation_coverage_schema,
     citation_scope,
 )
@@ -76,8 +79,10 @@ def modify(identifier, value):
 
 @pytest.mark.parametrize("kind", ["general", "local", "orient", "situation", "history"])
 @pytest.mark.parametrize("verdict", ["unknown", "contradicts"])
-def test_coverage_is_an_independent_gate_in_every_mode_without_extra_calls(kind, verdict):
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_coverage_is_an_independent_gate_in_every_mode_without_extra_calls(kind, verdict, version):
     data, proposed, identifier = case(kind)
+    data = replace(data, input_contract_version=version)
     original = copy.deepcopy(proposed)
     result, requests = process(data, proposed, change_assessment=modify(identifier, verdict))
     assert result.status == "partial" and result.model_calls == len(requests) == 2
@@ -88,15 +93,18 @@ def test_coverage_is_an_independent_gate_in_every_mode_without_extra_calls(kind,
 
 
 @pytest.mark.parametrize("value", ["missing", None, True, {}, "complete"])
-def test_missing_or_malformed_coverage_is_invalid_even_when_all_old_verdicts_support(value):
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_missing_or_malformed_coverage_is_invalid_even_when_all_old_verdicts_support(value, version):
     data, proposed, identifier = case("general")
+    data = replace(data, input_contract_version=version)
     result, requests = process(data, proposed, change_assessment=modify(identifier, value))
     assert result.status == "invalid_response" and result.model_calls == len(requests) == 2
     assert not result.claims
 
 
 @pytest.mark.parametrize("complete", [False, True])
-def test_scope_keeps_full_context_and_episode_but_only_own_excerpts_can_cover_claim(complete):
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_scope_keeps_full_context_and_episode_but_only_own_excerpts_can_cover_claim(complete, version):
     source = event("One image. A small routine. The letter's physical detail.", role="assistant")
     segments = source["utterance_segments"]
     refs = [{**reference(source), "span": copy.deepcopy(segment["span"])} for segment in segments]
@@ -104,7 +112,7 @@ def test_scope_keeps_full_context_and_episode_but_only_own_excerpts_can_cover_cl
     candidate = local_claim(source, claim_kind="agent_said", evidence_refs=selected,
                             statement="The assistant proposed an image, a routine and the letter's physical detail.")
     proposed = proposals(candidate, episodes=[episode(source)])
-    data = batch(source, input_contract_version=VERSION)
+    data = batch(source, input_contract_version=version)
 
     def check(response):
         response["assessments"][0]["citation_coverage_verdict"] = "supports" if complete else "unknown"
@@ -112,28 +120,32 @@ def test_scope_keeps_full_context_and_episode_but_only_own_excerpts_can_cover_cl
     result, requests = process(data, proposed, change_assessment=check)
     entries = json.loads(requests[1].messages[-1]["content"])["proposals"]
     claim_entry, episode_entry = entries
-    assert claim_entry["citation_scope"] == citation_scope(selected)
+    assert claim_entry["citation_scope"] == citation_scope(selected, input_contract_version=version)
     assert claim_entry["citation_scope"]["positive_evidence_indices"] == list(range(len(selected)))
     assert all(item["source"] == source for item in claim_entry["evidence"])
     assert episode_entry["evidence"][0]["excerpt"] == source["observed"]["content"]["text"]
     assert "citation_scope" not in episode_entry
-    assert CITATION_COVERAGE_VERIFY_INSTRUCTIONS in requests[1].messages[0]["content"]
+    instructions = (CITATION_COVERAGE_VERIFY_INSTRUCTIONS if version == VERSION
+                    else CITATION_PROVENANCE_VERIFY_INSTRUCTIONS)
+    assert instructions in requests[1].messages[0]["content"]
     assert bool(result.claims) is complete and len(result.episode_actions) == 1
     _check_result(data, result, publication_snapshot(data))
 
 
-def test_episode_cannot_receive_a_claim_coverage_verdict():
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_episode_cannot_receive_a_claim_coverage_verdict(version):
     source = event("We discussed the writing plan.")
-    data = batch(source, input_contract_version=VERSION)
+    data = batch(source, input_contract_version=version)
     proposed = proposals(local_claim(source), episodes=[episode(source)])
     result, _ = process(data, proposed, change_assessment=modify("episode-1", "supports"))
     assert result.status == "invalid_response" and not result.claims and not result.episode_actions
 
 
-def test_counterexample_cannot_enter_positive_scope_or_be_overridden_by_coverage():
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_counterexample_cannot_enter_positive_scope_or_be_overridden_by_coverage(version):
     first, second = event("I like tea."), event("I do not like tea.", 2)
     candidate = local_claim(first, counterexamples=[reference(second, "contradicts")])
-    data = batch(first, second, input_contract_version=VERSION)
+    data = batch(first, second, input_contract_version=version)
 
     def wrong_counterexample(response):
         response["assessments"][0]["relations"][1]["verdict"] = "supports"
@@ -147,8 +159,10 @@ def test_counterexample_cannot_enter_positive_scope_or_be_overridden_by_coverage
 
 @pytest.mark.parametrize("kind", ["general", "local", "orient", "situation", "history"])
 @pytest.mark.parametrize("damage", ["missing", "duplicate", "unknown"])
-def test_publication_rechecks_coverage_in_general_and_bounded_modes(kind, damage):
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_publication_rechecks_coverage_in_general_and_bounded_modes(kind, damage, version):
     data, proposed, identifier = case(kind)
+    data = replace(data, input_contract_version=version)
     result, _ = process(data, proposed)
     assert result.status == "completed"
     _check_result(data, result, publication_snapshot(data), current_input_refs=data.current_input_refs)
@@ -165,9 +179,9 @@ def test_publication_rechecks_coverage_in_general_and_bounded_modes(kind, damage
         _check_result(data, changed, publication_snapshot(data), current_input_refs=data.current_input_refs)
 
 
-def shared_result(*, change=None, history=False):
+def shared_result(*, change=None, history=False, version=VERSION):
     data, proposed = sampled_walks()
-    data = replace(data, input_contract_version=VERSION)
+    data = replace(data, input_contract_version=version)
     proposed["claims"][0]["evidence_refs"] = copy.deepcopy(proposed["belief_links"][0]["evidence_refs"])
     if history:
         data = replace(data, proposal_mode=HISTORY_INTEGRATION_MODE,
@@ -197,8 +211,9 @@ def shared_result(*, change=None, history=False):
 
 
 @pytest.mark.parametrize("history", [False, True])
-def test_abstraction_scope_requires_coverage_of_actual_selected_positive_basis(history):
-    data, proposed, result, entries = shared_result(history=history)
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_abstraction_scope_requires_coverage_of_actual_selected_positive_basis(history, version):
+    data, proposed, result, entries = shared_result(history=history, version=version)
     assert result.status == "completed" and len(result.claims) == len(result.belief_links) == 1
     assert all(entry["citation_scope"]["positive_evidence_indices"] == [0, 1, 2, 3] for entry in entries)
     assert all(entry["citation_scope"]["support_selection"] == "supporting_evidence_indices" for entry in entries)
@@ -208,18 +223,20 @@ def test_abstraction_scope_requires_coverage_of_actual_selected_positive_basis(h
 
 @pytest.mark.parametrize("identifier", ["claim-1", "abstract-1"])
 @pytest.mark.parametrize("history", [False, True])
-def test_failed_shared_claim_or_link_coverage_cannot_leave_a_detached_abstraction(identifier, history):
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_failed_shared_claim_or_link_coverage_cannot_leave_a_detached_abstraction(identifier, history, version):
     def change(assessments):
         assessments[identifier]["citation_coverage_verdict"] = "unknown"
 
-    _, _, result, _ = shared_result(change=change, history=history)
+    _, _, result, _ = shared_result(change=change, history=history, version=version)
     assert result.status == "partial" and not result.claims and not result.belief_links
 
 
 @pytest.mark.parametrize("damage", ["restored_irrelevant", "dropped_selected", "selection_metadata", "assessment_basis"])
 @pytest.mark.parametrize("history", [False, True])
-def test_publication_binds_stored_abstraction_refs_to_verified_selection(damage, history):
-    data, proposed, result, _ = shared_result(history=history)
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_publication_binds_stored_abstraction_refs_to_verified_selection(damage, history, version):
+    data, proposed, result, _ = shared_result(history=history, version=version)
     _check_result(data, result, publication_snapshot(data))
     claim = copy.deepcopy(result.claims[0])
     selections = copy.deepcopy(list(result.evidence_selections))
@@ -240,8 +257,9 @@ def test_publication_binds_stored_abstraction_refs_to_verified_selection(damage,
 
 @pytest.mark.parametrize("damage", ["instance_verdict", "missing_instance", "selected_instance"])
 @pytest.mark.parametrize("history", [False, True])
-def test_publication_requires_selected_support_for_every_abstract_instance(damage, history):
-    data, _, result, _ = shared_result(history=history)
+@pytest.mark.parametrize("version", CITATION_COVERAGE_INPUT_VERSIONS)
+def test_publication_requires_selected_support_for_every_abstract_instance(damage, history, version):
+    data, _, result, _ = shared_result(history=history, version=version)
     assessments = copy.deepcopy(list(result.verification_assessments))
     target = next(item for item in assessments if item["proposal_id"] == "abstract-1")
     if damage == "instance_verdict":
@@ -286,7 +304,7 @@ def test_new_schema_does_not_mutate_legacy_and_history_accounting_is_inherited()
     assert result.status == "completed" and len(result.integration_decisions) == 1
     assert LINK_DERIVED_INSTRUCTIONS in requests[0].messages[0]["content"]
     assert Draft202012Validator(requests[1].response_schema).is_valid({"assessments": list(result.verification_assessments)})
-    assert LATEST_INPUT_CONTRACT_VERSION == VERSION
+    assert LATEST_INPUT_CONTRACT_VERSION == CITATION_PROVENANCE_INPUT_VERSION
     assert batch(event("A direct report.")).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     for version in (None, COMMUNICATION_INTENT_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION, VERSION):
         assert _snapshot_input_contract({"input_contract_version": version}) == version
@@ -316,7 +334,7 @@ def test_new_orientation_and_manual_jobs_preserve_coverage_contract_across_resta
     before, after = "2026-10-25T10:00:00Z", "2026-10-25T10:01:00Z"
     monkeypatch.setattr("agent_memory.service.now", lambda: before)
     current, snapshot = engine._snapshot(learning.principal, learning.brain, job)
-    assert current.input_contract_version == snapshot["input_contract_version"] == VERSION
+    assert current.input_contract_version == snapshot["input_contract_version"] == CITATION_PROVENANCE_INPUT_VERSION
     monkeypatch.setattr("agent_memory.service.now", lambda: after)
     resumed, frozen = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, job)
     assert frozen == snapshot
@@ -332,7 +350,7 @@ def test_new_orientation_and_manual_jobs_preserve_coverage_contract_across_resta
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("version", ["absent", None, COMMUNICATION_INTENT_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION])
+@pytest.mark.parametrize("version", ["absent", None, COMMUNICATION_INTENT_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION, VERSION])
 def test_saved_manual_input_contract_is_not_upgraded_without_working_snapshot(learning, version):
     engine, job = snapshot_job(learning, "manual")
     _, snapshot = engine._snapshot(learning.principal, learning.brain, job)

@@ -4,14 +4,14 @@ import copy
 
 from jsonschema import Draft202012Validator
 
-from .citation_coverage import CITATION_COVERAGE_INPUT_VERSION
+from .citation_coverage import CITATION_COVERAGE_INPUT_VERSIONS
 from .helpers import digest
 from .history_attention import validate_attention
 from .turns import _hash, _identifier, _integer
 
 MANIFEST_VERSION = "bounded-history-manifest-v1"
 LINK_DERIVED_INPUT_VERSION = "history-link-coverage-v1"
-LINK_DERIVED_INPUT_VERSIONS = (LINK_DERIVED_INPUT_VERSION, CITATION_COVERAGE_INPUT_VERSION)
+LINK_DERIVED_INPUT_VERSIONS = (LINK_DERIVED_INPUT_VERSION, *CITATION_COVERAGE_INPUT_VERSIONS)
 HISTORY_DECISIONS = {
     "type": "array", "maxItems": 3,
     "items": {

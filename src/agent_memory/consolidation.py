@@ -8,7 +8,7 @@ from psycopg.types.json import Jsonb
 from . import cognition
 from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSIONS, validate_capability_link
 from .citation_coverage import (
-    CITATION_COVERAGE_INPUT_VERSION,
+    CITATION_COVERAGE_INPUT_VERSIONS,
     citation_coverage_supported,
     selected_citation_refs,
 )
@@ -234,7 +234,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
-            coverage_required = (batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION
+            coverage_required = (batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS
                                  and group != "episode_actions")
             if batch.proposal_mode in BOUNDED_MODES or coverage_required:
                 assessments = [entry for entry in result.verification_assessments

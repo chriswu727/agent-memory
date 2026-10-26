@@ -28,7 +28,10 @@ from .belief_capabilities import (
 )
 from .citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSION,
+    CITATION_COVERAGE_INPUT_VERSIONS,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
+    CITATION_PROVENANCE_INPUT_VERSION,
+    CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
     citation_coverage_schema,
     citation_coverage_supported,
     citation_scope,
@@ -208,7 +211,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = CITATION_COVERAGE_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = CITATION_PROVENANCE_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -549,6 +552,8 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
             instructions += " " + LINK_DERIVED_INSTRUCTIONS
     if phase == "verification" and input_contract_version == CITATION_COVERAGE_INPUT_VERSION:
         instructions += " " + CITATION_COVERAGE_VERIFY_INSTRUCTIONS
+    elif phase == "verification" and input_contract_version == CITATION_PROVENANCE_INPUT_VERSION:
+        instructions += " " + CITATION_PROVENANCE_VERIFY_INSTRUCTIONS
     messages = ({"role": "system", "content": instructions + "\nResponse JSON schema:\n" + _json(schema)},
                 {"role": "user", "content": _json(data)})
     size = len(_json({"messages": messages, "response_schema": schema,
@@ -1318,8 +1323,11 @@ class SemanticProcessor:
                     for excerpt in numbered:
                         excerpt["role"] = ("shared_claim_candidate" if _evidence_identity(excerpt["reference"]) in shared
                                            else "retained_endpoint_context")
-            if batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION and group != "episode_actions":
-                entry["citation_scope"] = citation_scope(references, evidence_selection=entry.get("evidence_selection"))
+            if batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS and group != "episode_actions":
+                entry["citation_scope"] = citation_scope(
+                    references, evidence_selection=entry.get("evidence_selection"),
+                    input_contract_version=batch.input_contract_version,
+                )
             evidence.append(entry)
             if group == "belief_links" and batch.proposal_mode == HISTORY_INTEGRATION_MODE:
                 entry["target_assertion_refs"] = copy.deepcopy(item["target_memory_versions"])
@@ -1329,7 +1337,7 @@ class SemanticProcessor:
         if batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS:
             verification_schema = episode_fidelity_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible if group == "episode_actions"])
-        if batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION:
+        if batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS:
             verification_schema = citation_coverage_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible if group != "episode_actions"])
         verification_data = {"proposals": evidence, **bounded_verification_context(
@@ -1385,7 +1393,7 @@ class SemanticProcessor:
         accepted = {group: [] for group in groups}
         for group, item, references in eligible:
             assessment = lookup[item["proposal_id"]]
-            if (batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION and group != "episode_actions"
+            if (batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS and group != "episode_actions"
                     and not citation_coverage_supported(assessment)):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "citation_coverage_unconfirmed"})
                 continue
@@ -1438,7 +1446,7 @@ class SemanticProcessor:
                 continue
             if group == "claims" and any(lookup[identifier]["proposal_verdict"] != "supports"
                                          or lookup[identifier]["link_verdict"] != "supports"
-                                         or (batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION
+                                         or (batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS
                                              and not citation_coverage_supported(lookup[identifier]))
                                          for identifier in mapped_links):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "relation_support_unconfirmed"})

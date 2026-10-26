@@ -1,0 +1,222 @@
+{
+  "budget_changed": false,
+  "campaign": "longitudinal-life-v5",
+  "checkpoint": {
+    "completed_sessions": 3,
+    "delivered_answers": 7,
+    "fully_completed_turns": 6,
+    "journal_events": 179,
+    "last_delivered_turn": "class-moved",
+    "last_delivery_encoding_complete": true,
+    "last_delivery_history_complete": false,
+    "last_event_kind": "stopped",
+    "last_event_sha256": "2dd200c2c03747d580703e669d160476b3be7f2ae618f66f498d0f4c285a22f2",
+    "last_fully_completed_turn": "walk-plan",
+    "six_session_milestone_reached": false
+  },
+  "continuation": "closed; terminal campaign not resumed or refilled",
+  "evidence_sha256": {
+    "canonical_host_request": "136eb9f3df072554fe9a2cdc647c440791733670c9828fa806d9b2824e114ac2",
+    "hash_definitions": {
+      "canonical_host_request": "SHA-256 of UTF-8 JSON with sorted keys, ensure_ascii=false, allow_nan=false and comma/colon separators.",
+      "files": "SHA-256 of exact retained original file bytes.",
+      "selected_journal_lines": "SHA-256 of the exact original JSONL line, including its line terminator; the recorded event chain hash is listed separately."
+    },
+    "original_files": {
+      "calls.jsonl": "7585b75763ed72dcb95bafe49e8164b59e634a3528311d00be8f5069dfde34eb",
+      "head.json": "51ff4c33ac3a1633bbaf73fd5a56b295aa2b5459f59b501705cad21acce07a58",
+      "journal.jsonl": "700020b2628a8886691ebee2be842997a0ca462b880114bdc7d99962229a345c",
+      "plan.json": "ea668245a7feb22d7eb140d910ef29f50fa64c7a0b5611a8e47d27119568b8d5"
+    },
+    "preserved_two_session_checkpoint_report": "a7c0fb75a8dc6d8302b3dcdc1abc6d3ab905b2dc8bc55bcd87508de46f240be5",
+    "selected_journal_lines": {
+      "actual_host_request": {
+        "event_chain_sha256": "05c822bcf4bf358ee64369b0c4e850333d09106bc8508a4ae9162fbc89564246",
+        "raw_line_sha256": "21677bda49ac3a0ada980c2ece008e42dcdc8e1ed98cb5cd76848d4dc0128c2c",
+        "sequence": 158
+      },
+      "cancelled_history_job": {
+        "event_chain_sha256": "e474258b9bd45d1e81453d1267a273d8d93f2496a9f170f20e8f22bc545726c9",
+        "raw_line_sha256": "612d58a547b86aa627277273eff0d606caed6ca029443cf186a6ca0e89e71906",
+        "sequence": 177
+      },
+      "class_encoding_publication": {
+        "event_chain_sha256": "f85d58d444c816a904a8d946d83db8642c5ce440944db1b20e6d17110e5c046f",
+        "raw_line_sha256": "4b999d7f14f8405ebef51defd9631fcd10cad23fae611c3b10864ca62f866291",
+        "sequence": 173
+      },
+      "delivered_answer": {
+        "event_chain_sha256": "2f4a93b5ae0f1db180658697f3f78371bee0c9cbd94fbc8e82dcbde581fd270c",
+        "raw_line_sha256": "2952af603e8eecd0df2afded34d4f10d3ff0c2f014894677a7861049d095d39a",
+        "sequence": 160
+      },
+      "final_provider_completion": {
+        "event_chain_sha256": "78e3e1fc1e3bfdb9fff08ee6a19f99a052196f3f44e994376fc18b5356847eb2",
+        "raw_line_sha256": "a0c1ce8cc07acf8064f6abb5dd00f7f318827953b8c2ff29b5e96166377cf5aa",
+        "sequence": 176
+      },
+      "learning_settlement": {
+        "event_chain_sha256": "94eb178bd5b1adc4efb4af77c565807eb7736e81eb66b69ea2744314009b9854",
+        "raw_line_sha256": "438772c50c7d9cc9137a71b71638fa20e2a04c97a3f923a43bed6f12d6d478c9",
+        "sequence": 178
+      },
+      "pre_failure_snapshot": {
+        "event_chain_sha256": "d5e827ee1fb9240fb9f04638b954beb092b56f524856d43bcdd3afddf7c1b352",
+        "raw_line_sha256": "07a0a3c6ff349db30633650bf9ce6c4412d8559ffc4e44fba4a438d5ee394d64",
+        "sequence": 157
+      },
+      "prior_preference_persisted_snapshot": {
+        "event_chain_sha256": "5e0b7535aff85a481524938f8507f083fe855a02d24640420d3a8e93a6ebfa84",
+        "raw_line_sha256": "6ae6b1015882f48e17aa0cbbe3ee66a2bb61548917d5fabb2f3137b9d8b8d1b6",
+        "sequence": 48
+      },
+      "prior_preference_publication": {
+        "event_chain_sha256": "3688a496194da1f7bd3ce4d86059daa45393e814aa14ce98501307d3bdfa299f",
+        "raw_line_sha256": "8c5099becab18abc33c9d0d7943007802e94531daa2e9e16e64e9bcce9c1c1f6",
+        "sequence": 46
+      },
+      "runtime_selection_and_flags": {
+        "event_chain_sha256": "308707d067a67203b30c9221f58607438fa091ca68816dbed0bdf138acb9c2c2",
+        "raw_line_sha256": "f83d296e9c499d8547b4c39cff08b0531e8e149a667741be89d26ec1b04bc025",
+        "sequence": 161
+      },
+      "terminal_stop": {
+        "event_chain_sha256": "2dd200c2c03747d580703e669d160476b3be7f2ae618f66f498d0f4c285a22f2",
+        "raw_line_sha256": "0328bbc8c114b95331fc8c1ac46afba6b360665b0f5766a96b5771efebb00aa6",
+        "sequence": 179
+      }
+    }
+  },
+  "execution_state": "stopped",
+  "frozen_rubric_result": {
+    "case_id": "changed-schedule",
+    "rubric_changed_after_execution": false,
+    "scope": "Use Wednesday as the recurring class evening, free Tuesday/Thursday, and keep this Friday repair visit a one-off. The delivered answer satisfies these narrower criteria.",
+    "status": "pass"
+  },
+  "independent_checks": {
+    "complete_journal_chain_and_head_match": true,
+    "exact_reservation_completion_pairing": true,
+    "frozen_plan_matches_prepared_plan": true,
+    "prior_preference_present_but_not_selected": true,
+    "usage_totals_match_recorded_stop": true
+  },
+  "input_contract_version": "citation-coverage-v1",
+  "limitations": [
+    "Unresolved first-checkpoint false-negative coverage judgments and abbreviation fragmentation remain recorded in that unchanged checkpoint.",
+    "The run stopped before cancellation and later-return cases; no success is claimed for those cases.",
+    "No real elapsed-time aging, isolated cue experiment, cross-provider continuity or human field trial was performed.",
+    "This is a failed longitudinal evaluation, not product maturity or general memory acceptance."
+  ],
+  "paid_retries": 0,
+  "publication_review": {
+    "class_encoding": {
+      "accepted_claims": 4,
+      "accepted_episodes": 1,
+      "evidence_limit": "The completed learning result records publication; no turn_completed snapshot was written for this last turn.",
+      "rejected_claims": 1,
+      "scope": "All accepted statements are supported by their bound sources: the new class schedule, the one-off Friday repair, and the assistant response as assistant speech. Accurate publication of that response does not negate the retrieval failure."
+    },
+    "class_history": {
+      "assessment_complete": false,
+      "publication_count": 0
+    },
+    "critical_unsupported_publication_found": false
+  },
+  "release_acceptance": "not passed",
+  "remaining_unexecuted": [
+    "opening-stuck",
+    "cancelled outing",
+    "meaningful personal-memory return",
+    "later project return",
+    "folder correction",
+    "guest-preference scoping",
+    "unknown photo location",
+    "completion versus delivery",
+    "remaining sessions"
+  ],
+  "report_preparation": {
+    "campaign_files_modified": false,
+    "database_connections": 0,
+    "database_mutations": 0,
+    "provider_calls": 0
+  },
+  "review_state": "failed_supplemental_duration_preference_retrieval",
+  "runtime_build": "8737d89308f7d66333ae3cfc0f1ae48b4562696c22b20aa006ff1598c494aecc",
+  "scope": "Terminal endpoint after continuation from the separately preserved two-session checkpoint. This report does not alter the earlier checkpoint or claim completion of the planned six-session milestone.",
+  "stop_settlement": {
+    "blocked_history_windows": 1,
+    "distinction": "After the in-flight provider response and usage were recorded, the operator-stop boundary prevented history processing. Local cancelled-job uncertainty is retained separately from the fully known provider ledger.",
+    "final_provider_completion_recorded": true,
+    "final_provider_usage_confirmed": true,
+    "local_history_job_state": "cancelled",
+    "local_history_operation_outcome": "uncertain",
+    "local_history_result_status": "provider_unavailable",
+    "local_learning_stop_reason": "unknown_provider_usage",
+    "provider_calls_force_cancelled": false,
+    "running_jobs": 0,
+    "terminal_error_code": "operator_stop",
+    "unassessed_history_objectives": 3
+  },
+  "supplemental_regression": {
+    "both_memories_active_and_source_valid_before_request": true,
+    "causal_limit": "The omission and downstream regression are directly observed. This checkpoint does not prove a complete ranking or budgeting root cause or demonstrate a repair.",
+    "either_memory_selected": false,
+    "half_present_in_actual_host_request": false,
+    "interpretation": "An established preference for manageable writing sessions, not a newly invented hard duration cap.",
+    "kind": "duration_preference_missing_from_actual_host_input",
+    "literal_memory_id": "memory-930d35d4b72a0c793745358a4bf74736",
+    "observed_answer": "Proposed 45 minutes for planning and 75 minutes for drafting/ending, reusing the earlier assistant schedule without carrying forward the later half-hour preference.",
+    "orientation_route": {
+      "decision": "skip",
+      "reasons": [
+        "no_contextual_dependencies"
+      ]
+    },
+    "packet_uncertainty": {
+      "context_truncated": true,
+      "historical_evidence_status": "enforced",
+      "limitations": [
+        "index_lag",
+        "partial_scope",
+        "budget_exhausted"
+      ],
+      "recall_status": "partial",
+      "unknowns": [
+        "Candidate rank signals do not establish semantic answer sufficiency."
+      ]
+    },
+    "prior_utterance": "Half an hour at a time sounds manageable.",
+    "selected_context": "Early blocks contain river-walk, Alex and work-handoff memories, followed by the older longer writing proposal.",
+    "semantic_memory_id": "semantic-dabc4e7722634c75588661f92390bb54",
+    "source_content_sha256": "92fe16c375c4cf286220df400ca54b70997da06ce28a73e2f1cbf7df2fb49ca7",
+    "source_reference_limit": "The preference source ID appears as context_only; its text is absent. A reference is not evidence that the host read the source.",
+    "source_span": {
+      "end": 41,
+      "start": 0,
+      "unit": "unicode_code_point"
+    },
+    "status": "fail"
+  },
+  "timing": {
+    "aging_assessed": false,
+    "continuation_invocation_seconds": 624.6120082909474,
+    "first_invocation_seconds": 806.393039333052,
+    "time_mode": "narrative_order_only"
+  },
+  "usage": {
+    "completed_calls": 28,
+    "reserved_calls": 28,
+    "reserved_output_tokens": 325120,
+    "usage_confirmed_calls": 28,
+    "usage_totals": {
+      "completion_tokens": 97570,
+      "prompt_cache_hit_tokens": 75776,
+      "prompt_cache_miss_tokens": 159519,
+      "prompt_tokens": 235295,
+      "total_tokens": 332865
+    },
+    "usage_unknown_calls": 0
+  },
+  "version": "longitudinal-v5-stopped-checkpoint-v1"
+}

@@ -1,0 +1,190 @@
+{
+  "version": "citation-provenance-live-and-offline-verification-v1",
+  "build_id": "538809bcb73b04fcdd7595f03a81e9f8a749dc3fbcd3f3ec7d04f4977afd63a6",
+  "journal_chain_verified": true,
+  "plan_sha256": "ed1db0c33e215109672d8162d785f45f9ed6c92a418559c24d98f8710d6d93a6",
+  "journal_sha256": "1307d54b71a605224436e597f46f59b3003c79366158976dc7909e1dde03cb0f",
+  "calls_sha256": "3d5de096d616242e2495ced8437cc1c61d497878cdc9319cdd73459566d7820d",
+  "source_artifact_manifest": "v1-2026-10-25-retrieval-continuity-artifacts.json",
+  "provider": {
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "reasoning_effort": "low",
+    "max_envelope_bytes": 262144,
+    "timeout_seconds": 240
+  },
+  "actual_provider_usage": {
+    "completed_calls": 2,
+    "reserved_calls": 2,
+    "reserved_output_tokens": 32768,
+    "usage_confirmed_calls": 2,
+    "usage_totals": {
+      "completion_tokens": 8145,
+      "prompt_cache_hit_tokens": 3584,
+      "prompt_cache_miss_tokens": 24563,
+      "prompt_tokens": 28147,
+      "total_tokens": 36292
+    },
+    "usage_unknown_calls": 0
+  },
+  "offline_external_calls": 0,
+  "offline_database_connections": 0,
+  "arms": {
+    "attributed_full_excerpts": {
+      "original_input_contract": "citation-coverage-v1",
+      "original_request_bytes_reproduced": true,
+      "proposal_source_context_unchanged_except_citation_scope": true,
+      "response_schema_change": "none",
+      "target_assessments": [
+        {
+          "proposal_id": "claim-user-shorter",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        },
+        {
+          "proposal_id": "claim-assistant-shorter",
+          "proposal_verdict": "supports",
+          "link_verdict": null,
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            }
+          ],
+          "citation_coverage_verdict": "supports"
+        }
+      ],
+      "old_target_acceptance": {
+        "claim-user-shorter": false,
+        "claim-assistant-shorter": false
+      },
+      "new_target_acceptance": {
+        "claim-user-shorter": true,
+        "claim-assistant-shorter": true
+      },
+      "processor_status": "partial",
+      "accepted_counts": {
+        "claims": 2,
+        "situation_updates": 0,
+        "episode_actions": 0,
+        "belief_links": 0
+      },
+      "rejected": [
+        {
+          "proposal_id": "episode-create-1",
+          "reason": "semantic_support_unconfirmed"
+        }
+      ],
+      "new_verifier_input_exactly_matches_actual_call": true,
+      "request_comparison_exclusions": {
+        "old": [
+          "monotonic timeout_seconds"
+        ],
+        "new": [
+          "monotonic timeout_seconds",
+          "diagnostic request_id"
+        ]
+      },
+      "publication_guard_passed": true,
+      "publication_guard_mutation": "Remove required coverage verdict from an actually accepted target",
+      "publication_guard_mutation_rejected": {
+        "code": "invalid_evidence",
+        "message": "Citation coverage assessment is unsupported",
+        "retryable": false
+      },
+      "database_publication": false
+    },
+    "missing_letter_excerpt": {
+      "original_input_contract": "history-link-coverage-v1",
+      "original_request_bytes_reproduced": true,
+      "proposal_source_context_unchanged_except_citation_scope": true,
+      "response_schema_change": "require citation_coverage_verdict for non-episode proposals",
+      "target_assessments": [
+        {
+          "proposal_id": "claim-assistant-e0befa-elements",
+          "proposal_verdict": "unknown",
+          "link_verdict": null,
+          "citation_coverage_verdict": "unknown",
+          "relations": [
+            {
+              "evidence_index": 0,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 1,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 2,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 3,
+              "verdict": "supports"
+            },
+            {
+              "evidence_index": 4,
+              "verdict": "supports"
+            }
+          ]
+        }
+      ],
+      "old_target_acceptance": {
+        "claim-assistant-e0befa-elements": true
+      },
+      "new_target_acceptance": {
+        "claim-assistant-e0befa-elements": false
+      },
+      "processor_status": "partial",
+      "accepted_counts": {
+        "claims": 5,
+        "situation_updates": 0,
+        "episode_actions": 1,
+        "belief_links": 0
+      },
+      "rejected": [
+        {
+          "proposal_id": "claim-user-7142-first-page",
+          "reason": "invalid_proposal"
+        },
+        {
+          "proposal_id": "claim-assistant-e0befa-elements",
+          "reason": "citation_coverage_unconfirmed"
+        }
+      ],
+      "new_verifier_input_exactly_matches_actual_call": true,
+      "request_comparison_exclusions": {
+        "old": [
+          "monotonic timeout_seconds"
+        ],
+        "new": [
+          "monotonic timeout_seconds",
+          "diagnostic request_id"
+        ]
+      },
+      "publication_guard_passed": true,
+      "publication_guard_mutation": "Reinsert the original accepted target and upgrade whole-proposal verdict, while retaining unknown coverage",
+      "publication_guard_mutation_rejected": {
+        "code": "invalid_evidence",
+        "message": "Citation coverage assessment is unsupported",
+        "retryable": false
+      },
+      "database_publication": false
+    }
+  },
+  "limitations": [
+    "Two bounded verifier observations and exact saved-response processor replays; not a longitudinal acceptance run.",
+    "The negative target also received an unknown whole-proposal verdict; the independent coverage gate is separately tested by a mutation.",
+    "Publication guard checked in memory against exact frozen sources/assertions with no superseded-evidence entries; no database publication or fresh database snapshot check.",
+    "Original frozen source segmentation and proposals are preserved; no regenerated proposals or new-source segmentation test.",
+    "Supporting model judgments are fallible and do not establish a general guarantee."
+  ],
+  "private_processor_proof_sha256": "7cf81200a1641bbb530f9af782e3611898f329a56caeac49e23d74076d837422"
+}

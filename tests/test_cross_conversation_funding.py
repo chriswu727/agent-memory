@@ -10,6 +10,7 @@ from test_continuous_learning_acceptance import (
     POLICY,
     ROUTINES,
     GroundedCognition,
+    assert_funded_package,
     diagnostic,
     drain,
     encoding_for,
@@ -26,6 +27,7 @@ from test_learning_windows import jobs as learning_jobs
 from agent_memory.contracts import validate
 from agent_memory.helpers import DomainError, digest, uid
 from agent_memory.history_attention import POLICY as ATTENTION_POLICY
+from agent_memory.history_attention import model_manifest
 from agent_memory.jobs import JobStore
 from agent_memory.learning import LearningEngine
 from agent_memory.learning_allocations import (
@@ -341,9 +343,7 @@ def test_current_private_root_repays_old_conversation_without_moving_evidence_af
         assert "integration_continuation_job_id" in old["payload"], diagnostic(learning)
         paid = learning.job(old["payload"]["integration_continuation_job_id"])
         assert paid["state"] == "completed", json.dumps(diagnostic(learning))
-        assert paid["payload"]["history_obligation_manifest"] == original
-        assert (objective_ids(paid["result"]["integration_manifest"])
-                | objective_ids(paid["result"]["remaining_manifest"])) == objective_ids(original)
+        paid_selection = assert_funded_package(learning, paid, original)
         assert paid["payload"]["target"] == {"conversation_ref": "old", "branch_ref": "main"}
         assert paid["payload"]["authorization_root_job_id"] == donor["id"]
         assert paid["payload"]["encoding_parent_job_id"] == second["id"]
@@ -351,7 +351,9 @@ def test_current_private_root_repays_old_conversation_without_moving_evidence_af
         assert not operations(learning, old["id"])
         assert all(operation in operations(learning) for operation in original_ledger)
         assert paid["model_calls"] == len(operations(learning, paid["id"])) == 1
-        assert paid["result"]["history_integration"]["assessed_count"] == len(original["objectives"])
+        assert paid["result"]["history_integration"]["assessed_count"] == len(paid_selection["objectives"])
+        assert {item["objective_id"] for item in paid["result"]["history_integration"]["objectives"]
+                if item["assessed"]} == objective_ids(paid_selection)
         assert paid["result"]["history_integration"]["published_count"] == 0
         donor_ids = {event["event_id"] for key in ("input_events", "output_events") for event in donor_sources[key]}
         assert donor_ids.isdisjoint(paid["source_event_ids"])
@@ -362,10 +364,14 @@ def test_current_private_root_repays_old_conversation_without_moving_evidence_af
                    and "integration_manifest" in data
                    and objective_ids(data["integration_manifest"]) & objective_ids(original)]
         assert len(prompts) == 1 and prompts[0]["integration_manifest"]["input_refs"] == original["input_refs"]
+        assert prompts[0]["integration_manifest"] == model_manifest(paid_selection)
         assert {event["event_id"] for event in prompts[0]["sources"]}.isdisjoint(donor_ids)
         public = RuntimeClient(memory).job(paid["id"])["learning_summary"]
         expected_state = "deferred" if paid["result"]["remaining_manifest"]["objectives"] else "completed"
         assert public["history_integration_resolved"] and public["history_integration_state"] == expected_state
+        assert public["history_integration_unassessed_objective_count"] == len(
+            paid["result"]["remaining_manifest"]["objectives"])
+        assert public["history_integration_open"] is bool(paid["result"]["remaining_manifest"]["objectives"])
         assert public["history_funding"] == {"version": PERMISSION_VERSION,
                                              "authorization_root_job_id": donor["id"], "origin_job_id": old["id"]}
         validate("LearningHistorySummaries", {key: public[key] for key in (

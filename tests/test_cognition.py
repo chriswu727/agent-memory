@@ -449,6 +449,22 @@ def test_truncated_sources_do_not_claim_the_missing_tail_was_read():
     assert "partial_scope" in result["coverage"]["limitations"]
 
 
+def test_bounded_candidate_search_preserves_a_fully_read_tail_and_prepare_fence():
+    source = event("The pottery workshop meets on Tuesday.")
+    current = state(1, indexed_sequence=0, candidate_truncated=True,
+                    working_event_metadata={source["event_id"]: source})
+    query = request("pottery workshop", read_fence=fence(1))
+    result = cognition.recall(scope(), query, [], [source], current)
+    assert result["coverage"]["read_fence_satisfied"]
+    assert result["coverage"]["tail_covered_through_sequence"] == 1
+    assert "partial_scope" in result["coverage"]["limitations"]
+    payload = prepare_payload()
+    payload["read_fence"] = fence(1)
+    packet = cognition.prepare(scope(), payload, working(), result, current)
+    assert "pottery workshop" in packet["model_context"]
+    assert packet["coverage"]["read_fence_satisfied"]
+
+
 def test_historical_working_state_cannot_bypass_query_cutoff_or_speech_act():
     old_question = event("我们去过海边吗？")
     current_question = event("还记得我们去过海边吗？", 2)

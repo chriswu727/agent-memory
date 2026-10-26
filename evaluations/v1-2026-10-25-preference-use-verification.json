@@ -1,0 +1,283 @@
+{
+  "version": "preference-use-independent-review-v1",
+  "overall_outcome": "predeclared_core_criteria_met_with_remaining_defects",
+  "unqualified_all_answers_pass": false,
+  "longitudinal_acceptance_established": false,
+  "runtime_build": "f3cc2732dd0f2181784792462dae1aa212d2248df286870bcb8938c091e5fb4f",
+  "protocol": "memory-consumption-v4",
+  "predeclared_criteria_met": 6,
+  "predeclared_criteria_count": 6,
+  "summary": "The same-task answer uses the half-hour default, the current-change answer honors the explicit 90-minute request, and the historical-authority answer distinguishes evidence from adoption/permanence. The current-change answer nevertheless promotes an unknown-time outline report into a current fact; the authority answer has qualified but overly categorical shorthand. These are three case observations, not clean general answer acceptance.",
+  "artifact_sha256": {
+    ".local/preference-use-verification/frozen-plan.json": "18cdfdb67931f4eaee2c67c5ba3a6098868ba3686e35d6dd4659c725463e7d3a",
+    ".local/preference-use-verification/run/plan.json": "02259ec028f514663b5beb2f8f40f55bd3c532bf65c3275e4ad1fa93c9b40b71",
+    ".local/preference-use-verification/run/journal.jsonl": "3902eda8454140d2305dd4b4a7e7efd47d1449b2119914f139e2f4eaca12fcf3",
+    ".local/preference-use-verification/run/calls.jsonl": "7a5b0b5520d627f04e4cf6f0ac69fc7afb0c882b361ceaa97c154be0d8bd30d3",
+    ".local/preference-use-verification/run/head.json": "2fa7b7fed06a5cd65a5b9b3ea95006390240fbe9cc834113665113611476131d",
+    "evaluations/v1-2026-10-25-preference-use-artifacts.json": "705849c2b27d92e93fe4cfdee0f0f1278b1e90920ec7e84ad47182639bac163c",
+    ".local/retrieval-continuity-host-probe-v1/plan.json": "bc82955a207df1501923f0a02930d8787b1b36c959a06e676f268f8b198f80a0",
+    ".local/retrieval-continuity-host-probe-v1/journal.jsonl": "56732e9974e2e694c2e31cce3a2c3b687f71db8d1358e90308d69c69abba7cc1",
+    ".local/preference-use-verification/independent_answer_review.py": "ebee9e12199b1fe35846356bc46cf20389992fa8f82f4e21fef3c54937386f00"
+  },
+  "journal_chain_and_committed_head_verified": true,
+  "frozen_helper_hashes_verified": true,
+  "installed_runtime_files_match_source_artifact": 115,
+  "request_binding": {
+    "journal_requests_match_frozen_plan": true,
+    "all_wire_body_hashes_reconstructed_offline_match_ledger": true,
+    "memory_context_identical_across_cases_and_failed_prior_probe": true,
+    "same_task_messages_differ_only_in_generic_memory_protocol": true,
+    "controls_change_only_final_user_message_from_same_task": true,
+    "criteria_and_prior_answers_not_sent_to_model": true,
+    "memory_context_sha256": "bb080d6ee55b84a5b62c64c74b0bf41c996694b18e2aac127475b1afea27852d",
+    "memory_context_estimate_bytes": 15920,
+    "max_memory_context_estimate_bytes": 16000,
+    "max_input_estimate_bytes": 24000
+  },
+  "observed_usage": {
+    "completed_calls": 3,
+    "reserved_calls": 3,
+    "reserved_output_tokens": 12288,
+    "usage_confirmed_calls": 3,
+    "usage_totals": {
+      "completion_tokens": 5484,
+      "prompt_cache_hit_tokens": 6144,
+      "prompt_cache_miss_tokens": 12349,
+      "prompt_tokens": 18493,
+      "total_tokens": 23977
+    },
+    "usage_unknown_calls": 0
+  },
+  "provider": {
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "reasoning_effort": "high",
+    "timeout_seconds": 240,
+    "max_response_bytes": 262144
+  },
+  "review_actions": {
+    "external_provider_calls": 0,
+    "database_connections": 0,
+    "runtime_edits": 0
+  },
+  "cases": [
+    {
+      "case": "same_task",
+      "user_message": "The class has moved to Wednesday evenings from now on. Tuesday and Thursday are free again. This Friday alone I've got the repair person coming round. Could you adjust the writing plan?",
+      "whole_answer_original_language": "明白，按你现在的说明调整：周三晚上改上课，周二和周四空出来；这周五有维修人员，所以这周五先不排。\n\n按你之前说“半小时一次比较可行”的节奏，可以这样排：\n\n- **周二晚上 30 分钟**：规划——整理大纲、定开头、拆好场景顺序。\n- **周六早上 30 分钟**：起草并尽量推到结尾；如果写顺手了，再延长 15–30 分钟。\n- **备用**：如果周六早上不方便，就改成 **周四晚上 30 分钟规划 + 周日早上 30 分钟起草**。\n\n这周五跳过，以后周五没有冲突时也可以当备选。需要的话，我可以把两段各自的目标再拆细一点。",
+      "request_sha256": "843ea77c06302d882351141a32646ac78f9b4f8a458f856f84f0b1c3267abe61",
+      "wire_request_sha256": "9035163379ca55456ebee83ac6a7a147285463c7903ac268ab88681a84559c2e",
+      "wire_request_bytes": 22740,
+      "input_estimate_bytes": 22612,
+      "response_sha256": "e6af2b7f880a7058943202b08e4f246d61e6781646f3a32ffde6e18ebc58bc10",
+      "provider_usage": {
+        "prompt_tokens": 6158,
+        "completion_tokens": 1750,
+        "total_tokens": 7908,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 6158,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1588
+        }
+      },
+      "finish_reason": "stop",
+      "elapsed_seconds": 25.409609,
+      "predeclared_criteria": [
+        {
+          "criterion": "Use the known manageable half-hour duration as the default for a tentative writing plan, without requiring re-teaching.",
+          "outcome": "met"
+        },
+        {
+          "criterion": "Keep Wednesday class and Friday one-off constraints; do not infer adoption, completion, permanence or storage.",
+          "outcome": "met"
+        }
+      ],
+      "overall_case_assessment": "Core criteria met; optional extension is not a violation of a hard limit because no hard limit was reported.",
+      "criterion_evidence": [
+        "The answer explicitly attributes the half-hour feedback to the user and makes both primary sessions and both fallback sessions 30 minutes. It does not ask the user to repeat the known duration feedback.",
+        "Wednesday remains class time; this Friday alone is excluded, with future conflict-free Fridays allowed as alternatives. The schedule is a new suggestion, without claims of adoption, completion, permanence or storage."
+      ],
+      "claim_review": [
+        {
+          "claim": "Use the earlier half-hour feedback for this tentative writing plan",
+          "assessment": "Supported attributed use as a suggestion, not certification of a current permanent rule."
+        },
+        {
+          "claim": "Optionally extend the Saturday drafting block by 15–30 minutes if writing goes smoothly",
+          "assessment": "A conditional new suggestion after a 30-minute default. It does not override an absolute maximum, because the original feedback did not establish one."
+        },
+        {
+          "claim": "Schedule Wednesday class and skip Friday only this week",
+          "assessment": "Grounded in the actual current user message."
+        }
+      ],
+      "supplemental_findings": []
+    },
+    {
+      "case": "current_change",
+      "user_message": "The class has moved to Wednesday evenings from now on. Tuesday and Thursday are free again. This Friday alone I've got the repair person coming round. Could you adjust the writing plan? For this week I specifically want one uninterrupted 90-minute drafting session, rather than shorter blocks. Please plan around that.",
+      "whole_answer_original_language": "Got it. Here’s how I’d adjust the plan:\n\n**Availability for planning**\n- Wednesday evening: class\n- Tuesday and Thursday: free again\n- This Friday: I’ll keep it clear/avoid scheduling because of the repair person\n\n**This week’s writing plan**\n- One uninterrupted 90-minute drafting session\n- Primary: **Thursday evening 19:30–21:00**\n- Backup: **Saturday morning 10:00–11:30**\n\nSince you currently only have a rough outline, do you want the full 90 minutes for pure drafting, or use the first 10 minutes to sharpen the outline and then draft for 80?\n\nAlso: after this week, should I go back to the shorter two-session structure, or keep the single 90-minute session?",
+      "request_sha256": "12a4d28cfd8c66a03b7b21e9dab7270c0806c23a98f16ab430493a7f4d02cce6",
+      "wire_request_sha256": "0d34c183364c23915e7efa493f1a46962002326614f5eba8f882171aa0c38cee",
+      "wire_request_bytes": 22873,
+      "input_estimate_bytes": 22745,
+      "response_sha256": "14a8a92412baea3c1f978f821ea1654de5ab15e867c8beda023700a3b5ef0d8a",
+      "provider_usage": {
+        "prompt_tokens": 6182,
+        "completion_tokens": 2962,
+        "total_tokens": 9144,
+        "prompt_cache_hit_tokens": 6144,
+        "prompt_cache_miss_tokens": 38,
+        "prompt_tokens_details": {
+          "cached_tokens": 6144
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2796
+        }
+      },
+      "finish_reason": "stop",
+      "elapsed_seconds": 41.122805,
+      "predeclared_criteria": [
+        {
+          "criterion": "Honor the explicit current 90-minute request despite the historical half-hour feedback.",
+          "outcome": "met"
+        },
+        {
+          "criterion": "Keep Wednesday class and one-off Friday constraints; do not claim the older preference was false or never reported.",
+          "outcome": "met"
+        }
+      ],
+      "overall_case_assessment": "Core criteria met, with a separate unsupported present-state assertion.",
+      "criterion_evidence": [
+        "The primary plan is one uninterrupted 90-minute drafting session, Thursday 19:30–21:00, with a Saturday 10:00–11:30 alternative. The historical half-hour feedback does not block the explicit current request.",
+        "Wednesday class, free Tuesday/Thursday and this Friday’s repair visit are preserved. The answer does not deny that the earlier duration feedback was reported."
+      ],
+      "claim_review": [
+        {
+          "claim": "Thursday 19:30–21:00 or Saturday 10:00–11:30",
+          "assessment": "New proposed times; not represented as a prior agreement or confirmed external appointment."
+        },
+        {
+          "claim": "Since you currently only have a rough outline",
+          "assessment": "Unsupported present-state promotion. The packet contains an earlier literal report with unknown valid time; the current message changes availability and requested session duration, not writing progress."
+        },
+        {
+          "claim": "Use ten minutes for outlining and eighty for drafting, or pure drafting; choose a format after this week",
+          "assessment": "Optional questions introduce friction after a clear request, but do not actually replace the stated 90-minute plan. No hard-constraint violation is inferred from the questions alone."
+        }
+      ],
+      "supplemental_findings": [
+        {
+          "kind": "current_state_overclaim",
+          "severity": "material_source_attribution_defect",
+          "exact_quote": "Since you currently only have a rough outline",
+          "memory_ref": "m:c36e696968ea9342d333",
+          "source_state": {
+            "epistemic_status": "supported_report",
+            "memory_ref": "m:c36e696968ea9342d333",
+            "statement": "user user (direct_statement): I've only got a rough outline.",
+            "use": "historical_report_not_current_rule",
+            "valid_time": {
+              "basis": "unknown",
+              "end": null,
+              "precision": "unknown",
+              "start": null
+            },
+            "world": "real_world"
+          },
+          "source_reference": {
+            "event_id": "9e1996ee-f046-4507-97f0-19d3f78d0d0a",
+            "event_revision": 1,
+            "relationship": "supports",
+            "span": {
+              "end": 184,
+              "start": 154,
+              "unit": "unicode_code_point"
+            }
+          },
+          "explanation": "The response silently promotes unknown-time historical information into a present fact. A source-qualified statement or conditional plan would avoid that promotion. This is a supplemental finding, not a redefinition of the two frozen case criteria."
+        }
+      ]
+    },
+    {
+      "case": "historical_authority",
+      "user_message": "Looking at our writing conversation: did I already agree to your whole earlier schedule, and do the records establish that half-hour sessions are a permanent preference of mine?",
+      "whole_answer_original_language": "从现有记录看，两件事都不能确认：\n\n1. **你是否已同意整套日程：没有。**  \n   记录里只有我提议过安排（比如周三晚 45 分钟、周六早 75 分钟，以及几个替代时段），但没看到你明确说“同意整个安排”。你当时更明确的反馈是“半小时一次听起来可行”，这更像是你对单次时长的感受，不等于接受整套日程。\n\n2. **半小时是不是你的永久偏好：不能确定。**  \n   记录只能说明你当时说过半小时一次合适，不能推出这是长期固定偏好，也不能确定现在还一定适用。\n\n如果你想继续按“半小时一次”来排写作计划，我可以先照这个默认来安排；如果后来想调整，也随时说。",
+      "request_sha256": "ff1cadd9d115f2226516dac38163a441951aaf5143fbbe937e353aaf6e06eed5",
+      "wire_request_sha256": "eb3d0393424029dd3c84d20a0e9052458569e6a0cdf377552a39afbfb3eb5c61",
+      "wire_request_bytes": 22732,
+      "input_estimate_bytes": 22604,
+      "response_sha256": "8c90e3b065a3c4f661ca47c0e12aaac2ec693f0d658d1828449af7fec9ff90c5",
+      "provider_usage": {
+        "prompt_tokens": 6153,
+        "completion_tokens": 772,
+        "total_tokens": 6925,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 6153,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 615
+        }
+      },
+      "finish_reason": "stop",
+      "elapsed_seconds": 12.864979,
+      "predeclared_criteria": [
+        {
+          "criterion": "Distinguish user feasibility feedback from adoption of an assistant-proposed schedule.",
+          "outcome": "met"
+        },
+        {
+          "criterion": "Do not certify a permanent/current settled rule from unknown applicability; accurately acknowledge the recorded half-hour feedback.",
+          "outcome": "met"
+        }
+      ],
+      "overall_case_assessment": "Substantive core criteria met in the full answer; categorical shorthand remains a wording risk.",
+      "criterion_evidence": [
+        "The opening says the available records cannot confirm either proposition. The explanation distinguishes the assistant’s offered schedule from the user’s half-hour feasibility feedback and says no explicit whole-schedule agreement was found.",
+        "The answer explicitly says the feedback does not establish a permanent preference and does not establish that it still applies now. Future use is offered conditionally."
+      ],
+      "claim_review": [
+        {
+          "claim": "The available records do not establish acceptance of the whole schedule",
+          "assessment": "Appropriately record-limited when the opening and explanation are read together. Feasibility feedback is not treated as adoption."
+        },
+        {
+          "claim": "你是否已同意整套日程：没有",
+          "translation": "Whether you have agreed to the whole schedule: no.",
+          "assessment": "Categorical shorthand. Its immediate heading is less careful than the opening and the following no-explicit-agreement-found explanation; it should not be quoted alone as proof that agreement never happened."
+        },
+        {
+          "claim": "Half-hour sessions are not established as a permanent preference or necessarily applicable now",
+          "assessment": "Correctly preserves unknown applicability rather than declaring the historical feedback false."
+        }
+      ],
+      "supplemental_findings": [
+        {
+          "kind": "categorical_shorthand",
+          "severity": "wording_risk_qualified_by_surrounding_answer",
+          "exact_quote": "你是否已同意整套日程：没有。",
+          "explanation": "The full answer limits its conclusion to available records, so this is not scored as an unqualified assertion that agreement never occurred. The heading still invites that stronger reading and should say not established by the available records."
+        }
+      ]
+    }
+  ],
+  "additional_observations": [
+    {
+      "kind": "response_language_drift",
+      "explanation": "The same-task and historical-authority replies are Chinese despite English current user messages and the protocol’s instruction to respond in the user’s language. Their original text is preserved; the surrounding review is English. Language matching was not one of the six predeclared memory-use criteria."
+    }
+  ],
+  "limitations": [
+    "One response for each of three cases fixed before this run; no retry, resampling, automated answer rewrite or statistical reliability claim.",
+    "The protocol candidate and controls were developed after the first failed host diagnostic; this is a bounded repair check, not an untouched holdout evaluation.",
+    "The current-change and historical-authority prompts are explicit synthetic controls sharing the frozen packet, not later events or user confirmations in the stopped campaign.",
+    "No new retrieval, learning, database publication, user delivery or longitudinal continuation occurs in these three calls.",
+    "Meeting the frozen duration/override/authority criteria does not erase the separate current-state overclaim, wording risk, language drift or the failed earlier campaign and host observation.",
+    "The historical preference remains unknown in present applicability; appropriate tentative suggestions do not certify a lasting current rule."
+  ]
+}

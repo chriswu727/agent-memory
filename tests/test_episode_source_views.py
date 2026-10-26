@@ -208,7 +208,8 @@ def test_episode_member_count_limit_does_not_disappear_with_projection():
 
 
 def test_new_learning_contract_and_legacy_snapshot_versions_remain_explicit():
-    assert LATEST_INPUT_CONTRACT_VERSION == "citation-coverage-v1"
+    assert LATEST_INPUT_CONTRACT_VERSION == "citation-provenance-v1"
+    assert _snapshot_input_contract({"input_contract_version": "citation-coverage-v1"}) == "citation-coverage-v1"
     assert batch(event("A contribution.")).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     assert _snapshot_input_contract({"input_contract_version": "history-link-coverage-v1"}) == "history-link-coverage-v1"
     assert _snapshot_input_contract({"input_contract_version": EPISODE_FIDELITY_INPUT_VERSION}) == (

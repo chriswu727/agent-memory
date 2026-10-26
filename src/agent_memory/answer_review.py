@@ -16,7 +16,20 @@ from .helpers import digest
 if TYPE_CHECKING:
     from .runtime import ModelRequest
 
-ANSWER_REVIEW_VERSION = "answer-grounding-v1"
+ANSWER_REVIEW_VERSION = "answer-grounding-v2"
+HISTORICAL_SUGGESTION_BOUNDARY = (
+    "Current-rule eligibility governs assertions that a memory applies now, not every use of historical evidence. "
+    "When the current request resumes a task and available source context connects the user's earlier preference "
+    "or feasibility feedback to that task, this feedback may guide a reversible tentative suggestion without "
+    "certifying a permanent or currently applicable rule. Unknown applicability alone need not make the user "
+    "repeat that background. Preserve attribution or state a condition when the connection or continued "
+    "preference is uncertain; if the ambiguity materially changes the suggestion, seek clarification. "
+    "A retrieved item's presence does not establish task relevance. Do not transfer feedback across unrelated "
+    "tasks or speakers, or treat quoted, hypothetical or fictional feedback as the user's own preference. "
+    "An assistant's earlier proposal is an offer, not evidence of user adoption, and its greater detail does "
+    "not give it priority over relevant user feedback. Suggestions must not override false applicability, "
+    "conflicting assessments, explicit retractions or current user changes. "
+)
 CHECKS = (
     "current_input_fidelity", "memory_fidelity", "applicability", "uncertainty", "action_claims",
 )
@@ -67,6 +80,7 @@ ANSWER_REVIEW_INSTRUCTIONS = (
     "the current rule. Do not use dates within statements, assumed clocks or training-time dates to override "
     "runtime applicability. Reporting what was recorded, with explicit attribution and unresolved current "
     "applicability, is allowed. Current explicit self-reports may be acknowledged separately from old records. "
+    + HISTORICAL_SUGGESTION_BOUNDARY +
     "uncertainty: preserve disputes, unknown conditions, incomplete relations, retrieval limits and source "
     "attribution. An opening disclaimer does not excuse a later definite current conclusion. Absence in "
     "bounded retrieval means not found, not never happened. Appropriate historical descriptions, clarification "

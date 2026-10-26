@@ -523,7 +523,7 @@ def _coverage(state: dict, request: dict, candidate_count: int) -> dict:
     limitations = []
     if indexed < durable:
         limitations.append("index_lag")
-    if state.get("candidate_total", candidate_count) > candidate_count or state.get(
+    if state.get("candidate_truncated", False) or state.get("candidate_total", candidate_count) > candidate_count or state.get(
         "source_truncated", False
     ):
         limitations.append("partial_scope")

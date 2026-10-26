@@ -44,6 +44,19 @@ def merge_belief_candidates(memories, candidate_state, package, *, selected=Fals
     return list(known.values())
 
 
+def _direct_candidates(rankings, versions, lexical_scores, *, limit):
+    ranked = fuse_rankings(rankings, index_versions=versions, limit=512)
+    maximum = max(lexical_scores.values(), default=0.0)
+    for item in ranked:
+        key = (item["memory_id"], item["revision"])
+        for signal in item["rank_signals"]:
+            if signal["method"] == "keyword":
+                signal["score"] *= lexical_scores.get(key, 0.0) / maximum if maximum else 0.0
+        item["score"] = sum(signal["score"] for signal in item["rank_signals"])
+    ranked.sort(key=lambda item: (-item["score"], item["memory_id"], item["revision"]))
+    return ranked[:limit]
+
+
 def collect_candidates(conn, service, principal, brain, target, query, recall_plan=None,
                        query_embedding=None, *, access_at=None):
     params = service._params(principal, brain["id"])
@@ -98,6 +111,11 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
         lexical.extend(bridged)
         lexical.sort(key=lambda value: (-value[0], value[1]["document"]["memory_id"]))
         rankings["keyword"] = remember([row for _, row in lexical])
+        lexical_scores = {}
+        for score, row in lexical:
+            memory = row["document"]
+            key = (memory["memory_id"], memory["revision"])
+            lexical_scores[key] = max(score, lexical_scores.get(key, 0.0))
         versions["keyword"] = SOURCE_ROUTE_VERSION
         if query_embedding is not None:
             if (not isinstance(query_embedding, EmbeddingResult) or len(query_embedding.vectors) != 1
@@ -124,24 +142,37 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                     and row["distance"] < 1 and row["content_hash"] == digest(row["document"]["statement"])]
             rankings["vector"] = remember(rows)
             versions["vector"] = "embedding-space:" + space.fingerprint
-        seeds = fuse_rankings(rankings, index_versions=versions, limit=candidate_limit)
+        direct_ranked = _direct_candidates(rankings, versions, lexical_scores, limit=512)
+        seeds = direct_ranked[:candidate_limit]
         seed_ids = [item["memory_id"] for item in seeds]
         seed_revisions = [item["revision"] for item in seeds]
+        seed_scores = [item["score"] for item in seeds]
+        neighbors = {}
+
+        def expand(rows, version):
+            keys = remember(rows)
+            for key, row in zip(keys, rows, strict=True):
+                score = row["relevance"] * 0.5
+                if score > neighbors.get(key, (0.0, ""))[0]:
+                    neighbors[key] = (score, version)
+
         if seeds:
             association_rows = conn.execute(
-                "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[]) AS s(id,revision)) "
-                "SELECT DISTINCT a.id,a.revision,a.document FROM memory_associations e JOIN seeds s "
+                "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[],%s::double precision[]) AS s(id,revision,score)) "
+                "SELECT a.id,a.revision,a.document,max(s.score) AS relevance FROM memory_associations e JOIN seeds s "
                 "ON (e.source_id=s.id AND e.source_revision=s.revision) "
                 "OR (e.target_id=s.id AND e.target_revision=s.revision) "
                 "JOIN memory_assertions a ON a.tenant_id=e.tenant_id AND a.owner_id=e.owner_id AND a.brain_id=e.brain_id "
                 "AND ((e.source_id=s.id AND e.source_revision=s.revision AND a.id=e.target_id AND a.revision=e.target_revision) "
                 "OR (e.target_id=s.id AND e.target_revision=s.revision AND a.id=e.source_id AND a.revision=e.source_revision)) "
-                "WHERE " + _eligible() + scope_sql + "AND NOT e.invalidated ORDER BY a.id,a.revision LIMIT %s",
-                (seed_ids, seed_revisions, *params, *scope_params, candidate_limit + 1),
+                "WHERE " + _eligible() + scope_sql + "AND NOT e.invalidated "
+                "AND NOT EXISTS (SELECT 1 FROM seeds own WHERE own.id=a.id AND own.revision=a.revision) "
+                "GROUP BY a.id,a.revision,a.document ORDER BY relevance DESC,a.id,a.revision LIMIT %s",
+                (seed_ids, seed_revisions, seed_scores, *params, *scope_params, candidate_limit + 1),
             ).fetchall()
             episode_rows = conn.execute(
-                "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[]) AS s(id,revision)) "
-                "SELECT DISTINCT a.id,a.revision,a.document FROM memory_episode_members seed "
+                "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[],%s::double precision[]) AS s(id,revision,score)) "
+                "SELECT a.id,a.revision,a.document,max(s.score) AS relevance FROM memory_episode_members seed "
                 "JOIN seeds s ON seed.memory_id=s.id AND seed.memory_revision=s.revision "
                 "JOIN memory_episodes e ON e.tenant_id=seed.tenant_id AND e.owner_id=seed.owner_id AND e.brain_id=seed.brain_id "
                 "AND e.id=seed.episode_id AND e.revision=seed.episode_revision "
@@ -152,17 +183,33 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                 "WHERE " + _eligible() + scope_sql
                 + "AND e.is_current AND NOT e.invalidated AND NOT e.deleted AND e.document IS NOT NULL "
                 "AND (e.conversation_id IS DISTINCT FROM %s OR e.branch_id IS NOT DISTINCT FROM %s) "
-                "ORDER BY a.id,a.revision LIMIT %s",
-                (seed_ids, seed_revisions, *params, *scope_params, target.get("conversation_ref"),
+                "AND NOT EXISTS (SELECT 1 FROM seeds own WHERE own.id=a.id AND own.revision=a.revision) "
+                "GROUP BY a.id,a.revision,a.document ORDER BY relevance DESC,a.id,a.revision LIMIT %s",
+                (seed_ids, seed_revisions, seed_scores, *params, *scope_params, target.get("conversation_ref"),
                  target.get("branch_ref"), candidate_limit + 1),
             ).fetchall()
             truncated = truncated or len(association_rows) > candidate_limit or len(episode_rows) > candidate_limit
-            associated = remember(association_rows[:candidate_limit] + episode_rows[:candidate_limit])
-            rankings["association"] = list(dict.fromkeys(associated))
-            versions["association"] = "bounded-episode-and-association-v1"
-        ranked = fuse_rankings(rankings, index_versions=versions,
-                               weights={method: 0.5 if method == "association" else 1.0 for method in rankings},
-                               limit=512)
+            expand(association_rows[:candidate_limit] + episode_rows[:candidate_limit], "bounded-seed-neighborhood-v2")
+            if query.get("intent") == "continue_conversation":
+                from .source_neighborhood import (
+                    SOURCE_NEIGHBORHOOD_VERSION,
+                    source_neighborhood_candidates,
+                )
+
+                adjacent, adjacent_truncated = source_neighborhood_candidates(
+                    conn, service, principal, brain, target,
+                    [(item["score"], documents[(item["memory_id"], item["revision"])]) for item in seeds],
+                    through_sequence=brain["durable_sequence"],
+                )
+                truncated = truncated or adjacent_truncated
+                expand([{**row, "relevance": score} for score, row in adjacent], SOURCE_NEIGHBORHOOD_VERSION)
+        combined = {(item["memory_id"], item["revision"]): item for item in direct_ranked}
+        for key, (score, version) in neighbors.items():
+            item = combined.setdefault(key, {"memory_id": key[0], "revision": key[1], "score": 0.0, "rank_signals": []})
+            item["score"] += score
+            item["rank_signals"].append({"method": "association", "score": score,
+                                        "meaning": "ranking_only_not_probability", "model_or_index_version": version})
+        ranked = list(combined.values())
         usage_rows = conn.execute(
             "SELECT memory_id,memory_revision,external_uses,successes,failures,last_external_use_at,last_reinforcement_at "
             "FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
@@ -197,5 +244,6 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
     dependencies = {(memory["memory_id"], memory["revision"]) for memory in closure.memories} - root_set
     return list(closure.memories), {
         "candidate_versions": roots, "rank_signals": signals, "valid_dependency_versions": dependencies,
-        "source_truncated": truncated or closure.truncated or bool(closure.missing_versions) or bool(closure.cycle_versions),
+        "candidate_truncated": truncated,
+        "source_truncated": closure.truncated or bool(closure.missing_versions) or bool(closure.cycle_versions),
     }

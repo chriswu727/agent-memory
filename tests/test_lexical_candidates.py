@@ -67,7 +67,8 @@ def test_exact_label_survives_real_hash_collisions_beyond_candidate_limit(candid
         candidates.add(text)
     _, state = candidates.query(query, budget=2048)
     assert state["candidate_versions"] == [key(wanted)]
-    assert state["source_truncated"]
+    assert state["candidate_truncated"]
+    assert not state["source_truncated"]
 
 
 @pytest.mark.integration
