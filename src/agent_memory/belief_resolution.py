@@ -260,6 +260,8 @@ def connected_item_groups(items):
     for item in items:
         memory = item["memory"]
         keys = {version(memory)}
+        if "deferred_by" in item:
+            keys.add(version(item["deferred_by"]))
         keys.update(version(parent) for parent in memory["derivation"]["source_memory_versions"])
         keys.update(version(parent) for path in memory["disclosure_basis"]["support_paths"]
                     if path["path_id"] in memory["disclosure_basis"]["selected_path_ids"]

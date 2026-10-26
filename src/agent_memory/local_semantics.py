@@ -6,6 +6,7 @@ from jsonschema import Draft202012Validator
 
 from .contracts import validate
 from .helpers import DomainError
+from .recall_resolution import RESOLUTION_INPUT_VERSION
 
 LOCAL_OBSERVATION_MODE = "local-observation-v1"
 HISTORY_INTEGRATION_MODE = "history-integration-v1"
@@ -109,6 +110,8 @@ def bounded_proposal_schema(mode, base, *, input_contract_version=None):
             "valid_time": {"const": {"start": None, "end": None, "precision": "unknown", "basis": "unknown"}},
             "valid_during": {"const": {"kind": "unknown"}},
         })
+        if input_contract_version == RESOLUTION_INPUT_VERSION:
+            claim["representation"] = {"enum": ["episode_fragment", "episode_outline", "semantic_anchor"]}
         episode = properties["episode_actions"]["items"]["properties"]
         episode.update({"action": {"const": "create"}, "episode_id": {"type": "null"},
                         "expected_revision": {"type": "null"}, "boundary_ref": {"type": "null"}})

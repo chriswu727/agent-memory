@@ -17,6 +17,9 @@ Agent Memory is a human-inspired memory engine for AI agents. It keeps persisten
 - Scoped frequency-weighted lexical ranking, bounded adjacent source units, and comparable indexed/tail scores with access-age weighting.
 - Assistant speech remains available for explicit speech/quote/episode/commitment requests with its own attribution label; it is excluded from ordinary personal recollection.
 - Materialized episode-neighbor discovery to avoid a pathological nested join, plus language-neutral acknowledgment guidance and explicit remembered-detail boundaries.
+- Source-preserving recall resolution: optional independently checked short expressions and model-selected retention, cue-driven detail expansion, inspectable original records, and no age-based content deletion or recurring summarization calls.
+- Smaller bounded local-encoding prompts and schemas, unchanged frozen legacy requests, and explicit source-fidelity rules for autobiographical drafts.
+- Prompt-aware memory allocation within the existing total input ceiling, a database compatibility marker for the new persisted representation, and a real subprocess-interruption regression for uncertain provider reservations.
 
 ### Known limits
 

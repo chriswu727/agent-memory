@@ -52,9 +52,12 @@ def create_server(client: MemoryClient) -> FastMCP:
         max_context_tokens: int = 16000,
         evidence_mode: Literal["contextual", "prior_record_check"] = "contextual",
         prior_to_event_id: str | None = None,
+        detail_level: Literal["auto", "summary", "full"] = "auto",
     ) -> dict[str, Any]:
         """Recall authorized evidence. Use prior_record_check to check what was recorded before a cue."""
         retrieval: dict[str, Any] = {"evidence_mode": evidence_mode}
+        if detail_level != "auto":
+            retrieval["detail_level"] = detail_level
         if prior_to_event_id is not None:
             retrieval["evidence_cutoff"] = {"mode": "before_event", "event_id": prior_to_event_id}
         response = await asyncio.to_thread(

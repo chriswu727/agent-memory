@@ -781,6 +781,17 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             "retrieved_from": "unindexed_tail" if tail else "index",
             "display_mode": "explicit_recollection" if historical else "background_context",
         }
+        from .recall_resolution import presentation
+
+        source_texts = [_content_text(event_map[ref["event_id"]]["observed"]["content"])[
+            ref["span"]["start"]:ref["span"]["end"]]
+            for ref in memory["evidence_refs"] if ref["relationship"] == "supports" and "span" in ref
+            ] if memory.get("recall_summary") else []
+        resolution = presentation(memory, {**request, **({"detail_level": "full"} if selecting else {})},
+                                  at=access_reference_time, source_texts=source_texts,
+                                  usage=state.get("access_usage", {}).get((memory["memory_id"], memory["revision"])))
+        if resolution is not None:
+            item["presentation"] = resolution
         if (memory["derivation"]["method"] == "direct_capture"
                 and memory["derivation"]["rule_version"] != RULE_VERSION
                 and len(memory["evidence_refs"]) == 1):
@@ -843,6 +854,9 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
     from .belief_resolution import connected_item_groups, factor_relations, resolve
 
     refresh_beliefs = resolve(result["items"], candidates, event_map, scope, state, snapshot, timestamp)
+    from .recall_resolution import defer_source_details
+
+    defer_source_details(result["items"])
     groups = connected_item_groups(result["items"])
     limit = request["budget"]["max_context_tokens"]
     if _measure(result) > limit and result["items"]:

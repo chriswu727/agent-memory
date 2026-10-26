@@ -109,7 +109,7 @@ def test_tentative_suggestion_boundary_is_reviewer_authority_without_rewriting_h
     original = prompt("Can we adjust the explanation?", context)
     draft = "Based on your earlier feedback, we could start with one example."
     request = reviewer(assessment()).prepare(original, draft)
-    assert ANSWER_REVIEW_VERSION == "answer-grounding-v2"
+    assert ANSWER_REVIEW_VERSION == "answer-grounding-v3"
     assert request.messages[0]["content"].count(HISTORICAL_SUGGESTION_BOUNDARY) == 1
     assert json.loads(request.messages[1]["content"]) == {
         "host_messages": list(original.messages), "draft": draft,

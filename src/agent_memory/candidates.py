@@ -263,6 +263,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
     root_set = set(roots)
     dependencies = {(memory["memory_id"], memory["revision"]) for memory in closure.memories} - root_set
     return list(closure.memories), {
+        "access_usage": usage if recall_plan is None else {},
         "candidate_versions": roots, "rank_signals": signals, "valid_dependency_versions": dependencies,
         "candidate_truncated": truncated,
         "source_truncated": closure.truncated or bool(closure.missing_versions) or bool(closure.cycle_versions),

@@ -16,7 +16,16 @@ from .helpers import digest
 if TYPE_CHECKING:
     from .runtime import ModelRequest
 
-ANSWER_REVIEW_VERSION = "answer-grounding-v2"
+ANSWER_REVIEW_VERSION = "answer-grounding-v3"
+AUTOBIOGRAPHICAL_DRAFT_BOUNDARY = (
+    "Source fidelity also applies to text drafted in the user's voice, including cards, captions, "
+    "letters, stories based on real memories and first-person examples. A draft is not evidence that "
+    "an event happened as written. Do not introduce unprovided times, locations, sensations, dialogue, "
+    "actions or feelings as the user's recollection, even when they are plausible or make the prose "
+    "more vivid. Express warmth through source-supported meaning and phrasing. Clearly separated "
+    "optional fictional additions are allowed when requested, but never present them as remembered "
+    "facts or silently mix them into a factual autobiographical draft. "
+)
 HISTORICAL_SUGGESTION_BOUNDARY = (
     "Current-rule eligibility governs assertions that a memory applies now, not every use of historical evidence. "
     "When the current request resumes a task and available source context connects the user's earlier preference "
@@ -74,6 +83,7 @@ ANSWER_REVIEW_INSTRUCTIONS = (
     "memory_fidelity: historical and personal claims must follow the available attributed evidence without "
     "inventing details, transferring typical facts to a specific event, or upgrading an assistant's old claim "
     "to independent proof. This is a memory-grounding review, not a general world-knowledge fact check. "
+    + AUTOBIOGRAPHICAL_DRAFT_BOUNDARY +
     "applicability: only source_attributed_applicable_memory is eligible as a current memory rule. Preserve "
     "the supplied applicability and belief-resolution states. Unknown is undetermined; false means not "
     "applicable here, not that the historical report never occurred. The latest report is not automatically "

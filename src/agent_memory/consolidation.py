@@ -27,6 +27,7 @@ from .local_semantics import (
     validate_bounded_batch,
     validate_bounded_proposal,
 )
+from .recall_resolution import RESOLUTION_INPUT_VERSION
 from .semantic import (
     EPISODE_FIDELITY_INPUT_VERSIONS,
     PROPOSAL_SCHEMA,
@@ -185,6 +186,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                     if batch.input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS else None)
     ids, changed_episodes = set(), set()
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
+    if batch.input_contract_version == RESOLUTION_INPUT_VERSION:
+        claim_fields.update(("recall_summary", "retention_priority"))
     claims = {item["proposal_id"]: {key: copy.deepcopy(value) for key, value in item.items() if key in claim_fields}
               for item in result.claims}
     abstraction_parents = {}
@@ -207,6 +210,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
         if batch.sampling.get("publication_restricted") and group != "situation_updates" and getattr(result, group):
             raise DomainError("invalid_evidence", "Incomplete history cannot support consolidation")
         schema_fields = set(PROPOSAL_SCHEMA["properties"][group]["items"]["properties"])
+        if group == "claims":
+            schema_fields = claim_fields
         for final in getattr(result, group):
             item = {key: copy.deepcopy(value) for key, value in final.items() if key in schema_fields}
             expected_state = "contested" if item.get("counterexamples") else "supported_inference"
@@ -237,6 +242,11 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
             coverage_required = (batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS
                                  and group != "episode_actions")
+            if "recall_summary" in item:
+                assessments = [entry for entry in result.verification_assessments
+                               if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
+                if len(assessments) != 1 or assessments[0].get("recall_summary_verdict") != "supports":
+                    raise DomainError("invalid_evidence", "Recall summary fidelity is unsupported")
             if batch.proposal_mode in BOUNDED_MODES or coverage_required:
                 assessments = [entry for entry in result.verification_assessments
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
@@ -314,6 +324,7 @@ def _meaning(document):
     value = {key: document[key] for key in keys}
     value.update({key: document[key] for key in ("valid_during", "condition_registry_fingerprint")
                   if key in document})
+    value.update({key: document[key] for key in ("recall_summary", "retention_priority") if key in document})
     value["evidence_refs"] = sorted(document["evidence_refs"], key=digest)
     value["counterexamples"] = sorted(document["counterexamples"], key=digest)
     return value
@@ -335,9 +346,10 @@ def _assertion(item, batch, brain, snapshot):
         "evidence_refs": support + counterexamples, "valid_time": copy.deepcopy(item["valid_time"]),
         "system_time": {"recorded_at": timestamp, "superseded_at": None},
         "lifecycle": "active", "supersedes_memory_ids": [],
-        "derivation": {"method": "aggregation", "rule_version": "bounded-semantic-v1",
+        "derivation": {"method": "aggregation", "rule_version": (
+            RESOLUTION_INPUT_VERSION if batch.input_contract_version == RESOLUTION_INPUT_VERSION else "bounded-semantic-v1"),
                        "model_version": None, "source_memory_versions": parents},
-        "dynamics": {"activation": 0.5, "retention_priority": 0.5, "detail_level": "gist",
+        "dynamics": {"activation": 0.5, "retention_priority": item.get("retention_priority", 0.5), "detail_level": "gist",
                      "last_external_reinforcement_at": None, "last_recalled_at": None,
                      "decay_policy_version": "external-use-only-v1", "user_pinned": False,
                      "reasons": ["default_policy"]},
@@ -356,6 +368,8 @@ def _assertion(item, batch, brain, snapshot):
     for key in ("valid_during", "condition_registry_fingerprint"):
         if key in item:
             result[key] = copy.deepcopy(item[key])
+    if "recall_summary" in item:
+        result["recall_summary"] = copy.deepcopy(item["recall_summary"])
     validate("MemoryAssertion", result)
     return result
 

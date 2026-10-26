@@ -60,6 +60,9 @@ def test_protocol_initialize_list_call_and_bound_identity():
                 assert result.structuredContent["action"] == "recall"
                 assert json.loads(result.structuredContent["context"])["format"] == "compact-memory-v1"
                 assert "control_plane_secret" not in json.dumps(result.structuredContent)
+                expanded = await session.call_tool("memory_recall", {"query": "the rainy day", "detail_level": "full"})
+                assert not expanded.isError
+                assert calls[-1]["payload"]["detail_level"] == "full"
                 result = await session.call_tool("memory_observe", {
                     "text": "The user supposedly likes rain", "conversation_id": "chat",
                     "branch_id": "main", "source_event_key": "note-1",

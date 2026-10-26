@@ -33,6 +33,8 @@ For each tested fresh root, total encoding plus history remains at most four cal
 
 ### G4 — Demonstrate useful memory through longitudinal use
 
+Age-dependent acceptance concerns default context granularity and cue-assisted recovery. Original source content remains stored unless the user explicitly requests erasure; physical deletion of incidental detail is not a maturity requirement. The [source-preserving resolution design](recall-resolution.md) implements this presentation boundary, but scoped checks alone do not pass the longitudinal gate.
+
 Follow the [longitudinal memory evaluation protocol](longitudinal-memory-evaluation.md). The old 100-exchange/twelve-probe fixture remains a historical regression diagnostic, not the release maturity gate. Its earlier failures remain failed.
 
 Before paid execution, freeze an independently reviewed life/event timeline, natural session intents and permitted user branches, source-bounded behavioral cases, provider settings, runtime revision, declared time mode and schedule, and cumulative spending ceiling. The primary campaign uses one durable brain across evolving life/tasks, irregular multi-turn sessions, interruptions and delayed returns to earlier subjects. Choose the story span and revisit intervals to exercise those behaviors; neither a turn count nor a fixed calendar duration is sufficient for success. Declared session/turn bounds limit spending. Report fictional time, actual elapsed time and active uptime separately. Age-dependent cases require actual elapsed time or a validated semantic-time seam; otherwise they remain unassessed. A separately proposed real-time endurance run is not automatically another release gate.
@@ -80,6 +82,8 @@ That command does not implement the new G4. Its sixteen-exchange checkpoint, sam
 The replacement runner and commands are documented in the [implementation status](longitudinal-memory-evaluation.md#implemented-runner-and-remaining-acceptance-work). Its private journal preserves persistent sessions, exact interactive branches, distributed review evidence, source checks and cumulative spending. See the [verification report](../evaluations/v1-2026-10-25-longitudinal-harness.md) for the executed scope and missing acceptance evidence; runner completion alone never passes G4.
 
 ## Progress checkpoint
+
+The [source-preserving recall resolution batch](../evaluations/v1-2026-10-26-recall-resolution.md) implements verified optional short expressions, cue expansion, prompt-aware context allocation and local encoding reductions. Its real-model diagnostic retains a failed encoding, an episode-actor ambiguity and one unsupported autobiographical draft; no new full varied campaign ran. G4 remains unpassed. Original sources are retained, and no closed allowance authorizes further calls.
 
 The [source and recall repair follow-up](../evaluations/v1-2026-10-26-longitudinal-repairs.md) addresses the diagnosed source-act, lexical, context/attribution and database-query paths while preserving old evidence. Its scoped checks and isolated probes do not replace another source-reviewed varied campaign after the remaining release blockers are resolved. G4 remains unpassed.
 

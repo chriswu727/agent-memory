@@ -256,7 +256,10 @@ export type MemoryProcedure = {
   "attempt_event_ids": Identifier[];
 };
 
+export type RecallSummary = { statement: string; detail_cues: string[] };
+
 export type MemoryAssertion = {
+  "recall_summary"?: RecallSummary;
   "memory_id": Identifier;
   "revision": number;
   "scope": BoundScope;
@@ -369,6 +372,7 @@ export type Coverage = {
 };
 
 export type RecallRequest = {
+  "detail_level"?: "auto" | "summary" | "full";
   "query": string;
   "intent": "continue_conversation" | "exact_quote" | "current_fact" | "episode" | "timeline" | "open_commitment" | "procedure" | "cue_recovery" | "explore";
   "cue_event_ids": (Identifier)[];
@@ -419,6 +423,16 @@ export type BeliefResolution = {
 };
 
 export type RecallItem = {
+  "source_act"?: {
+    act: "direct_statement" | "inquiry" | "instruction" | "correction" | "confirmation" | "presupposition" | "unknown" | "not_applicable";
+    rule_version: "literal-episodes-v3";
+  };
+  "deferred_by"?: { memory_id: string; revision: number };
+  "presentation"?: {
+    level: "summary" | "full";
+    reason: "active_detail" | "explicit_detail" | "protected_detail" | "detail_cue" | "requested_summary" | "background_gist";
+    policy_version: "cue-sensitive-resolution-v1";
+  };
   "memory": MemoryAssertion;
   "applicability"?: MemoryApplicability;
   "belief_resolution"?: BeliefResolution;

@@ -239,6 +239,7 @@ class ContextProjection {
     }
     const result: JsonObject = Object.create(null);
     for (const [key, item] of Object.entries(object)) {
+      if (field === "applicability" && key === "evaluated_at") continue;
       if (key === "registry_fingerprint" || (key === "status" && (
         item === object.value || item === "conflict" && object.conflict === true
       ))) continue;
@@ -269,15 +270,25 @@ function memoryContent(item: RecallItem): JsonObject {
     "claim_kind", "verification", "counterexamples", "procedure", "valid_during",
   ].filter(key => key in memory).map(key => [key, memory[key]]));
   result.memory_version = { memory_id: memory.memory_id, revision: memory.revision };
+  if (item.presentation?.level === "summary" && item.memory.recall_summary) {
+    result.statement = item.memory.recall_summary.statement;
+    result.recall_detail = "summary_expandable";
+  }
   if (item.applicability !== undefined) result.applicability = item.applicability;
   if (item.belief_resolution !== undefined) result.belief_resolution = item.belief_resolution;
+  if (item.source_act !== undefined) result.source_act = item.source_act;
   const assessment = item.applicability, resolution = item.belief_resolution;
   const applies = ((!assessment || assessment.value === "true" && !assessment.conflict)
     && (!resolution || resolution.complete && resolution.state === "unchanged"));
   const historical = memory.memory_kind === "episodic" || memory.representation === "literal";
-  result.use = historical ? "historical_report_not_current_rule" : applies
+  const speech = ["agent_said", "proposal_offered", "commitment_expressed"].includes(String(memory.claim_kind))
+    || (memory.derivation as JsonObject | undefined)?.method === "direct_capture"
+    && typeof memory.statement === "string" && memory.statement.startsWith("assistant ");
+  const unsettled = ["disputed", "unknown"].includes(String(memory.epistemic_status))
+    || (memory.verification as JsonObject | undefined)?.state === "contested";
+  result.use = speech ? "assistant_speech_not_user_experience" : historical ? "historical_report_not_current_rule" : applies && !unsettled
     ? "source_attributed_applicable_memory" : resolution
-    ? "belief_not_settled_current_rule" : "conditional_memory_not_current_rule";
+    || unsettled ? "belief_not_settled_current_rule" : "conditional_memory_not_current_rule";
   return result;
 }
 

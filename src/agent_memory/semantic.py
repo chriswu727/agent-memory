@@ -32,7 +32,7 @@ from .citation_coverage import (
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
     CITATION_PROVENANCE_INPUT_VERSIONS,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
-    SOURCE_ACT_INPUT_VERSION,
+    SOURCE_ACT_INPUT_VERSIONS,
     citation_coverage_schema,
     citation_coverage_supported,
     citation_scope,
@@ -91,6 +91,16 @@ from .local_semantics import (
     validate_bounded_proposal,
 )
 from .ontology import CORE_REGISTRY
+from .recall_resolution import (
+    LOCAL_BASE_INSTRUCTIONS,
+    LOCAL_BASE_VERIFY_INSTRUCTIONS,
+    RESOLUTION_INPUT_VERSION,
+    RESOLUTION_INSTRUCTIONS,
+    RESOLUTION_VERIFY_INSTRUCTIONS,
+    SUMMARY_SCHEMA,
+    prune_definitions,
+    summary_verification_schema,
+)
 from .temporal import validate_valid_during
 from .verification_sources import (
     SHARED_VERIFICATION_INPUT_VERSION,
@@ -217,7 +227,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = SOURCE_ACT_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = RESOLUTION_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -509,7 +519,7 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
         from .history_attention import model_manifest
 
         data["integration_manifest"] = model_manifest(integration_manifest)
-    if input_contract_version == SOURCE_ACT_INPUT_VERSION:
+    if input_contract_version in SOURCE_ACT_INPUT_VERSIONS:
         data["source_act_views"] = [
             {"event_id": source["event_id"], "revision": source["revision"],
              "content_sha256": source["content_sha256"], "rule_version": cognition.RULE_VERSION,
@@ -517,6 +527,9 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
             for source in sources
             if cognition.evidence_segments(source) != source["utterance_segments"]
         ]
+    if input_contract_version == RESOLUTION_INPUT_VERSION and proposal_mode == LOCAL_OBSERVATION_MODE:
+        data.pop("registry", None)
+        data.pop("belief_relation_capabilities", None)
     return data
 
 
@@ -530,11 +543,18 @@ def validate_input_contract(version):
 def proposal_schema(mode, *, input_contract_version=None):
     if not isinstance(mode, str):
         raise ValueError("Unknown cognitive proposal mode")
+    base = copy.deepcopy(PROPOSAL_SCHEMA)
+    if input_contract_version == RESOLUTION_INPUT_VERSION:
+        base["properties"]["claims"]["items"]["properties"].update({
+            "recall_summary": copy.deepcopy(SUMMARY_SCHEMA),
+            "retention_priority": {"type": "number", "minimum": 0, "maximum": 1},
+        })
     if mode in BOUNDED_MODES:
-        return bounded_proposal_schema(mode, PROPOSAL_SCHEMA, input_contract_version=input_contract_version)
+        result = bounded_proposal_schema(mode, base, input_contract_version=input_contract_version)
+        return prune_definitions(result) if input_contract_version == RESOLUTION_INPUT_VERSION else result
     if mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):
         raise ValueError("Unknown cognitive proposal mode")
-    return ORIENT_PROPOSAL_SCHEMA if mode == ORIENT_PROPOSAL_MODE else PROPOSAL_SCHEMA
+    return ORIENT_PROPOSAL_SCHEMA if mode == ORIENT_PROPOSAL_MODE else base
 
 
 def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GENERAL_PROPOSAL_MODE,
@@ -545,6 +565,8 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
         instructions = _ORIENT_INSTRUCTIONS if phase == "proposal" else _ORIENT_VERIFY_INSTRUCTIONS
     else:
         instructions = _INSTRUCTIONS if phase == "proposal" else _VERIFY_INSTRUCTIONS
+        if input_contract_version == RESOLUTION_INPUT_VERSION and proposal_mode == LOCAL_OBSERVATION_MODE:
+            instructions = LOCAL_BASE_INSTRUCTIONS if phase == "proposal" else LOCAL_BASE_VERIFY_INSTRUCTIONS
         if phase == "proposal" and input_contract_version in (
             EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS,
         ):
@@ -558,9 +580,15 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
     if input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + EPISODE_SOURCE_VIEW_INSTRUCTIONS
     if input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
-        instructions += " " + CAPABILITY_INSTRUCTIONS + " " + SPEECH_EVENT_INSTRUCTIONS
+        if not (input_contract_version == RESOLUTION_INPUT_VERSION and proposal_mode == LOCAL_OBSERVATION_MODE):
+            instructions += " " + CAPABILITY_INSTRUCTIONS + " " + SPEECH_EVENT_INSTRUCTIONS
     if proposal_mode == LOCAL_OBSERVATION_MODE:
-        instructions += " " + (LOCAL_INSTRUCTIONS if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
+        local_instructions = LOCAL_INSTRUCTIONS
+        if input_contract_version == RESOLUTION_INPUT_VERSION:
+            local_instructions = local_instructions.replace(
+                "episode_fragment with conditions always", "attributed representation with conditions always")
+            local_instructions = local_instructions.replace("reported, asked, or qualified", "reported or qualified")
+        instructions += " " + (local_instructions if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
     elif proposal_mode == HISTORY_INTEGRATION_MODE:
         instructions += " " + (INTEGRATION_INSTRUCTIONS if phase == "proposal" else INTEGRATION_VERIFY_INSTRUCTIONS)
         if phase == "proposal" and input_contract_version in LINK_DERIVED_INPUT_VERSIONS:
@@ -569,7 +597,7 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
         instructions += " " + CITATION_COVERAGE_VERIFY_INSTRUCTIONS
     elif phase == "verification" and input_contract_version in CITATION_PROVENANCE_INPUT_VERSIONS:
         instructions += " " + CITATION_PROVENANCE_VERIFY_INSTRUCTIONS
-    if input_contract_version == SOURCE_ACT_INPUT_VERSION:
+    if input_contract_version in SOURCE_ACT_INPUT_VERSIONS:
         instructions += (
             " source_act_views, when present, are versioned server interpretations of the exact source's "
             "speech-act boundaries; the original source record remains unchanged. Use these views rather "
@@ -581,6 +609,8 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
             "than copying entire replies unless exact wording matters. Preserve user-expressed meaning "
             "and qualifications; choose representations and retention based on the actual source."
         )
+    if input_contract_version == RESOLUTION_INPUT_VERSION:
+        instructions += " " + (RESOLUTION_INSTRUCTIONS if phase == "proposal" else RESOLUTION_VERIFY_INSTRUCTIONS)
     if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
             and proposal_mode not in BOUNDED_MODES):
         data = shared_verification_sources(data)
@@ -801,7 +831,7 @@ def _check_claim_sources(proposal, events, scope, *, situation=False, current_re
         if observed["content"]["media_type"] != "text/plain":
             if bounds["start"] != 0 or bounds["end"] != len(cognition._content_text(observed["content"])):
                 raise ValueError("partial_structured_source")
-        segments = (cognition.evidence_segments(event) if input_contract_version == SOURCE_ACT_INPUT_VERSION
+        segments = (cognition.evidence_segments(event) if input_contract_version in SOURCE_ACT_INPUT_VERSIONS
                     else cognition._segments(event))
         for segment in segments:
             span = segment.get("span")
@@ -983,7 +1013,7 @@ def belief_capabilities(scope, sources, assertions, *, input_contract_version=RE
         {(memory["memory_id"], memory["revision"]): memory for memory in assertions},
         claim_schema={**copy.deepcopy(_CLAIM), "$defs": PROPOSAL_SCHEMA["$defs"]},
         check_sources=partial(_check_claim_sources, input_contract_version=(
-            SOURCE_ACT_INPUT_VERSION if input_contract_version == SOURCE_ACT_INPUT_VERSION
+            input_contract_version if input_contract_version in SOURCE_ACT_INPUT_VERSIONS
             else RELATION_CAPABILITIES_INPUT_VERSION)),
         max_link_evidence=_BELIEF_LINK["properties"]["evidence_refs"]["maxItems"],
     )
@@ -1380,8 +1410,18 @@ class SemanticProcessor:
             batch.proposal_mode, events.values(), assertions.values(), batch.belief_relations,
             input_refs=batch.learning_input_refs, manifest=batch.integration_manifest,
         )}
-        if batch.input_contract_version == SOURCE_ACT_INPUT_VERSION:
+        if batch.input_contract_version in SOURCE_ACT_INPUT_VERSIONS:
             verification_data["source_act_views"] = copy.deepcopy(data["source_act_views"])
+        if batch.input_contract_version == RESOLUTION_INPUT_VERSION:
+            verification_schema = summary_verification_schema(
+                verification_schema, [item["proposal_id"] for group, item, _ in eligible
+                                      if group == "claims" and "recall_summary" in item])
+            if batch.proposal_mode == LOCAL_OBSERVATION_MODE:
+                verification_schema = copy.deepcopy(verification_schema)
+                properties = verification_schema["properties"]["assessments"]["items"]["properties"]
+                for field in ("supporting_evidence_indices", "instance_verdicts", "request_verdict"):
+                    properties.pop(field, None)
+                properties["link_verdict"] = {"type": "null"}
         verified, error = invoke("verification", verification_data, verification_schema, self.verify)
         if error:
             return result(error)
@@ -1497,6 +1537,9 @@ class SemanticProcessor:
                     rejected.append({"proposal_id": item["proposal_id"], "reason": "linked_claim_unconfirmed"})
                     continue
             final = copy.deepcopy(item)
+            if "recall_summary" in item and assessment.get("recall_summary_verdict") != "supports":
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "recall_summary_unconfirmed"})
+                continue
             if abstract:
                 if group == "claims":
                     final["evidence_refs"] = [ref for index, ref in enumerate(final["evidence_refs"])
@@ -1536,6 +1579,9 @@ class SemanticProcessor:
     @staticmethod
     def _validate_proposal(group, item, scope, events, assertions, episodes, claims=None, *, abstraction_parents=(),
                            current_input_refs=(), input_contract_version=None):
+        if (set(item) & {"recall_summary", "retention_priority"}
+                and (group != "claims" or input_contract_version != RESOLUTION_INPUT_VERSION)):
+            raise ValueError("Recall resolution requires its versioned claim contract")
         if group == "belief_links":
             return _validate_belief_link(item, scope, events, assertions, episodes, claims or {},
                                          input_contract_version=input_contract_version)

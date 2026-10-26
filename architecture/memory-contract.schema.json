@@ -573,6 +573,16 @@
       "additionalProperties": false,
       "description": "Control activation, retention value, and detail level separately; none of these values is a truth probability. A model repeating its own statement cannot strengthen evidence. User deletion takes precedence over pinning. candidate_hit increases neither truth confidence nor retention value; context_selected, quoted, and background_influence can affect at most short-term activation. Only external feedback verified against independent sources may trigger reassessment; mention counts cannot replace evidence."
     },
+    "RecallSummary": {
+      "type": "object",
+      "properties": {
+        "statement": {"type": "string", "minLength": 1, "maxLength": 512},
+        "detail_cues": {"type": "array", "maxItems": 8, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 64}}
+      },
+      "required": ["statement", "detail_cues"],
+      "additionalProperties": false
+    },
     "MemoryAssertion": {
       "type": "object",
       "properties": {
@@ -645,6 +655,7 @@
             "retracted"
           ]
         },
+        "recall_summary": {"$ref": "#/$defs/RecallSummary"},
         "supersedes_memory_ids": {
           "type": "array",
           "items": {
@@ -1342,6 +1353,7 @@
     "RecallRequest": {
       "type": "object",
       "properties": {
+        "detail_level": {"enum": ["auto", "summary", "full"]},
         "query": {
           "type": "string",
           "minLength": 1
@@ -1471,6 +1483,21 @@
     "RecallItem": {
       "type": "object",
       "properties": {
+        "deferred_by": {
+          "type": "object",
+          "properties": {"memory_id": {"$ref": "#/$defs/Identifier"}, "revision": {"type": "integer", "minimum": 1}},
+          "required": ["memory_id", "revision"], "additionalProperties": false
+        },
+        "presentation": {
+          "type": "object",
+          "properties": {
+            "level": {"enum": ["summary", "full"]},
+            "reason": {"enum": ["active_detail", "explicit_detail", "protected_detail", "detail_cue", "requested_summary", "background_gist"]},
+            "policy_version": {"const": "cue-sensitive-resolution-v1"}
+          },
+          "required": ["level", "reason", "policy_version"],
+          "additionalProperties": false
+        },
         "source_act": {
           "type": "object",
           "properties": {

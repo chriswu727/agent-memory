@@ -311,3 +311,20 @@ test("legacy contexts respect declared usage and preserve successful compatible 
   assert.throws(() => preparedContext(packet), /legacy context exceeds the service context budget/);
   assert.throws(() => recalledContext(recall), /legacy context exceeds the service context budget/);
 });
+
+test("shortened recall agrees with Python while full source detail stays inspectable", () => {
+  const python = fileURLToPath(new URL("../../.venv/bin/python", import.meta.url));
+  const raw = execFileSync(python, ["-c", [
+    "import json,sys",
+    "sys.path.insert(0,'tests')",
+    "from test_recall_resolution import memory_case,read",
+    "source,memory=memory_case()",
+    "print(json.dumps(read(source,memory),ensure_ascii=False))",
+  ].join("\n")], { cwd: fileURLToPath(new URL("../../", import.meta.url)), encoding: "utf8" });
+  const recall = JSON.parse(raw);
+  const expected = recall.model_context;
+  assert.equal(expected.includes("yellow lid"), false);
+  assert.ok(recall.items.some((item: any) => item.memory.statement.includes("yellow lid")));
+  delete recall.model_context;
+  assert.equal(recalledContext(recall), expected);
+});

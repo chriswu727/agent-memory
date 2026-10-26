@@ -116,12 +116,15 @@ flowchart LR
 | --- | --- |
 | Working and long-term memory | Combines bounded recent context with persistent episodic, semantic, and procedural representations. |
 | Selective forgetting | Adjusts accessibility using age, representation, retention priority, and recorded use. Important memories can be protected. Lower accessibility is separate from deleting data. |
+| Detail on demand | Can present a verified short expression of an older memory and expand full detail for specific cues or explicit inspection. Original records remain stored; optional summaries are selected by the configured model. |
 | Cue-based recall | Uses lexical retrieval, optional semantic embeddings, and bounded contextual links to find candidates. Relevant short replies can be reached through adjacent sources. |
 | Revision and uncertainty | Keeps source versions, conditions, conflicts, and applicability labels so new information can qualify older memories. |
 | Traceable learning | Retains supporting source references and checks proposed memories before publication. Model judgments remain fallible. |
 | Persistent identity | Keeps the brain separate from the reply model and process, with explicit scope, restart, and recovery handling. |
 
 The current context still has a limit. The runtime selects memory within that budget; long-term state is stored separately from the current model prompt. Detailed behavior is documented in the [architecture](architecture/architecture.html), [retrieval design](architecture/conversation-retrieval.md), and [runtime reference](docs/reference.md).
+
+[Source-preserving recall resolution](architecture/recall-resolution.md) explains encoding, cue expansion and upgrade compatibility. Existing memories without a verified short expression keep their full view; an upgrade does not run a paid rewrite of the archive.
 
 ## Local operation
 
@@ -155,6 +158,8 @@ The [latest preparation follow-up](evaluations/v1-2026-10-25-learning-preparatio
 The [varied longitudinal diagnostic](evaluations/v1-2026-10-26-longitudinal-round.md) exercised all 33 inputs across sixteen sessions on one persistent brain, with 32 completed replies and one preserved timeout. The scenario spans 56 fictional days, not 56 days of actual operation. It exposed missed meaningful recall, unsupported remembered details, language drift and high cognitive cost. Isolated cue and access-age diagnostics are recorded with raw evidence; **behavioral acceptance did not pass**.
 
 The [repair follow-up](evaluations/v1-2026-10-26-longitudinal-repairs.md) addresses source-act rejection, distinctive-cue ranking, adjacent source meaning, assistant-speech attribution, indexed/tail rank calibration and a slow episode-neighbor query. Its [architecture notes](architecture/longitudinal-repairs.md) explain compatibility and remaining limits. The original longitudinal failures remain preserved; these repairs do not establish a new full acceptance pass.
+
+The [source-preserving resolution follow-up](evaluations/v1-2026-10-26-recall-resolution.md) adds optional verified short expressions, cue-driven expansion and smaller local encoding inputs. Original records remain stored. Scoped checks cover expansion, persistence and erasure; real-model diagnostics still include an unsupported card detail, ambiguous episode wording and no demonstrated automatic summary formation in the small encoding case. These results do not pass longitudinal acceptance.
 
 Version 0.1.0 remains in [release closeout](docs/releasing.md): scope is frozen while the observed defects are repaired and acceptance is completed. The [changelog](CHANGELOG.md) remains an unreleased draft.
 

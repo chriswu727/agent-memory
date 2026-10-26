@@ -53,6 +53,9 @@ def memory_content(item):
         "claim_kind", "verification", "counterexamples", "procedure", "valid_during",
     ) if key in memory}
     result["memory_version"] = {key: memory[key] for key in ("memory_id", "revision")}
+    if item.get("presentation", {}).get("level") == "summary" and memory.get("recall_summary"):
+        result["statement"] = memory["recall_summary"]["statement"]
+        result["recall_detail"] = "summary_expandable"
     for key in ("applicability", "belief_resolution", "source_act"):
         if key in item:
             result[key] = copy.deepcopy(item[key])

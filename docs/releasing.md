@@ -30,6 +30,8 @@ This round used 153 real calls with **1,710,383 known tokens and two unknown-usa
 
 The [source and recall repair follow-up](../evaluations/v1-2026-10-26-longitudinal-repairs.md) records the subsequent candidate, local checks and separately bounded failure-path diagnostics. It does not resume or retry the closed campaign. G4, useful gist-first forgetting, cognitive-cost improvements and stable publication remain open.
 
+The [source-preserving resolution follow-up](../evaluations/v1-2026-10-26-recall-resolution.md) implements optional verified short expressions and cue expansion without age-based source deletion. It records deterministic context/input reductions, a charged failed encoding, its bounded schema repair, two whole host-answer passes and one failure, and an episode-actor ambiguity. No automatic real-model short-expression formation was observed in its small encoding case. G4 and stable publication remain unpassed; no paid work continues under either closed diagnostic allowance.
+
 ## Historical proposed longitudinal follow-up
 
 The [2026-10-26 preparation record](../evaluations/v1-2026-10-26-closeout.md) stopped at the independent plan-review call: it timed out with unknown usage. No primary session or auxiliary diagnostic started. The proposed ceilings below are preserved for audit; unused capacity is not permission to resume or retry that stopped attempt.

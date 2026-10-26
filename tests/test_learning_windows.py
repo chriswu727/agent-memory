@@ -9,7 +9,7 @@ from psycopg.types.json import Jsonb
 from test_belief_semantic import SINCE, UNBOUNDED, link_verifier
 from test_learning import learning as learning
 from test_semantic import claim as proposed_claim
-from test_semantic import encoded, proposals, reference
+from test_semantic import encoded, episode, proposals, reference
 
 from agent_memory.helpers import DomainError, digest, uid
 from agent_memory.jobs import JobStore
@@ -92,20 +92,46 @@ def processed_refs(harness):
             for ref in job["result"]["learning_input_refs"]]
 
 
-def test_forty_input_burst_preserves_first_input_and_all_five_durable_windows_across_restart(learning):
+@pytest.mark.parametrize("contract", ["source-act-boundary-v1", "recall-resolution-v1"])
+def test_forty_input_burst_preserves_every_input_across_budgeted_windows(learning, monkeypatch, contract):
+    monkeypatch.setattr("agent_memory.learning.LATEST_INPUT_CONTRACT_VERSION", contract)
+    original = learning.propose
+
+    def propose(request):
+        data = json.loads(request.messages[-1]["content"])
+        if "local_observation_contract" not in data and "integration_manifest" not in data:
+            return original(request)
+        learning.calls.append(request.phase)
+        learning.snapshots.append(data)
+        if "integration_manifest" in data:
+            return encoded({**proposals(), "integration_abstentions": [
+                {"objective_id": item["objective_id"], "reason": "insufficient_shared_meaning"}
+                for item in data["integration_manifest"]["objectives"]]})
+        return encoded(proposals(episodes=[episode(data["sources"][0],
+            member_refs=[{"event_id": source["event_id"], "revision": source["revision"]} for source in data["sources"]],
+            organization_statement="These observed messages form a provisional local interaction group.")]))
+
+    learning.service.semantic_processor = SemanticProcessor(propose, learning.verify)
     receipts = observations(learning, 40)
     assert len(jobs(learning)) == 1
     assert jobs(learning)[0]["payload"]["from_sequence"] == 1
     assert jobs(learning)[0]["payload"]["through_sequence"] == 40
     drain(learning)
-    completed = jobs(learning)
+    all_jobs = jobs(learning)
+    assert all(job["state"] == "completed" for job in all_jobs)
+    completed = [job for job in all_jobs if job["payload"].get("learning_phase") != "history_integration"]
+    history = [job for job in all_jobs if job not in completed]
     assert len(completed) == 5
     assert all(job["state"] == "completed" for job in completed)
     assert [job["result"]["learning_window"]["processed_through_sequence"] for job in completed] == [8, 16, 24, 32, 40]
     expected = [(receipt["accepted_event_ids"][0], 1) for receipt in receipts]
-    assert Counter(processed_refs(learning)) == Counter(expected)
+    actual = [(ref["event_id"], ref["revision"]) for job in completed for ref in job["result"]["learning_input_refs"]]
+    assert Counter(actual) == Counter(expected)
     assert expected[0][0] in {source["event_id"] for source in learning.snapshots[0]["sources"]}
-    assert len(learning.calls) == 10
+    assert sum(job["model_calls"] for job in completed) == 10
+    assert len(learning.calls) == 10 + len(history)
+    assert all(job["model_calls"] == 1 and job["result"]["history_integration"]["published_count"] == 0
+               for job in history)
     assert completed[-1]["result"]["learning_window"]["has_more"] is False
 
 
