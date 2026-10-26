@@ -152,6 +152,8 @@ The [memory-quality verification baseline](evaluations/v1-2026-10-25-memory-effi
 
 The [latest preparation follow-up](evaluations/v1-2026-10-25-learning-preparation.md) removes repeated working-state reads and comparison discovery while preserving model-facing plans. The configured model owns semantic memory decisions; the runtime retains evidence and lifecycle constraints.
 
+Version 0.1.0 is now in [release closeout](docs/releasing.md): scope is frozen while longitudinal acceptance and final packaging are completed. The [changelog](CHANGELOG.md) remains an unreleased draft.
+
 Known limits remain visible: a model can treat historical information as current fact, retrieval can include irrelevant material, and semantic verification can reject valid proposals. Full longitudinal acceptance and real elapsed-time aging remain incomplete. Streaming, tool loops, multimodal input, native one-click installation, and full integration into arbitrary AI clients are not currently delivered; Windows/Linux desktop acceptance has not been run on actual machines. Personality and emotion modeling are future research.
 
 <a id="manual-deepseek-evaluation"></a>

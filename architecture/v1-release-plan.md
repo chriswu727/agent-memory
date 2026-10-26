@@ -14,6 +14,8 @@ Human memory is a functional inspiration. A passing software test or synthetic t
 
 ## Completion gates
 
+The table below is a historical implementation checkpoint. Its test counts and artifact inventory describe that earlier candidate, not the latest build. Use the [first-release closeout checklist](../docs/releasing.md) for current execution and the finite acceptance contract for release decisions.
+
 | Gate | Required evidence | Current action |
 | --- | --- | --- |
 | Installation and upgrades | Isolated installed-package startup; stable identity; changed builds replace stale daemons; incompatible schema and downgrade attempts fail before destructive changes | Repeated in the 4,282-test integrated run; final wheel matches 109 runtime/schema/migration files and 21 migrations |

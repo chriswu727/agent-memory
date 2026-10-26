@@ -21,6 +21,12 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.12", "build>=1,<2", "httpx2>=2.16,<3"]
 
+[project.urls]
+Homepage = "https://github.com/chriswu727/agent-memory"
+Documentation = "https://github.com/chriswu727/agent-memory/blob/main/docs/reference.md"
+Repository = "https://github.com/chriswu727/agent-memory"
+Issues = "https://github.com/chriswu727/agent-memory/issues"
+
 [project.scripts]
 agent-memory = "agent_memory.cli:main"
 
