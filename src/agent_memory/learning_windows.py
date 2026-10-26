@@ -127,11 +127,14 @@ def select_window(conn, service, principal, brain, payload, *, policy,
                for reference in service._superseded_evidence(
         conn, principal, brain, [row["id"] for row in selected])}
     events = []
+    working_snapshot = None
     for index, row in enumerate(selected):
         if (row["id"], row["revision"], row["document"]["content_sha256"]) in blocked:
             continue
         events.append(service._rebind(row["document"], principal, brain))
-        working = service._working(conn, principal, brain, target, events)
+        if working_snapshot is None:
+            working_snapshot = service._working(conn, principal, brain, target, None)
+        working = service._working_from_events(working_snapshot, events)
         data = proposal_data(events, (), working, (), {}, (),
                              learning_input_refs=[{"event_id": event["event_id"], "revision": event["revision"]}
                                                   for event in events],

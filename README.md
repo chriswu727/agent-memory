@@ -144,11 +144,13 @@ See [updating and configuration](docs/reference.md#local-status-and-configuratio
 
 The current release candidate supports **local synchronous text agents**, with a Python runtime, HTTP API, TypeScript client, MCP tools, and a direct terminal chat entry point. Core memory behavior is independent of chat frameworks. Desktop end-to-end verification currently covers **macOS with uv and Docker**.
 
-The [latest verification report](evaluations/v1-2026-10-25-memory-efficiency.md) records:
+The [memory-quality verification baseline](evaluations/v1-2026-10-25-memory-efficiency.md) records:
 
 - **5,234 passed** in the full candidate source suite, with four Docker-gated skips exercised separately. Restoring the existing default verification format then passed 311 focused source checks.
 - Installed-package checks cover memory processing, migration and desktop/chat flows. The report distinguishes the experimental candidate from the final default configuration; overlapping groups are not an aggregate count.
 - Four paired DeepSeek verifier calls measured lower input use for experimental shared sources, but a citation-fidelity concern prevented default promotion. Earlier [bounded host observations](evaluations/v1-2026-10-25-preference-use.md) also retain whole-answer defects. Neither diagnostic passes longitudinal acceptance.
+
+The [latest preparation follow-up](evaluations/v1-2026-10-25-learning-preparation.md) removes repeated working-state reads and comparison discovery while preserving model-facing plans. The configured model owns semantic memory decisions; the runtime retains evidence and lifecycle constraints.
 
 Known limits remain visible: a model can treat historical information as current fact, retrieval can include irrelevant material, and semantic verification can reject valid proposals. Full longitudinal acceptance and real elapsed-time aging remain incomplete. Streaming, tool loops, multimodal input, native one-click installation, and full integration into arbitrary AI clients are not currently delivered; Windows/Linux desktop acceptance has not been run on actual machines. Personality and emotion modeling are future research.
 

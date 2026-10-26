@@ -1,0 +1,60 @@
+{
+  "version": "learning-preparation-comparison-v1",
+  "baseline_commit": "2f08735191983004f2cd37bb61aef17222b1be81",
+  "fixture": "32 independent garden-study statements; 12 previously attempted objectives",
+  "fixture_sha256": "253c89fbbe088aa7f5e1496ecc291aa610fb08c19288ed1677f41ddf177f133c",
+  "candidate_count": 496,
+  "selected_count": 3,
+  "plan_sha256": "312fb7f0b9f9b923e306fa2ecde49bc833c453a6fbdc4dc98f32da7112966d1d",
+  "plans_identical": true,
+  "iterations": 15,
+  "discarded_warmups": 0,
+  "order": "Alternating old/new and new/old",
+  "provider_calls": 0,
+  "baseline_discovery_passes": 2,
+  "revised_discovery_passes": 1,
+  "median_ms": {
+    "baseline": 14.323083,
+    "revised": 9.603791
+  },
+  "samples_ms": {
+    "baseline": [
+      17.705542,
+      14.417792,
+      14.062125,
+      14.697292,
+      14.408375,
+      14.215041,
+      14.265584,
+      20.977375,
+      14.699375,
+      14.323083,
+      14.493,
+      14.170167,
+      14.164709,
+      14.00275,
+      14.192208
+    ],
+    "revised": [
+      11.808709,
+      9.876541,
+      9.153667,
+      9.585083,
+      9.742458,
+      9.278208,
+      9.603791,
+      9.497333,
+      9.673042,
+      9.78525,
+      15.254875,
+      9.619834,
+      9.446917,
+      9.572541,
+      9.275625
+    ]
+  },
+  "limitations": [
+    "Local planner preparation only; excludes database deduplication lookup, inference and publication.",
+    "Existing Python process; no production latency or token-saving claim."
+  ]
+}

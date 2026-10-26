@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from psycopg.types.json import Jsonb
 
 from . import cognition
-from .consolidation_planning import plan_consolidation
+from .consolidation_planning import plan_consolidation, select_consolidation_candidates
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
 from .jobs import NO_UNSETTLED_RETRY_POLICY, JobStore
@@ -492,10 +492,8 @@ class LearningEngine:
                     "AND objective->>'objective_id'=ANY(%s::text[]) LIMIT %s",
                     (*params, identifiers, len(identifiers)),
                 ).fetchall()]
-            snapshot["consolidation_plan"] = plan_consolidation(
-                sources, assertions, neighborhood.belief_relations, neighborhood.sampling,
-                attempted_ids=attempted,
-            )
+            snapshot["consolidation_plan"] = select_consolidation_candidates(
+                candidate_plan, assertions, attempted_ids=attempted)
             if job["kind"] == "orient":
                 snapshot["consolidation_plan"]["objectives"] = []
             if window is not None:

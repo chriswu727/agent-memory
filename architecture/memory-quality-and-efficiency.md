@@ -4,6 +4,12 @@ The primary objective is useful continuity: an agent can recover a relevant expe
 
 This document separates implemented repairs from proposed experiments. Human memory provides functional inspiration, not a claim that this engine reproduces a biological brain. Personality and emotion remain outside the current release.
 
+## Model judgment and runtime responsibilities
+
+The configured cognitive model decides which supported interpretations to propose, how to describe their significance and whether a comparison warrants no change. The runtime supplies bounded material and enforces evidence, scope, correction, deletion, version and spending constraints. It does not need another hand-written importance taxonomy or an extra model call solely to decide whether each incoming sentence is worth remembering. Durable source capture keeps material available even when the model proposes no long-term assertion. Model choice remains fallible; a well-formed proposal is not automatically true.
+
+Near-term optimization focuses on avoidable preparation and scheduling work. Candidate retrieval remains necessary to bound model input, but adding more semantic selection heuristics is not the current priority. Existing completed-comparison deduplication and unstarted-window coalescing already provide reuse. The [learning preparation follow-up](../evaluations/v1-2026-10-25-learning-preparation.md) removes repeated candidate discovery and repeated working-state reads while preserving the model-facing plans.
+
 ## Measured starting point
 
 The preserved [v5 campaign](../evaluations/v1-2026-10-25-longitudinal-v5-stopped.md) stopped after seven delivered answers. Reconciliation of its provider ledger with journal roles gives 33,751 tokens for seven host calls and 296,761 tokens for eighteen cognition calls. Three simulated-user calls used a further 2,353 tokens; those are evaluation overhead, excluded from the product total of 330,512. The arithmetic mean is 47,216 tokens per delivered answer, with about 90% spent on cognition. Cognition output includes 73,120 reported reasoning tokens.
@@ -47,7 +53,7 @@ The following are proposed mechanisms, not delivered capabilities or borrowed be
 
 **Use bounded associations with a direct fallback.** [HippoRAG 2](https://arxiv.org/html/2502.14802v2) combines direct passages and graph-based retrieval, including Personalized PageRank. A suitable experiment is a bounded graph route alongside direct lexical/vector candidates, with independently measured recall and interference. It should not replace direct retrieval, invent edges from simple adjacency, or treat a graph path as proof. Approximate vector indexing likewise needs a recall comparison before replacing the current exact candidate path.
 
-**Compare sparse and dense context policies.** The repaired frozen packet still includes unrelated memories. Ranking alone may not remove low-value filler when the budget can hold it. Test a relevance/diversity admission policy against simple budget filling, including short replies whose meaning depends on an adjacent source. Calibrate on held-out episodes and paraphrases; a threshold fitted to one failed example is insufficient.
+**Defer additional admission heuristics.** The repaired frozen packet still includes unrelated memories. Ranking alone may not remove low-value filler when the budget can hold it. This remains a known limitation, but a larger hand-tuned relevance/diversity selector is not a near-term workstream. If later evidence justifies a context-admission change, compare it on held-out episodes and paraphrases, including short replies that depend on adjacent sources. Do not fit a threshold to one failed example or add a recurring model gate without measuring its benefit.
 
 ## Acceptance and stopping criteria
 

@@ -41,8 +41,15 @@ def install_instance_learning(learning):
     return snapshots
 
 
-def test_completed_model_attempt_is_durable_and_new_cue_does_not_repeat_it(learning):
+def test_completed_model_attempt_is_durable_and_new_cue_does_not_repeat_it(learning, monkeypatch):
     snapshots = install_instance_learning(learning)
+    plans = []
+
+    def counted(*args, **kwargs):
+        plans.append(kwargs)
+        return plan_consolidation(*args, **kwargs)
+
+    monkeypatch.setattr(learning_module, "plan_consolidation", counted)
     learning.observe("I recalled those two study sessions.")
     drain(learning)
     second = jobs(learning)[1]
@@ -60,6 +67,7 @@ def test_completed_model_attempt_is_durable_and_new_cue_does_not_repeat_it(learn
     assert third["result"]["consolidation_plan"]["suppressed_count"] == 1
     assert snapshots[-1]["consolidation_plan"] == third["result"]["consolidation_plan"]
     assert sum(job["model_calls"] for job in jobs(learning)) == 4
+    assert len(plans) == 2 and all(item["include_all"] for item in plans)
 
 
 def test_frozen_plan_survives_learning_engine_restart_before_execution(learning):

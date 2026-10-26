@@ -410,7 +410,11 @@ class MemoryService:
             "scope": self._scope(principal, brain, target), "revision": 0, "through_sequence": 0,
             "items": [], "open_loops": [], "updated_at": now(),
         }
-        for field in ("items", "open_loops") if events is not None else ():
+        return self._working_from_events(state, events) if events is not None else state
+
+    def _working_from_events(self, state, events):
+        state = copy.deepcopy(state)
+        for field in ("items", "open_loops"):
             retained = []
             for item in state[field]:
                 try:

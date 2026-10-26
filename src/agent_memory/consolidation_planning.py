@@ -96,6 +96,7 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
                               _SHARED_MEANING_PLANNER_VERSION}:
         raise ValueError("Unknown consolidation planner version")
     events = {(source["event_id"], source["revision"]): source for source in sources}
+    assertions = tuple(assertions)
     eligible = []
     excluded = Counter()
     for memory in sorted(assertions, key=_key):
@@ -115,7 +116,7 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
     related = [{(ref["memory_id"], ref["revision"]) for ref in
                 [relation["source_memory_version"], *relation["target_memory_versions"]]}
                for relation in belief_relations if relation["kind"] != "abstracts"]
-    candidates, source_pairs = [], {}
+    candidates = []
     for left, right in combinations(eligible, 2):
         a, actor_a, roots_a, terms_a = left
         b, actor_b, roots_b, terms_b = right
@@ -145,30 +146,47 @@ def plan_consolidation(sources, assertions, belief_relations=(), sampling=None, 
                                   "operation": "compare_instances", "instance_memory_versions": versions,
                                   "world": a["world"], "conditions": copy.deepcopy(a["conditions"]),
                                   "evidence_policy": "sampled_instances_only_preserve_attribution_and_differences"}))
-        source_pairs[candidates[-1][1]["objective_id"]] = frozenset((frozenset(roots_a), frozenset(roots_b)))
         if planner_version != _LEGACY_PLANNER_VERSION:
             candidates[-1][1]["selection_basis"] = ("strong_lexical_lead" if score >= 0.2
                                                     else "weak_lexical_exploration")
         if planner_version in {PLANNER_VERSION, _SHARED_MEANING_PLANNER_VERSION}:
             candidates[-1][1]["comparison_policy"] = COMPARISON_POLICY
     candidates.sort(key=lambda value: (-value[0], value[1]["objective_id"]))
+    restricted = bool((sampling or {}).get("publication_restricted"))
+    result = {"planner_version": planner_version, "candidate_count": len(candidates),
+              "search_exhaustive": False, "limit": MAX_OBJECTIVES,
+              "excluded_counts": dict(sorted(excluded.items())), "suppressed_count": 0,
+              "objectives": [item for _, item in candidates]}
+    if planner_version == PLANNER_VERSION:
+        result["selection_policy"] = SELECTION_POLICY
+    result = select_consolidation_candidates(result, assertions, attempted_ids=attempted_ids, include_all=include_all)
+    if restricted:
+        result["objectives"] = []
+    return result
+
+
+def select_consolidation_candidates(plan, assertions, *, attempted_ids=(), include_all=False):
+    planner_version = plan["planner_version"]
     attempted_ids = set(attempted_ids)
-    available = [item for _, item in candidates if item["objective_id"] not in attempted_ids]
-    if planner_version == _LEGACY_PLANNER_VERSION:
+    available = [item for item in plan["objectives"] if item["objective_id"] not in attempted_ids]
+    if include_all:
+        selected = available
+    elif planner_version == _LEGACY_PLANNER_VERSION:
         selected = available[:MAX_OBJECTIVES]
     else:
         strong = [item for item in available if item["selection_basis"] == "strong_lexical_lead"]
         weak = [item for item in available if item["selection_basis"] == "weak_lexical_exploration"]
+        source_pairs = {}
+        if planner_version == PLANNER_VERSION:
+            origins = {_key(memory): frozenset(ref["event_id"] for ref in memory["evidence_refs"]
+                                               if ref["relationship"] == "supports") for memory in assertions}
+            source_pairs = {item["objective_id"]: frozenset(
+                origins[_key(version)] for version in item["instance_memory_versions"]) for item in available}
         selected = (_diverse_selection(strong, weak, source_pairs) if planner_version == PLANNER_VERSION
                     else strong[:MAX_OBJECTIVES - bool(weak)] + weak[:1])
-    restricted = bool((sampling or {}).get("publication_restricted"))
-    result = {"planner_version": planner_version, "candidate_count": len(candidates),
-              "search_exhaustive": False, "limit": MAX_OBJECTIVES,
-              "excluded_counts": dict(sorted(excluded.items())), "suppressed_count": len(candidates) - len(available),
-              "objectives": [] if restricted else available if include_all else selected}
-    if planner_version == PLANNER_VERSION:
-        result["selection_policy"] = SELECTION_POLICY
-    return result
+    return {**copy.deepcopy({key: value for key, value in plan.items() if key != "objectives"}),
+            "objectives": copy.deepcopy(selected),
+            "suppressed_count": plan["suppressed_count"] + len(plan["objectives"]) - len(available)}
 
 
 def consolidation_coverage(plan, decisions=(), links=(), *, attempted=False, verified_objective_ids=()):

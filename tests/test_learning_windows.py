@@ -65,6 +65,27 @@ def observations(harness, count):
             for index in range(1, count + 1)]
 
 
+def test_window_reads_working_state_once_and_refreshes_on_next_selection(learning, monkeypatch):
+    observations(learning, 8)
+    current = jobs(learning)[0]
+    reads = []
+    original = learning.service._working
+
+    def counted(*args):
+        reads.append(args[-1])
+        return original(*args)
+
+    monkeypatch.setattr(learning.service, "_working", counted)
+    with learning.database.transaction(learning.principal) as conn:
+        brain = learning.service._brain(conn, learning.principal, learning.brain)
+        first = select_window(conn, learning.service, learning.principal, brain, current["payload"],
+                              policy=SemanticPolicy())
+        assert reads == [None] and len(first[0]) == 8
+        second = select_window(conn, learning.service, learning.principal, brain, current["payload"],
+                               policy=SemanticPolicy())
+        assert reads == [None, None] and second == first
+
+
 def processed_refs(harness):
     return [(ref["event_id"], ref["revision"]) for job in jobs(harness)
             if job["state"] == "completed"

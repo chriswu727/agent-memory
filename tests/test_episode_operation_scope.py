@@ -27,6 +27,7 @@ from agent_memory.semantic import (
     proposal_data,
     request_payload,
 )
+from agent_memory.service import MemoryService
 
 
 def ref(source):
@@ -221,7 +222,7 @@ def test_legacy_or_missing_learning_refs_are_never_inferred_from_sources():
     assert _learning_inputs(snapshot, job, sources) == ()
 
 
-class BudgetSources:
+class BudgetSources(MemoryService):
     def __init__(self, sources):
         self.sources = sources
 
