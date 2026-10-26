@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agent-memory-runtime"
 version = "0.1.0"
-description = "Evidence-backed, portable memory runtime for AI agents"
+description = "A human-inspired memory engine for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
