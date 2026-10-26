@@ -496,13 +496,14 @@ def _candidate_signals(state: dict, key: tuple[str, int]) -> list[dict]:
 
 
 def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
-           state: dict) -> dict:
+           state: dict, *, access_at: str | None = None) -> dict:
     validate("BoundScope", scope)
     validate("RecallRequest", request)
     _check_budget(request["budget"])
     started = time.monotonic()
     timestamp = now()
     reference_time = _stamp(timestamp)
+    access_reference_time = _stamp(access_at) if access_at is not None else reference_time
     event_map = {event["event_id"]: event for event in events
                  if event["sequence"] <= state["durable_sequence"]
                  and _scope_allows(event["scope"], scope)}
@@ -622,7 +623,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
                      or memory["system_time"]["recorded_at"])
         activation = float(memory["dynamics"]["activation"])
         if last_used:
-            days = max(0, (reference_time - _stamp(last_used)).total_seconds() / 86400)
+            days = max(0, (access_reference_time - _stamp(last_used)).total_seconds() / 86400)
             activation /= 1 + math.log1p(days)
         if signals or selecting:
             activation = 0.0

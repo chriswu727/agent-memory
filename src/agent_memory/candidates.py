@@ -45,7 +45,7 @@ def merge_belief_candidates(memories, candidate_state, package, *, selected=Fals
 
 
 def collect_candidates(conn, service, principal, brain, target, query, recall_plan=None,
-                       query_embedding=None):
+                       query_embedding=None, *, access_at=None):
     params = service._params(principal, brain["id"])
     scope_sql, scope_params = _scope_clause("a", target)
     candidate_limit = min(128, max(4, query["budget"]["max_context_tokens"] // 512))
@@ -170,7 +170,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
             (*params, [item["memory_id"] for item in ranked], [item["revision"] for item in ranked]),
         ).fetchall()
         usage = {(row["memory_id"], row["memory_revision"]): row for row in usage_rows}
-        timestamp = now()
+        timestamp = now() if access_at is None else access_at
         direct = query.get("intent") in {"exact_quote", "episode", "timeline", "cue_recovery"}
         for item in ranked:
             key = (item["memory_id"], item["revision"])

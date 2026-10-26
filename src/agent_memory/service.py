@@ -24,10 +24,14 @@ def _vector(text):
 
 
 class MemoryService:
-    def __init__(self, database, *, semantic_processor=None, embedding_provider=None):
+    def __init__(self, database, *, semantic_processor=None, embedding_provider=None,
+                 access_time_provider=None):
+        if access_time_provider is not None and not callable(access_time_provider):
+            raise ValueError("The access time provider must be callable.")
         self.database = database
         self.semantic_processor = semantic_processor
         self.embedding_provider = embedding_provider
+        self.access_time_provider = access_time_provider
 
     def orient_turn(self, principal, brain_id, turn_id, *, lease_token, expected_revision):
         from .learning import LearningEngine
@@ -509,12 +513,16 @@ class MemoryService:
         from .belief_store import load_belief_relations
         from .candidates import collect_candidates, merge_belief_candidates
 
+        access_at = cognition._stamp(
+            self.access_time_provider() if self.access_time_provider is not None else now()
+        ).isoformat()
         total = conn.execute(
             "SELECT count(*) AS value FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
             "AND is_current AND NOT invalidated AND NOT deleted AND NOT suppressed", params,
         ).fetchone()["value"]
         memories, candidate_state = collect_candidates(
             conn, self, principal, brain, target, query, recall_plan, query_embedding,
+            access_at=access_at,
         )
         beliefs = load_belief_relations(
             conn, self, principal, brain, self._scope(principal, brain, target),
@@ -577,7 +585,8 @@ class MemoryService:
                     and event["scope"]["branch_id"] != target.get("branch_ref"))
         }
         state["verified_working_evidence_refs"] = [r for field in ("items", "open_loops") for item in working[field] for r in item["evidence_refs"]]
-        result = cognition.recall(self._scope(principal, brain, target), query, memories, events, state)
+        result = cognition.recall(self._scope(principal, brain, target), query, memories, events, state,
+                                  access_at=access_at)
         if recall_plan is None and result["items"]:
             from .pattern_store import load_patterns
 
