@@ -1,6 +1,6 @@
 # Longitudinal memory evaluation
 
-Status: replacement evaluation design, following the user's correction on 2026-10-25. The session runner, simulated user and longitudinal campaign described here are **not implemented or running**. This replaces the repetitive history requirement in [G4](v1-acceptance.md#g4--demonstrate-useful-memory-through-longitudinal-use). It does not erase earlier failed experiments or change the implemented memory model.
+Status: the session runner, bounded simulated user, durable journal and session-aware learning checks are implemented. The [implementation evidence](../evaluations/v1-2026-10-25-longitudinal-harness.md) distinguishes deterministic verification from live-model results. Full longitudinal acceptance remains unpassed. This replaces the repetitive history requirement in [G4](v1-acceptance.md#g4--demonstrate-useful-memory-through-longitudinal-use). It does not erase earlier failed experiments or change the implemented memory model.
 
 The question is whether a person can keep returning to the same agent and receive useful, appropriately remembered help without maintaining the memory themselves. A larger number of exchanges, successful writes, or correct answers to explicit recall questions cannot establish that outcome.
 
@@ -87,7 +87,30 @@ Reserve capacity durably before every paid call. Unknown usage, provider failure
 
 No new experiment is launched by this document. The old campaign is closed; unused old capacity does not become the new campaign's allowance. Calculate the new finite ceiling from the selected session plan and actual host, cognition, user-simulator and optional reviewer paths before execution. Reuse deterministic evidence and avoid repeated full suites or automatic CI for documentation work.
 
-## Implementation work before launch
+## Implemented runner and remaining acceptance work
+
+`examples/evaluate_longitudinal.py` runs the frozen `longitudinal-life-v1` fixture: sixteen irregular sessions, thirty-three authored turns and sixteen review cases, fifteen of which assess practical help. Story offsets span fifty-six days. They order the narrative and do not advance memory decay, leases or quotas. Relevant elapsed context is communicated in ordinary user messages; no hidden date is passed to the host as ground truth.
+
+```sh
+uv run python -m examples.evaluate_longitudinal --plan
+uv run python -m examples.evaluate_longitudinal --live --sessions 1 --output .local/longitudinal-memory
+uv run python -m examples.evaluate_longitudinal --inspect --output .local/longitudinal-memory
+uv run python -m examples.evaluate_longitudinal --continue --sessions 1 --output .local/longitudinal-memory
+```
+
+Only `--live` and `--continue` can call providers. They use local `DEEPSEEK_API_KEY` and the configured PostgreSQL database. A fresh campaign creates its own brain and explicitly configures its frozen cognition budget; it never reuses an old campaign's brain or allowance. `--sessions` limits the next invocation, not a renewed spending budget. The default is one session. `--inspect` verifies and reads retained evidence without loading credentials or opening the database.
+
+The frozen global ceiling is 248 provider calls and 3,448,832 reserved output tokens: up to 33 host answers, 17 user selections and 198 cognitive calls. Cognition also has a 30-day brain ceiling of 198 calls and 19,464,192 input bytes. These are cumulative limits, not predicted usage or prices. There is no paid automatic reviewer or full baseline arm. The actor can only select an exact authored choice, using released personal knowledge and the actual preceding answers. Clarifications and corrections remain separate from ordinary continuation.
+
+The private campaign directory holds a frozen plan, a hash-chained journal, a durable head, a process lock and the shared transport ledger. It contains conversation and model content and must remain outside version control. Calls are reserved before network access. All three roles stop on partial, contradictory or unknown usage. Provider failure, malformed actor output, failed required learning or an operator-created `STOP` file stops dependent work. No request retries automatically.
+
+A delivered answer is journaled before runtime settlement and learning. Its actual source prefix remains available for review if either later step fails. Review packets retain expected sources separately from the complete received conversation prefix at that point; later corrections cannot justify earlier answers. A completed run produces pending review packets, never an automatic semantic pass.
+
+Normal pauses occur after completed sessions. Continuation requires identical code, runtime build, scenario and policy, an unchanged source/memory snapshot and cumulative ledger, and replay of the last completed turn without generation or delivery. Incomplete, failed and terminal journals cannot resume. Actual invocation duration, elapsed wall time and gaps between invocations are recorded separately from story time. This is manual bounded session continuation; no recurring scheduler is installed.
+
+Still required for full G4: independent review of real-model behavior through the entire scenario, isolated same-state cue comparisons, a model-callback change within the longitudinal scenario, and justified age-dependent evidence using actual elapsed time or a validated semantic-time seam. The runner does not implement the latter three. Its local checks and a bounded live pilot cannot pass those missing cases or establish human field reliability.
+
+The implementation sequence remains the checklist for completing the protocol:
 
 1. Author and independently review the private event graph, natural session intents, permitted response branches and separate case ledger. Confirm conversational variety and available-source cutoffs before generating paid history.
 2. Implement the session journal and simulated-user interface around the public lifecycle. Persist each delivered exchange and branch decision; support safe between-session process exit without the legacy runner's prohibition on all paid resumption.

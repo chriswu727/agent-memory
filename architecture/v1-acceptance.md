@@ -1,6 +1,6 @@
 # Finite first-release acceptance
 
-Status: **not passed**. G4 was revised on 2026-10-25 following the user's explicit correction: repetitive exchange counts do not establish useful long-term memory. The [longitudinal protocol](longitudinal-memory-evaluation.md) now defines the required behavioral evidence; its new runner and campaign are not implemented or running. G1–G3 and G5–G6 retain their engineering requirements. The [development plan](v1-release-plan.md) and historical 52-scenario architecture remain context, not permission to expand the first release.
+Status: **not passed**. G4 was revised on 2026-10-25 following the user's explicit correction: repetitive exchange counts do not establish useful long-term memory. The [longitudinal protocol](longitudinal-memory-evaluation.md) now defines the required behavioral evidence; its session runner is implemented, while full behavioral acceptance remains incomplete. G1–G3 and G5–G6 retain their engineering requirements. The [development plan](v1-release-plan.md) and historical 52-scenario architecture remain context, not permission to expand the first release.
 
 ## Supported release
 
@@ -43,7 +43,7 @@ Assess useful help throughout the timeline: continuing unfinished work, adapting
 
 Every required case must satisfy its frozen factual and task constraints under independent whole-answer/source review. Record unnecessary clarification and re-teaching separately from unaided success. All required categories, delays and continuity boundaries must be exercised, with no unresolved critical memory, publication or isolation defect. Invalid or unexecuted cases cannot pass. A final correct state cannot erase an earlier unsupported publication. Preserve actual sources, deliveries, learning outcomes, usage and pending work; G2–G3's evidence and finite spending rules continue to apply.
 
-The longitudinal specification identifies prerequisites missing from the existing runner, including session-aware learning checks, an interactive user and safe durable between-session scheduling. Until those are implemented and the campaign actually completes, G4 remains unpassed. No scheduled task or live campaign is started by updating this document.
+The new runner supplies session-aware learning checks, a bounded interactive user and safe manual continuation between sessions. Full source-backed live review, isolated cue comparisons, model-callback continuity within this scenario and age-dependent evidence remain incomplete. G4 stays unpassed. No scheduled task or live campaign is started by updating this document.
 
 ### G5 — Keep local overhead bounded
 
@@ -77,7 +77,7 @@ uv run python -m examples.evaluate_memory_lifecycle --plan --profile acceptance 
 
 That command does not implement the new G4. Its sixteen-exchange checkpoint, same-process continuation and end-only isolated probes remain documented by the [original failed reports](../evaluations/v1-2026-10-25-acceptance-attempt-2.md). The old profile's `--resume` is read-only. Do not use `--live` to fill out the obsolete exchange target.
 
-The replacement runner is planned in the [implementation sequence](longitudinal-memory-evaluation.md#implementation-work-before-launch). It must add persistent sessions, bounded interactive user behavior, distributed outcome checks and calendar-safe resumption while preserving the existing source and spending guards. No new live command or completed longitudinal result is available yet.
+The replacement runner and commands are documented in the [implementation status](longitudinal-memory-evaluation.md#implemented-runner-and-remaining-acceptance-work). Its private journal preserves persistent sessions, exact interactive branches, distributed review evidence, source checks and cumulative spending. See the [verification report](../evaluations/v1-2026-10-25-longitudinal-harness.md) for the executed scope and missing acceptance evidence; runner completion alone never passes G4.
 
 ## Progress checkpoint
 

@@ -14,6 +14,9 @@ from typing import Any
 
 import httpx
 
+from agent_memory.chat_provider import _reject_constant, _unique_object
+from agent_memory.chat_provider import _usage as _validated_usage
+
 _MAX_RESPONSE_BYTES = 65536
 _USAGE_FIELDS = {
     "prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens",
@@ -105,9 +108,10 @@ class MeteredTransport(httpx.BaseTransport):
         records = self.records
         reserved = {item["request_id"]: item for item in records if item["event"] == "reserved"}
         completed = {item["request_id"]: item for item in records if item["event"] == "completed"}
-        confirmed = [item for item in completed.values() if item.get("usage_confirmed")]
+        confirmed = [item for item in completed.values() if item.get("usage_confirmed") is True
+                     and _validated_usage(item.get("usage")) is not None]
         usage_totals: dict[str, int] = {}
-        for item in completed.values():
+        for item in confirmed:
             for key, value in item.get("usage", {}).items():
                 if type(value) is int:
                     usage_totals[key] = usage_totals.get(key, 0) + value
@@ -259,7 +263,7 @@ class _MeteredStream(httpx.SyncByteStream):
 
 def _completion_metadata(body: bytearray, capture_content: bool) -> dict:
     try:
-        value = json.loads(body)
+        value = json.loads(body, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
     except (ValueError, TypeError, RecursionError):
         return {}
     if not isinstance(value, dict) or "error" in value:
@@ -279,7 +283,7 @@ def _completion_metadata(body: bytearray, capture_content: bool) -> dict:
                 if detail:
                     safe_usage[key] = detail
         result["usage"] = safe_usage
-        result["usage_confirmed"] = "completion_tokens" in safe_usage
+        result["usage_confirmed"] = _validated_usage(usage) is not None
     choices = value.get("choices")
     if isinstance(choices, list) and choices and isinstance(choices[0], dict):
         choice = choices[0]

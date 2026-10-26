@@ -1,15 +1,18 @@
 import gzip
 import hashlib
+import importlib
 import importlib.util
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 
 import httpx
 import pytest
 from test_semantic_provider import REQUEST
 
+from agent_memory.runtime import ModelRequest
 from agent_memory.semantic_provider import ChatCompletionsSemanticProvider, SemanticProviderError
 
 _SPEC = importlib.util.spec_from_file_location(
@@ -325,6 +328,116 @@ def test_usage_only_accepts_allowlisted_nonnegative_integers(tmp_path):
         "prompt_cache_hit_tokens": 4, "completion_tokens_details": {"reasoning_tokens": 3},
     }
     assert not transport.records[-1]["usage_confirmed"]
+
+
+@pytest.mark.parametrize("usage", [
+    {"completion_tokens": 8},
+    {"prompt_tokens": 20, "completion_tokens": 8},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 9},
+    {"prompt_tokens": True, "completion_tokens": 8, "total_tokens": 9},
+    {"prompt_tokens": 2**63, "completion_tokens": 8, "total_tokens": 2**63 + 8},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28,
+     "prompt_cache_hit_tokens": 21},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28,
+     "prompt_cache_hit_tokens": 10, "prompt_cache_miss_tokens": 9},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28,
+     "completion_tokens_details": {"reasoning_tokens": 9}},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28,
+     "prompt_tokens_details": []},
+])
+def test_partial_or_inconsistent_usage_remains_observed_but_not_confirmed(tmp_path, usage):
+    transport = meter(tmp_path, lambda _: httpx.Response(200, json=completion(usage=usage)))
+    with ChatCompletionsSemanticProvider("https://example.test", "secret-key", "model",
+                                          transport=transport) as provider:
+        assert provider(REQUEST) == '{"claims":[]}'
+        assert provider.last_usage is None
+    record = transport.records[-1]
+    assert record["usage"]["completion_tokens"] == 8
+    assert record["usage_confirmed"] is False
+    assert transport.summary()["usage_unknown_calls"] == 1
+    assert transport.summary()["usage_totals"] == {}
+
+
+def test_known_totals_exclude_invalid_observations_without_refunding_reservation(tmp_path):
+    responses = iter([completion(), completion(usage={"completion_tokens": 90})])
+    transport = meter(tmp_path, lambda _: httpx.Response(200, json=next(responses)))
+    with httpx.Client(transport=transport) as client:
+        client.send(request())
+        client.send(request())
+    summary = transport.summary()
+    assert summary["reserved_calls"] == summary["completed_calls"] == 2
+    assert summary["reserved_output_tokens"] == 64
+    assert summary["usage_confirmed_calls"] == summary["usage_unknown_calls"] == 1
+    assert summary["usage_totals"] == {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}
+    assert transport.records[-1]["usage"] == {"completion_tokens": 90}
+
+
+@pytest.mark.parametrize("confirmed,usage", [
+    (True, {"completion_tokens": 8}),
+    (True, {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 9}),
+    ("true", {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}),
+])
+def test_reopening_revalidates_claimed_confirmation_without_rewriting_evidence(tmp_path, confirmed, usage):
+    path = tmp_path / "usage.jsonl"
+    records = [
+        {"event": "reserved", "request_id": "old", "reserved_output_tokens": 32},
+        {"event": "completed", "request_id": "old", "usage_confirmed": confirmed, "usage": usage},
+    ]
+    path.write_text("".join(json.dumps(item) + "\n" for item in records))
+    original = path.read_bytes()
+    with MeteredTransport(path, transport=httpx.MockTransport(lambda _: pytest.fail("No network"))) as transport:
+        assert transport.summary()["usage_unknown_calls"] == 1
+        assert transport.summary()["usage_totals"] == {}
+        assert transport.records == records
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("body", [
+    b'{"usage":{"completion_tokens":1},"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3}}',
+    b'{"usage":{"prompt_tokens":2,"completion_tokens":9,"completion_tokens":1,"total_tokens":3}}',
+    b'{"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3},"other":NaN}',
+])
+def test_ambiguous_usage_json_never_confirms_accounting(tmp_path, body):
+    transport = meter(tmp_path, lambda _: httpx.Response(200, content=body))
+    with httpx.Client(transport=transport) as client:
+        assert client.send(request()).content == body
+    assert transport.summary()["usage_unknown_calls"] == 1
+    assert transport.summary()["usage_totals"] == {}
+
+
+@pytest.mark.parametrize("role", ["host", "user", "cognition"])
+@pytest.mark.parametrize("usage", [
+    {"completion_tokens": 8},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 9},
+    {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28,
+     "prompt_cache_hit_tokens": 21},
+])
+def test_invalid_usage_stops_every_subsequent_role(tmp_path, monkeypatch, role, usage):
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[1]))
+    evaluation = importlib.import_module("examples.evaluate_longitudinal")
+    calls = []
+
+    def provider(request):
+        calls.append(request)
+        return httpx.Response(200, json=completion(usage=usage))
+
+    with evaluation.CampaignJournal(tmp_path / "run", evaluation.plan()) as journal:
+        transport = MeteredTransport(journal.path / "calls.jsonl", transport=httpx.MockTransport(provider))
+        provider_type = ChatCompletionsSemanticProvider if role == "cognition" else evaluation.ChatCompletionsHost
+        actual_request = (replace(REQUEST, response_schema={"type": "object"}) if role == "cognition"
+                          else ModelRequest("turn", "request", ({"role": "user", "content": "Hello"},), 5, ""))
+        with provider_type("https://example.test", "fake-key", "model", transport=transport) as client:
+            with pytest.raises(evaluation.CampaignStopped, match="unknown_provider_usage"):
+                evaluation.RecordedProvider(journal, transport, client, role)(actual_request)
+            for next_role in ("host", "user", "cognition"):
+                with pytest.raises(evaluation.CampaignStopped, match="unknown_provider_usage"):
+                    evaluation.RecordedProvider(
+                        journal, transport, lambda _: pytest.fail("Unknown usage must stop all roles"), next_role,
+                    )(actual_request)
+        assert len(calls) == 1
+        assert transport.summary()["reserved_calls"] == transport.summary()["usage_unknown_calls"] == 1
+        assert transport.summary()["usage_totals"] == {}
+        assert [event["kind"] for event in journal.events] == ["provider_started", "provider_completed"]
 
 
 def test_broken_ledger_blocks_network_instead_of_resetting_budget(tmp_path):
