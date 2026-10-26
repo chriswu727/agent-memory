@@ -1,0 +1,136 @@
+{
+  "candidate_commit": "db08cf6d57518a6fa78b2fdd98b460fc5cfd5cf6",
+  "runtime_build": "80bc3130b2f73cd479c2f650dfb177693ab92f3b78430546920679cb9eb95a4c",
+  "plan_version": "longitudinal-execution-v1",
+  "provider": {
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled"
+  },
+  "requested_sessions": 2,
+  "completed_sessions": 0,
+  "delivered_turns": 1,
+  "completed_turns": 1,
+  "state": "stopped",
+  "stop_code": "incomplete_response",
+  "failed_role": "user",
+  "usage": {
+    "completed_calls": 4,
+    "reserved_calls": 4,
+    "reserved_output_tokens": 40960,
+    "usage_confirmed_calls": 4,
+    "usage_totals": {
+      "completion_tokens": 20492,
+      "prompt_cache_hit_tokens": 7936,
+      "prompt_cache_miss_tokens": 16272,
+      "prompt_tokens": 24208,
+      "total_tokens": 44700
+    },
+    "usage_unknown_calls": 0
+  },
+  "actual_elapsed_seconds": 194.157804,
+  "aging_assessed": false,
+  "full_longitudinal_acceptance": "unassessed",
+  "calls": [
+    {
+      "role": "host",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "finish_reason": "stop",
+      "elapsed_seconds": 16.048069,
+      "usage_confirmed": true,
+      "usage": {
+        "prompt_tokens": 861,
+        "completion_tokens": 1237,
+        "total_tokens": 2098,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 861,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1100
+        }
+      }
+    },
+    {
+      "role": "cognition",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "finish_reason": "stop",
+      "elapsed_seconds": 89.866153,
+      "usage_confirmed": true,
+      "usage": {
+        "prompt_tokens": 8734,
+        "completion_tokens": 10559,
+        "total_tokens": 19293,
+        "prompt_cache_hit_tokens": 6144,
+        "prompt_cache_miss_tokens": 2590,
+        "prompt_tokens_details": {
+          "cached_tokens": 6144
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 6966
+        }
+      }
+    },
+    {
+      "role": "cognition",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "finish_reason": "stop",
+      "elapsed_seconds": 45.44603,
+      "usage_confirmed": true,
+      "usage": {
+        "prompt_tokens": 13891,
+        "completion_tokens": 4600,
+        "total_tokens": 18491,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12099,
+        "prompt_tokens_details": {
+          "cached_tokens": 1792
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3943
+        }
+      }
+    },
+    {
+      "role": "user",
+      "status_code": 200,
+      "outcome": "body_complete",
+      "finish_reason": "length",
+      "elapsed_seconds": 41.347077,
+      "usage_confirmed": true,
+      "usage": {
+        "prompt_tokens": 722,
+        "completion_tokens": 4096,
+        "total_tokens": 4818,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 722,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 4096
+        }
+      }
+    }
+  ],
+  "private_evidence_sha256": {
+    "plan.json": "f19ef18c2ee24f5f0a601811adae427a8e99a00bd6c3a55b9fa4286b1ea66ef3",
+    "journal.jsonl": "bfa3ff57f1f9c445b78302ab169a49a0fc99e93de184fdb9216c76ebec58bf52",
+    "head.json": "951c475769df1cfdafbef39a7432885af25b2025e408bc8cb46e7635eaf72009",
+    "calls.jsonl": "727cf21ec2ff92ca4e89264d4bbea58eb3146853973709faf283d16f3f9e5777"
+  },
+  "independent_review": {
+    "case_id": "initial-practical-plan",
+    "delivered_answer": "met_frozen_constraints",
+    "semantic_memories_reviewed": 7,
+    "literal_records_reviewed": 14,
+    "published_episode_actions_reviewed": 1,
+    "unsupported_publications_found": 0,
+    "rejected_proposals": 2,
+    "scope": "Only the first completed turn; other cases unassessed."
+  }
+}

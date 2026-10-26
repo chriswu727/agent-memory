@@ -66,6 +66,40 @@ def test_host_preserves_prompt_and_natural_content_without_json_mode_or_hidden_r
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize("thinking", ["enabled", "disabled"])
+@pytest.mark.parametrize("json_mode", [False, True])
+def test_explicit_thinking_and_json_modes_are_independent_wire_options(thinking, json_mode):
+    calls = []
+    content = '{"choice_id":"clarification"}'
+
+    def handle(request):
+        calls.append(request)
+        expected = {
+            "model": "explicit-model", "messages": list(REQUEST.messages), "max_tokens": 512,
+            "thinking": {"type": thinking}, "stream": False,
+        }
+        if json_mode:
+            expected["response_format"] = {"type": "json_object"}
+        assert json.loads(request.content) == expected
+        return httpx.Response(200, json=completion(content))
+
+    with host(handle, thinking=thinking, json_mode=json_mode, max_output_tokens=512) as generate:
+        assert generate(REQUEST) == content
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"thinking": None}, {"thinking": True}, {"thinking": "auto"}, {"thinking": ""},
+    {"thinking": []}, {"thinking": {}},
+    {"json_mode": None}, {"json_mode": 0}, {"json_mode": 1}, {"json_mode": "true"},
+    {"json_mode": []},
+])
+def test_invalid_response_modes_fail_before_client_creation(monkeypatch, kwargs):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError):
+        host(lambda _: pytest.fail("No request expected"), **kwargs)
+
+
 @pytest.mark.parametrize("value", [
     None, [], {}, {"error": {"message": "private-detail"}}, {"choices": []},
     {"choices": [None]}, {"choices": [completion()["choices"][0]] * 2},

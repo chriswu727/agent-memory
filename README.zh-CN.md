@@ -8,6 +8,8 @@
 
 第一版按[有限验收与停止标准](architecture/v1-acceptance.md)收尾。记忆质量改为通过[长线使用评估](architecture/longitudinal-memory-evaluation.md)验证：模拟真实用户在多个会话中的日常生活与持续任务，检查记忆能否保持连续性、是否实际帮助用户。新执行器支持十六次不规则会话、根据实际回答选择用户后续表达、正常近期上下文，以及持久化暂停与继续。[验证报告](evaluations/v1-2026-10-25-longitudinal-harness.md)将已执行的检查与尚未评估的记忆质量分开记录。故事中的时间跨度不能证明真实运行时长或记忆老化，第一版验收仍未全部通过。
 
+首次有限长线试跑在交付并编码一轮后停止：模拟用户的选择器将输出额度全部用于推理。四次调用的用量均已确认。选择器配置已修正并通过本地验证，但没有重新付费运行，也未通过完整长线验收。[试跑记录](evaluations/v1-2026-10-25-longitudinal-pilot.json)保留失败结果和证据哈希。
+
 本批学习修复加入了[从来源推导的关系能力限制](architecture/relation-capabilities.md)、[每个新输入根任务最多接纳三项历史比较](architecture/history-comparison-attention.md)，以及[在既有额度内跨私有会话继续未尝试的工作](architecture/cross-conversation-learning-funding.md)。未选中的机会、已接纳的待处理工作、评估后无需修改与实际发布会分别记录。[本地验收记录](evaluations/v1-2026-10-25-local-acceptance.md)保留了安装、回归与性能证据。这些修改仍需通过修订后的长线使用验收，不能据此宣称已达到人类的回忆准确度。
 
 [首次合成场景测试](evaluations/v1-2026-10-25-acceptance-attempt-1.md)在完成十二轮实际交付、47 次用量已确认的调用后停止，原因是历史提议对自身关系覆盖情况的描述相互矛盾。运行时正确阻止了这次发布。[新版覆盖计算协议](architecture/history-link-coverage.md)从精确的关系端点推导覆盖情况，保留来源检查和语义核验。原百轮历史与十二项探针方案及其失败记录继续作为回归证据保留，但该方案不再作为产品成熟的门槛。

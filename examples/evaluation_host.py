@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 from contextlib import contextmanager
+from typing import Literal
 
 import httpx
 import uvicorn
@@ -33,6 +34,7 @@ class ChatCompletionsHost:
         transport: httpx.BaseTransport | None = None,
         max_output_tokens: int = 4096, timeout_seconds: float = 180,
         max_response_bytes: int = 65536,
+        thinking: Literal["enabled", "disabled"] = "enabled", json_mode: bool = False,
     ):
         try:
             url = httpx.URL(base_url)
@@ -47,6 +49,10 @@ class ChatCompletionsHost:
             raise ValueError("api_key must be a nonempty ASCII token")
         if not isinstance(model, str) or not model.strip():
             raise ValueError("model must be explicitly configured")
+        if not isinstance(thinking, str) or thinking not in {"enabled", "disabled"}:
+            raise ValueError("thinking must be enabled or disabled")
+        if type(json_mode) is not bool:
+            raise ValueError("json_mode must be a boolean")
         for value, name in ((max_output_tokens, "max_output_tokens"),
                             (max_response_bytes, "max_response_bytes")):
             if type(value) is not int or value < 1:
@@ -56,6 +62,7 @@ class ChatCompletionsHost:
         self.max_output_tokens = max_output_tokens
         self.timeout_seconds = timeout_seconds
         self.max_response_bytes = max_response_bytes
+        self.thinking, self.json_mode = thinking, json_mode
         self._http = httpx.Client(
             base_url=str(url).rstrip("/") + "/",
             headers={"Authorization": f"Bearer {api_key}", "Accept-Encoding": "identity"},
@@ -76,8 +83,10 @@ class ChatCompletionsHost:
         body = {
             "model": self._model, "messages": list(request.messages),
             "max_tokens": self.max_output_tokens, "stream": False,
-            "thinking": {"type": "enabled"},
+            "thinking": {"type": self.thinking},
         }
+        if self.json_mode:
+            body["response_format"] = {"type": "json_object"}
         deadline = time.monotonic() + self.timeout_seconds
         try:
             with self._http.stream(

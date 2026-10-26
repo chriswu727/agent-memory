@@ -67,7 +67,7 @@ def plan():
              "longitudinal_learning.py", "evaluation_support.py", "evaluation_host.py",
              "evaluate_deepseek.py", "evaluate_conversation.py")
     return {
-        "version": "longitudinal-execution-v1", "scenario": story, "runtime_build": BUILD_ID,
+        "version": "longitudinal-execution-v2", "scenario": story, "runtime_build": BUILD_ID,
         "code_fingerprints": {name: digest((ROOT / "examples" / name).read_text()) for name in files},
         "provider": {"base_url": "https://api.deepseek.com", "model": "deepseek-v4-pro",
                      "thinking": "enabled"},
@@ -75,11 +75,12 @@ def plan():
                                                recent_context_events=6, orientation_policy="on_demand")),
         "semantic_policy": asdict(semantic), "host_instructions": HOST_INSTRUCTIONS,
         "actor_instructions": ACTOR_INSTRUCTIONS,
-        "host_output_tokens": 4096, "actor_output_tokens": 4096,
+        "host_output_tokens": 4096, "actor_output_tokens": 512,
+        "actor_thinking": "disabled", "actor_json_mode": True,
         "max_actor_input_bytes": 131072, "provider_timeout_seconds": 240,
         "allocation": {"host": len(turns), "cognition": cognitive_calls, "user": actor_calls},
         "max_calls": len(turns) + cognitive_calls + actor_calls,
-        "max_reserved_output_tokens": (len(turns) + actor_calls) * 4096 + cognitive_calls * 16384,
+        "max_reserved_output_tokens": len(turns) * 4096 + actor_calls * 512 + cognitive_calls * 16384,
         "brain_budget": {"window_seconds": 2592000, "max_model_calls": cognitive_calls,
                          "max_input_bytes": len(turns) * 3 * semantic.max_input_bytes},
         "time_mode": "narrative_order_only", "aging_assessed": False,
@@ -464,7 +465,8 @@ def live(output, *, continuing=False, sessions=1):
                 max_output_tokens=planned["host_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"]))
             actor = stack.enter_context(ChatCompletionsHost(
                 provider["base_url"], key, provider["model"], transport=meter,
-                max_output_tokens=planned["actor_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"]))
+                max_output_tokens=planned["actor_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"],
+                thinking=planned["actor_thinking"], json_mode=planned["actor_json_mode"]))
             token = uid()
             api_settings = Settings(database_url=database.dsn,
                                     api_keys={hashlib.sha256(token.encode()).hexdigest(): principal})

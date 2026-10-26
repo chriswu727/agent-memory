@@ -45,7 +45,8 @@ def test_plan_is_offline_and_includes_every_role_without_repetitive_turn_target(
     assert planned["runtime_policy"]["recent_context_events"] == 6
     assert planned["allocation"] == {"host": 33, "cognition": 198, "user": 17}
     assert planned["max_calls"] == 248
-    assert planned["max_reserved_output_tokens"] == 198 * 16384 + 50 * 4096
+    assert planned["max_reserved_output_tokens"] == 198 * 16384 + 33 * 4096 + 17 * 512
+    assert planned["actor_thinking"] == "disabled" and planned["actor_json_mode"] is True
     assert not planned["aging_assessed"]
     assert planned["time_mode"] == "narrative_order_only"
     assert all(path.endswith(".py") for path in planned["code_fingerprints"])
@@ -373,9 +374,13 @@ from examples import evaluate_longitudinal as evaluation
 def respond(request):
     body = json.loads(request.content)
     if body["messages"][0]["content"] == evaluation.ACTOR_INSTRUCTIONS:
+        assert body["thinking"] == {"type": "disabled"}
+        assert body["response_format"] == {"type": "json_object"}
+        assert body["max_tokens"] == 512
         value = json.loads(body["messages"][-1]["content"])
         answer = json.dumps({"choice_id": value["choices"][0]["id"]})
     elif "response_format" in body:
+        assert body["thinking"] == {"type": "enabled"}
         value = json.loads(body["messages"][-1]["content"])
         response = {"claims": [], "situation_updates": [], "episode_actions": []}
         if "integration_manifest" in value:
@@ -384,6 +389,7 @@ def respond(request):
                 for item in value["integration_manifest"]["objectives"]]
         answer = json.dumps(response)
     else:
+        assert body["thinking"] == {"type": "enabled"}
         answer = "Would a short writing session fit around your classes?"
     return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
         "role": "assistant", "content": answer}}],
