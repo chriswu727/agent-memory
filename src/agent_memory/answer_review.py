@@ -12,11 +12,12 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 from .helpers import digest
+from .source_composition import COMPOSITION_INSTRUCTIONS
 
 if TYPE_CHECKING:
     from .runtime import ModelRequest
 
-ANSWER_REVIEW_VERSION = "answer-grounding-v3"
+ANSWER_REVIEW_VERSION = "answer-grounding-v4"
 AUTOBIOGRAPHICAL_DRAFT_BOUNDARY = (
     "Source fidelity also applies to text drafted in the user's voice, including cards, captions, "
     "letters, stories based on real memories and first-person examples. A draft is not evidence that "
@@ -25,6 +26,7 @@ AUTOBIOGRAPHICAL_DRAFT_BOUNDARY = (
     "more vivid. Express warmth through source-supported meaning and phrasing. Clearly separated "
     "optional fictional additions are allowed when requested, but never present them as remembered "
     "facts or silently mix them into a factual autobiographical draft. "
+    + COMPOSITION_INSTRUCTIONS + " "
 )
 HISTORICAL_SUGGESTION_BOUNDARY = (
     "Current-rule eligibility governs assertions that a memory applies now, not every use of historical evidence. "

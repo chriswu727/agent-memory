@@ -265,6 +265,8 @@ def test_unrelated_conversation_is_not_drained(learning):
 def test_later_input_can_use_only_its_existing_allocation_to_fund_untouched_history(learning):
     cognition = GroundedCognition()
     with restarted_service(learning, cognition) as memory:
+        learning.service.semantic_processor.policy = replace(learning.service.semantic_processor.policy,
+                                                              max_sources=2)
         for index, fact in enumerate(ROUTINES[:3]):
             _, sources = turn(memory, fact, f"turn-{index}")
             result, _ = process(learning, sources)

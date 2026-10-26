@@ -260,7 +260,7 @@ def test_legacy_episode_assessments_remain_accepted_without_new_labels(version):
 
 def test_new_version_is_explicit_and_preserves_existing_default_and_current_request_contract():
     source = event("Could you explain the routine?")
-    assert LATEST_INPUT_CONTRACT_VERSION == "recall-resolution-v1"
+    assert LATEST_INPUT_CONTRACT_VERSION == "source-composition-v1"
     assert LINK_DERIVED_INPUT_VERSION == "history-link-coverage-v1"
     assert batch(source).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     for mode in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):

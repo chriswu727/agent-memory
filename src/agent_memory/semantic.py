@@ -94,12 +94,17 @@ from .ontology import CORE_REGISTRY
 from .recall_resolution import (
     LOCAL_BASE_INSTRUCTIONS,
     LOCAL_BASE_VERIFY_INSTRUCTIONS,
-    RESOLUTION_INPUT_VERSION,
+    RESOLUTION_INPUT_VERSIONS,
     RESOLUTION_INSTRUCTIONS,
     RESOLUTION_VERIFY_INSTRUCTIONS,
     SUMMARY_SCHEMA,
     prune_definitions,
     summary_verification_schema,
+)
+from .source_composition import (
+    PARTICIPANT_ACTIONS,
+    PARTICIPANT_VERIFY_INSTRUCTIONS,
+    SOURCE_COMPOSITION_INPUT_VERSION,
 )
 from .temporal import validate_valid_during
 from .verification_sources import (
@@ -227,7 +232,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = RESOLUTION_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = SOURCE_COMPOSITION_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -527,7 +532,7 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
             for source in sources
             if cognition.evidence_segments(source) != source["utterance_segments"]
         ]
-    if input_contract_version == RESOLUTION_INPUT_VERSION and proposal_mode == LOCAL_OBSERVATION_MODE:
+    if input_contract_version in RESOLUTION_INPUT_VERSIONS and proposal_mode == LOCAL_OBSERVATION_MODE:
         data.pop("registry", None)
         data.pop("belief_relation_capabilities", None)
     return data
@@ -544,14 +549,14 @@ def proposal_schema(mode, *, input_contract_version=None):
     if not isinstance(mode, str):
         raise ValueError("Unknown cognitive proposal mode")
     base = copy.deepcopy(PROPOSAL_SCHEMA)
-    if input_contract_version == RESOLUTION_INPUT_VERSION:
+    if input_contract_version in RESOLUTION_INPUT_VERSIONS:
         base["properties"]["claims"]["items"]["properties"].update({
             "recall_summary": copy.deepcopy(SUMMARY_SCHEMA),
             "retention_priority": {"type": "number", "minimum": 0, "maximum": 1},
         })
     if mode in BOUNDED_MODES:
         result = bounded_proposal_schema(mode, base, input_contract_version=input_contract_version)
-        return prune_definitions(result) if input_contract_version == RESOLUTION_INPUT_VERSION else result
+        return prune_definitions(result) if input_contract_version in RESOLUTION_INPUT_VERSIONS else result
     if mode not in (GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE):
         raise ValueError("Unknown cognitive proposal mode")
     return ORIENT_PROPOSAL_SCHEMA if mode == ORIENT_PROPOSAL_MODE else base
@@ -561,30 +566,36 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
                     input_contract_version=COMMUNICATION_INTENT_INPUT_VERSION):
     proposal_schema(proposal_mode)
     validate_input_contract(input_contract_version)
+    bounded_history = (input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION
+                       and proposal_mode == HISTORY_INTEGRATION_MODE)
     if proposal_mode == ORIENT_PROPOSAL_MODE:
         instructions = _ORIENT_INSTRUCTIONS if phase == "proposal" else _ORIENT_VERIFY_INSTRUCTIONS
     else:
         instructions = _INSTRUCTIONS if phase == "proposal" else _VERIFY_INSTRUCTIONS
-        if input_contract_version == RESOLUTION_INPUT_VERSION and proposal_mode == LOCAL_OBSERVATION_MODE:
+        if input_contract_version in RESOLUTION_INPUT_VERSIONS and proposal_mode == LOCAL_OBSERVATION_MODE:
             instructions = LOCAL_BASE_INSTRUCTIONS if phase == "proposal" else LOCAL_BASE_VERIFY_INSTRUCTIONS
-        if phase == "proposal" and input_contract_version in (
+        if bounded_history:
+            instructions = instructions.removesuffix(" " + (
+                EPISODE_INSTRUCTIONS if phase == "proposal" else EPISODE_VERIFY_INSTRUCTIONS))
+        if phase == "proposal" and not bounded_history and input_contract_version in (
             EPISODE_SCOPE_INPUT_VERSION, COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS,
         ):
             instructions += " " + _EPISODE_SCOPE_INSTRUCTIONS
     if input_contract_version in (COMMUNICATION_INTENT_INPUT_VERSION, *EPISODE_FIDELITY_INPUT_VERSIONS):
         instructions += " " + (_COMMUNICATION_INTENT_INSTRUCTIONS if phase == "proposal"
                                else _COMMUNICATION_INTENT_VERIFY_INSTRUCTIONS)
-    if input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
+    if (input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS
+            and proposal_mode != ORIENT_PROPOSAL_MODE and not bounded_history):
         instructions += " " + (EPISODE_FIDELITY_INSTRUCTIONS if phase == "proposal"
                                else EPISODE_FIDELITY_VERIFY_INSTRUCTIONS)
     if input_contract_version in EPISODE_SOURCE_VIEW_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
         instructions += " " + EPISODE_SOURCE_VIEW_INSTRUCTIONS
     if input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
-        if not (input_contract_version == RESOLUTION_INPUT_VERSION and proposal_mode == LOCAL_OBSERVATION_MODE):
+        if not (input_contract_version in RESOLUTION_INPUT_VERSIONS and proposal_mode == LOCAL_OBSERVATION_MODE):
             instructions += " " + CAPABILITY_INSTRUCTIONS + " " + SPEECH_EVENT_INSTRUCTIONS
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         local_instructions = LOCAL_INSTRUCTIONS
-        if input_contract_version == RESOLUTION_INPUT_VERSION:
+        if input_contract_version in RESOLUTION_INPUT_VERSIONS:
             local_instructions = local_instructions.replace(
                 "episode_fragment with conditions always", "attributed representation with conditions always")
             local_instructions = local_instructions.replace("reported, asked, or qualified", "reported or qualified")
@@ -609,8 +620,16 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
             "than copying entire replies unless exact wording matters. Preserve user-expressed meaning "
             "and qualifications; choose representations and retention based on the actual source."
         )
-    if input_contract_version == RESOLUTION_INPUT_VERSION:
+    if input_contract_version in RESOLUTION_INPUT_VERSIONS:
         instructions += " " + (RESOLUTION_INSTRUCTIONS if phase == "proposal" else RESOLUTION_VERIFY_INSTRUCTIONS)
+    if input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+        has_episodes = "organization_fidelity" in schema.get("properties", {}).get(
+            "assessments", {}).get("items", {}).get("properties", {})
+        if phase == "verification" and has_episodes:
+            instructions = instructions.replace("exactly four verdicts", "exactly five verdicts")
+            instructions += " " + PARTICIPANT_VERIFY_INSTRUCTIONS
+        else:
+            instructions += " " + PARTICIPANT_ACTIONS
     if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
             and proposal_mode not in BOUNDED_MODES):
         data = shared_verification_sources(data)
@@ -1402,7 +1421,8 @@ class SemanticProcessor:
                                else VERIFICATION_SCHEMA)
         if batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS:
             verification_schema = episode_fidelity_schema(
-                verification_schema, [item["proposal_id"] for group, item, _ in eligible if group == "episode_actions"])
+                verification_schema, [item["proposal_id"] for group, item, _ in eligible if group == "episode_actions"],
+                input_contract_version=batch.input_contract_version)
         if batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS:
             verification_schema = citation_coverage_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible if group != "episode_actions"])
@@ -1412,7 +1432,7 @@ class SemanticProcessor:
         )}
         if batch.input_contract_version in SOURCE_ACT_INPUT_VERSIONS:
             verification_data["source_act_views"] = copy.deepcopy(data["source_act_views"])
-        if batch.input_contract_version == RESOLUTION_INPUT_VERSION:
+        if batch.input_contract_version in RESOLUTION_INPUT_VERSIONS:
             verification_schema = summary_verification_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible
                                       if group == "claims" and "recall_summary" in item])
@@ -1476,7 +1496,8 @@ class SemanticProcessor:
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "citation_coverage_unconfirmed"})
                 continue
             if (group == "episode_actions" and batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS
-                    and not episode_fidelity_supported(assessment, item["proposal_id"], references)):
+                    and not episode_fidelity_supported(assessment, item["proposal_id"], references,
+                                                       input_contract_version=batch.input_contract_version)):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "semantic_support_unconfirmed"})
                 continue
             if item["proposal_id"] in request_ids and assessment.get("request_verdict") != "supports":
@@ -1580,7 +1601,7 @@ class SemanticProcessor:
     def _validate_proposal(group, item, scope, events, assertions, episodes, claims=None, *, abstraction_parents=(),
                            current_input_refs=(), input_contract_version=None):
         if (set(item) & {"recall_summary", "retention_priority"}
-                and (group != "claims" or input_contract_version != RESOLUTION_INPUT_VERSION)):
+                and (group != "claims" or input_contract_version not in RESOLUTION_INPUT_VERSIONS)):
             raise ValueError("Recall resolution requires its versioned claim contract")
         if group == "belief_links":
             return _validate_belief_link(item, scope, events, assertions, episodes, claims or {},

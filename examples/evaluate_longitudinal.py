@@ -17,6 +17,7 @@ from jsonschema import Draft202012Validator
 
 from agent_memory.api import create_app
 from agent_memory.build_identity import BUILD_ID
+from agent_memory.chat_provider import ChatCompletionsGenerator
 from agent_memory.client import MemoryClient
 from agent_memory.config import Settings
 from agent_memory.helpers import Principal, digest, uid
@@ -55,8 +56,15 @@ ACTOR_INSTRUCTIONS = (
 )
 
 
-def plan():
-    story = scenario()
+def plan(*, fixture="original"):
+    if fixture == "release":
+        from examples.release_scenario import scenario as release_scenario
+
+        story = release_scenario()
+    elif fixture == "original":
+        story = scenario()
+    else:
+        raise ValueError("Unknown longitudinal fixture")
     validate_scenario(story)
     turns = [turn for session in story["sessions"] for turn in session["turns"]]
     actor_calls = sum(len(turn["choices"]) > 1 for turn in turns)
@@ -66,7 +74,10 @@ def plan():
     files = ("evaluate_longitudinal.py", "longitudinal_scenario.py", "longitudinal_journal.py",
              "longitudinal_learning.py", "evaluation_support.py", "evaluation_host.py",
              "evaluate_deepseek.py", "evaluate_conversation.py")
+    if fixture == "release":
+        files += ("release_scenario.py",)
     return {
+        **({"fixture": fixture, "alternate_callback_from_session": 7} if fixture == "release" else {}),
         "version": "longitudinal-execution-v5", "scenario": story, "runtime_build": BUILD_ID,
         "code_fingerprints": {name: digest((ROOT / "examples" / name).read_text()) for name in files},
         "provider": {"base_url": "https://api.deepseek.com", "model": "deepseek-v4-pro",
@@ -249,9 +260,10 @@ class RecordedProvider:
 
 
 class SessionRunner:
-    def __init__(self, journal, memory, service, principal, meter, host, actor):
+    def __init__(self, journal, memory, service, principal, meter, host, actor, alternate_host=None):
         self.journal, self.memory, self.service, self.principal = journal, memory, service, principal
         self.meter, self.host, self.actor = meter, host, actor
+        self.alternate_host = alternate_host
         self.planned = journal.plan
         self.story = self.planned["scenario"]
         validate_scenario(self.story)
@@ -289,7 +301,14 @@ class SessionRunner:
     def runtime(self, *, replay=False):
         def forbidden(_):
             raise CampaignStopped("completed_turn_replayed_external_effect")
-        return BrainRuntime(self.memory, forbidden if replay else self.host,
+        host = self.host
+        boundary = self.planned.get("alternate_callback_from_session")
+        completed = sum(event["kind"] == "session_completed" for event in self.journal.events)
+        if boundary is not None and completed >= boundary:
+            if self.alternate_host is None and not replay:
+                raise CampaignStopped("alternate_callback_missing")
+            host = self.alternate_host
+        return BrainRuntime(self.memory, forbidden if replay else host,
                             deliver=forbidden if replay else self.deliver,
                             instructions=self.planned["host_instructions"],
                             policy=RuntimePolicy(**self.planned["runtime_policy"]))
@@ -433,12 +452,12 @@ class SessionRunner:
 
 
 def validate_plan(planned):
-    if planned != plan():
+    if planned != plan(fixture=planned.get("fixture", "original")):
         raise ValueError("Scenario, code or policy changed; existing campaign cannot resume")
 
 
-def live(output, *, continuing=False, sessions=1):
-    planned = plan()
+def live(output, *, continuing=False, sessions=1, fixture="original"):
+    planned = plan(fixture=fixture)
     if output.exists() != continuing:
         raise ValueError("Use a fresh output for --live or an existing campaign for --continue")
     with CampaignJournal(output, planned) as journal:
@@ -475,6 +494,13 @@ def live(output, *, continuing=False, sessions=1):
                 max_output_tokens=planned["actor_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"],
                 thinking=planned["actor_thinking"], json_mode=planned["actor_json_mode"],
                 max_response_bytes=planned["provider_envelope_bytes"]))
+            alternate = None
+            if "alternate_callback_from_session" in planned:
+                alternate = stack.enter_context(ChatCompletionsGenerator(
+                    provider["base_url"], key, provider["model"], transport=meter,
+                    max_output_tokens=planned["host_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"],
+                    thinking=provider["thinking"], reasoning_effort=provider["reasoning_effort"],
+                    max_response_bytes=planned["provider_envelope_bytes"]))
             token = uid()
             api_settings = Settings(database_url=database.dsn,
                                     api_keys={hashlib.sha256(token.encode()).hexdigest(): principal})
@@ -493,7 +519,8 @@ def live(output, *, continuing=False, sessions=1):
                 journal.append("paused", {"reason": "initialized", "usage": meter.summary()})
             return SessionRunner(journal, memory, service, principal, meter,
                                  RecordedProvider(journal, meter, host, "host"),
-                                 RecordedProvider(journal, meter, actor, "user")).run(sessions=sessions)
+                                 RecordedProvider(journal, meter, actor, "user"),
+                                 RecordedProvider(journal, meter, alternate, "host") if alternate else None).run(sessions=sessions)
 
 
 def main():
@@ -503,9 +530,10 @@ def main():
         modes.add_argument("--" + mode, action="store_true")
     parser.add_argument("--output", type=Path, default=Path(".local/longitudinal-memory"))
     parser.add_argument("--sessions", type=int, default=1)
+    parser.add_argument("--fixture", choices=("original", "release"), default="original")
     args = parser.parse_args()
     if args.plan:
-        result = plan()
+        result = plan(fixture=args.fixture)
     elif args.inspect:
         if not (args.output / "plan.json").is_file():
             parser.error("No existing campaign plan")
@@ -513,9 +541,9 @@ def main():
         with CampaignJournal(args.output, planned) as journal:
             result = report(journal)
     else:
-        if not 1 <= args.sessions <= len(scenario()["sessions"]):
+        if not 1 <= args.sessions <= len(plan(fixture=args.fixture)["scenario"]["sessions"]):
             parser.error("sessions must be within the frozen scenario")
-        result = live(args.output, continuing=getattr(args, "continue"), sessions=args.sessions)
+        result = live(args.output, continuing=getattr(args, "continue"), sessions=args.sessions, fixture=args.fixture)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

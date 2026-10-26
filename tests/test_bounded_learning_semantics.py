@@ -77,10 +77,6 @@ def process(data, proposed, *, change_assessment=None):
         for entry, checked in zip(entries, response["assessments"], strict=True):
             if entry["group"] == "belief_links":
                 checked["link_verdict"] = "supports"
-            if entry["group"] == "episode_actions":
-                checked["organization_fidelity"] = {
-                    "attribution": "supports", "modality": "supports", "specificity": "supports", "boundary": "supports",
-                }
         if change_assessment:
             change_assessment(response)
         return encoded(response)

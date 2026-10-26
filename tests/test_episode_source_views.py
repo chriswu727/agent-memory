@@ -208,7 +208,7 @@ def test_episode_member_count_limit_does_not_disappear_with_projection():
 
 
 def test_new_learning_contract_and_legacy_snapshot_versions_remain_explicit():
-    assert LATEST_INPUT_CONTRACT_VERSION == "recall-resolution-v1"
+    assert LATEST_INPUT_CONTRACT_VERSION == "source-composition-v1"
     assert _snapshot_input_contract({"input_contract_version": "citation-coverage-v1"}) == "citation-coverage-v1"
     assert batch(event("A contribution.")).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     assert _snapshot_input_contract({"input_contract_version": "history-link-coverage-v1"}) == "history-link-coverage-v1"
@@ -257,7 +257,9 @@ def test_published_wrong_label_is_retained_raw_but_next_worker_receives_source_v
     def verify(request):
         requests.append(request)
         entry = json.loads(request.messages[-1]["content"])["proposals"][0]
-        return encoded({"assessments": [assessment(entry["proposal"]["proposal_id"], len(entry["evidence"]))]})
+        checked = assessment(entry["proposal"]["proposal_id"], len(entry["evidence"]))
+        checked["organization_fidelity"]["participant_actions"] = "supports"
+        return encoded({"assessments": [checked]})
 
     learning.service.semantic_processor = SemanticProcessor(propose, verify)
     first = source(learning, "I cannot confirm whether this was saved permanently.")
@@ -265,7 +267,8 @@ def test_published_wrong_label_is_retained_raw_but_next_worker_receives_source_v
     assert initial["state"] == "completed" and initial["model_calls"] == 2
     assert initial["result"]["input_contract_version"] == LATEST_INPUT_CONTRACT_VERSION
     assert initial["result"]["episode_actions"][0]["organization_statement"] == WRONG_LABEL
-    assert initial["result"]["verification_assessments"][0]["organization_fidelity"] == dict.fromkeys(FACETS, "supports")
+    assert initial["result"]["verification_assessments"][0]["organization_fidelity"] == dict.fromkeys(
+        (*FACETS, "participant_actions"), "supports")
     with learning.database.transaction(learning.principal) as conn:
         original = conn.execute(
             "SELECT document FROM memory_episodes WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND is_current",

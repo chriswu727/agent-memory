@@ -4,6 +4,7 @@ import copy
 
 from . import cognition
 from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSIONS
+from .source_composition import SOURCE_COMPOSITION_INPUT_VERSION
 
 MAX_EPISODE_EVIDENCE = 32
 EPISODE_SOURCE_VIEW_INPUT_VERSION = "episode-source-view-v1"
@@ -82,12 +83,16 @@ ORGANIZATION_FIDELITY_SCHEMA = {
 }
 
 
-def episode_fidelity_schema(base_schema, episode_proposal_ids):
+def episode_fidelity_schema(base_schema, episode_proposal_ids, *, input_contract_version=None):
     schema = copy.deepcopy(base_schema)
     identifiers = sorted(set(episode_proposal_ids))
     if identifiers:
         assessment = schema["properties"]["assessments"]["items"]
-        assessment["properties"]["organization_fidelity"] = copy.deepcopy(ORGANIZATION_FIDELITY_SCHEMA)
+        fidelity = copy.deepcopy(ORGANIZATION_FIDELITY_SCHEMA)
+        if input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION:
+            fidelity["properties"]["participant_actions"] = {"enum": ["supports", "contradicts", "unknown"]}
+            fidelity["required"].append("participant_actions")
+        assessment["properties"]["organization_fidelity"] = fidelity
         assessment.setdefault("allOf", []).append({
             "if": {"properties": {"proposal_id": {"enum": identifiers}}},
             "then": {"required": ["organization_fidelity"]},
@@ -96,7 +101,7 @@ def episode_fidelity_schema(base_schema, episode_proposal_ids):
     return schema
 
 
-def episode_fidelity_supported(assessment, proposal_id, references):
+def episode_fidelity_supported(assessment, proposal_id, references, *, input_contract_version=None):
     if (not isinstance(assessment, dict)
             or set(assessment) != {"proposal_id", "proposal_verdict", "link_verdict", "relations",
                                    "organization_fidelity"}
@@ -104,7 +109,10 @@ def episode_fidelity_supported(assessment, proposal_id, references):
             or assessment["link_verdict"] is not None):
         return False
     fidelity = assessment["organization_fidelity"]
-    if (not isinstance(fidelity, dict) or set(fidelity) != set(ORGANIZATION_FIDELITY_SCHEMA["required"])
+    required = set(ORGANIZATION_FIDELITY_SCHEMA["required"])
+    if input_contract_version == SOURCE_COMPOSITION_INPUT_VERSION:
+        required.add("participant_actions")
+    if (not isinstance(fidelity, dict) or set(fidelity) != required
             or any(value != "supports" for value in fidelity.values())):
         return False
     relations = assessment["relations"]

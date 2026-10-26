@@ -3,8 +3,10 @@ from __future__ import annotations
 import copy
 
 from .dynamics import access_state
+from .source_composition import SOURCE_COMPOSITION_INPUT_VERSION
 
 RESOLUTION_INPUT_VERSION = "recall-resolution-v1"
+RESOLUTION_INPUT_VERSIONS = (RESOLUTION_INPUT_VERSION, SOURCE_COMPOSITION_INPUT_VERSION)
 RESOLUTION_POLICY = "cue-sensitive-resolution-v1"
 SUMMARY_SCHEMA = {
     "type": "object", "additionalProperties": False,
@@ -117,7 +119,7 @@ def presentation(memory, request, *, at, usage=None, source_texts=()):
     summary = memory.get("recall_summary")
     if (not summary or memory.get("verification", {}).get("state") != "supported_inference"
             or memory.get("epistemic_status") != "derived_inference"
-            or memory.get("derivation", {}).get("rule_version") != RESOLUTION_INPUT_VERSION):
+            or memory.get("derivation", {}).get("rule_version") not in RESOLUTION_INPUT_VERSIONS):
         return None
     mode, reason = "full", "active_detail"
     if request.get("detail_level") == "full" or request["intent"] in {

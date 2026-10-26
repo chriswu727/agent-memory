@@ -314,11 +314,7 @@ def test_mixed_empty_and_nonempty_window_finishes_without_losing_either_record(l
         return encoded(proposals(episodes=[episode(source)]))
 
     def verify(request):
-        response = json.loads(verifier(request))
-        for item in response["assessments"]:
-            item["organization_fidelity"] = dict.fromkeys(
-                ("attribution", "modality", "specificity", "boundary"), "supports")
-        return encoded(response)
+        return verifier(request)
 
     learning.service.semantic_processor = SemanticProcessor(propose, verify)
     selected = claim_job(learning)

@@ -132,6 +132,18 @@ The implementation sequence remains the checklist for completing the protocol:
 4. Verify the new harness with deterministic providers: clarification branches, same-session context, cross-session return, mid-session interruption, session resume, absent future information, cue-copy isolation, clock separation and unchanged cumulative spend. Use the existing installed desktop path for a bounded integration check.
 5. Freeze the reviewed fixture, runtime build, provider configuration, declared time mode and schedule, rubric and total ledger ceiling. Begin the longitudinal campaign only after those prerequisites pass. No run should be described as started before it actually starts.
 
+## Release fixture
+
+The release fixture can be selected with `--fixture release` on the same runner. It contains fourteen irregular sessions, twenty-six inputs and eighteen source-bounded cases, fifteen of which are ordinary practical tasks. The seventy-day story interweaves an illustrated zine, changing commitments, two people named Sam, an unfinished shelf plan, a fictional character and several different uses of one meaningful childhood scene. It includes counterfactual questions and unknown details without replacing the primary story with a repeated recall quiz.
+
+The release plan freezes a callback change after seven completed sessions, from the evaluation host to the core `ChatCompletionsGenerator`, with the same provider, model and generation settings. This is a callback integration check, not cross-model evidence. Separate invocations reconstruct the service and client on the same durable brain and cumulative ledger; source review occurs at declared session boundaries. `--plan --fixture release` remains offline. Neither the fixture nor this documentation launches a paid run or grants it an acceptance pass. The bound plan, actual execution and review determine its outcome.
+
+```sh
+uv run python -m examples.evaluate_longitudinal --plan --fixture release
+uv run python -m examples.evaluate_longitudinal --live --fixture release --sessions 4 --output .local/release-memory
+uv run python -m examples.evaluate_longitudinal --continue --fixture release --sessions 3 --output .local/release-memory
+```
+
 ## Methodological references
 
 [LoCoMo](https://github.com/snap-research/locomo) provides session-structured conversations and a persona/event-based generation approach. We borrow the idea of an unfolding event history, not a claim that synthetic stories constitute real elapsed use.

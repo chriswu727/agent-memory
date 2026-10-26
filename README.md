@@ -126,6 +126,8 @@ The current context still has a limit. The runtime selects memory within that bu
 
 [Source-preserving recall resolution](architecture/recall-resolution.md) explains encoding, cue expansion and upgrade compatibility. Existing memories without a verified short expression keep their full view; an upgrade does not run a paid rewrite of the archive.
 
+[Source-faithful composition](architecture/source-composition.md) separates factual event details from writing style and adds a required participant-action check to new episode verification. Host instructions and model assessments remain fallible; installing memory tools alone cannot enforce an arbitrary agent's writing behavior.
+
 ## Local operation
 
 ```sh

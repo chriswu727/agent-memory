@@ -7,6 +7,9 @@ Agent Memory is a human-inspired memory engine for AI agents. It keeps persisten
 ### Included
 
 - Persistent source-backed memory, working context, background learning, consolidation and cue-guided retrieval.
+- Source-faithful composition instructions for autobiographical drafts, and a versioned fifth participant-action facet required during episode verification and publication.
+- Task-specific cognitive instructions that preserve participant checks without sending unavailable episode operations or host writing procedures to bounded history processing.
+- A varied release fixture with fourteen sessions, twenty-six inputs, source-bounded review, durable continuation and a planned model-callback change.
 - Python lifecycle integration, HTTP API, TypeScript client, optional MCP memory tools and direct API-key terminal chat.
 - Scoped identities, corrections and deletion handling, bounded cognitive spending, and inspectable processing outcomes.
 - Local setup, restart, upgrade, backup and recovery with an independently installed package; the verified desktop target is macOS with uv and Docker.

@@ -27,7 +27,7 @@ from .local_semantics import (
     validate_bounded_batch,
     validate_bounded_proposal,
 )
-from .recall_resolution import RESOLUTION_INPUT_VERSION
+from .recall_resolution import RESOLUTION_INPUT_VERSIONS
 from .semantic import (
     EPISODE_FIDELITY_INPUT_VERSIONS,
     PROPOSAL_SCHEMA,
@@ -186,7 +186,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                     if batch.input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS else None)
     ids, changed_episodes = set(), set()
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])
-    if batch.input_contract_version == RESOLUTION_INPUT_VERSION:
+    if batch.input_contract_version in RESOLUTION_INPUT_VERSIONS:
         claim_fields.update(("recall_summary", "retention_priority"))
     claims = {item["proposal_id"]: {key: copy.deepcopy(value) for key, value in item.items() if key in claim_fields}
               for item in result.claims}
@@ -290,7 +290,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 assessments = [entry for entry in result.verification_assessments
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
                 if (len(assessments) != 1
-                        or not episode_fidelity_supported(assessments[0], item["proposal_id"], references)):
+                        or not episode_fidelity_supported(assessments[0], item["proposal_id"], references,
+                                                          input_contract_version=batch.input_contract_version)):
                     raise DomainError("invalid_evidence", "Episode fidelity assessment is unsupported")
             if item.get("evidence_use") == "current_request":
                 if final.get("request_verification") != {
@@ -347,7 +348,7 @@ def _assertion(item, batch, brain, snapshot):
         "system_time": {"recorded_at": timestamp, "superseded_at": None},
         "lifecycle": "active", "supersedes_memory_ids": [],
         "derivation": {"method": "aggregation", "rule_version": (
-            RESOLUTION_INPUT_VERSION if batch.input_contract_version == RESOLUTION_INPUT_VERSION else "bounded-semantic-v1"),
+            batch.input_contract_version if batch.input_contract_version in RESOLUTION_INPUT_VERSIONS else "bounded-semantic-v1"),
                        "model_version": None, "source_memory_versions": parents},
         "dynamics": {"activation": 0.5, "retention_priority": item.get("retention_priority", 0.5), "detail_level": "gist",
                      "last_external_reinforcement_at": None, "last_recalled_at": None,
