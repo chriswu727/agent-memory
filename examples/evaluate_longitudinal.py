@@ -255,7 +255,10 @@ class RecordedProvider:
                                                    "evaluation_stop": None if valid else "invalid_response",
                                                    "elapsed_seconds": time.monotonic() - start,
                                                    "usage_after": self.meter.summary()})
-        boundary(self.journal, self.meter)
+        if valid:
+            boundary(self.journal, self.meter)
+        elif self.meter.summary()["usage_unknown_calls"]:
+            raise CampaignStopped("unknown_provider_usage")
         return response
 
 
