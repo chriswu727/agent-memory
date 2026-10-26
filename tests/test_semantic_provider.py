@@ -4,8 +4,15 @@ from dataclasses import replace
 
 import httpx
 import pytest
+from test_cognition import event
+from test_semantic import batch, encoded, proposals
 
-from agent_memory.semantic import PROPOSAL_SCHEMA, CognitiveRequest
+from agent_memory.semantic import (
+    PROPOSAL_SCHEMA,
+    CognitiveRequest,
+    SemanticPolicy,
+    SemanticProcessor,
+)
 from agent_memory.semantic_provider import ChatCompletionsSemanticProvider, SemanticProviderError
 
 REQUEST = CognitiveRequest("semantic-1", "proposal", (
@@ -69,6 +76,32 @@ def test_semantic_adapter_inherits_safe_thinking_validation():
     with pytest.raises(ValueError, match="thinking") as error:
         provider(lambda _: pytest.fail("No request expected"), thinking=invalid_thinking)
     assert invalid_thinking not in "".join(traceback.format_exception(error.value))
+
+
+@pytest.mark.parametrize("oversized_content", [False, True])
+def test_larger_provider_envelope_does_not_increase_semantic_content_limit(oversized_content):
+    policy = SemanticPolicy(max_response_bytes=65536)
+    content = encoded(proposals()) + (" " * 65536 if oversized_content else "")
+    usage = {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}
+    payload = {**completion(content, reasoning_content="private reasoning " * 8192), "usage": usage}
+    raw = json.dumps(payload).encode()
+    assert 65536 < len(raw) < 262144
+    calls, settlements = [], []
+
+    def handle(request):
+        calls.append(request)
+        return httpx.Response(200, content=raw)
+
+    with provider(handle, max_response_bytes=262144) as reason:
+        processor = SemanticProcessor(reason, lambda _: pytest.fail("No verification expected"), policy)
+        result = processor.process(batch(event("A bounded source statement.")), reserve=lambda **_: None,
+                                   on_call_result=lambda **value: settlements.append(value))
+    assert result.status == ("invalid_response" if oversized_content else "completed")
+    assert result.model_calls == len(calls) == len(settlements) == 1
+    assert result.claims == result.situation_updates == result.episode_actions == ()
+    assert settlements[0]["outcome"] == "completed"
+    assert settlements[0]["usage"] == {"input_tokens": 20, "output_tokens": 8, "total_tokens": 28}
+    assert (settlements[0]["response_fingerprint"] is None) is oversized_content
 
 
 @pytest.mark.parametrize("content", [None, "", '{"claims":[', CONTENT])

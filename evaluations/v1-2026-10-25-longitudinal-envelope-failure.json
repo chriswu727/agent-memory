@@ -1,0 +1,46 @@
+{
+  "candidate_commit": "282dd47342329daf9d71cf5f3742a7318b607caa",
+  "runtime_build": "80bc3130b2f73cd479c2f650dfb177693ab92f3b78430546920679cb9eb95a4c",
+  "plan_version": "longitudinal-execution-v2",
+  "provider": {
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled"
+  },
+  "requested_sessions": 2,
+  "completed_sessions": 0,
+  "delivered_turns": 1,
+  "completed_turns": 0,
+  "state": "stopped",
+  "stop_code": "unknown_provider_usage",
+  "failed_role": "cognition",
+  "failed_phase": "proposal",
+  "provider_error": "response_too_large",
+  "usage": {
+    "completed_calls": 2,
+    "reserved_calls": 2,
+    "reserved_output_tokens": 20480,
+    "usage_confirmed_calls": 1,
+    "usage_totals": {
+      "completion_tokens": 2543,
+      "prompt_cache_hit_tokens": 768,
+      "prompt_cache_miss_tokens": 93,
+      "prompt_tokens": 861,
+      "total_tokens": 3404
+    },
+    "usage_unknown_calls": 1
+  },
+  "actual_elapsed_seconds": 191.40274483303074,
+  "response_bytes_observed": 66245,
+  "old_envelope_limit_bytes": 65536,
+  "unknown_call_retried": false,
+  "aging_assessed": false,
+  "full_longitudinal_acceptance": "unassessed",
+  "private_evidence_sha256": {
+    "plan.json": "208681743ec6680dcc91dcd29af9c719602c9a846d3e7fe2742f092f230966af",
+    "journal.jsonl": "b344864a0109766e7ba0cd2bbfc5afb12f43ead8d0a41eac439ef1656c496e8e",
+    "head.json": "cc755557e211476cde865361b0cec8f3df7971006f4977944a9ae1bbeb89fec9",
+    "calls.jsonl": "0a6ca576b968ec451055dc56236d53a54100566eacc529df2d4c6ae14f46cd32"
+  },
+  "limits_of_diagnosis": "The response was stopped at the envelope limit before complete parsing. Its final semantic content, finish reason and provider usage are unavailable; the larger-envelope repair is not proof that this original response would otherwise have been valid."
+}

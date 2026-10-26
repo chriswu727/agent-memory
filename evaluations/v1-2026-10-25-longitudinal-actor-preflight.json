@@ -1,0 +1,29 @@
+{
+  "diagnostic": "bounded actor selector after disabling thinking",
+  "outcome": "completed",
+  "choice_id": "clarify",
+  "selector_contract_satisfied": true,
+  "usage": {
+    "completed_calls": 1,
+    "reserved_calls": 1,
+    "reserved_output_tokens": 512,
+    "usage_confirmed_calls": 1,
+    "usage_totals": {
+      "completion_tokens": 11,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 663,
+      "prompt_tokens": 663,
+      "total_tokens": 674
+    },
+    "usage_unknown_calls": 0
+  },
+  "provider_call_seconds": 1.3647163329878822,
+  "memory_mutation": false,
+  "campaign_continued": false,
+  "private_evidence_sha256": {
+    "plan.json": "0fe84b43b7bd8c3267f7af22caf07ea56ec2b324080714cfbfa4fc11464d1719",
+    "journal.jsonl": "a33bd65cfaccbb70d96b6d63590db6aecd7346b5e447ce27f86d87107a4b9a56",
+    "head.json": "a81886250ce2525c749b0d8d5024267e0feacaa4df9a42b91661c986c71e4288",
+    "calls.jsonl": "77244393f65121b4195c89c78e5eec2415368ac632542a7de15aff885b406671"
+  }
+}

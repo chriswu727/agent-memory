@@ -40,15 +40,18 @@ class MeteredTransport(httpx.BaseTransport):
     def __init__(
         self, ledger_path: str | Path, *, max_calls: int = 16,
         max_output_tokens: int = 262144, transport: httpx.BaseTransport | None = None,
-        capture_content: bool = True,
+        capture_content: bool = True, max_response_bytes: int = _MAX_RESPONSE_BYTES,
     ):
         if (type(max_calls) is not int or max_calls < 1
                 or type(max_output_tokens) is not int or max_output_tokens < 1):
             raise ValueError("Metering limits must be positive integers")
+        if type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 1048576:
+            raise ValueError("max_response_bytes must be an integer between 1 and 1048576")
         self.ledger_path = Path(ledger_path)
         self.max_calls = max_calls
         self.max_output_tokens = max_output_tokens
         self.capture_content = capture_content
+        self.max_response_bytes = max_response_bytes
         self._transport = transport if transport is not None else httpx.HTTPTransport(retries=0)
         self._lock = threading.RLock()
         self._streams: set[_MeteredStream] = set()
@@ -200,15 +203,19 @@ class _MeteredStream(httpx.SyncByteStream):
         self.raw_response_bytes += len(chunk)
         if not 200 <= self.status_code < 300 or self.exceeded or self.decoding_failed:
             return
+        if self.decoder is not None and self.raw_response_bytes > self.owner.max_response_bytes:
+            self.buffer.clear()
+            self.exceeded = True
+            return
         try:
-            decoded = (self.decoder.decompress(chunk, _MAX_RESPONSE_BYTES - len(self.buffer) + 1)
+            decoded = (self.decoder.decompress(chunk, self.owner.max_response_bytes - len(self.buffer) + 1)
                        if self.decoder is not None else chunk)
         except zlib.error:
             self.buffer.clear()
             self.decoding_failed = True
             return
         self.response_bytes += len(decoded)
-        if len(self.buffer) + len(decoded) > _MAX_RESPONSE_BYTES:
+        if len(self.buffer) + len(decoded) > self.owner.max_response_bytes:
             self.buffer.clear()
             self.exceeded = True
         else:

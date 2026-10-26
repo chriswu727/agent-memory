@@ -67,7 +67,7 @@ def plan():
              "longitudinal_learning.py", "evaluation_support.py", "evaluation_host.py",
              "evaluate_deepseek.py", "evaluate_conversation.py")
     return {
-        "version": "longitudinal-execution-v2", "scenario": story, "runtime_build": BUILD_ID,
+        "version": "longitudinal-execution-v3", "scenario": story, "runtime_build": BUILD_ID,
         "code_fingerprints": {name: digest((ROOT / "examples" / name).read_text()) for name in files},
         "provider": {"base_url": "https://api.deepseek.com", "model": "deepseek-v4-pro",
                      "thinking": "enabled"},
@@ -77,6 +77,7 @@ def plan():
         "actor_instructions": ACTOR_INSTRUCTIONS,
         "host_output_tokens": 4096, "actor_output_tokens": 512,
         "actor_thinking": "disabled", "actor_json_mode": True,
+        "provider_envelope_bytes": 262144,
         "max_actor_input_bytes": 131072, "provider_timeout_seconds": 240,
         "allocation": {"host": len(turns), "cognition": cognitive_calls, "user": actor_calls},
         "max_calls": len(turns) + cognitive_calls + actor_calls,
@@ -449,24 +450,28 @@ def live(output, *, continuing=False, sessions=1):
         database.check_compatibility(require_current=True)
         with ExitStack() as stack:
             meter = MeteredTransport(output / "calls.jsonl", max_calls=planned["max_calls"],
-                                     max_output_tokens=planned["max_reserved_output_tokens"], capture_content=False)
+                                     max_output_tokens=planned["max_reserved_output_tokens"], capture_content=False,
+                                     max_response_bytes=planned["provider_envelope_bytes"])
             stack.callback(meter.close)
             boundary(journal, meter)
             initial = next((event["payload"] for event in journal.events if event["kind"] == "initialized"), None)
             principal = Principal(**initial["principal"]) if initial else Principal(uid(), uid())
             provider = planned["provider"]
             cognitive = stack.enter_context(ChatCompletionsSemanticProvider(
-                provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=meter))
+                provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=meter,
+                max_response_bytes=planned["provider_envelope_bytes"]))
             recorded = RecordedProvider(journal, meter, cognitive, "cognition")
             service = MemoryService(database, semantic_processor=SemanticProcessor(
                 recorded, recorded, SemanticPolicy(**planned["semantic_policy"])))
             host = stack.enter_context(ChatCompletionsHost(
                 provider["base_url"], key, provider["model"], transport=meter,
-                max_output_tokens=planned["host_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"]))
+                max_output_tokens=planned["host_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"],
+                max_response_bytes=planned["provider_envelope_bytes"]))
             actor = stack.enter_context(ChatCompletionsHost(
                 provider["base_url"], key, provider["model"], transport=meter,
                 max_output_tokens=planned["actor_output_tokens"], timeout_seconds=planned["provider_timeout_seconds"],
-                thinking=planned["actor_thinking"], json_mode=planned["actor_json_mode"]))
+                thinking=planned["actor_thinking"], json_mode=planned["actor_json_mode"],
+                max_response_bytes=planned["provider_envelope_bytes"]))
             token = uid()
             api_settings = Settings(database_url=database.dsn,
                                     api_keys={hashlib.sha256(token.encode()).hexdigest(): principal})

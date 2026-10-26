@@ -109,6 +109,101 @@ def test_preconsumed_mock_response_is_recorded_without_changing_content(tmp_path
     assert "assistant_content" not in transport.records[-1]
 
 
+@pytest.mark.parametrize("encoding", ["identity", "gzip", "preconsumed"])
+def test_explicit_larger_envelope_records_usage_without_reasoning_content(tmp_path, encoding):
+    payload = completion()
+    payload["choices"][0]["message"]["reasoning_content"] = "private envelope reasoning " * 4096
+    raw = json.dumps(payload).encode()
+    assert 65536 < len(raw) < 262144
+    body = gzip.compress(raw) if encoding == "gzip" else raw
+    if encoding == "preconsumed":
+        response = httpx.Response(200, content=body)
+    else:
+        response = httpx.Response(200, stream=Chunks([body[:4096], body[4096:]]),
+                                  headers={"Content-Encoding": encoding})
+    transport = meter(tmp_path, lambda _: response, max_response_bytes=262144, capture_content=False)
+    with ChatCompletionsSemanticProvider("https://example.test", "secret-key", "model",
+                                          max_response_bytes=262144, transport=transport) as provider:
+        assert provider(REQUEST) == '{"claims":[]}'
+        assert provider.last_usage == payload["usage"]
+    record = transport.records[-1]
+    assert record["outcome"] == "body_complete" and record["usage_confirmed"] is True
+    assert record["raw_response_bytes_observed"] == len(body)
+    assert record["response_bytes_observed"] == len(raw)
+    assert transport.summary()["usage_unknown_calls"] == 0
+    assert transport.summary()["usage_totals"]["total_tokens"] == 28
+    assert "private" not in transport.ledger_path.read_text()
+    assert "assistant_content" not in record and "reasoning_content" not in record
+
+
+@pytest.mark.parametrize("encoding", ["identity", "gzip_decoded", "gzip_raw"])
+def test_larger_envelope_still_bounds_wire_and_decompressed_bytes(tmp_path, encoding):
+    limit = 262144
+    if encoding == "identity":
+        body = b"x" * (limit + 1)
+    elif encoding == "gzip_decoded":
+        body = gzip.compress(b"x" * (limit + 1))
+    else:
+        compressed = gzip.compress(json.dumps(completion()).encode())
+        body = compressed[:3] + b"\x08" + compressed[4:10] + b"x" * limit + b"\x00" + compressed[10:]
+    stream = Chunks([body, b"must not be read"])
+    response = httpx.Response(200, stream=stream, headers={
+        "Content-Encoding": "identity" if encoding == "identity" else "gzip",
+    })
+    transport = meter(tmp_path, lambda _: response, max_response_bytes=limit, capture_content=False)
+    with ChatCompletionsSemanticProvider("https://example.test", "secret-key", "model",
+                                          max_response_bytes=limit, transport=transport) as provider:
+        with pytest.raises(SemanticProviderError, match="response_too_large"):
+            provider(REQUEST)
+        assert provider.last_usage is None
+    record = transport.records[-1]
+    assert record["outcome"] == "response_too_large" and record["usage_confirmed"] is False
+    assert record["raw_response_bytes_observed"] == len(body)
+    assert record["response_bytes_observed"] <= limit + 1
+    assert stream.reads == 1 and stream.closed
+    assert transport.summary()["usage_unknown_calls"] == 1
+    assert transport.summary()["usage_totals"] == {}
+
+
+@pytest.mark.parametrize("limit", [None, True, 0, -1, 1.5, "262144", 1048577])
+def test_invalid_meter_envelope_limit_is_rejected_before_creating_ledger(tmp_path, limit):
+    with pytest.raises(ValueError, match="max_response_bytes"):
+        meter(tmp_path, lambda _: pytest.fail("No request expected"), max_response_bytes=limit)
+    assert not (tmp_path / "run").exists()
+
+
+def test_increasing_envelope_limit_cannot_settle_or_retry_prior_unknown_call(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).parents[1]))
+    evaluation = importlib.import_module("examples.evaluate_longitudinal")
+    calls = []
+    stream = Chunks([b"x" * 65537, b"must not be read"])
+
+    def handle(request):
+        calls.append(request)
+        return httpx.Response(200, stream=stream)
+
+    with evaluation.CampaignJournal(tmp_path / "campaign", evaluation.plan()) as journal:
+        path = journal.path / "calls.jsonl"
+        transport = MeteredTransport(path, transport=httpx.MockTransport(handle), capture_content=False)
+        with ChatCompletionsSemanticProvider("https://example.test", "fake-key", "model",
+                                              transport=transport) as provider:
+            with pytest.raises(SemanticProviderError, match="response_too_large"):
+                evaluation.RecordedProvider(journal, transport, provider, "cognition")(REQUEST)
+        original = path.read_bytes()
+        restored = MeteredTransport(path, max_response_bytes=262144,
+                                    transport=httpx.MockTransport(lambda _: pytest.fail("No retry permitted")))
+        with restored:
+            with pytest.raises(evaluation.CampaignStopped, match="unknown_provider_usage"):
+                evaluation.RecordedProvider(
+                    journal, restored, lambda _: pytest.fail("Unknown call cannot be retried"), "cognition",
+                )(REQUEST)
+            assert restored.summary()["reserved_calls"] == restored.summary()["usage_unknown_calls"] == 1
+            assert restored.summary()["usage_confirmed_calls"] == 0
+            assert restored.summary()["usage_totals"] == {}
+        assert path.read_bytes() == original
+    assert len(calls) == stream.reads == 1
+
+
 def test_gzip_stream_is_metered_without_changing_wire_bytes(tmp_path):
     decoded = json.dumps(completion()).encode()
     compressed = gzip.compress(decoded)

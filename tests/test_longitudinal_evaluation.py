@@ -47,6 +47,8 @@ def test_plan_is_offline_and_includes_every_role_without_repetitive_turn_target(
     assert planned["max_calls"] == 248
     assert planned["max_reserved_output_tokens"] == 198 * 16384 + 33 * 4096 + 17 * 512
     assert planned["actor_thinking"] == "disabled" and planned["actor_json_mode"] is True
+    assert planned["provider_envelope_bytes"] == 262144
+    assert planned["semantic_policy"]["max_response_bytes"] == 65536
     assert not planned["aging_assessed"]
     assert planned["time_mode"] == "narrative_order_only"
     assert all(path.endswith(".py") for path in planned["code_fingerprints"])

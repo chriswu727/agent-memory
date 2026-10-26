@@ -1,3 +1,4 @@
+import gzip
 import json
 import traceback
 from dataclasses import replace
@@ -142,6 +143,34 @@ def test_large_reasoning_field_counts_against_response_limit():
     )) as reason:
         with pytest.raises(RecallProviderError, match="response_too_large"):
             reason(REQUEST)
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+def test_explicit_envelope_limit_accepts_large_reasoning_and_small_decision(compressed):
+    usage = {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}
+    raw = json.dumps({**completion(reasoning_content="private reasoning " * 8192), "usage": usage}).encode()
+    assert 65536 < len(raw) < 262144
+    body = gzip.compress(raw) if compressed else raw
+    stream = TrackedStream([body[index:index + 8192] for index in range(0, len(body), 8192)])
+    headers = {"Content-Encoding": "gzip"} if compressed else {}
+    with provider(lambda _: httpx.Response(200, stream=stream, headers=headers),
+                  max_response_bytes=262144) as reason:
+        assert reason(REQUEST) == DECISION
+        assert reason.last_usage == usage
+    assert stream.closed
+
+
+@pytest.mark.parametrize("limit", [None, True, 0, -1, 1.5, "262144", 1048577])
+def test_invalid_envelope_limit_fails_before_client_creation(monkeypatch, limit):
+    monkeypatch.setattr(httpx, "Client", lambda **_: pytest.fail("No client expected"))
+    with pytest.raises(ValueError, match="max_response_bytes"):
+        provider(lambda _: pytest.fail("No request expected"), max_response_bytes=limit)
+
+
+@pytest.mark.parametrize("limit", [1, 1048576])
+def test_envelope_limit_inclusive_configuration_bounds(limit):
+    with provider(lambda _: pytest.fail("No request expected"), max_response_bytes=limit) as reason:
+        assert reason.max_response_bytes == limit
 
 
 @pytest.mark.parametrize("status", [301, 401, 429, 500, 503])

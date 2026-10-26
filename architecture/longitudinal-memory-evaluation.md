@@ -100,7 +100,9 @@ uv run python -m examples.evaluate_longitudinal --continue --sessions 1 --output
 
 Only `--live` and `--continue` can call providers. They use local `DEEPSEEK_API_KEY` and the configured PostgreSQL database. A fresh campaign creates its own brain and explicitly configures its frozen cognition budget; it never reuses an old campaign's brain or allowance. `--sessions` limits the next invocation, not a renewed spending budget. The default is one session. `--inspect` verifies and reads retained evidence without loading credentials or opening the database.
 
-The current v2 global ceiling is 248 provider calls and 3,387,904 reserved output tokens: up to 33 host answers, 17 user selections and 198 cognitive calls. Cognition also has a 30-day brain ceiling of 198 calls and 19,464,192 input bytes. These are cumulative limits, not predicted usage or prices. There is no paid automatic reviewer or full baseline arm. The actor can only select an exact authored choice, using released personal knowledge and the actual preceding answers. It uses JSON mode with thinking disabled and a 512-token output bound; the host and cognition keep thinking enabled. Clarifications and corrections remain separate from ordinary continuation.
+The current v3 global ceiling is 248 provider calls and 3,387,904 reserved output tokens: up to 33 host answers, 17 user selections and 198 cognitive calls. Cognition also has a 30-day brain ceiling of 198 calls and 19,464,192 input bytes. These are cumulative limits, not predicted usage or prices. There is no paid automatic reviewer or full baseline arm. The actor can only select an exact authored choice, using released personal knowledge and the actual preceding answers. It uses JSON mode with thinking disabled and a 512-token output bound; the host and cognition keep thinking enabled. Clarifications and corrections remain separate from ordinary continuation.
+
+The HTTP response envelope has an explicit 262,144-byte limit for reasoning plus content; the semantic processor still limits actual answer content to 65,536 bytes. Raising the envelope limit does not recover or settle earlier unknown provider usage.
 
 The private campaign directory holds a frozen plan, a hash-chained journal, a durable head, a process lock and the shared transport ledger. It contains conversation and model content and must remain outside version control. Calls are reserved before network access. All three roles stop on partial, contradictory or unknown usage. Provider failure, malformed actor output, failed required learning or an operator-created `STOP` file stops dependent work. No request retries automatically.
 
@@ -108,7 +110,17 @@ A delivered answer is journaled before runtime settlement and learning. Its actu
 
 Normal pauses occur after completed sessions. Continuation requires identical code, runtime build, scenario and policy, an unchanged source/memory snapshot and cumulative ledger, and replay of the last completed turn without generation or delivery. Incomplete, failed and terminal journals cannot resume. Actual invocation duration, elapsed wall time and gaps between invocations are recorded separately from story time. This is manual bounded session continuation; no recurring scheduler is installed.
 
-Still required for full G4: independent review of real-model behavior through the entire scenario, isolated same-state cue comparisons, a model-callback change within the longitudinal scenario, and justified age-dependent evidence using actual elapsed time or a validated semantic-time seam. The runner does not implement the latter three. Its local checks and a bounded live pilot cannot pass those missing cases or establish human field reliability.
+Still required for full G4: independent review of real-model behavior through the entire scenario, real-model cue comparisons, a model-callback change within the longitudinal scenario, and justified age-dependent evidence. Deterministic integration checks now cover a fresh model callback recovering source-backed history after service reconstruction. The internal [access-age diagnostic seam](access-age-diagnostics.md) supports frozen-snapshot comparisons; it does not simulate years of new interaction, consolidation or use. These checks cannot establish human field reliability.
+
+`examples/longitudinal_cue_diagnostics.py` provides five isolated probes at exactly eleven clean completed sessions, before the main grandmother-card task. Each new brain starts from the same trusted server archive and a fresh conversation. Its durable recall graph must match; working state, access counters, embeddings and execution state are not asserted identical. It compares unaided recall, a broad cue, a specific cue with withheld details, an unknown detail and a false premise. There is no background learning, retry or merge into the main brain. Source snapshots and cumulative cognitive usage must remain unchanged.
+
+```sh
+uv run python -m examples.longitudinal_cue_diagnostics --plan
+uv run python -m examples.longitudinal_cue_diagnostics --live --source .local/longitudinal-memory --output .local/longitudinal-cues
+uv run python -m examples.longitudinal_cue_diagnostics --inspect --output .local/longitudinal-cues
+```
+
+The auxiliary ceiling is fifteen provider calls and 184,320 reserved output tokens, separate from the primary campaign. Each probe permits one host answer and at most two cognitive calls. Running the auxiliary completes execution only; semantic acceptance requires independent review against the exact received source prefix. It must not silently run at a later checkpoint after missing the frozen boundary.
 
 The implementation sequence remains the checklist for completing the protocol:
 
