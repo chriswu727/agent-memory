@@ -14,6 +14,7 @@ from agent_memory.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,
     GENERAL_PROPOSAL_MODE,
+    LATEST_INPUT_CONTRACT_VERSION,
     ORIENT_PROPOSAL_MODE,
     ORIENT_VERIFICATION_SCHEMA,
     VERIFICATION_SCHEMA,
@@ -161,7 +162,7 @@ def test_new_contract_changes_operation_identity_and_counts_all_prompt_bytes():
 def test_frozen_orientation_contract_is_exactly_preserved_across_restart(learning, version):
     engine, _, job = orientation_job(learning)
     current, snapshot = engine._snapshot(learning.principal, learning.brain, job)
-    assert current.input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
+    assert current.input_contract_version == LATEST_INPUT_CONTRACT_VERSION
     snapshot["input_contract_version"] = version
     with learning.database.transaction(learning.principal) as connection:
         connection.execute("UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",

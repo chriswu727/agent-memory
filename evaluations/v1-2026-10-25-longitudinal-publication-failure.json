@@ -1,0 +1,100 @@
+{
+  "version": "longitudinal-v4-independent-review-v1",
+  "source_commit": "72ebad4",
+  "runtime_build": "38d210a0175231527d2f098dcd82af2c5eebf58fe538d00c2aad8abdf05ef4e3",
+  "campaign": "longitudinal-life-v4",
+  "execution_state": "paused_at_two_session_boundary",
+  "review_state": "failed_publication_evidence_coverage",
+  "continuation": "closed; STOP retained; no replay or history overwrite",
+  "sessions_completed": 2,
+  "turns_delivered": 4,
+  "turns_completed": 4,
+  "elapsed_seconds": 678.2039094159845,
+  "usage": {
+    "completed_calls": 16,
+    "reserved_calls": 16,
+    "reserved_output_tokens": 181248,
+    "usage_confirmed_calls": 16,
+    "usage_totals": {
+      "completion_tokens": 51421,
+      "prompt_cache_hit_tokens": 10240,
+      "prompt_cache_miss_tokens": 119579,
+      "prompt_tokens": 129819,
+      "total_tokens": 181240
+    },
+    "usage_unknown_calls": 0
+  },
+  "user_branches": {
+    "ordinary": 4,
+    "assisted": 0,
+    "correction": 0
+  },
+  "failure": {
+    "proposal_id": "claim-assistant-e0befa-elements",
+    "memory_id": "semantic-b8b3eb63b6ba13f04c8d069d32b8e25f",
+    "statement": "The assistant listed five elements to put on the page: one opening image, a small routine, the letter's location and physical detail, an avoidance move, and a forward-pull ending line.",
+    "cited_spans": [
+      {
+        "end": 216,
+        "start": 194,
+        "unit": "unicode_code_point"
+      },
+      {
+        "end": 331,
+        "start": 221,
+        "unit": "unicode_code_point"
+      },
+      {
+        "end": 433,
+        "start": 335,
+        "unit": "unicode_code_point"
+      },
+      {
+        "end": 650,
+        "start": 562,
+        "unit": "unicode_code_point"
+      },
+      {
+        "end": 753,
+        "start": 654,
+        "unit": "unicode_code_point"
+      }
+    ],
+    "missing_span": {
+      "start": 437,
+      "end": 558,
+      "unit": "unicode_code_point"
+    },
+    "classification": "The original answer contains the missing material; the published bound citation set does not. This is a provenance/support defect, not fabricated source content.",
+    "verifier": "Every numbered citation and the whole proposal were marked supports.",
+    "trace_lines": {
+      "proposal_request": 42,
+      "proposal_response": 43,
+      "verification_request": 44,
+      "verification_response": 45,
+      "publication_result": 46,
+      "published_snapshot": 48
+    }
+  },
+  "additional_quality_issue": "Literal segmentation split a.m./p.m. and captured standalone Markdown/list/quote markers.",
+  "review_scope": {
+    "independent_agent": "Four delivered answers; publications through first three turns: 10 semantic memories, 50 literal captures, three episode operations creating two groups.",
+    "root": "Independently confirmed omitted citation against source; reviewed three additional fourth-turn semantic publications against their source excerpts.",
+    "answer_observations": "Delivered answers preserved tentative writing and unsent handoff status. Initial writing-plan feasibility and suggested urgency wording remain caveats.",
+    "unassessed": [
+      "delayed recall",
+      "two-Alex separation",
+      "cue ladder",
+      "real model callback change",
+      "elapsed aging",
+      "full longitudinal acceptance"
+    ]
+  },
+  "evidence_hashes": {
+    "plan.json": "164007f39f425e6119f13c04a8dadbf59862545a1e8ccd4a4d43bf462c54a109",
+    "journal.jsonl": "1a50df0456bd3e754ad071f3c5bd8a8011058742a34cf96ad9d056cb1112057b",
+    "calls.jsonl": "ea2af1ac6aee26b284856f73d69ca0a106f4982366e7a3179c17de6cdd03a7d5"
+  },
+  "paid_retries": 0,
+  "release_acceptance": "not passed"
+}

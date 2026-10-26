@@ -15,7 +15,6 @@ from .learning_recovery import POLICY_REFRESH_VERSION
 from .learning_windows import bounds, record_progress, recover_windows, select_window
 from .local_semantics import BOUNDED_MODES, HISTORY_INTEGRATION_MODE, LOCAL_OBSERVATION_MODE
 from .semantic import (
-    COMMUNICATION_INTENT_INPUT_VERSION,
     GENERAL_PROPOSAL_MODE,
     LATEST_INPUT_CONTRACT_VERSION,
     ORIENT_PROPOSAL_MODE,
@@ -255,7 +254,8 @@ def orientation_result(conn, service, principal, brain, row):
     if requests:
         from .consolidation import _check_result
 
-        batch = CognitiveBatch(row["orientation_job_id"], scope, tuple(events), proposal_mode=mode)
+        batch = CognitiveBatch(row["orientation_job_id"], scope, tuple(events), proposal_mode=mode,
+                               input_contract_version=_snapshot_input_contract(result))
         _check_result(batch, SemanticResult(result["status"], situation_updates=requests,
                                            verification_assessments=tuple(result.get("verification_assessments", ()))),
                       {"events": {(event["event_id"], event["revision"]): event for event in events},
@@ -362,8 +362,8 @@ class LearningEngine:
             policy = _snapshot_policy(prior or {}, service.semantic_processor.policy)
             mode = (_snapshot_proposal_mode(prior, job["kind"]) if prior else
                     ORIENT_PROPOSAL_MODE if job["kind"] == "orient" else GENERAL_PROPOSAL_MODE)
-            input_contract = (_snapshot_input_contract(prior) if prior and "working_snapshot" in prior else
-                              LATEST_INPUT_CONTRACT_VERSION if learning_phase else COMMUNICATION_INTENT_INPUT_VERSION)
+            input_contract = (_snapshot_input_contract(prior) if prior else
+                              LATEST_INPUT_CONTRACT_VERSION)
             windowed = (job["kind"] == "consolidate" and "from_sequence" in payload
                         and learning_phase != HISTORY_PHASE)
             frozen_orientation = job["kind"] == "orient" and mode == ORIENT_PROPOSAL_MODE

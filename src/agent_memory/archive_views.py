@@ -2,6 +2,7 @@ import copy
 
 from psycopg.types.json import Jsonb
 
+from . import cognition
 from .contracts import validate
 from .episode_semantics import ORGANIZATION_STATEMENT_SCHEMA
 from .helpers import DomainError
@@ -362,11 +363,16 @@ def restore_memories(conn, service, principal, brain, data, available, blocked_e
                     if (memory["derivation"]["method"] != "direct_capture" or parents
                             or any(field in memory for field in ("verification", "procedure", "conditions", "claim_kind"))):
                         raise DomainError("invalid_evidence", "Imported semantic interpretations require local reverification.")
+                    rule_version = memory["derivation"]["rule_version"]
+                    if rule_version not in {cognition.LEGACY_RULE_VERSION, cognition.RULE_VERSION}:
+                        raise DomainError("invalid_evidence", "Unknown imported literal segmentation rule version.")
                     for event_id in {ref["event_id"] for ref in memory["evidence_refs"]}:
-                        if event_id not in capture_cache:
-                            capture_cache[event_id] = service._current_captures(conn, principal, brain, event_lookup[event_id])
+                        capture_key = (event_id, rule_version)
+                        if capture_key not in capture_cache:
+                            capture_cache[capture_key] = service._current_captures(
+                                conn, principal, brain, event_lookup[event_id], rule_version=rule_version)
                     captures = [capture for event_id in {ref["event_id"] for ref in memory["evidence_refs"]}
-                                for capture in capture_cache[event_id]
+                                for capture in capture_cache[(event_id, rule_version)]
                                 if capture["statement"] == memory["statement"]
                                 and capture["memory_kind"] == memory["memory_kind"] and capture["world"] == memory["world"]
                                 and all(ref in memory["evidence_refs"] for ref in capture["evidence_refs"])]

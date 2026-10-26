@@ -26,6 +26,13 @@ from .belief_capabilities import (
     relation_capabilities,
     validate_capability_link,
 )
+from .citation_coverage import (
+    CITATION_COVERAGE_INPUT_VERSION,
+    CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
+    citation_coverage_schema,
+    citation_coverage_supported,
+    citation_scope,
+)
 from .consolidation_planning import (
     NO_CHANGE_REASONS,
     abstraction_profile,
@@ -56,7 +63,10 @@ from .episode_semantics import (
 )
 from .helpers import DomainError, digest
 from .history_semantics import (
-    LINK_DERIVED_INPUT_VERSION,
+    LINK_DERIVED_INPUT_VERSION as LINK_DERIVED_INPUT_VERSION,
+)
+from .history_semantics import (
+    LINK_DERIVED_INPUT_VERSIONS,
     derive_link_decisions,
     integration_coverage,
     validate_decisions,
@@ -198,7 +208,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = LINK_DERIVED_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = CITATION_COVERAGE_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -535,8 +545,10 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
         instructions += " " + (LOCAL_INSTRUCTIONS if phase == "proposal" else LOCAL_VERIFY_INSTRUCTIONS)
     elif proposal_mode == HISTORY_INTEGRATION_MODE:
         instructions += " " + (INTEGRATION_INSTRUCTIONS if phase == "proposal" else INTEGRATION_VERIFY_INSTRUCTIONS)
-        if phase == "proposal" and input_contract_version == LINK_DERIVED_INPUT_VERSION:
+        if phase == "proposal" and input_contract_version in LINK_DERIVED_INPUT_VERSIONS:
             instructions += " " + LINK_DERIVED_INSTRUCTIONS
+    if phase == "verification" and input_contract_version == CITATION_COVERAGE_INPUT_VERSION:
+        instructions += " " + CITATION_COVERAGE_VERIFY_INSTRUCTIONS
     messages = ({"role": "system", "content": instructions + "\nResponse JSON schema:\n" + _json(schema)},
                 {"role": "user", "content": _json(data)})
     size = len(_json({"messages": messages, "response_schema": schema,
@@ -1191,7 +1203,7 @@ class SemanticProcessor:
             try:
                 integration_decisions = (
                     derive_link_decisions(batch.integration_manifest, proposed)
-                    if batch.input_contract_version == LINK_DERIVED_INPUT_VERSION
+                    if batch.input_contract_version in LINK_DERIVED_INPUT_VERSIONS
                     else validate_decisions(batch.integration_manifest, proposed)
                 )
                 integration_proposal_links = copy.deepcopy(proposed.get("belief_links", []))
@@ -1306,6 +1318,8 @@ class SemanticProcessor:
                     for excerpt in numbered:
                         excerpt["role"] = ("shared_claim_candidate" if _evidence_identity(excerpt["reference"]) in shared
                                            else "retained_endpoint_context")
+            if batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION and group != "episode_actions":
+                entry["citation_scope"] = citation_scope(references, evidence_selection=entry.get("evidence_selection"))
             evidence.append(entry)
             if group == "belief_links" and batch.proposal_mode == HISTORY_INTEGRATION_MODE:
                 entry["target_assertion_refs"] = copy.deepcopy(item["target_memory_versions"])
@@ -1315,6 +1329,9 @@ class SemanticProcessor:
         if batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS:
             verification_schema = episode_fidelity_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible if group == "episode_actions"])
+        if batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION:
+            verification_schema = citation_coverage_schema(
+                verification_schema, [item["proposal_id"] for group, item, _ in eligible if group != "episode_actions"])
         verification_data = {"proposals": evidence, **bounded_verification_context(
             batch.proposal_mode, events.values(), assertions.values(), batch.belief_relations,
             input_refs=batch.learning_input_refs, manifest=batch.integration_manifest,
@@ -1368,6 +1385,10 @@ class SemanticProcessor:
         accepted = {group: [] for group in groups}
         for group, item, references in eligible:
             assessment = lookup[item["proposal_id"]]
+            if (batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION and group != "episode_actions"
+                    and not citation_coverage_supported(assessment)):
+                rejected.append({"proposal_id": item["proposal_id"], "reason": "citation_coverage_unconfirmed"})
+                continue
             if (group == "episode_actions" and batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS
                     and not episode_fidelity_supported(assessment, item["proposal_id"], references)):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "semantic_support_unconfirmed"})
@@ -1417,6 +1438,8 @@ class SemanticProcessor:
                 continue
             if group == "claims" and any(lookup[identifier]["proposal_verdict"] != "supports"
                                          or lookup[identifier]["link_verdict"] != "supports"
+                                         or (batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION
+                                             and not citation_coverage_supported(lookup[identifier]))
                                          for identifier in mapped_links):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "relation_support_unconfirmed"})
                 continue

@@ -15,8 +15,13 @@ from .ontology import CORE_REGISTRY
 from .retrieval import RANK_METHODS
 from .temporal import evaluate_valid_during
 
-RULE_VERSION = "literal-episodes-v1"
+RULE_VERSION = "literal-episodes-v2"
+LEGACY_RULE_VERSION = "literal-episodes-v1"
 RETRIEVAL_VERSION = "unicode-lexical-v1"
+_LIST_PREFIX = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:(?:[-+*]|\d+[.)])(?:[ \t]+|$))")
+_MERIDIEM = re.compile(r"(?<![a-z])[ap]\.m\.", re.I)
+_SENTENCE_END = re.compile(r"[。.!！?？]+[\"'”’»」』）)\]}*_~`]*")
+_FORMATTING_CHARACTERS = frozenset("*_~`#>+-|\"'“”‘’«»「」『』（）()[]{}.!?。！？…")
 _QUESTION = re.compile(
     r"[?？]|(?:吗|么|呢)\s*[。.!！]?$|是否|还记得|记不记得|有没有|"
     r"\b(?:do|did|does|can|could|would|will|is|are|was|were|have|has)\s+"
@@ -81,14 +86,40 @@ def _content_text(content: dict) -> str:
     return content["artifact_ref"]
 
 
-def classify_segments(content: dict) -> list[dict]:
+def _sentence_spans(text: str):
+    for line_match in re.finditer(r"[^\r\n]+", text):
+        line = line_match.group()
+        protected = {match.start() for match in re.finditer(r"(?<=\d)\.(?=\d)", line)}
+        prefix = _LIST_PREFIX.match(line)
+        if prefix:
+            protected.update(index for index in range(prefix.end()) if line[index] == ".")
+        for match in _MERIDIEM.finditer(line):
+            protected.update(index for index in range(match.start(), match.end())
+                             if line[index] == ".")
+            following = line[match.end():].lstrip(" \t\"'”’»」』）)]}*_~`")
+            if following and following[0].isupper():
+                protected.discard(match.end() - 1)
+        start = 0
+        for boundary in _SENTENCE_END.finditer(line):
+            if boundary.start() in protected:
+                continue
+            yield line_match.start() + start, line_match.start() + boundary.end()
+            start = boundary.end()
+        if start < len(line):
+            yield line_match.start() + start, line_match.end()
+
+
+def classify_segments(content: dict, *, rule_version: str = RULE_VERSION) -> list[dict]:
     validate("EventContent", content)
+    if rule_version not in {LEGACY_RULE_VERSION, RULE_VERSION}:
+        raise DomainError("validation_failed", "Unknown literal segmentation rule version.")
     if content["media_type"] != "text/plain":
         return [{"act": "not_applicable"}]
     text = content["text"]
     segments = []
-    for match in re.finditer(r"[^。.!！?？\n]+[。.!！?？]*", text):
-        start, end = match.span()
+    spans = (match.span() for match in re.finditer(r"[^。.!！?？\n]+[。.!！?？]*", text)) if (
+        rule_version == LEGACY_RULE_VERSION) else _sentence_spans(text)
+    for start, end in spans:
         while start < end and text[start].isspace():
             start += 1
         while end > start and text[end - 1].isspace():
@@ -96,8 +127,16 @@ def classify_segments(content: dict) -> list[dict]:
         if start == end:
             continue
         sentence = text[start:end]
-        act = "inquiry" if _QUESTION.search(sentence) else "direct_statement"
-        if act != "inquiry" and re.match(r"(?:请|帮我|不要|记住|please\b)", sentence, re.I):
+        prefix = _LIST_PREFIX.match(sentence) if rule_version == RULE_VERSION else None
+        body = sentence[prefix.end():] if prefix else sentence
+        if prefix and not body and re.fullmatch(r"\d+[.)]", sentence):
+            body = sentence
+        if rule_version == RULE_VERSION and not any(
+            not char.isspace() and char not in _FORMATTING_CHARACTERS for char in body
+        ):
+            continue
+        act = "inquiry" if _QUESTION.search(body) else "direct_statement"
+        if act != "inquiry" and re.match(r"(?:请|帮我|不要|记住|please\b)", body, re.I):
             act = "instruction"
         segments.append({
             "act": act,
@@ -106,9 +145,22 @@ def classify_segments(content: dict) -> list[dict]:
     return segments or [{"act": "unknown"}]
 
 
-def _segments(event: dict) -> list[dict]:
+def _literal_rule_version(event: dict) -> str:
     content = event["observed"]["content"]
-    computed = classify_segments(content)
+    legacy = classify_segments(content, rule_version=LEGACY_RULE_VERSION)
+    current = classify_segments(content)
+    if event["utterance_segments"] == current:
+        return RULE_VERSION
+    declared_spans = [segment.get("span") for segment in event["utterance_segments"]]
+    if legacy != current and declared_spans == [segment.get("span") for segment in legacy]:
+        return LEGACY_RULE_VERSION
+    return RULE_VERSION
+
+
+def _segments(event: dict, *, rule_version: str | None = None) -> list[dict]:
+    content = event["observed"]["content"]
+    rule_version = _literal_rule_version(event) if rule_version is None else rule_version
+    computed = classify_segments(content, rule_version=rule_version)
     text = _content_text(content)
     declared = event["utterance_segments"]
     for segment in computed:
@@ -135,8 +187,11 @@ def _world(observed: dict, text: str) -> str:
     return "real_world"
 
 
-def extract_event(event: dict) -> list[dict]:
+def extract_event(event: dict, *, rule_version: str | None = None) -> list[dict]:
     validate("Event", event)
+    rule_version = _literal_rule_version(event) if rule_version is None else rule_version
+    if rule_version not in {LEGACY_RULE_VERSION, RULE_VERSION}:
+        raise DomainError("validation_failed", "Unknown literal segmentation rule version.")
     observed = event["observed"]
     _range(observed["occurred_time"])
     if digest(observed["content"]) != event["content_sha256"]:
@@ -147,7 +202,9 @@ def extract_event(event: dict) -> list[dict]:
         return []
     text = _content_text(observed["content"])
     memories = []
-    for segment in _segments(event):
+    for segment in _segments(event, rule_version=rule_version):
+        if observed["content"]["media_type"] == "text/plain" and "span" not in segment:
+            continue
         span = segment.get("span", {"start": 0, "end": len(text),
                                     "unit": "unicode_code_point"})
         excerpt = text[span["start"]:span["end"]]
@@ -181,7 +238,7 @@ def extract_event(event: dict) -> list[dict]:
             "lifecycle": "active",
             "supersedes_memory_ids": [],
             "derivation": {
-                "method": "direct_capture", "rule_version": RULE_VERSION,
+                "method": "direct_capture", "rule_version": rule_version,
                 "model_version": None, "source_memory_versions": [],
             },
             "dynamics": {

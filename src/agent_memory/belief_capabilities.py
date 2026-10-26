@@ -9,10 +9,10 @@ from . import cognition
 from .applicability import validate_new_condition
 from .consolidation_planning import abstraction_profile, validate_abstraction_profiles
 from .helpers import DomainError, digest
-from .history_semantics import LINK_DERIVED_INPUT_VERSION
+from .history_semantics import LINK_DERIVED_INPUT_VERSIONS
 
 RELATION_CAPABILITIES_INPUT_VERSION = "relation-capabilities-v1"
-RELATION_CAPABILITIES_INPUT_VERSIONS = (RELATION_CAPABILITIES_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION)
+RELATION_CAPABILITIES_INPUT_VERSIONS = (RELATION_CAPABILITIES_INPUT_VERSION, *LINK_DERIVED_INPUT_VERSIONS)
 RELATIONS = ("abstracts", "equivalent", "exception", "supersedes", "contradicts")
 EQUIVALENT_FIELDS = ("memory_kind", "world", "claim_kind", "conditions", "valid_time", "valid_during", "procedure")
 CAPABILITY_INSTRUCTIONS = (

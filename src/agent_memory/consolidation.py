@@ -7,6 +7,11 @@ from psycopg.types.json import Jsonb
 
 from . import cognition
 from .belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSIONS, validate_capability_link
+from .citation_coverage import (
+    CITATION_COVERAGE_INPUT_VERSION,
+    citation_coverage_supported,
+    selected_citation_refs,
+)
 from .contracts import validate
 from .episode_semantics import (
     EPISODE_SOURCE_VIEW_INPUT_VERSIONS,
@@ -28,6 +33,8 @@ from .semantic import (
     CognitiveBatch,
     SemanticProcessor,
     SemanticResult,
+    _complete_instance_verdicts,
+    _instance_support,
     belief_capabilities,
     check_result_mode,
     proposal_schema,
@@ -227,9 +234,13 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                 )
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
-            if batch.proposal_mode in BOUNDED_MODES:
+            coverage_required = (batch.input_contract_version == CITATION_COVERAGE_INPUT_VERSION
+                                 and group != "episode_actions")
+            if batch.proposal_mode in BOUNDED_MODES or coverage_required:
                 assessments = [entry for entry in result.verification_assessments
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
+                if coverage_required and (len(assessments) != 1 or not citation_coverage_supported(assessments[0])):
+                    raise DomainError("invalid_evidence", "Citation coverage assessment is unsupported")
                 evidence = references
                 abstract = group == "belief_links" and item["kind"] == "abstracts"
                 if item["proposal_id"] in abstraction_parents:
@@ -237,11 +248,33 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                                   if entry.get("proposal_id") == item["proposal_id"]]
                     if len(selections) != 1:
                         raise DomainError("invalid_evidence", "Historical abstraction assessment is incomplete")
+                    if not isinstance(selections[0].get("original_evidence_refs"), list):
+                        raise DomainError("invalid_evidence", "Historical abstraction evidence is incomplete")
                     evidence = selections[0]["original_evidence_refs"] + item.get("counterexamples", [])
                     abstract = True
                 if len(assessments) != 1 or not bounded_assessment_supported(
                         assessments[0], item["proposal_id"], evidence, link=group == "belief_links", abstract=abstract):
                     raise DomainError("invalid_evidence", "Bounded learning assessment is unsupported")
+                if coverage_required and abstract:
+                    selected = selected_citation_refs(assessments[0], evidence)
+                    if not selected or (group == "claims" and (
+                            selected != item["evidence_refs"]
+                            or selections[0].get("supporting_evidence_indices")
+                            != assessments[0].get("supporting_evidence_indices"))):
+                        raise DomainError("invalid_evidence", "Citation coverage selection changed")
+                    if group == "belief_links":
+                        try:
+                            instances = _instance_support(item, claims[item["claim_proposal_id"]], snapshot["assertions"])
+                            assessment = assessments[0]
+                            supported = (_complete_instance_verdicts(assessment, instances)
+                                         and all(verdict["verdict"] == "supports"
+                                                 for verdict in assessment["instance_verdicts"])
+                                         and all(set(instance["evidence_indices"]) & set(assessment["supporting_evidence_indices"])
+                                                 for instance in instances))
+                        except (ValueError, KeyError, TypeError):
+                            supported = False
+                        if not supported:
+                            raise DomainError("invalid_evidence", "Citation coverage instance support changed")
             if group == "episode_actions" and batch.input_contract_version in EPISODE_FIDELITY_INPUT_VERSIONS:
                 assessments = [entry for entry in result.verification_assessments
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]

@@ -283,7 +283,8 @@ class MemoryService:
         )
         return descendants
 
-    def _append_event(self, conn, principal, brain, target, incoming, *, event_id=None, imported=False):
+    def _append_event(self, conn, principal, brain, target, incoming, *, event_id=None, imported=False,
+                      segmentation_rule_version=cognition.RULE_VERSION):
         params = self._params(principal, brain["id"])
         previous = conn.execute(
             "SELECT * FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
@@ -324,7 +325,8 @@ class MemoryService:
             }[incoming["actor_role"]],
             "origin_verification": "unverified_import" if imported else "unknown",
             "previous_revision": previous["revision"] if previous else None,
-            "utterance_segments": cognition.classify_segments(incoming["content"]),
+            "utterance_segments": cognition.classify_segments(
+                incoming["content"], rule_version=segmentation_rule_version),
         }
         validate("Event", document)
         conn.execute(
@@ -460,9 +462,9 @@ class MemoryService:
                 continue
         return references
 
-    def _current_captures(self, conn, principal, brain, event):
+    def _current_captures(self, conn, principal, brain, event, *, rule_version=None):
         superseded = self._superseded_evidence(conn, principal, brain, [event["event_id"]])
-        return [memory for memory in cognition.extract_event(event)
+        return [memory for memory in cognition.extract_event(event, rule_version=rule_version)
                 if not any(cognition.evidence_overlaps(reference, old)
                            for reference in memory["evidence_refs"] for old in superseded)]
 
@@ -1335,7 +1337,8 @@ class MemoryService:
             incoming["producer_ref"] = "archive-import"
             incoming["source_event_key"] = event["event_id"]
             target = {"conversation_ref": event["scope"]["conversation_id"], "branch_ref": event["scope"]["branch_id"]}
-            self._append_event(conn, principal, brain, target, incoming, event_id=event["event_id"], imported=True)
+            self._append_event(conn, principal, brain, target, incoming, event_id=event["event_id"], imported=True,
+                               segmentation_rule_version=cognition._literal_rule_version(event))
             if event["event_id"] in data.get("retired_event_ids", []):
                 conn.execute("UPDATE memory_events SET retired=true WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",
                              (*params, event["event_id"]))

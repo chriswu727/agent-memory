@@ -48,8 +48,20 @@ def test_production_neighborhood_supplies_complete_episode_sources_for_continuat
     def propose(request):
         calls.append(request.phase)
         data = json.loads(request.messages[-1]["content"])
-        assert data["episodes"] == [previous]
         assert expected_ids <= {source["event_id"] for source in data["sources"]}
+        sources = {(source["event_id"], source["revision"]): source for source in data["sources"]}
+        assert data["episodes"] == [{
+            "view_version": "episode-source-view-v1",
+            "use": "fallible_interaction_group_not_factual_evidence",
+            "grouping_status": "inferred", "external_completion": "not_established",
+            **{key: previous[key] for key in (
+                "episode_id", "revision", "scope", "state", "member_refs", "boundary_ref",
+            )},
+            "member_source_refs": [
+                {**ref, "content_sha256": sources[(ref["event_id"], ref["revision"])]["content_sha256"]}
+                for ref in previous["member_refs"]
+            ],
+        }]
         current = next(source for source in data["sources"] if source["event_id"] == receipt["accepted_event_ids"][0])
         action = episode(current, action="continue", episode_id=previous["episode_id"], expected_revision=1,
                          organization_statement="后续数学复习讨论延续了已有的复习计划话题。")
@@ -74,6 +86,7 @@ def test_production_neighborhood_supplies_complete_episode_sources_for_continuat
     LearningEngine(learning.service).semantic(learning.principal, learning.brain, job)
     completed = learning.job(job_id)
     assert completed["state"] == "completed"
+    assert completed["result"]["status"] == "completed", completed["result"]
     assert completed["result"]["publication"]["episode_versions"] == [{"episode_id": previous["episode_id"], "revision": 2}]
     assert expected_ids <= {ref["event_id"] for ref in completed["result"]["source_snapshot"]}
     assert calls == ["proposal", "verification"]

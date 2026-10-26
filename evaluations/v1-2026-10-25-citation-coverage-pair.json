@@ -1,0 +1,190 @@
+{
+  "version": "citation-coverage-paired-diagnostic-review-v1",
+  "runtime_build": "8737d89308f7d66333ae3cfc0f1ae48b4562696c22b20aa006ff1598c494aecc",
+  "input_contract_version": "citation-coverage-v1",
+  "outcome": "both_frozen_verifier_observations_met",
+  "scope": "Two verification calls over the same saved proposal and source context, followed by offline processor and publication-guard replay.",
+  "provider": {
+    "model": "deepseek-v4-pro",
+    "thinking": "enabled",
+    "reasoning_effort": "low",
+    "max_envelope_bytes": 262144,
+    "timeout_seconds": 150
+  },
+  "controlled_input": {
+    "source": "A saved known-usage verification request from the closed longitudinal v4 failure.",
+    "source_request_exact_journal_match": true,
+    "source_journal_sequence": 44,
+    "complete_arm_change": "Append the omitted source excerpt at Unicode code-point span 437:558 and its matching supporting reference; recompute the target citation scope.",
+    "target_statement_unchanged": true,
+    "existing_target_references_unchanged": true,
+    "source_records_and_segmentation_unchanged": true,
+    "other_proposals_unchanged": 6,
+    "full_source_and_cross_proposal_episode_context_available_in_both_arms": true,
+    "verification_instructions_and_schema_identical_between_arms": true,
+    "new_citation_coverage_field_separate_from_whole_proposal_and_per_citation_verdicts": true
+  },
+  "limits": {
+    "max_calls": 2,
+    "max_reserved_output_tokens": 32768,
+    "max_output_tokens_per_call": 16384,
+    "max_semantic_request_bytes_per_call": 98304,
+    "max_semantic_response_bytes": 65536,
+    "max_response_envelope_bytes": 262144,
+    "timeout_seconds_per_call": 150,
+    "unknown_usage_stops_further_calls": true,
+    "paid_retries": 0,
+    "paid_proposal_calls": 0
+  },
+  "usage": {
+    "completed_calls": 2,
+    "reserved_calls": 2,
+    "reserved_output_tokens": 32768,
+    "usage_confirmed_calls": 2,
+    "usage_totals": {
+      "completion_tokens": 7518,
+      "prompt_cache_hit_tokens": 3328,
+      "prompt_cache_miss_tokens": 40770,
+      "prompt_tokens": 44098,
+      "total_tokens": 51616
+    },
+    "usage_unknown_calls": 0
+  },
+  "provider_call_seconds_sum": 101.344467,
+  "arms": [
+    {
+      "arm": "missing_excerpt",
+      "target_citation_count": 5,
+      "target_proposal_verdict": "unknown",
+      "target_citation_coverage_verdict": "unknown",
+      "target_individual_citation_verdicts": [
+        "supports",
+        "supports",
+        "supports",
+        "supports",
+        "supports"
+      ],
+      "target_link_verdict": null,
+      "assessments_returned": 7,
+      "expected_observation_met": true,
+      "semantic_request_bytes": 83394,
+      "physical_request_bytes": 81126,
+      "response_envelope_bytes": 19798,
+      "provider_call_seconds": 58.070422,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 21412,
+        "completion_tokens": 4104,
+        "total_tokens": 25516,
+        "prompt_cache_hit_tokens": 1664,
+        "prompt_cache_miss_tokens": 19748,
+        "prompt_tokens_details": {
+          "cached_tokens": 1664
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3329
+        }
+      },
+      "offline_processor_replay": {
+        "status": "partial",
+        "accepted_claim_count": 5,
+        "accepted_episode_count": 1,
+        "target_claim_accepted": false,
+        "rejected_reason_counts": {
+          "invalid_proposal": 1,
+          "citation_coverage_unconfirmed": 1
+        },
+        "exact_verification_messages_and_schema_match": true,
+        "publication_guard_checked": true,
+        "database_publication": false,
+        "external_calls": 0
+      }
+    },
+    {
+      "arm": "complete_citations",
+      "target_citation_count": 6,
+      "target_proposal_verdict": "supports",
+      "target_citation_coverage_verdict": "supports",
+      "target_individual_citation_verdicts": [
+        "supports",
+        "supports",
+        "supports",
+        "supports",
+        "supports",
+        "supports"
+      ],
+      "target_link_verdict": null,
+      "assessments_returned": 7,
+      "expected_observation_met": true,
+      "semantic_request_bytes": 87925,
+      "physical_request_bytes": 85657,
+      "response_envelope_bytes": 16261,
+      "provider_call_seconds": 43.274045,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 22686,
+        "completion_tokens": 3414,
+        "total_tokens": 26100,
+        "prompt_cache_hit_tokens": 1664,
+        "prompt_cache_miss_tokens": 21022,
+        "prompt_tokens_details": {
+          "cached_tokens": 1664
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2616
+        }
+      },
+      "offline_processor_replay": {
+        "status": "partial",
+        "accepted_claim_count": 6,
+        "accepted_episode_count": 1,
+        "target_claim_accepted": true,
+        "rejected_reason_counts": {
+          "invalid_proposal": 1
+        },
+        "exact_verification_messages_and_schema_match": true,
+        "publication_guard_checked": true,
+        "database_publication": false,
+        "external_calls": 0
+      }
+    }
+  ],
+  "independent_audit": {
+    "journal_hash_chain_and_head_valid": true,
+    "prepared_and_execution_plans_equal": true,
+    "exact_physical_request_hashes_match_frozen_messages": true,
+    "strict_response_schema_and_unique_complete_assessment_ids": true,
+    "complete_evidence_index_sets_for_all_assessments": true,
+    "provider_usage_arithmetic_valid": true,
+    "live_log_matches_journal": true,
+    "semantic_source_review": "The incomplete set omits one enumerated element despite retaining the complete source elsewhere. The added excerpt supplies that element without changing the asserted statement.",
+    "closed_v4_plan_journal_usage_hashes_unchanged": true,
+    "closed_v4_stop_retained": true
+  },
+  "interpretation": {
+    "repair_evidence": "The verifier rejected the incomplete citation set even though every cited excerpt was individually relevant, and accepted the same statement when the missing supporting excerpt was added. Offline processor replay rejected and accepted the target respectively and checked the publication guard.",
+    "next_step_supported": "A separately reviewed and frozen longitudinal repair follow-up after required local and artifact checks pass, with its own finite allowance and independent source review.",
+    "old_campaign_status": "Closed and failed; no continuation, overwrite or retroactive pass.",
+    "longitudinal_acceptance": "not passed"
+  },
+  "limitations": [
+    "One defect case with two sequential observations, without repetition or statistical reliability evidence.",
+    "The complete citation set was constructed for the diagnostic; no real proposal-model call demonstrated automatic citation repair.",
+    "Both arms retain the original segmentation, including its historical classification error; new segmentation behavior is not exercised by this pair.",
+    "Offline replay has partial status in both arms because one unrelated original proposal remains structurally rejected.",
+    "No database publication, retrieval answer, cue recovery, model-callback change, aging behavior or full longitudinal scenario was executed by this diagnostic.",
+    "Independent source review remains necessary; model verdicts do not establish a general semantic guarantee or product maturity."
+  ],
+  "private_evidence_sha256": {
+    "pair/plan.json": "dba5c712a8a91caaf117d56c3a4eeba33295d4345a08be33dd37091a7bc7476e",
+    "pair/journal.jsonl": "e4b7d9f993a699f19abfd2a9dba81a028c117bef55d8aed76fa97741f5c37c6a",
+    "pair/head.json": "801bea5b997ab7de4dcd7422ec872b0ddde1bdd4e09a942c9260d3305cf02695",
+    "pair/calls.jsonl": "c20afdb1589f78a0cd998acb00894364629b77e3a7d55fae4ace9e782214cf73",
+    "verification/original-verification-request.json": "6f62b7a081a9255316b51d3be9ea65cb093e5c4d4b772184bb642f6e19251596",
+    "verification/paired-plan.json": "0f1afb6891c554111330397eec4db8525b43687cc6944caf8a2bc7f9c9ea7868",
+    "verification/paired-live.log": "0118759cad0b53d19484eba06696f8f6285c1df9513fb86522a4035ebb8355be",
+    "verification/paired_diagnostic.py": "f19aad4abc322837a9b634c89b8a4aafcfda92e1b286d725299fe7f8f78ae892",
+    "verification/processor_replay.py": "5b5e34d96c046fb8d3eb4de7be44ea6869653d18a72b32a71a3bb521f8ba6660",
+    "verification/processor-results.json": "3e709f6312d5ce220c2a62c2a8dafd2dd38e788d9fa7b40773b06fb7d84a6a2c"
+  }
+}

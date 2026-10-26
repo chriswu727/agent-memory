@@ -76,6 +76,10 @@ def verifier(request):
         "relations": [{"evidence_index": evidence["evidence_index"],
                        "verdict": evidence["reference"]["relationship"]}
                       for evidence in candidate["evidence"]],
+        **({"citation_coverage_verdict": "supports"} if "citation_scope" in candidate else {}),
+        **({"organization_fidelity": dict.fromkeys(("attribution", "modality", "specificity", "boundary"), "supports")}
+           if candidate["group"] == "episode_actions" and "organization_fidelity" in
+           request.response_schema["properties"]["assessments"]["items"]["properties"] else {}),
         **({"request_verdict": "supports"}
            if candidate["proposal"].get("evidence_use") == "current_request" else {}),
         **({"instance_verdicts": [{"memory_version": item["memory_version"], "verdict": "supports"}

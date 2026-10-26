@@ -118,10 +118,10 @@ def bounded_proposal_schema(mode, base, *, input_contract_version=None):
         from .history_semantics import (
             HISTORY_ABSTENTIONS,
             HISTORY_DECISIONS,
-            LINK_DERIVED_INPUT_VERSION,
+            LINK_DERIVED_INPUT_VERSIONS,
         )
 
-        if input_contract_version == LINK_DERIVED_INPUT_VERSION:
+        if input_contract_version in LINK_DERIVED_INPUT_VERSIONS:
             properties.pop("integration_decisions", None)
             schema["required"] = [key for key in schema["required"] if key != "integration_decisions"]
             properties["integration_abstentions"] = copy.deepcopy(HISTORY_ABSTENTIONS)
