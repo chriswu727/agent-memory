@@ -42,6 +42,9 @@ def test_plan_is_offline_bounded_and_withholds_target_details(diagnostic, monkey
     assert planned["cognitive_reasoning_effort"] == "low"
     assert planned["provider_envelope_bytes"] == 262144
     assert planned["semantic_policy"]["max_response_bytes"] == 65536
+    assert planned["host_callback"] == "agent_memory.chat_provider.ChatCompletionsGenerator"
+    assert planned["callback_comparison"]["source_callback"] == "examples.evaluation_host.ChatCompletionsHost"
+    assert planned["callback_comparison"]["diagnostic_callback"] == planned["host_callback"]
     assert len(planned["cases"]) == len({case["id"] for case in planned["cases"]}) == 5
     for case in planned["cases"][:3]:
         assert "lantern" not in case["text"] and "button" not in case["text"]
@@ -49,6 +52,43 @@ def test_plan_is_offline_bounded_and_withholds_target_details(diagnostic, monkey
     assert "power cuts" not in planned["cases"][0]["text"]
     assert "tea tin" not in planned["cases"][1]["text"]
     assert "tea tin" in planned["cases"][2]["text"]
+
+
+def test_alternate_callback_keeps_control_messages_and_generation_settings(diagnostic):
+    planned, requests = diagnostic.plan(), []
+    request = ModelRequest("turn", "request", ({"role": "user", "content": "An actual memory prompt."},), 100, "")
+
+    def respond(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "role": "assistant", "content": "A bounded reply."}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}})
+
+    with diagnostic.create_host(planned, "fake-key", httpx.MockTransport(respond)) as alternative:
+        assert type(alternative) is diagnostic.ChatCompletionsGenerator
+        assert alternative.timeout_seconds == planned["provider_timeout_seconds"] == 240
+        assert alternative.max_response_bytes == planned["provider_envelope_bytes"] == 262144
+        assert alternative(request) == "A bounded reply."
+    control_type = importlib.import_module("examples.evaluation_host").ChatCompletionsHost
+    provider = planned["provider"]
+    with control_type(provider["base_url"], "fake-key", provider["model"],
+                      thinking=provider["thinking"], reasoning_effort=provider["reasoning_effort"],
+                      max_output_tokens=planned["host_output_tokens"],
+                      timeout_seconds=planned["provider_timeout_seconds"],
+                      max_response_bytes=planned["provider_envelope_bytes"],
+                      transport=httpx.MockTransport(respond)) as control:
+        assert control(request) == "A bounded reply."
+    assert len(requests) == 2 and requests[0] == requests[1]
+    assert requests[0] == {"model": provider["model"], "messages": list(request.messages),
+                           "thinking": {"type": "enabled"}, "reasoning_effort": "high",
+                           "max_tokens": 4096, "stream": False}
+
+
+def test_frozen_callback_identity_cannot_silently_change(diagnostic):
+    planned = diagnostic.plan()
+    planned["host_callback"] = "examples.evaluation_host.ChatCompletionsHost"
+    with pytest.raises(ValueError, match="Frozen host callback"):
+        diagnostic.create_host(planned, "fake-key", httpx.MockTransport(forbidden))
 
 
 @contextmanager
@@ -203,7 +243,7 @@ def test_provider_unknown_usage_stops_next_role_and_records_actual_prompt(diagno
     with diagnostic.CampaignJournal(tmp_path / "diagnostic", diagnostic_plan(diagnostic)) as journal:
         journal.append("probe_started", {"brain_id": "copy", "case_id": "unaided"})
         with diagnostic.MeteredTransport(journal.path / "calls.jsonl", transport=httpx.MockTransport(respond)) as meter:
-            with diagnostic.ChatCompletionsHost("https://provider.test", "fake-key", "test-model", transport=meter) as host:
+            with diagnostic.create_host(journal.plan, "fake-key", meter) as host:
                 request = ModelRequest("turn", "request", ({"role": "user", "content": diagnostic.CASES[0]["text"]},), 100, "")
                 with pytest.raises(diagnostic.longitudinal.CampaignStopped, match="unknown_provider_usage"):
                     diagnostic.BoundedProvider(journal, meter, host, "host")(request)
@@ -260,6 +300,7 @@ def test_inspection_is_offline_and_does_not_imply_semantic_acceptance(diagnostic
     result = diagnostic.inspect(path)
     assert result["semantic_acceptance"] == "pending_independent_review"
     assert result["source_unchanged"] is None
+    assert result["host_callback"] == diagnostic.HOST_CALLBACK
 
 
 def test_run_probe_passes_only_case_and_normal_instructions_in_a_fresh_conversation(diagnostic, tmp_path, monkeypatch):
@@ -308,14 +349,22 @@ def test_real_http_archive_copies_preserve_source_and_isolate_all_five_probes(di
         learning.principal, None, None, None)
     before = original_runner.snapshot()
     planned = diagnostic.plan({"brain_id": learning.brain, "checkpoint": {"snapshot_sha256": digest(before)}})
-    requests = []
+    requests, answers = [], []
 
     def respond(request):
         body = json.loads(request.content)
         requests.append(body)
         assert body["thinking"] == {"type": "enabled"}
-        answer = (json.dumps({"claims": [], "situation_updates": [], "episode_actions": []})
-                  if "response_format" in body else "A small kindness is a good starting point.")
+        assert body["model"] == planned["provider"]["model"]
+        if "response_format" in body:
+            assert body["reasoning_effort"] == planned["cognitive_reasoning_effort"]
+            answer = json.dumps({"claims": [], "situation_updates": [], "episode_actions": []})
+        else:
+            assert body["reasoning_effort"] == planned["provider"]["reasoning_effort"]
+            assert body["max_tokens"] == planned["host_output_tokens"]
+            assert all(answer not in json.dumps(body["messages"]) for answer in answers)
+            answer = "A small kindness is a good starting point. Isolated probe marker " + str(len(answers) + 1)
+            answers.append(answer)
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
             "role": "assistant", "content": answer}}],
             "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}})
@@ -325,7 +374,9 @@ def test_real_http_archive_copies_preserve_source_and_isolate_all_five_probes(di
                 journal.path / "calls.jsonl", max_calls=15, max_output_tokens=184320,
                 max_response_bytes=262144, transport=httpx.MockTransport(respond)) as meter:
             with diagnostic.ChatCompletionsSemanticProvider(
-                    "https://provider.test", "fake-key", "test-model", transport=meter,
+                    planned["provider"]["base_url"], "fake-key", planned["provider"]["model"],
+                    thinking=planned["provider"]["thinking"],
+                    reasoning_effort=planned["cognitive_reasoning_effort"], transport=meter,
                     max_response_bytes=262144) as cognitive:
                 recorded = diagnostic.BoundedProvider(journal, meter, cognitive, "cognition")
                 learning.service.semantic_processor = diagnostic.SemanticProcessor(
@@ -333,15 +384,14 @@ def test_real_http_archive_copies_preserve_source_and_isolate_all_five_probes(di
                 settings = diagnostic.Settings(database_url=learning.database.dsn, api_keys={
                     hashlib.sha256(b"cue-test").hexdigest(): learning.principal})
                 with diagnostic.loopback_server(diagnostic.create_app(settings, service=learning.service)) as url:
-                    with diagnostic.ChatCompletionsHost(
-                            "https://provider.test", "fake-key", "test-model", transport=meter,
-                            max_response_bytes=262144) as host:
+                    with diagnostic.create_host(planned, "fake-key", meter) as host:
                         with diagnostic.MemoryClient(url, "cue-test", learning.brain) as source:
                             result = diagnostic.run_diagnostics(
                                 journal, meter, source, original_runner.snapshot,
                                 lambda: diagnostic.MemoryClient(url, "cue-test"), host)
             assert result["completed_cases"] == [case["id"] for case in diagnostic.CASES]
             assert result["source_unchanged"] is True
+            assert result["host_callback"] == diagnostic.HOST_CALLBACK
             assert original_runner.snapshot() == before
             assert result["semantic_acceptance"] == "pending_independent_review"
             starts = [event["payload"] for event in journal.events if event["kind"] == "probe_started"]
@@ -351,7 +401,16 @@ def test_real_http_archive_copies_preserve_source_and_isolate_all_five_probes(di
             assert all(event["payload"]["equal_durable_graph"] for event in journal.events
                        if event["kind"] == "copy_graph_checked")
             hosts = [request for request in requests if "response_format" not in request]
-            assert len(hosts) == 5
+            assert len(hosts) == len(answers) == 5
             assert [request["messages"][-1]["content"] for request in hosts] == [case["text"] for case in diagnostic.CASES]
+            assert any("lantern" in json.dumps(request["messages"]) and "buttons" in json.dumps(request["messages"])
+                       for request in hosts)
+            with learning.database.transaction(learning.principal) as connection:
+                jobs = connection.execute(
+                    "SELECT kind,model_calls FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=ANY(%s)",
+                    (learning.principal.tenant_id, learning.principal.principal_id,
+                     [item["brain_id"] for item in starts]),
+                ).fetchall()
+            assert all(job["kind"] == "orient" for job in jobs if job["model_calls"])
             assert meter.summary()["usage_unknown_calls"] == 0
             assert 5 <= meter.summary()["reserved_calls"] <= 15

@@ -114,6 +114,8 @@ Still required for full G4: independent review of real-model behavior through th
 
 `examples/longitudinal_cue_diagnostics.py` provides five isolated probes at exactly eleven clean completed sessions, before the main grandmother-card task. Each new brain starts from the same trusted server archive and a fresh conversation. Its durable recall graph must match; working state, access counters, embeddings and execution state are not asserted identical. It compares unaided recall, a broad cue, a specific cue with withheld details, an unknown detail and a false premise. There is no background learning, retry or merge into the main brain. Source snapshots and cumulative cognitive usage must remain unchanged.
 
+The cue plan freezes the core `ChatCompletionsGenerator` callback instead of the main runner's evaluation host, retaining the same provider, model and generation settings. This checks an alternate callback over restored history without extra calls; it does not establish cross-vendor or cross-model compatibility. The five-copy HTTP/PostgreSQL regression and installed-runtime check each passed 18 tests, including prompt isolation, parameter equivalence and unknown-usage stopping. Real-model callback and cue outcomes remain unassessed until the eligible checkpoint is actually tested.
+
 ```sh
 uv run python -m examples.longitudinal_cue_diagnostics --plan
 uv run python -m examples.longitudinal_cue_diagnostics --live --source .local/longitudinal-memory --output .local/longitudinal-cues

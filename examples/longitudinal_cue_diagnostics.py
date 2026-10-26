@@ -12,6 +12,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from agent_memory.api import create_app
+from agent_memory.chat_provider import ChatCompletionsGenerator
 from agent_memory.client import MemoryClient, default_budget
 from agent_memory.config import Settings
 from agent_memory.helpers import Principal, digest, uid
@@ -23,11 +24,12 @@ from agent_memory.service import MemoryService
 from agent_memory.storage import Database
 from examples import evaluate_longitudinal as longitudinal
 from examples.evaluate_memory_lifecycle import archive_evidence, archive_graph
-from examples.evaluation_host import ChatCompletionsHost, loopback_server
+from examples.evaluation_host import loopback_server
 from examples.evaluation_support import MeteredTransport
 from examples.longitudinal_journal import CampaignJournal
 
 ROOT = Path(__file__).resolve().parents[1]
+HOST_CALLBACK = "agent_memory.chat_provider.ChatCompletionsGenerator"
 CASES = (
     {"id": "unaided", "text": "I'm writing Grandma a card and don't want a generic thank-you. "
      "Is there something I've told you about her that we could use as a starting point?"},
@@ -63,12 +65,19 @@ def plan(source=None):
     files.update({str(path.relative_to(ROOT)): digest(path.read_text())
                   for path in (ROOT / "src/agent_memory").glob("*.py")})
     return {
-        "version": "longitudinal-cue-diagnostics-v1", "source": copy.deepcopy(source),
+        "version": "longitudinal-cue-diagnostics-v2", "source": copy.deepcopy(source),
         "source_boundary": "Exactly eleven clean completed sessions, before grandma-card.",
         "runtime_build": base["runtime_build"], "code_fingerprints": files,
         "provider": base["provider"], "semantic_policy": base["semantic_policy"],
         "cognitive_reasoning_effort": base["cognitive_reasoning_effort"],
         "runtime_policy": base["runtime_policy"], "host_instructions": base["host_instructions"],
+        "host_callback": HOST_CALLBACK,
+        "callback_comparison": {
+            "source_callback": "examples.evaluation_host.ChatCompletionsHost",
+            "diagnostic_callback": HOST_CALLBACK,
+            "scope": "Alternate callback on restored brains with the same provider, model and generation "
+                     "settings; not a cross-vendor or cross-model evaluation.",
+        },
         "provider_timeout_seconds": 240, "provider_envelope_bytes": 262144, "host_output_tokens": 4096,
         "cases": copy.deepcopy(list(CASES)), "private_review": copy.deepcopy(OBLIGATIONS),
         "per_copy_allocation": {"host": 1, "cognition": 2},
@@ -243,6 +252,8 @@ def report(journal):
     completed = [event["payload"] for event in events if event["kind"] == "probe_completed"]
     unchanged = [event["payload"] for event in events if event["kind"] == "source_checked_after"]
     return {"state": events[-1]["kind"] if events else "new", "plan_sha256": journal.plan_sha256,
+            "host_callback": journal.plan.get("host_callback"),
+            "callback_comparison": journal.plan.get("callback_comparison"),
             "completed_cases": [item["case_id"] for item in completed],
             "source_unchanged": unchanged[-1]["unchanged"] if unchanged else None,
             "semantic_acceptance": "pending_independent_review", "aging_assessed": False,
@@ -283,6 +294,17 @@ def run_diagnostics(journal, meter, source_memory, snapshot, copy_client, host):
     return report(journal)
 
 
+def create_host(planned, key, transport):
+    if planned.get("host_callback") != HOST_CALLBACK:
+        raise ValueError("Frozen host callback does not match the diagnostic implementation")
+    provider = planned["provider"]
+    return ChatCompletionsGenerator(
+        provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=transport,
+        reasoning_effort=provider["reasoning_effort"], max_output_tokens=planned["host_output_tokens"],
+        timeout_seconds=planned["provider_timeout_seconds"],
+        max_response_bytes=planned["provider_envelope_bytes"])
+
+
 def live(source_path, output):
     source_path, output = Path(source_path).resolve(strict=True), Path(output).resolve()
     if output.exists() or source_path in output.parents or output in source_path.parents:
@@ -311,11 +333,7 @@ def live(source_path, output):
             recorded = BoundedProvider(journal, meter, cognitive, "cognition")
             service = MemoryService(database, semantic_processor=SemanticProcessor(
                 recorded, recorded, SemanticPolicy(**planned["semantic_policy"])))
-            host = stack.enter_context(ChatCompletionsHost(
-                provider["base_url"], key, provider["model"], thinking=provider["thinking"], transport=meter,
-                reasoning_effort=provider["reasoning_effort"],
-                max_output_tokens=4096, timeout_seconds=planned["provider_timeout_seconds"],
-                max_response_bytes=planned["provider_envelope_bytes"]))
+            host = stack.enter_context(create_host(planned, key, meter))
             token = uid()
             api_settings = Settings(database_url=database.dsn,
                                     api_keys={hashlib.sha256(token.encode()).hexdigest(): principal})
