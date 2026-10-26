@@ -8,24 +8,34 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .applicability import ApplicabilityResult, evaluate_applicability, validate_observation
-from .context_views import FORMAT, context_view, memory_content, render_recall
+from .context_views import FORMAT, assistant_speech, context_view, memory_content, render_recall
 from .contracts import validate
 from .helpers import DomainError, digest, now, uid
 from .ontology import CORE_REGISTRY
 from .retrieval import RANK_METHODS
 from .temporal import evaluate_valid_during
 
-RULE_VERSION = "literal-episodes-v2"
+RULE_VERSION = "literal-episodes-v3"
+PREVIOUS_RULE_VERSION = "literal-episodes-v2"
 LEGACY_RULE_VERSION = "literal-episodes-v1"
-RETRIEVAL_VERSION = "unicode-lexical-v1"
+LITERAL_RULE_VERSIONS = (RULE_VERSION, PREVIOUS_RULE_VERSION, LEGACY_RULE_VERSION)
+RETRIEVAL_VERSION = "unicode-lexical-v2"
 _LIST_PREFIX = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:(?:[-+*]|\d+[.)])(?:[ \t]+|$))")
 _MERIDIEM = re.compile(r"(?<![a-z])[ap]\.m\.", re.I)
 _SENTENCE_END = re.compile(r"[。.!！?？]+[\"'”’»」』）)\]}*_~`]*")
 _FORMATTING_CHARACTERS = frozenset("*_~`#>+-|\"'“”‘’«»「」『』（）()[]{}.!?。！？…")
-_QUESTION = re.compile(
+_LEGACY_QUESTION = re.compile(
     r"[?？]|(?:吗|么|呢)\s*[。.!！]?$|是否|还记得|记不记得|有没有|"
     r"\b(?:do|did|does|can|could|would|will|is|are|was|were|have|has)\s+"
     r"(?:you|we|i|he|she|they|it)\b|\b(?:what|when|where|who|why|how)\b",
+    re.IGNORECASE,
+)
+_QUESTION = re.compile(
+    r"[?？]|(?:吗|么|呢)\s*[。.!！]?$|是否|还记得|记不记得|有没有|"
+    r"^\s*(?:do|did|does|can|could|would|will|is|are|was|were|have|has)\s+"
+    r"(?:you|we|i|he|she|they|it)\b|^\s*(?:what|which|whose|who)\b|"
+    r"^\s*(?:when|where|why|how)(?:\s+(?:many|much|long|often|soon|far|old))?\s+"
+    r"(?:do|did|does|can|could|would|will|is|are|was|were|have|has|should|must)\b",
     re.IGNORECASE,
 )
 _HISTORICAL = re.compile(
@@ -42,7 +52,11 @@ _WORLD_MARKERS = (
 _IGNORED_TERMS = frozenset(
     "a an the i you we they it is am are was were do does did have has had "
     "remember recall what when where who why how please about that this my your our "
-    "before previously said tell told to of and or in on at for with".split()
+    "before previously said tell told to of and or in on at for with "
+    "as be been being can could would will should shall may might must "
+    "he she him her his its them their theirs me mine ours yours "
+    "there here than then so but also just really very some any "
+    "user assistant direct_statement inquiry instruction help want need something use".split()
 )
 _CJK_FILLERS = re.compile(
     "还记得|记不记得|有没有|能不能|请问|以前|之前|曾经|那次|这个|那个|什么|"
@@ -111,7 +125,7 @@ def _sentence_spans(text: str):
 
 def classify_segments(content: dict, *, rule_version: str = RULE_VERSION) -> list[dict]:
     validate("EventContent", content)
-    if rule_version not in {LEGACY_RULE_VERSION, RULE_VERSION}:
+    if rule_version not in LITERAL_RULE_VERSIONS:
         raise DomainError("validation_failed", "Unknown literal segmentation rule version.")
     if content["media_type"] != "text/plain":
         return [{"act": "not_applicable"}]
@@ -127,15 +141,16 @@ def classify_segments(content: dict, *, rule_version: str = RULE_VERSION) -> lis
         if start == end:
             continue
         sentence = text[start:end]
-        prefix = _LIST_PREFIX.match(sentence) if rule_version == RULE_VERSION else None
+        prefix = _LIST_PREFIX.match(sentence) if rule_version != LEGACY_RULE_VERSION else None
         body = sentence[prefix.end():] if prefix else sentence
         if prefix and not body and re.fullmatch(r"\d+[.)]", sentence):
             body = sentence
-        if rule_version == RULE_VERSION and not any(
+        if rule_version != LEGACY_RULE_VERSION and not any(
             not char.isspace() and char not in _FORMATTING_CHARACTERS for char in body
         ):
             continue
-        act = "inquiry" if _QUESTION.search(body) else "direct_statement"
+        question = _QUESTION if rule_version == RULE_VERSION else _LEGACY_QUESTION
+        act = "inquiry" if question.search(body.lstrip(' *_~`\"“‘')) else "direct_statement"
         if act != "inquiry" and re.match(r"(?:请|帮我|不要|记住|please\b)", body, re.I):
             act = "instruction"
         segments.append({
@@ -146,15 +161,22 @@ def classify_segments(content: dict, *, rule_version: str = RULE_VERSION) -> lis
 
 
 def _literal_rule_version(event: dict) -> str:
+    if "segmentation_rule_version" in event:
+        version = event["segmentation_rule_version"]
+        if version not in LITERAL_RULE_VERSIONS:
+            raise DomainError("validation_failed", "Unknown literal segmentation rule version.")
+        return version
     content = event["observed"]["content"]
-    legacy = classify_segments(content, rule_version=LEGACY_RULE_VERSION)
-    current = classify_segments(content)
-    if event["utterance_segments"] == current:
-        return RULE_VERSION
+    versions = [(version, classify_segments(content, rule_version=version))
+                for version in (PREVIOUS_RULE_VERSION, LEGACY_RULE_VERSION)]
+    for version, segments in versions:
+        if event["utterance_segments"] == segments:
+            return version
     declared_spans = [segment.get("span") for segment in event["utterance_segments"]]
-    if legacy != current and declared_spans == [segment.get("span") for segment in legacy]:
-        return LEGACY_RULE_VERSION
-    return RULE_VERSION
+    for version, segments in versions:
+        if declared_spans == [segment.get("span") for segment in segments]:
+            return version
+    return PREVIOUS_RULE_VERSION
 
 
 def _segments(event: dict, *, rule_version: str | None = None) -> list[dict]:
@@ -175,6 +197,25 @@ def _segments(event: dict, *, rule_version: str | None = None) -> list[dict]:
     return computed
 
 
+def evidence_segments(event: dict) -> list[dict]:
+    content = event["observed"]["content"]
+    versions = ((event["segmentation_rule_version"],) if "segmentation_rule_version" in event
+                else LITERAL_RULE_VERSIONS)
+    segments = _segments(event)
+    if any(event["utterance_segments"] == classify_segments(content, rule_version=version)
+           for version in versions):
+        text = _content_text(content)
+        for segment in segments:
+            if "span" not in segment:
+                continue
+            span = segment["span"]
+            acts = {item["act"] for item in classify_segments(
+                {"media_type": "text/plain", "text": text[span["start"]:span["end"]]})}
+            if len(acts) == 1:
+                segment["act"] = acts.pop()
+    return segments
+
+
 def _world(observed: dict, text: str) -> str:
     hint = observed["interpretation_hint"]
     if hint in {"roleplay", "hypothetical", "dream"}:
@@ -190,7 +231,7 @@ def _world(observed: dict, text: str) -> str:
 def extract_event(event: dict, *, rule_version: str | None = None) -> list[dict]:
     validate("Event", event)
     rule_version = _literal_rule_version(event) if rule_version is None else rule_version
-    if rule_version not in {LEGACY_RULE_VERSION, RULE_VERSION}:
+    if rule_version not in LITERAL_RULE_VERSIONS:
         raise DomainError("validation_failed", "Unknown literal segmentation rule version.")
     observed = event["observed"]
     _range(observed["occurred_time"])
@@ -281,6 +322,12 @@ def _scope_allows(source: dict, scope: dict) -> bool:
 
 def _terms(text: str) -> tuple[set[str], set[str], set[str]]:
     normalized = unicodedata.normalize("NFKC", text).casefold()
+    normalized = normalized.replace("’", "'")
+    normalized = re.sub(r"\bwon't\b", "will not", normalized)
+    normalized = re.sub(r"\bcan't\b", "can not", normalized)
+    normalized = re.sub(r"\bshan't\b", "shall not", normalized)
+    normalized = re.sub(r"n't\b", " not", normalized)
+    normalized = re.sub(r"'(?:m|re|ve|ll|d|s)\b", " ", normalized)
     words = set(re.findall(r"[a-z0-9_]+", normalized)) - _IGNORED_TERMS
     runs = re.findall(r"[\u3400-\u9fff]+", _CJK_FILLERS.sub(" ", normalized))
     singles = {char for run in runs for char in run if char not in "的了是吗呢么在我你他她和有"}
@@ -300,6 +347,13 @@ def _lexical_score_terms(query_terms, text_terms) -> float:
     char_overlap = len(q_chars & chars)
     char_score = char_overlap / max(1, len(q_chars)) if char_overlap >= 2 else 0
     return word_score + pair_score + 0.15 * char_score
+
+
+def speech_requested(request: dict) -> bool:
+    return request["intent"] in {"episode", "open_commitment", "exact_quote"} or bool(re.search(
+        r"你说|你答应|你的建议|you said|you promised|your suggestion|(?:did|do) you (?:say|suggest|promise)",
+        request["query"], re.I,
+    ))
 
 
 def _usage(budget: dict) -> dict:
@@ -403,7 +457,8 @@ def evidence_overlaps(first: dict, second: dict) -> bool:
 
 
 def _eligible_source(event: dict, ref: dict, historical: bool, intent: str,
-                     claim_kind: str | None = None, *, verified_preference: bool = False) -> bool:
+                     claim_kind: str | None = None, *, verified_preference: bool = False,
+                     segment_cache: dict | None = None) -> bool:
     role = event["observed"]["actor_role"]
     if role == "assistant" and claim_kind is not None:
         return (claim_kind in {"agent_said", "proposal_offered", "commitment_expressed"}
@@ -416,7 +471,11 @@ def _eligible_source(event: dict, ref: dict, historical: bool, intent: str,
         return False
     span = ref.get("span")
     acts = []
-    for segment in _segments(event):
+    segment_cache = {} if segment_cache is None else segment_cache
+    key = ("source_acts", event["event_id"], event["revision"])
+    if key not in segment_cache:
+        segment_cache[key] = evidence_segments(event)
+    for segment in segment_cache[key]:
         bounds = segment.get("span")
         if span and bounds and max(span["start"], bounds["start"]) >= min(
             span["end"], bounds["end"]
@@ -469,7 +528,7 @@ def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
     )
     if claim_kind is not None and any(
         not _eligible_source(events[ref["event_id"]], ref, historical, intent, claim_kind,
-                             verified_preference=verified_preference)
+                             verified_preference=verified_preference, segment_cache=validation_cache)
         for ref in refs
     ):
         return False
@@ -481,7 +540,7 @@ def _evidence_valid(memory: dict, all_memories: dict, events: dict, scope: dict,
             if event["sequence"] > cutoff or event["event_id"] in excluded:
                 return False
             if not _eligible_source(event, ref, True, intent, claim_kind,
-                                    verified_preference=verified_preference):
+                                    verified_preference=verified_preference, segment_cache=validation_cache):
                 return False
     paths = [path for path in basis["support_paths"]
              if path["path_id"] in basis["selected_path_ids"]]
@@ -623,6 +682,12 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
                       for index, item in enumerate(state.get("selected_versions", []))}
     selecting = "selected_versions" in state
     historical = history_status != "not_requested"
+    include_speech = speech_requested({**request, "query": query})
+    from .lexical_candidates import LexicalScorer
+
+    score_text = LexicalScorer(query, [memory["statement"] for memory in candidates
+                                     if _scope_allows(memory["scope"], scope)
+                                     and (include_speech or not assistant_speech(memory))]) if not selecting else None
     validation_cache = {}
     if not coverage["read_fence_satisfied"] or history_status == "unavailable":
         candidates = []
@@ -633,10 +698,11 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             break
         if memory["lifecycle"] not in {"active", "dormant"} or memory["world"] not in worlds:
             continue
-        if (memory.get("claim_kind") in {"agent_said", "proposal_offered", "commitment_expressed"}
-                and request["intent"] not in {"episode", "open_commitment", "exact_quote"}
-                and not historical
-                and not re.search(r"(你说|你答应|you said|you promised|your suggestion)", query, re.I)):
+        supports = [event_map.get(ref["event_id"]) for ref in memory["evidence_refs"]
+                    if ref["relationship"] == "supports"]
+        assistant_only = supports and all(source and source["observed"]["actor_role"] == "assistant"
+                                          for source in supports)
+        if not include_speech and (assistant_only or assistant_speech(memory)):
             continue
         key = (memory["memory_id"], memory["revision"])
         if candidate_versions is not None and key not in candidate_versions and key not in tail_versions:
@@ -648,8 +714,7 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             continue
         signals = [] if selecting else _candidate_signals(state, key)
         ranked_score = sum(max(0.0, signal["score"]) for signal in signals if signal["method"] in RANK_METHODS)
-        lexical_score = _lexical_score(query, memory["statement"])
-        score = (1 / (1 + selected_order[key])) if selecting else ranked_score or lexical_score
+        score = (1 / (1 + selected_order[key])) if selecting else ranked_score or score_text(query, memory["statement"])
         if score <= 0:
             continue
         if not _scope_allows(memory["scope"], scope):
@@ -686,6 +751,13 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
         if last_used:
             days = max(0, (access_reference_time - _stamp(last_used)).total_seconds() / 86400)
             activation /= 1 + math.log1p(days)
+        if candidate_versions is not None and key in tail_versions and not signals and not selecting:
+            from .dynamics import access_state, rank_weight
+
+            direct = request["intent"] in {"exact_quote", "episode", "timeline", "cue_recovery"}
+            score = min(1.0, score) / 61 * rank_weight(
+                access_state(memory, None, at=access_reference_time), direct=direct)
+            activation = 0.0
         if signals or selecting:
             activation = 0.0
         if not signals:
@@ -709,6 +781,16 @@ def recall(scope: dict, request: dict, memories: list[dict], events: list[dict],
             "retrieved_from": "unindexed_tail" if tail else "index",
             "display_mode": "explicit_recollection" if historical else "background_context",
         }
+        if (memory["derivation"]["method"] == "direct_capture"
+                and memory["derivation"]["rule_version"] != RULE_VERSION
+                and len(memory["evidence_refs"]) == 1):
+            ref = memory["evidence_refs"][0]
+            source = event_map[ref["event_id"]]
+            previous = {digest(segment.get("span")): segment["act"] for segment in _segments(source)}
+            for segment in evidence_segments(source):
+                if (segment.get("span") == ref.get("span")
+                        and segment["act"] != previous.get(digest(segment.get("span")))):
+                    item["source_act"] = {"act": segment["act"], "rule_version": RULE_VERSION}
         if _has_applicability(memory):
             item["applicability"] = _memory_applicability(memory, state, scope, event_map, timestamp)
         result["items"].append(item)

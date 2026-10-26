@@ -474,6 +474,9 @@
           ],
           "minimum": 1
         },
+        "segmentation_rule_version": {
+          "enum": ["literal-episodes-v1", "literal-episodes-v2", "literal-episodes-v3"]
+        },
         "utterance_segments": {
           "type": "array",
           "items": {
@@ -1468,6 +1471,15 @@
     "RecallItem": {
       "type": "object",
       "properties": {
+        "source_act": {
+          "type": "object",
+          "properties": {
+            "act": {"type": "string", "enum": ["direct_statement", "inquiry", "instruction", "correction", "confirmation", "presupposition", "unknown", "not_applicable"]},
+            "rule_version": {"const": "literal-episodes-v3"}
+          },
+          "required": ["act", "rule_version"],
+          "additionalProperties": false
+        },
         "memory": {
           "$ref": "#/$defs/MemoryAssertion"
         },

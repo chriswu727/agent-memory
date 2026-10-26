@@ -234,7 +234,7 @@ def test_delivered_assistant_source_can_support_its_own_speech_act(kind, deliver
     source["observed"]["delivery_state"] = delivery
     memory = cognition.extract_event(source)[0]
     memory["claim_kind"] = kind
-    result = cognition.recall(scope(), request("计划", evidence_mode="prior_record_check",
+    result = cognition.recall(scope(), request("你说的计划", evidence_mode="prior_record_check",
                                              evidence_cutoff={"mode": "through_sequence", "through_sequence": 1}),
                               [memory], [source], state())
     assert len(result["items"]) == 1

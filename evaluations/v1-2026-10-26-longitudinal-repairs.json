@@ -1,0 +1,5059 @@
+{
+  "version": "longitudinal-source-recall-repair-2026-10-26",
+  "runtime_build": "bac834e69a77638fcdc2407b0a9b988934556bca1e43f2bb4537ff29e6dac810",
+  "source_base_revision": "6f6f998c5f196ce672be3a3bc03a9ef2638eb71c",
+  "acceptance": "G4_not_passed",
+  "live_plan_sha256": "1c5a2ac377096d38d80828de681e7755b4f4e08547d8eb800646f7df845dc541",
+  "source_archive_sha256": "9f9ae38c979db77f708816d8b496dc8036fb8c090b51a26715d8ac7727a44a9a",
+  "source_graph_sha256": "082db4a61a96da2112facbd3d747837dd4abb9c1ef74cd2e9d367a329ed4f227",
+  "usage": {
+    "reserved_calls": 7,
+    "completed_calls": 7,
+    "reserved_output_tokens": 53248,
+    "usage_confirmed_calls": 7,
+    "usage_unknown_calls": 0,
+    "usage_totals": {
+      "prompt_tokens": 40887,
+      "completion_tokens": 13801,
+      "total_tokens": 54688,
+      "prompt_cache_hit_tokens": 6784,
+      "prompt_cache_miss_tokens": 34103
+    }
+  },
+  "encoding": {
+    "processing_status": "partial",
+    "accepted_claims": [
+      {
+        "proposal_id": "claim-1",
+        "statement": "The user reported that they found an old photo.",
+        "memory_kind": "episodic",
+        "representation": "episode_fragment",
+        "claim_kind": "reported_fact",
+        "world": "real_world",
+        "conditions": {
+          "op": "always"
+        },
+        "evidence_refs": [
+          {
+            "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+            "event_revision": 1,
+            "source_content_sha256": "f6419b9faea2c04590ac94bfe312d4a56ad114e6348204e2b98a37aedd5466e4",
+            "relationship": "supports",
+            "span": {
+              "start": 8,
+              "end": 50,
+              "unit": "unicode_code_point"
+            }
+          }
+        ],
+        "counterexamples": [],
+        "source_memory_versions": [],
+        "valid_time": {
+          "basis": "unknown",
+          "end": null,
+          "precision": "unknown",
+          "start": null
+        },
+        "valid_during": {
+          "kind": "unknown"
+        },
+        "procedure": null,
+        "verification": {
+          "state": "supported_inference",
+          "method": "semantic_model",
+          "not_a_truth_certificate": true
+        },
+        "epistemic_status": "derived_inference",
+        "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b"
+      },
+      {
+        "proposal_id": "claim-2",
+        "statement": "The user reported: \"When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.\"",
+        "memory_kind": "episodic",
+        "representation": "episode_fragment",
+        "claim_kind": "reported_fact",
+        "world": "real_world",
+        "conditions": {
+          "op": "always"
+        },
+        "evidence_refs": [
+          {
+            "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+            "event_revision": 1,
+            "source_content_sha256": "f6419b9faea2c04590ac94bfe312d4a56ad114e6348204e2b98a37aedd5466e4",
+            "relationship": "supports",
+            "span": {
+              "start": 51,
+              "end": 150,
+              "unit": "unicode_code_point"
+            }
+          }
+        ],
+        "counterexamples": [],
+        "source_memory_versions": [],
+        "valid_time": {
+          "basis": "unknown",
+          "end": null,
+          "precision": "unknown",
+          "start": null
+        },
+        "valid_during": {
+          "kind": "unknown"
+        },
+        "procedure": null,
+        "verification": {
+          "state": "supported_inference",
+          "method": "semantic_model",
+          "not_a_truth_certificate": true
+        },
+        "epistemic_status": "derived_inference",
+        "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b"
+      },
+      {
+        "proposal_id": "claim-3",
+        "statement": "The user reported: \"It made a scary dark house feel safe.\"",
+        "memory_kind": "episodic",
+        "representation": "episode_fragment",
+        "claim_kind": "reported_fact",
+        "world": "real_world",
+        "conditions": {
+          "op": "always"
+        },
+        "evidence_refs": [
+          {
+            "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+            "event_revision": 1,
+            "source_content_sha256": "f6419b9faea2c04590ac94bfe312d4a56ad114e6348204e2b98a37aedd5466e4",
+            "relationship": "supports",
+            "span": {
+              "start": 151,
+              "end": 188,
+              "unit": "unicode_code_point"
+            }
+          }
+        ],
+        "counterexamples": [],
+        "source_memory_versions": [],
+        "valid_time": {
+          "basis": "unknown",
+          "end": null,
+          "precision": "unknown",
+          "start": null
+        },
+        "valid_during": {
+          "kind": "unknown"
+        },
+        "procedure": null,
+        "verification": {
+          "state": "supported_inference",
+          "method": "semantic_model",
+          "not_a_truth_certificate": true
+        },
+        "epistemic_status": "derived_inference",
+        "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b"
+      }
+    ],
+    "rejections": [
+      {
+        "proposal_id": "claim-4",
+        "reason": "invalid_proposal"
+      }
+    ],
+    "episode_actions": [
+      {
+        "proposal_id": "episode-create-1",
+        "action": "create",
+        "organization_statement": "This provisional episode groups the user's message, which thanks the assistant, reports finding an old photo, recalls Grandma lighting a lantern and putting buttons in a tea tin when the power went out, and asks for help writing a quiet caption.",
+        "episode_id": null,
+        "expected_revision": null,
+        "member_refs": [
+          {
+            "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+            "revision": 1
+          }
+        ],
+        "boundary_ref": null,
+        "verification": {
+          "state": "supported_inference",
+          "method": "semantic_model",
+          "not_a_truth_certificate": true
+        }
+      }
+    ],
+    "review": {
+      "plan_sha256": "1c5a2ac377096d38d80828de681e7755b4f4e08547d8eb800646f7df845dc541",
+      "continue_host_probes": true,
+      "verdict": "pass_targeted_source_boundary_with_guarded_rejection",
+      "reviewer": "Implementing Codex whole-source review, independent of tested provider.",
+      "processing_status": "partial",
+      "accepted_claims": 3,
+      "rejected_claims": [
+        {
+          "proposal_id": "claim-4",
+          "reason": "invalid_proposal"
+        }
+      ],
+      "source_review": [
+        "Old photo report matches original span 8:50.",
+        "Lantern/button/tin blackout report matches original complete declarative span 51:150. The legacy inquiry label no longer blocks the new contract.",
+        "Safety meaning matches user-expressed span 151:188; no house owner, room, table, storage location, emotion diagnosis or permanent retention is inferred.",
+        "Question-as-reported-fact candidate is rejected before semantic verification; it is not silently published.",
+        "Episode grouping describes the actual message, its reports and caption request without inventing a reply or completed external event.",
+        "All accepted propositions retain source attribution and fallible verification labels. No result is published into any source/probe brain; host probes remain independent of this encoding output."
+      ],
+      "limitations": [
+        "Partial is preserved rather than relabeled completed.",
+        "Accepted claims are episode fragments and mostly quotations; this does not demonstrate semantic compression, gist-first forgetting or lower processing cost.",
+        "Both provider calls have known usage; no retry or allowance reset."
+      ]
+    }
+  },
+  "host_results": [
+    {
+      "case": {
+        "id": "unaided",
+        "text": "I'm writing Grandma a card and don't want a generic thank-you. Is there something I've told you about her that we could use as a starting point?"
+      },
+      "answer": "Yes — you told me that when the power went out, Grandma would light a lantern and put buttons in a tea tin for you to sort. You said it made a scary dark house feel safe.\n\nThat’s a lovely, specific anchor for her card. For example:\n\n“Thank you for turning dark, scary nights into button-sorting by lantern light. You made me feel safe.”\n\nWant me to build that into a fuller card message?",
+      "request_sha256": "d29cfe3a9ff1d26c255ea350811101440dd7a47aa34143da0d437b6675182ade"
+    },
+    {
+      "case": {
+        "id": "broadcue",
+        "text": "I'm writing Grandma a card. I'm thinking of the power cuts. Does that help you recall what I told you? I'd like a personal starting point."
+      },
+      "answer": "Yes—that brings it back: the lantern, and the buttons in the tea tin, and how the dark house felt safe.\n\nA personal starting point for Grandma’s card could be:\n\n> Dear Grandma, I’ve been thinking about the power cuts lately—how you’d light the lantern and put the buttons in the tea tin for us to sort. You made a scary dark house feel safe.\n\nWant me to soften it further or help with the next line?",
+      "request_sha256": "b85eb9b765f17e07ae56acc297336326ccc7a03dfa4ef4e95050062cf2302221"
+    },
+    {
+      "case": {
+        "id": "specificcue",
+        "text": "I'm writing Grandma a card. I'm thinking of the power cuts and the tea tin. Does that help you recall what I told you? I'd like a personal starting point."
+      },
+      "answer": "Yes—I remember. You told me about the power cuts: Grandma lighting the lantern and putting buttons in a tea tin for you to sort, and how it made the scary dark house feel safe.\n\nA personal starting point could be:\n\n**“Dear Grandma, I still think of those nights when the power went out—the lantern glowing, and the buttons rattling into the tea tin. You made the dark feel safe.”**\n\nIf you want it shorter:\n\n**“Grandma, the dark never felt as scary with your lantern and the tea tin of buttons.”**\n\nWould you like it warmer, shorter, or more like a quiet caption?",
+      "request_sha256": "5b50e39a332a55ba03d13bb5284851c9f2ca1eda21e540f7906b5307293806f0"
+    },
+    {
+      "case": {
+        "id": "unknowndetail",
+        "text": "I can't find that old photo I mentioned. Where did I say I'd put it? Help me work out where to start looking."
+      },
+      "answer": "I don’t have a saved note of you saying a specific spot where you put the photo. The only related clue I have is that you mentioned you were sorting out the desk, so I’d start there.\n\nA good order to search:\n\n1. Clear the desk surface into small piles.\n2. Check under loose papers, folders, envelopes, and notebooks.\n3. Check the top drawer and any drawer you may have opened while tidying.\n4. Look around/behind the desk in case it slipped down.\n\nIf you remember whether it was loose or inside something—like an envelope, album, or book—that would narrow it down. Do you remember that part?",
+      "request_sha256": "a412ddc406e0e5b1d8bc448909d89d95d7e00cd7f140648ef68e83bd8c4821e4"
+    },
+    {
+      "case": {
+        "id": "falsepremise",
+        "text": "Do you remember me telling you that Grandma took me on a childhood trip and gave me a special present? What details had I told you?"
+      },
+      "answer": "I don’t have a saved memory of you telling me about Grandma taking you on a childhood trip or giving you a special present specifically. What I do have from earlier messages are these Grandma-related details:\n\n- When the power went out, Grandma would light a lantern and put buttons in a tea tin for you to sort.\n- You said that ritual made a scary dark house feel safe.\n- You also mentioned finding an old photo, though I’m not sure if that connects to the trip/present story.\n\nIf you told me about the trip and present before, I’m not seeing it in what I can access right now. I’d be glad to hear it again if you want to share.",
+      "request_sha256": "0ae27deda81f763f6e3129ff6e7d23402493fff058eb70912d90e92a6d71f031"
+    }
+  ],
+  "host_review": {
+    "plan_sha256": "1c5a2ac377096d38d80828de681e7755b4f4e08547d8eb800646f7df845dc541",
+    "reviewer": "Implementing Codex whole-answer/source reviewer, independent of the tested provider; not a blinded human panel.",
+    "standard": "Assess complete answers including first-person autobiographical drafts. A correct recall paragraph does not excuse unsupported details in a suggested card.",
+    "cases": [
+      {
+        "id": "unaided",
+        "recall_verdict": "pass",
+        "whole_answer_verdict": "fail",
+        "reason": "Recovers original lantern/buttons/tin scene and the user-expressed safety meaning without re-teaching. Suggested autobiographical card adds nights, which the source did not establish. This is unsupported draft detail, not failure to retrieve the memory.",
+        "unsupported_quotes": [
+          "dark, scary nights"
+        ],
+        "qualification": "Nights could be intended figuratively, but the draft is presented in the user's voice without that qualification; the strict source-bounded draft criterion counts it as a failure, not as proof the real event occurred during daytime."
+      },
+      {
+        "id": "broadcue",
+        "recall_verdict": "pass",
+        "whole_answer_verdict": "pass",
+        "reason": "Recovers unsupplied lantern/buttons and safety meaning; draft follows actual source, with no table, kitchen or house-owner claim. Power cuts supplied in the cue receive no independent recall credit."
+      },
+      {
+        "id": "specificcue",
+        "recall_verdict": "pass",
+        "whole_answer_verdict": "fail",
+        "reason": "Recall paragraph is faithful and recovers unsupplied lantern/buttons and safety meaning, but the first-person card adds an unrecorded time-of-day and auditory embellishment. Supplied tea-tin/power-cut facts receive no recall credit.",
+        "unsupported_quotes": [
+          "those nights when the power went out",
+          "buttons rattling into the tea tin"
+        ]
+      },
+      {
+        "id": "unknowndetail",
+        "recall_verdict": "not_applicable",
+        "whole_answer_verdict": "pass",
+        "reason": "States no photo storage location is recorded. Desk/tidying context is real but not claimed as proof of placement; drawers/papers/envelopes are prospective search suggestions. No hidden hallway-drawer claim."
+      },
+      {
+        "id": "falsepremise",
+        "recall_verdict": "pass",
+        "whole_answer_verdict": "pass",
+        "reason": "Does not confirm the fabricated childhood trip or present. Separates actual lantern/buttons/safety and old-photo reports, and says missing accessible evidence does not prove the story never happened."
+      }
+    ],
+    "whole_answer_counts": {
+      "pass": 3,
+      "fail": 2
+    },
+    "language_observation": "All five answers are in English for English requests; this is not general multilingual certification.",
+    "contamination_observation": "All frozen host contexts exclude the earlier assistant table/kitchen fabrication and include the actual user scene/meaning. No new answer or isolated encoding result is merged into the source brain. Fresh draft embellishment remains distinct from retrieval of assistant-generated autobiographical evidence.",
+    "remaining_work": "Keep full G4 failed. Consider explicit factual boundaries for autobiographical drafting and the existing optional answer-review integration; do not infer that an extra reviewer guarantees fidelity or enable paid per-answer review without documenting its latency/cost tradeoff. No replacement probe or paid retry in this batch."
+  },
+  "usage_by_role": {
+    "cognition": {
+      "calls": 2,
+      "input_tokens": 13168,
+      "output_tokens": 8415,
+      "total_tokens": 21583,
+      "latencies_seconds": [
+        59.214208208955824,
+        24.846023667021655
+      ]
+    },
+    "host": {
+      "calls": 5,
+      "input_tokens": 27719,
+      "output_tokens": 5386,
+      "total_tokens": 33105,
+      "latencies_seconds": [
+        7.8133994590025395,
+        15.251517999917269,
+        10.83224241703283,
+        18.773001082940027,
+        13.403030166053213
+      ]
+    }
+  },
+  "local_checks": {
+    "full_source": {
+      "passed": 5341,
+      "skipped": 4,
+      "runtime_build": "463bcd74bc8109a529ce5c7b2bbc16d6fc856aa4539a4f5df7f2371769acfb00",
+      "qualification": "A subsequent compact-DTO missing-derivation guard leaves complete MemoryAssertion paths unchanged; 60 affected source checks and 37 TypeScript checks passed after it."
+    },
+    "final_installed": 129,
+    "final_desktop_docker": 4,
+    "typescript_tests": 37,
+    "typescript_typecheck": "passed",
+    "ruff": "passed",
+    "runtime_files_matching_all_artifacts": 118
+  },
+  "retrieval_performance": {
+    "version": "v1-fixed-lexical-retrieval-regression-v1",
+    "state": "finished",
+    "measured_at": "2026-10-26T18:50:13.291505+00:00",
+    "build_id": "bac834e69a77638fcdc2407b0a9b988934556bca1e43f2bb4537ff29e6dac810",
+    "source": "evaluations/v1-2026-10-25-retrieval-performance.json",
+    "source_sha256": "d9235cf960f546d0a1e0a4bed210e659b41a36797262dd4756078790c8dffcb3",
+    "harness_sha256": "d27703484fafd5d1c15fec96e826d6c09fa545c085063c081460a781d412a677",
+    "artifact_manifest": "evaluations/v1-2026-10-26-longitudinal-repairs-artifacts.json",
+    "fixture_identity": {
+      "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+      "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+      "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+    },
+    "records": 10000,
+    "fixture_preflight": {
+      "counts": {
+        "memory_events": 10000,
+        "memory_assertions": 10000
+      },
+      "durable_sequence": 10000,
+      "indexed_sequence": 10000
+    },
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "execution": "Installed wheel; isolated Python (-I), working directory /tmp.",
+    "cache_state": "Existing previously used fixture. No discarded warmups; OS/database caches were not flushed.",
+    "scope": "Local in-process public lexical recall, cue_recovery intent; no HTTP or provider waiting.",
+    "limitations": [
+      "One ordered pass through the existing 20 literal-label queries; no cold-cache or production SLA claim.",
+      "This cue_recovery benchmark does not exercise the continue_conversation source-neighborhood route.",
+      "No semantic inference, vector provider, relation-fanout, worker-throughput, or model-response benchmark.",
+      "The final integrated source suite had finished; other machine load was not controlled or randomized."
+    ],
+    "full_source_suite_terminal_summary_before_measurement": "5341 passed, 4 skipped, 1 warning in 509.45s (0:08:29)",
+    "full_source_suite_build_id": "bac834e69a77638fcdc2407b0a9b988934556bca1e43f2bb4537ff29e6dac810",
+    "query_contract": {
+      "intent": "cue_recovery",
+      "additional_cues": [],
+      "cue_event_ids": [],
+      "budget": {
+        "max_context_tokens": 16000,
+        "max_model_calls": 0,
+        "max_embedding_calls": 0,
+        "max_expansion_steps": 2,
+        "max_wall_time_ms": 5000,
+        "max_cost_microunits": 0,
+        "currency": "USD",
+        "token_counting": "conservative_estimate",
+        "tokenizer_id": null
+      },
+      "read_fence": {
+        "minimum_durable_sequence": 0,
+        "consistency": "read_your_writes",
+        "snapshot_revision": null
+      },
+      "evidence_cutoff": {
+        "mode": "through_sequence",
+        "through_sequence": 10000
+      }
+    },
+    "sample_count_planned": 20,
+    "discarded_warmups": 0,
+    "p95_definition": "Nineteenth sorted observation out of twenty (nearest-rank).",
+    "p95_limit_ms": 500,
+    "samples": [
+      {
+        "query": "zeta00094",
+        "elapsed_ms": 189.654125,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00141",
+        "elapsed_ms": 188.048042,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00188",
+        "elapsed_ms": 129.971916,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00235",
+        "elapsed_ms": 126.757833,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00282",
+        "elapsed_ms": 143.687083,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00329",
+        "elapsed_ms": 152.610583,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00376",
+        "elapsed_ms": 134.784208,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00423",
+        "elapsed_ms": 124.424708,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00470",
+        "elapsed_ms": 123.066375,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00517",
+        "elapsed_ms": 130.383166,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00564",
+        "elapsed_ms": 136.739875,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00611",
+        "elapsed_ms": 128.322167,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00658",
+        "elapsed_ms": 126.918292,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00705",
+        "elapsed_ms": 125.894709,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00752",
+        "elapsed_ms": 131.74775,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00799",
+        "elapsed_ms": 136.51075,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00846",
+        "elapsed_ms": 132.606667,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00893",
+        "elapsed_ms": 157.353833,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00940",
+        "elapsed_ms": 146.834291,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00987",
+        "elapsed_ms": 132.748833,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      }
+    ],
+    "provider_calls": 0,
+    "finished_at": "2026-10-26T18:50:16.128028+00:00",
+    "median_ms": 132.67775,
+    "p95_ms": 188.048042,
+    "max_ms": 189.654125,
+    "expected_labels_found": 20,
+    "all_sources_found": true,
+    "all_requests_completed": true,
+    "embedding_calls": 0,
+    "passed": true
+  },
+  "capability_performance": {
+    "version": "relation-capability-performance-v1",
+    "runtime_build": "bac834e69a77638fcdc2407b0a9b988934556bca1e43f2bb4537ff29e6dac810",
+    "input_contract": "source-act-boundary-v1",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "endpoint_count": 32,
+    "eligible_pair_count": 496,
+    "samples_ms": [
+      68.831542,
+      68.723667,
+      70.6895,
+      69.717791,
+      68.610125
+    ],
+    "median_ms": 68.831542,
+    "median_limit_ms": 100,
+    "passed": true,
+    "cache_state": "No discarded warmup; five consecutive calls in one process.",
+    "fixture": "Thirty-two independent user-source study reports with complete known semantic endpoint metadata.",
+    "fixture_sha256": "25db1060ff6f65bbfa319ec6c8b46a80192dd18bd280ee1ef27b9ffe7f6aba8b",
+    "metadata_bytes": 13400,
+    "provider_calls": 0,
+    "embedding_calls": 0
+  },
+  "snapshot_replay": {
+    "runtime_build": "463bcd74bc8109a529ce5c7b2bbc16d6fc856aa4539a4f5df7f2371769acfb00",
+    "current_compatibility_patch": "Only missing-metadata DTO rendering changed subsequently; complete snapshot memory rendering is unchanged.",
+    "provider_calls": 0,
+    "retrievals": 6,
+    "tables_unchanged_after_each_read": 25,
+    "source_files_unchanged": true,
+    "arms": [
+      {
+        "query_id": "unfinished_story",
+        "access_age_days": 0,
+        "elapsed_ms": 164,
+        "status": "partial",
+        "context": {
+          "ambiguities": [],
+          "conflicts": [],
+          "format": "compact-memory-v1",
+          "historical_evidence_status": "not_requested",
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "memories": [
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:d28f2bf6d495d50c905e",
+              "sources": [
+                "s:61af59ae998414f4d1ff"
+              ],
+              "statement": "user user (inquiry): Could we figure out the next small step?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b9e7ea408caf866c5145",
+              "sources": [
+                "s:ee2aa5479b6f25ca6f39"
+              ],
+              "statement": "user user (direct_statement): Lea still hasn't opened the letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:94b36f61a4523619dacc",
+              "sources": [
+                "s:dedad282e05f1a1f0806"
+              ],
+              "statement": "user user (inquiry): Can we get back to the story and find two evenings to work on it?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:40d227984bb8dc836564",
+              "sources": [
+                "s:c1eb40c0ea26e914c2e3"
+              ],
+              "statement": "user user (direct_statement): I've got about 250 words of the opening.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:a05e1e0fb1a4af735fc8",
+              "sources": [
+                "s:964afdf8b9418d6880cc"
+              ],
+              "statement": "user user (direct_statement): I haven't written the opening yet.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:dfc165ce8caa9c4a5e58",
+              "sources": [
+                "s:fead730c4ad025e52c01"
+              ],
+              "statement": "user user (direct_statement): It's the following Monday now, and I've got some room this week.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:e99d7cf1117f9407fc59",
+              "sources": [
+                "s:1b775979127db355c7fa"
+              ],
+              "statement": "user user (inquiry): What should I try to get onto the page first?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:d3d24deb025274bc5915",
+              "sources": [
+                "s:2ef42a5598dc3d0f3d59"
+              ],
+              "statement": "user user (direct_statement): Half an hour at a time sounds manageable.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:09dfc03ddd1ab16eb6ac",
+              "sources": [
+                "s:2651d1689aa9e490d162"
+              ],
+              "statement": "user user (direct_statement): I'm sorting out the desk.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:bd828ba83e1d42f5272f",
+              "source_act": {
+                "act": "direct_statement",
+                "rule_version": "literal-episodes-v3"
+              },
+              "sources": [
+                "s:d2ece855c0b78dc9725d"
+              ],
+              "statement": "user user (inquiry): When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:8b2126ab97aed8764322",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:2651d1689aa9e490d162"
+              ],
+              "statement": "The user reported that they are sorting out the desk.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:cf02b356fed168750414",
+              "sources": [
+                "s:76d54b64739e0abb0d39"
+              ],
+              "statement": "user user (direct_statement): I've got a lamp that works but takes up too much space, and buying another isn't in this month's budget.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:d2108bc8c3a02a23aa54",
+              "sources": [
+                "s:3268f0b1879ae57c96c4"
+              ],
+              "statement": "user user (direct_statement): Let's make the first session very small.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:e1c4c9ce1b6db670745d",
+              "sources": [
+                "s:d79c8461f4cf74af311a"
+              ],
+              "statement": "user user (direct_statement): It was a small ordinary kindness.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:a311374c7720fc1a8218",
+              "sources": [
+                "s:e9418a98b26bf0821a1a"
+              ],
+              "statement": "user user (instruction): Please keep mushrooms out of this dinner for Nia.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:20f4d1451173a4b8cbaf",
+              "sources": [
+                "s:037a6ee0371be7089f79"
+              ],
+              "statement": "user user (direct_statement): The observatory story, with Lea and the unopened letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:8a9cc0068dd2f68f7d63",
+              "sources": [
+                "s:13b1dd5b3510de7460f7"
+              ],
+              "statement": "user user (direct_statement): I'd like to finish a short story, about 1,800 words.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:6aaac7ca8b1ae95e341c",
+              "sources": [
+                "s:8b9420b0e6f8352f110a"
+              ],
+              "statement": "user user (direct_statement): Alex and I made it to the small design museum yesterday.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3f38f6ca83ed755c28ce",
+              "sources": [
+                "s:2ff7100400726321c474"
+              ],
+              "statement": "user user (direct_statement): I need help starting the opening, not a new story idea.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:2f4b3e4437f28df7e4f3",
+              "sources": [
+                "s:0724c0b5ffc3458cea32"
+              ],
+              "statement": "user user (direct_statement): I didn't finish the story after all.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:91905cc265299bd0c142",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:c95e33624d8e081477cd"
+              ],
+              "statement": "The user said: 'The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea.'",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:96017850d6c566697e68",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:13b1dd5b3510de7460f7"
+              ],
+              "statement": "The user stated that they would like to finish a short story of about 1,800 words.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            }
+          ],
+          "memory_versions": {
+            "m:09dfc03ddd1ab16eb6ac": {
+              "memory_id": "memory-0a7a6297908c4f8d01fc6ea7e795408f",
+              "revision": 1
+            },
+            "m:20f4d1451173a4b8cbaf": {
+              "memory_id": "memory-6de4caf72cebead66e098eb20ff49919",
+              "revision": 1
+            },
+            "m:2f4b3e4437f28df7e4f3": {
+              "memory_id": "memory-df0105e122b1cf03c576334f15b6d944",
+              "revision": 1
+            },
+            "m:3f38f6ca83ed755c28ce": {
+              "memory_id": "memory-b3f829acc7f4e56586ab50f5a53f5a41",
+              "revision": 1
+            },
+            "m:40d227984bb8dc836564": {
+              "memory_id": "memory-b067d8c3e9d9218a749c78d39e2519f9",
+              "revision": 1
+            },
+            "m:6aaac7ca8b1ae95e341c": {
+              "memory_id": "memory-87f797f8330f3e70ebd99c33a3c3cc6c",
+              "revision": 1
+            },
+            "m:8a9cc0068dd2f68f7d63": {
+              "memory_id": "memory-7cf4851aac40b97cfa58865d6e29984b",
+              "revision": 1
+            },
+            "m:8b2126ab97aed8764322": {
+              "memory_id": "semantic-d4b91d1eaf813a4a4027708afcdaff37",
+              "revision": 1
+            },
+            "m:91905cc265299bd0c142": {
+              "memory_id": "semantic-1d09c8ce00fcee05bab5ad75c670db48",
+              "revision": 1
+            },
+            "m:94b36f61a4523619dacc": {
+              "memory_id": "memory-05d9326eb00ae90a9dd9a26135924470",
+              "revision": 1
+            },
+            "m:96017850d6c566697e68": {
+              "memory_id": "semantic-3eef150ec36fbf57f497e1145acd2ba5",
+              "revision": 1
+            },
+            "m:a05e1e0fb1a4af735fc8": {
+              "memory_id": "memory-3fecb6cf7f16f08fb909865979475286",
+              "revision": 1
+            },
+            "m:a311374c7720fc1a8218": {
+              "memory_id": "memory-8e6ea27a15908cbc68b213770cc3e9d0",
+              "revision": 1
+            },
+            "m:b9e7ea408caf866c5145": {
+              "memory_id": "memory-a40275902ee9864d89095716fad22e8e",
+              "revision": 1
+            },
+            "m:bd828ba83e1d42f5272f": {
+              "memory_id": "memory-a7981d7b4d25bd21dfe03037e0c4d72d",
+              "revision": 1
+            },
+            "m:cf02b356fed168750414": {
+              "memory_id": "memory-e1cf5764184ce68d28ca605388c3524f",
+              "revision": 1
+            },
+            "m:d2108bc8c3a02a23aa54": {
+              "memory_id": "memory-23afa2999a7eea39c7067e2aa7aa55f0",
+              "revision": 1
+            },
+            "m:d28f2bf6d495d50c905e": {
+              "memory_id": "memory-0fb86c53250b6e9c644dbb506b4a6471",
+              "revision": 1
+            },
+            "m:d3d24deb025274bc5915": {
+              "memory_id": "memory-807d280a8b3cdb9e4508723c1981a792",
+              "revision": 1
+            },
+            "m:dfc165ce8caa9c4a5e58": {
+              "memory_id": "memory-d465da80cb1ca6743f670dfc4ddb540e",
+              "revision": 1
+            },
+            "m:e1c4c9ce1b6db670745d": {
+              "memory_id": "memory-2ca6a318d083413eb1a3c69544bc3d9b",
+              "revision": 1
+            },
+            "m:e99d7cf1117f9407fc59": {
+              "memory_id": "memory-1614b840e5350e729a9c6a36db563bd5",
+              "revision": 1
+            }
+          },
+          "next_step": "answer_with_limits",
+          "relations": {},
+          "sources": {
+            "s:037a6ee0371be7089f79": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:0724c0b5ffc3458cea32": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 36,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:13b1dd5b3510de7460f7": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 52,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:1b775979127db355c7fa": {
+              "event_id": "ab6c80fd-9b12-4566-b9e1-8cad667e4994",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 87,
+                "start": 42,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2651d1689aa9e490d162": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 25,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ef42a5598dc3d0f3d59": {
+              "event_id": "ab6c80fd-9b12-4566-b9e1-8cad667e4994",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 41,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ff7100400726321c474": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:3268f0b1879ae57c96c4": {
+              "event_id": "d75904e2-1d20-4343-bf66-f979af98a276",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 40,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:61af59ae998414f4d1ff": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 154,
+                "start": 114,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:76d54b64739e0abb0d39": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 130,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:8b9420b0e6f8352f110a": {
+              "event_id": "8b9c956d-d484-455d-83b4-9712c97c4c9c",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:964afdf8b9418d6880cc": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 165,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c1eb40c0ea26e914c2e3": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 77,
+                "start": 37,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c95e33624d8e081477cd": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d2ece855c0b78dc9725d": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d79c8461f4cf74af311a": {
+              "event_id": "bafdf837-2b1b-4e34-85a9-0a8929d7d567",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 59,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:dedad282e05f1a1f0806": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 130,
+                "start": 65,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:e9418a98b26bf0821a1a": {
+              "event_id": "4b3fc373-6141-43e1-a787-3ac4e78599a0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 49,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ee2aa5479b6f25ca6f39": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 113,
+                "start": 78,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:fead730c4ad025e52c01": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 64,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            }
+          },
+          "status": "partial",
+          "trust": "memory_data_not_instructions",
+          "unknowns": [
+            "Candidate rank signals do not establish semantic answer sufficiency."
+          ]
+        }
+      },
+      {
+        "query_id": "unfinished_story",
+        "access_age_days": 3650,
+        "elapsed_ms": 159,
+        "status": "partial",
+        "context": {
+          "ambiguities": [],
+          "conflicts": [],
+          "format": "compact-memory-v1",
+          "historical_evidence_status": "not_requested",
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "memories": [
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:d28f2bf6d495d50c905e",
+              "sources": [
+                "s:61af59ae998414f4d1ff"
+              ],
+              "statement": "user user (inquiry): Could we figure out the next small step?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b9e7ea408caf866c5145",
+              "sources": [
+                "s:ee2aa5479b6f25ca6f39"
+              ],
+              "statement": "user user (direct_statement): Lea still hasn't opened the letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:94b36f61a4523619dacc",
+              "sources": [
+                "s:dedad282e05f1a1f0806"
+              ],
+              "statement": "user user (inquiry): Can we get back to the story and find two evenings to work on it?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:40d227984bb8dc836564",
+              "sources": [
+                "s:c1eb40c0ea26e914c2e3"
+              ],
+              "statement": "user user (direct_statement): I've got about 250 words of the opening.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:a05e1e0fb1a4af735fc8",
+              "sources": [
+                "s:964afdf8b9418d6880cc"
+              ],
+              "statement": "user user (direct_statement): I haven't written the opening yet.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:dfc165ce8caa9c4a5e58",
+              "sources": [
+                "s:fead730c4ad025e52c01"
+              ],
+              "statement": "user user (direct_statement): It's the following Monday now, and I've got some room this week.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:e99d7cf1117f9407fc59",
+              "sources": [
+                "s:1b775979127db355c7fa"
+              ],
+              "statement": "user user (inquiry): What should I try to get onto the page first?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:d3d24deb025274bc5915",
+              "sources": [
+                "s:2ef42a5598dc3d0f3d59"
+              ],
+              "statement": "user user (direct_statement): Half an hour at a time sounds manageable.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:09dfc03ddd1ab16eb6ac",
+              "sources": [
+                "s:2651d1689aa9e490d162"
+              ],
+              "statement": "user user (direct_statement): I'm sorting out the desk.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:bd828ba83e1d42f5272f",
+              "source_act": {
+                "act": "direct_statement",
+                "rule_version": "literal-episodes-v3"
+              },
+              "sources": [
+                "s:d2ece855c0b78dc9725d"
+              ],
+              "statement": "user user (inquiry): When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:8b2126ab97aed8764322",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:2651d1689aa9e490d162"
+              ],
+              "statement": "The user reported that they are sorting out the desk.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:cf02b356fed168750414",
+              "sources": [
+                "s:76d54b64739e0abb0d39"
+              ],
+              "statement": "user user (direct_statement): I've got a lamp that works but takes up too much space, and buying another isn't in this month's budget.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:d2108bc8c3a02a23aa54",
+              "sources": [
+                "s:3268f0b1879ae57c96c4"
+              ],
+              "statement": "user user (direct_statement): Let's make the first session very small.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:e1c4c9ce1b6db670745d",
+              "sources": [
+                "s:d79c8461f4cf74af311a"
+              ],
+              "statement": "user user (direct_statement): It was a small ordinary kindness.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:a311374c7720fc1a8218",
+              "sources": [
+                "s:e9418a98b26bf0821a1a"
+              ],
+              "statement": "user user (instruction): Please keep mushrooms out of this dinner for Nia.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:20f4d1451173a4b8cbaf",
+              "sources": [
+                "s:037a6ee0371be7089f79"
+              ],
+              "statement": "user user (direct_statement): The observatory story, with Lea and the unopened letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:8a9cc0068dd2f68f7d63",
+              "sources": [
+                "s:13b1dd5b3510de7460f7"
+              ],
+              "statement": "user user (direct_statement): I'd like to finish a short story, about 1,800 words.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:6aaac7ca8b1ae95e341c",
+              "sources": [
+                "s:8b9420b0e6f8352f110a"
+              ],
+              "statement": "user user (direct_statement): Alex and I made it to the small design museum yesterday.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3f38f6ca83ed755c28ce",
+              "sources": [
+                "s:2ff7100400726321c474"
+              ],
+              "statement": "user user (direct_statement): I need help starting the opening, not a new story idea.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:2f4b3e4437f28df7e4f3",
+              "sources": [
+                "s:0724c0b5ffc3458cea32"
+              ],
+              "statement": "user user (direct_statement): I didn't finish the story after all.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:91905cc265299bd0c142",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:c95e33624d8e081477cd"
+              ],
+              "statement": "The user said: 'The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea.'",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:96017850d6c566697e68",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:13b1dd5b3510de7460f7"
+              ],
+              "statement": "The user stated that they would like to finish a short story of about 1,800 words.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            }
+          ],
+          "memory_versions": {
+            "m:09dfc03ddd1ab16eb6ac": {
+              "memory_id": "memory-0a7a6297908c4f8d01fc6ea7e795408f",
+              "revision": 1
+            },
+            "m:20f4d1451173a4b8cbaf": {
+              "memory_id": "memory-6de4caf72cebead66e098eb20ff49919",
+              "revision": 1
+            },
+            "m:2f4b3e4437f28df7e4f3": {
+              "memory_id": "memory-df0105e122b1cf03c576334f15b6d944",
+              "revision": 1
+            },
+            "m:3f38f6ca83ed755c28ce": {
+              "memory_id": "memory-b3f829acc7f4e56586ab50f5a53f5a41",
+              "revision": 1
+            },
+            "m:40d227984bb8dc836564": {
+              "memory_id": "memory-b067d8c3e9d9218a749c78d39e2519f9",
+              "revision": 1
+            },
+            "m:6aaac7ca8b1ae95e341c": {
+              "memory_id": "memory-87f797f8330f3e70ebd99c33a3c3cc6c",
+              "revision": 1
+            },
+            "m:8a9cc0068dd2f68f7d63": {
+              "memory_id": "memory-7cf4851aac40b97cfa58865d6e29984b",
+              "revision": 1
+            },
+            "m:8b2126ab97aed8764322": {
+              "memory_id": "semantic-d4b91d1eaf813a4a4027708afcdaff37",
+              "revision": 1
+            },
+            "m:91905cc265299bd0c142": {
+              "memory_id": "semantic-1d09c8ce00fcee05bab5ad75c670db48",
+              "revision": 1
+            },
+            "m:94b36f61a4523619dacc": {
+              "memory_id": "memory-05d9326eb00ae90a9dd9a26135924470",
+              "revision": 1
+            },
+            "m:96017850d6c566697e68": {
+              "memory_id": "semantic-3eef150ec36fbf57f497e1145acd2ba5",
+              "revision": 1
+            },
+            "m:a05e1e0fb1a4af735fc8": {
+              "memory_id": "memory-3fecb6cf7f16f08fb909865979475286",
+              "revision": 1
+            },
+            "m:a311374c7720fc1a8218": {
+              "memory_id": "memory-8e6ea27a15908cbc68b213770cc3e9d0",
+              "revision": 1
+            },
+            "m:b9e7ea408caf866c5145": {
+              "memory_id": "memory-a40275902ee9864d89095716fad22e8e",
+              "revision": 1
+            },
+            "m:bd828ba83e1d42f5272f": {
+              "memory_id": "memory-a7981d7b4d25bd21dfe03037e0c4d72d",
+              "revision": 1
+            },
+            "m:cf02b356fed168750414": {
+              "memory_id": "memory-e1cf5764184ce68d28ca605388c3524f",
+              "revision": 1
+            },
+            "m:d2108bc8c3a02a23aa54": {
+              "memory_id": "memory-23afa2999a7eea39c7067e2aa7aa55f0",
+              "revision": 1
+            },
+            "m:d28f2bf6d495d50c905e": {
+              "memory_id": "memory-0fb86c53250b6e9c644dbb506b4a6471",
+              "revision": 1
+            },
+            "m:d3d24deb025274bc5915": {
+              "memory_id": "memory-807d280a8b3cdb9e4508723c1981a792",
+              "revision": 1
+            },
+            "m:dfc165ce8caa9c4a5e58": {
+              "memory_id": "memory-d465da80cb1ca6743f670dfc4ddb540e",
+              "revision": 1
+            },
+            "m:e1c4c9ce1b6db670745d": {
+              "memory_id": "memory-2ca6a318d083413eb1a3c69544bc3d9b",
+              "revision": 1
+            },
+            "m:e99d7cf1117f9407fc59": {
+              "memory_id": "memory-1614b840e5350e729a9c6a36db563bd5",
+              "revision": 1
+            }
+          },
+          "next_step": "answer_with_limits",
+          "relations": {},
+          "sources": {
+            "s:037a6ee0371be7089f79": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:0724c0b5ffc3458cea32": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 36,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:13b1dd5b3510de7460f7": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 52,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:1b775979127db355c7fa": {
+              "event_id": "ab6c80fd-9b12-4566-b9e1-8cad667e4994",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 87,
+                "start": 42,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2651d1689aa9e490d162": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 25,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ef42a5598dc3d0f3d59": {
+              "event_id": "ab6c80fd-9b12-4566-b9e1-8cad667e4994",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 41,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ff7100400726321c474": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:3268f0b1879ae57c96c4": {
+              "event_id": "d75904e2-1d20-4343-bf66-f979af98a276",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 40,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:61af59ae998414f4d1ff": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 154,
+                "start": 114,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:76d54b64739e0abb0d39": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 130,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:8b9420b0e6f8352f110a": {
+              "event_id": "8b9c956d-d484-455d-83b4-9712c97c4c9c",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:964afdf8b9418d6880cc": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 165,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c1eb40c0ea26e914c2e3": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 77,
+                "start": 37,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c95e33624d8e081477cd": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d2ece855c0b78dc9725d": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d79c8461f4cf74af311a": {
+              "event_id": "bafdf837-2b1b-4e34-85a9-0a8929d7d567",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 59,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:dedad282e05f1a1f0806": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 130,
+                "start": 65,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:e9418a98b26bf0821a1a": {
+              "event_id": "4b3fc373-6141-43e1-a787-3ac4e78599a0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 49,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ee2aa5479b6f25ca6f39": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 113,
+                "start": 78,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:fead730c4ad025e52c01": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 64,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            }
+          },
+          "status": "partial",
+          "trust": "memory_data_not_instructions",
+          "unknowns": [
+            "Candidate rank signals do not establish semantic answer sufficiency."
+          ]
+        }
+      },
+      {
+        "query_id": "grandma_card",
+        "access_age_days": 0,
+        "elapsed_ms": 159,
+        "status": "partial",
+        "context": {
+          "ambiguities": [],
+          "conflicts": [],
+          "format": "compact-memory-v1",
+          "historical_evidence_status": "not_requested",
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "memories": [
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:bd828ba83e1d42f5272f",
+              "source_act": {
+                "act": "direct_statement",
+                "rule_version": "literal-episodes-v3"
+              },
+              "sources": [
+                "s:d2ece855c0b78dc9725d"
+              ],
+              "statement": "user user (inquiry): When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3f38f6ca83ed755c28ce",
+              "sources": [
+                "s:2ff7100400726321c474"
+              ],
+              "statement": "user user (direct_statement): I need help starting the opening, not a new story idea.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:91905cc265299bd0c142",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:c95e33624d8e081477cd"
+              ],
+              "statement": "The user said: 'The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea.'",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:71aa2a4f3dbfd2033134",
+              "sources": [
+                "s:30369377d0f6ba5c3e55"
+              ],
+              "statement": "user user (direct_statement): It made a scary dark house feel safe.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3ea4ebe7214c5ba9c10f",
+              "sources": [
+                "s:d7162f14a8a78f2baade"
+              ],
+              "statement": "user user (direct_statement): On a different note, I found an old photo.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:20f4d1451173a4b8cbaf",
+              "sources": [
+                "s:037a6ee0371be7089f79"
+              ],
+              "statement": "user user (direct_statement): The observatory story, with Lea and the unopened letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:c8ab2a414ba429a949b0",
+              "sources": [
+                "s:ac2e501b3826fc5f498b"
+              ],
+              "statement": "user user (inquiry): Can we find two short writing slots?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b13864c1994b5c971309",
+              "sources": [
+                "s:6b1f9935fa91b4ed01cf"
+              ],
+              "statement": "user user (inquiry): Could you adjust the writing plan?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:1fc6e15a53ad16ecedc9",
+              "sources": [
+                "s:cb556a146ded6de68027"
+              ],
+              "statement": "user user (direct_statement): My evening class takes up Tuesdays and Thursdays.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:9f6067385cdf1670bdfe",
+              "sources": [
+                "s:201b13bca35376456299"
+              ],
+              "statement": "user user (direct_statement): Thanks.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:01db111bd4ec43bfaa52",
+              "sources": [
+                "s:1960aa53edc1754222f0"
+              ],
+              "statement": "user user (inquiry): Could you help me write a quiet caption?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:a05e1e0fb1a4af735fc8",
+              "sources": [
+                "s:964afdf8b9418d6880cc"
+              ],
+              "statement": "user user (direct_statement): I haven't written the opening yet.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b1b33c76b940542b6dd2",
+              "sources": [
+                "s:cfad9823ecc0a6b255c8"
+              ],
+              "statement": "user user (direct_statement): I don't want it to sound like I'm chasing him.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:423d1ae9f249998e6c2c",
+              "sources": [
+                "s:9134b4c6daf016de290c"
+              ],
+              "statement": "user user (direct_statement): I don't want to spend all afternoon cooking.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:876295781c06a0248f23",
+              "sources": [
+                "s:6e1593773f03841464b1"
+              ],
+              "statement": "user user (direct_statement): It's Harbor, not Juniper.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:2f4b3e4437f28df7e4f3",
+              "sources": [
+                "s:0724c0b5ffc3458cea32"
+              ],
+              "statement": "user user (direct_statement): I didn't finish the story after all.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:cf02b356fed168750414",
+              "sources": [
+                "s:76d54b64739e0abb0d39"
+              ],
+              "statement": "user user (direct_statement): I've got a lamp that works but takes up too much space, and buying another isn't in this month's budget.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3480b3038750cf601c2e",
+              "sources": [
+                "s:7b290dd4ede7b9b305c4"
+              ],
+              "statement": "user user (direct_statement): I still haven't sent it.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:9dc24f9b476b85fd7000",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:76d54b64739e0abb0d39"
+              ],
+              "statement": "The user reported having a lamp that works but takes up too much space, and that buying another isn't in this month's budget.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b9e7ea408caf866c5145",
+              "sources": [
+                "s:ee2aa5479b6f25ca6f39"
+              ],
+              "statement": "user user (direct_statement): Lea still hasn't opened the letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            }
+          ],
+          "memory_versions": {
+            "m:01db111bd4ec43bfaa52": {
+              "memory_id": "memory-aece56794d26adcecf3bc71326da6e93",
+              "revision": 1
+            },
+            "m:1fc6e15a53ad16ecedc9": {
+              "memory_id": "memory-50e54087e8fd09853e911948c3fb8ad9",
+              "revision": 1
+            },
+            "m:20f4d1451173a4b8cbaf": {
+              "memory_id": "memory-6de4caf72cebead66e098eb20ff49919",
+              "revision": 1
+            },
+            "m:2f4b3e4437f28df7e4f3": {
+              "memory_id": "memory-df0105e122b1cf03c576334f15b6d944",
+              "revision": 1
+            },
+            "m:3480b3038750cf601c2e": {
+              "memory_id": "memory-fff39086d6be7b4aff300229bcbb9fd5",
+              "revision": 1
+            },
+            "m:3ea4ebe7214c5ba9c10f": {
+              "memory_id": "memory-f30352f472b047af60a3445a9294694e",
+              "revision": 1
+            },
+            "m:3f38f6ca83ed755c28ce": {
+              "memory_id": "memory-b3f829acc7f4e56586ab50f5a53f5a41",
+              "revision": 1
+            },
+            "m:423d1ae9f249998e6c2c": {
+              "memory_id": "memory-b4a3df4ec7d3f372201c712f76349c3f",
+              "revision": 1
+            },
+            "m:71aa2a4f3dbfd2033134": {
+              "memory_id": "memory-91f830b59509fc89cd705d9758a3ca86",
+              "revision": 1
+            },
+            "m:876295781c06a0248f23": {
+              "memory_id": "memory-b4b6f5e07fbeb34ff2f1012f3699e2ec",
+              "revision": 1
+            },
+            "m:91905cc265299bd0c142": {
+              "memory_id": "semantic-1d09c8ce00fcee05bab5ad75c670db48",
+              "revision": 1
+            },
+            "m:9dc24f9b476b85fd7000": {
+              "memory_id": "semantic-0f52d905c445e1ee1819cbed47a8d20d",
+              "revision": 1
+            },
+            "m:9f6067385cdf1670bdfe": {
+              "memory_id": "memory-48aa91d3b70f93bd890621861a92611e",
+              "revision": 1
+            },
+            "m:a05e1e0fb1a4af735fc8": {
+              "memory_id": "memory-3fecb6cf7f16f08fb909865979475286",
+              "revision": 1
+            },
+            "m:b13864c1994b5c971309": {
+              "memory_id": "memory-c6ce04879a23ef7c0d1d6ded3433c2f2",
+              "revision": 1
+            },
+            "m:b1b33c76b940542b6dd2": {
+              "memory_id": "memory-57e9682634fe26810a76144e04e180b9",
+              "revision": 1
+            },
+            "m:b9e7ea408caf866c5145": {
+              "memory_id": "memory-a40275902ee9864d89095716fad22e8e",
+              "revision": 1
+            },
+            "m:bd828ba83e1d42f5272f": {
+              "memory_id": "memory-a7981d7b4d25bd21dfe03037e0c4d72d",
+              "revision": 1
+            },
+            "m:c8ab2a414ba429a949b0": {
+              "memory_id": "memory-91123e3870aec8b1bb93a8564511d1c6",
+              "revision": 1
+            },
+            "m:cf02b356fed168750414": {
+              "memory_id": "memory-e1cf5764184ce68d28ca605388c3524f",
+              "revision": 1
+            }
+          },
+          "next_step": "answer_with_limits",
+          "relations": {},
+          "sources": {
+            "s:037a6ee0371be7089f79": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:0724c0b5ffc3458cea32": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 36,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:1960aa53edc1754222f0": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 229,
+                "start": 189,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:201b13bca35376456299": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 7,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ff7100400726321c474": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:30369377d0f6ba5c3e55": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 188,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:6b1f9935fa91b4ed01cf": {
+              "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 185,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:6e1593773f03841464b1": {
+              "event_id": "096fa8b4-cd07-41fa-90eb-4fcabbfcc668",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 82,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:76d54b64739e0abb0d39": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 130,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:7b290dd4ede7b9b305c4": {
+              "event_id": "096fa8b4-cd07-41fa-90eb-4fcabbfcc668",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 176,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:9134b4c6daf016de290c": {
+              "event_id": "7917c8b9-fa6a-4079-ac92-b9b3c3df5a77",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 179,
+                "start": 135,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:964afdf8b9418d6880cc": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 165,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ac2e501b3826fc5f498b": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 271,
+                "start": 235,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c95e33624d8e081477cd": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cb556a146ded6de68027": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 234,
+                "start": 185,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cfad9823ecc0a6b255c8": {
+              "event_id": "9d7b9948-a149-4fbf-ab73-b4711067df60",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 198,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d2ece855c0b78dc9725d": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d7162f14a8a78f2baade": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 50,
+                "start": 8,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ee2aa5479b6f25ca6f39": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 113,
+                "start": 78,
+                "unit": "unicode_code_point"
+              }
+            }
+          },
+          "status": "partial",
+          "trust": "memory_data_not_instructions",
+          "unknowns": [
+            "Candidate rank signals do not establish semantic answer sufficiency."
+          ]
+        }
+      },
+      {
+        "query_id": "grandma_card",
+        "access_age_days": 3650,
+        "elapsed_ms": 160,
+        "status": "partial",
+        "context": {
+          "ambiguities": [],
+          "conflicts": [],
+          "format": "compact-memory-v1",
+          "historical_evidence_status": "not_requested",
+          "limitations": [
+            "index_lag",
+            "partial_scope"
+          ],
+          "memories": [
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:bd828ba83e1d42f5272f",
+              "source_act": {
+                "act": "direct_statement",
+                "rule_version": "literal-episodes-v3"
+              },
+              "sources": [
+                "s:d2ece855c0b78dc9725d"
+              ],
+              "statement": "user user (inquiry): When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3f38f6ca83ed755c28ce",
+              "sources": [
+                "s:2ff7100400726321c474"
+              ],
+              "statement": "user user (direct_statement): I need help starting the opening, not a new story idea.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:91905cc265299bd0c142",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:c95e33624d8e081477cd"
+              ],
+              "statement": "The user said: 'The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea.'",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:71aa2a4f3dbfd2033134",
+              "sources": [
+                "s:30369377d0f6ba5c3e55"
+              ],
+              "statement": "user user (direct_statement): It made a scary dark house feel safe.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3ea4ebe7214c5ba9c10f",
+              "sources": [
+                "s:d7162f14a8a78f2baade"
+              ],
+              "statement": "user user (direct_statement): On a different note, I found an old photo.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:20f4d1451173a4b8cbaf",
+              "sources": [
+                "s:037a6ee0371be7089f79"
+              ],
+              "statement": "user user (direct_statement): The observatory story, with Lea and the unopened letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:c8ab2a414ba429a949b0",
+              "sources": [
+                "s:ac2e501b3826fc5f498b"
+              ],
+              "statement": "user user (inquiry): Can we find two short writing slots?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b13864c1994b5c971309",
+              "sources": [
+                "s:6b1f9935fa91b4ed01cf"
+              ],
+              "statement": "user user (inquiry): Could you adjust the writing plan?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:1fc6e15a53ad16ecedc9",
+              "sources": [
+                "s:cb556a146ded6de68027"
+              ],
+              "statement": "user user (direct_statement): My evening class takes up Tuesdays and Thursdays.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:9f6067385cdf1670bdfe",
+              "sources": [
+                "s:201b13bca35376456299"
+              ],
+              "statement": "user user (direct_statement): Thanks.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:01db111bd4ec43bfaa52",
+              "sources": [
+                "s:1960aa53edc1754222f0"
+              ],
+              "statement": "user user (inquiry): Could you help me write a quiet caption?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:a05e1e0fb1a4af735fc8",
+              "sources": [
+                "s:964afdf8b9418d6880cc"
+              ],
+              "statement": "user user (direct_statement): I haven't written the opening yet.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b1b33c76b940542b6dd2",
+              "sources": [
+                "s:cfad9823ecc0a6b255c8"
+              ],
+              "statement": "user user (direct_statement): I don't want it to sound like I'm chasing him.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:423d1ae9f249998e6c2c",
+              "sources": [
+                "s:9134b4c6daf016de290c"
+              ],
+              "statement": "user user (direct_statement): I don't want to spend all afternoon cooking.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:876295781c06a0248f23",
+              "sources": [
+                "s:6e1593773f03841464b1"
+              ],
+              "statement": "user user (direct_statement): It's Harbor, not Juniper.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:2f4b3e4437f28df7e4f3",
+              "sources": [
+                "s:0724c0b5ffc3458cea32"
+              ],
+              "statement": "user user (direct_statement): I didn't finish the story after all.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:cf02b356fed168750414",
+              "sources": [
+                "s:76d54b64739e0abb0d39"
+              ],
+              "statement": "user user (direct_statement): I've got a lamp that works but takes up too much space, and buying another isn't in this month's budget.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3480b3038750cf601c2e",
+              "sources": [
+                "s:7b290dd4ede7b9b305c4"
+              ],
+              "statement": "user user (direct_statement): I still haven't sent it.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:9dc24f9b476b85fd7000",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:76d54b64739e0abb0d39"
+              ],
+              "statement": "The user reported having a lamp that works but takes up too much space, and that buying another isn't in this month's budget.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b9e7ea408caf866c5145",
+              "sources": [
+                "s:ee2aa5479b6f25ca6f39"
+              ],
+              "statement": "user user (direct_statement): Lea still hasn't opened the letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            }
+          ],
+          "memory_versions": {
+            "m:01db111bd4ec43bfaa52": {
+              "memory_id": "memory-aece56794d26adcecf3bc71326da6e93",
+              "revision": 1
+            },
+            "m:1fc6e15a53ad16ecedc9": {
+              "memory_id": "memory-50e54087e8fd09853e911948c3fb8ad9",
+              "revision": 1
+            },
+            "m:20f4d1451173a4b8cbaf": {
+              "memory_id": "memory-6de4caf72cebead66e098eb20ff49919",
+              "revision": 1
+            },
+            "m:2f4b3e4437f28df7e4f3": {
+              "memory_id": "memory-df0105e122b1cf03c576334f15b6d944",
+              "revision": 1
+            },
+            "m:3480b3038750cf601c2e": {
+              "memory_id": "memory-fff39086d6be7b4aff300229bcbb9fd5",
+              "revision": 1
+            },
+            "m:3ea4ebe7214c5ba9c10f": {
+              "memory_id": "memory-f30352f472b047af60a3445a9294694e",
+              "revision": 1
+            },
+            "m:3f38f6ca83ed755c28ce": {
+              "memory_id": "memory-b3f829acc7f4e56586ab50f5a53f5a41",
+              "revision": 1
+            },
+            "m:423d1ae9f249998e6c2c": {
+              "memory_id": "memory-b4a3df4ec7d3f372201c712f76349c3f",
+              "revision": 1
+            },
+            "m:71aa2a4f3dbfd2033134": {
+              "memory_id": "memory-91f830b59509fc89cd705d9758a3ca86",
+              "revision": 1
+            },
+            "m:876295781c06a0248f23": {
+              "memory_id": "memory-b4b6f5e07fbeb34ff2f1012f3699e2ec",
+              "revision": 1
+            },
+            "m:91905cc265299bd0c142": {
+              "memory_id": "semantic-1d09c8ce00fcee05bab5ad75c670db48",
+              "revision": 1
+            },
+            "m:9dc24f9b476b85fd7000": {
+              "memory_id": "semantic-0f52d905c445e1ee1819cbed47a8d20d",
+              "revision": 1
+            },
+            "m:9f6067385cdf1670bdfe": {
+              "memory_id": "memory-48aa91d3b70f93bd890621861a92611e",
+              "revision": 1
+            },
+            "m:a05e1e0fb1a4af735fc8": {
+              "memory_id": "memory-3fecb6cf7f16f08fb909865979475286",
+              "revision": 1
+            },
+            "m:b13864c1994b5c971309": {
+              "memory_id": "memory-c6ce04879a23ef7c0d1d6ded3433c2f2",
+              "revision": 1
+            },
+            "m:b1b33c76b940542b6dd2": {
+              "memory_id": "memory-57e9682634fe26810a76144e04e180b9",
+              "revision": 1
+            },
+            "m:b9e7ea408caf866c5145": {
+              "memory_id": "memory-a40275902ee9864d89095716fad22e8e",
+              "revision": 1
+            },
+            "m:bd828ba83e1d42f5272f": {
+              "memory_id": "memory-a7981d7b4d25bd21dfe03037e0c4d72d",
+              "revision": 1
+            },
+            "m:c8ab2a414ba429a949b0": {
+              "memory_id": "memory-91123e3870aec8b1bb93a8564511d1c6",
+              "revision": 1
+            },
+            "m:cf02b356fed168750414": {
+              "memory_id": "memory-e1cf5764184ce68d28ca605388c3524f",
+              "revision": 1
+            }
+          },
+          "next_step": "answer_with_limits",
+          "relations": {},
+          "sources": {
+            "s:037a6ee0371be7089f79": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:0724c0b5ffc3458cea32": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 36,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:1960aa53edc1754222f0": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 229,
+                "start": 189,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:201b13bca35376456299": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 7,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ff7100400726321c474": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:30369377d0f6ba5c3e55": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 188,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:6b1f9935fa91b4ed01cf": {
+              "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 185,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:6e1593773f03841464b1": {
+              "event_id": "096fa8b4-cd07-41fa-90eb-4fcabbfcc668",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 82,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:76d54b64739e0abb0d39": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 130,
+                "start": 26,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:7b290dd4ede7b9b305c4": {
+              "event_id": "096fa8b4-cd07-41fa-90eb-4fcabbfcc668",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 176,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:9134b4c6daf016de290c": {
+              "event_id": "7917c8b9-fa6a-4079-ac92-b9b3c3df5a77",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 179,
+                "start": 135,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:964afdf8b9418d6880cc": {
+              "event_id": "d77db25a-6509-4f51-9c95-76c5a18aefa7",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 165,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ac2e501b3826fc5f498b": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 271,
+                "start": 235,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c95e33624d8e081477cd": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cb556a146ded6de68027": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 234,
+                "start": 185,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cfad9823ecc0a6b255c8": {
+              "event_id": "9d7b9948-a149-4fbf-ab73-b4711067df60",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 198,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d2ece855c0b78dc9725d": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d7162f14a8a78f2baade": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 50,
+                "start": 8,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ee2aa5479b6f25ca6f39": {
+              "event_id": "2feba6fa-19e5-42f3-8b30-0f19431c0987",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 113,
+                "start": 78,
+                "unit": "unicode_code_point"
+              }
+            }
+          },
+          "status": "partial",
+          "trust": "memory_data_not_instructions",
+          "unknowns": [
+            "Candidate rank signals do not establish semantic answer sufficiency."
+          ]
+        }
+      },
+      {
+        "query_id": "grandma_power_cuts",
+        "access_age_days": 0,
+        "elapsed_ms": 158,
+        "status": "partial",
+        "context": {
+          "ambiguities": [],
+          "conflicts": [],
+          "format": "compact-memory-v1",
+          "historical_evidence_status": "not_requested",
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "memories": [
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:bd828ba83e1d42f5272f",
+              "source_act": {
+                "act": "direct_statement",
+                "rule_version": "literal-episodes-v3"
+              },
+              "sources": [
+                "s:d2ece855c0b78dc9725d"
+              ],
+              "statement": "user user (inquiry): When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:71aa2a4f3dbfd2033134",
+              "sources": [
+                "s:30369377d0f6ba5c3e55"
+              ],
+              "statement": "user user (direct_statement): It made a scary dark house feel safe.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3ea4ebe7214c5ba9c10f",
+              "sources": [
+                "s:d7162f14a8a78f2baade"
+              ],
+              "statement": "user user (direct_statement): On a different note, I found an old photo.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:9f6067385cdf1670bdfe",
+              "sources": [
+                "s:201b13bca35376456299"
+              ],
+              "statement": "user user (direct_statement): Thanks.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:01db111bd4ec43bfaa52",
+              "sources": [
+                "s:1960aa53edc1754222f0"
+              ],
+              "statement": "user user (inquiry): Could you help me write a quiet caption?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:c8ab2a414ba429a949b0",
+              "sources": [
+                "s:ac2e501b3826fc5f498b"
+              ],
+              "statement": "user user (inquiry): Can we find two short writing slots?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3f38f6ca83ed755c28ce",
+              "sources": [
+                "s:2ff7100400726321c474"
+              ],
+              "statement": "user user (direct_statement): I need help starting the opening, not a new story idea.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b13864c1994b5c971309",
+              "sources": [
+                "s:6b1f9935fa91b4ed01cf"
+              ],
+              "statement": "user user (inquiry): Could you adjust the writing plan?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:91905cc265299bd0c142",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:c95e33624d8e081477cd"
+              ],
+              "statement": "The user said: 'The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea.'",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:1fc6e15a53ad16ecedc9",
+              "sources": [
+                "s:cb556a146ded6de68027"
+              ],
+              "statement": "user user (direct_statement): My evening class takes up Tuesdays and Thursdays.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:20f4d1451173a4b8cbaf",
+              "sources": [
+                "s:037a6ee0371be7089f79"
+              ],
+              "statement": "user user (direct_statement): The observatory story, with Lea and the unopened letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:5edee58c2cb2f2e267bc",
+              "sources": [
+                "s:91e2b728c9d799ccb9ad"
+              ],
+              "statement": "user user (direct_statement): This Friday alone I've got the repair person coming round.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:688f585140762575fc35",
+              "sources": [
+                "s:cbac3e3e09824dbd952b"
+              ],
+              "statement": "user user (direct_statement): My friend Alex, the drummer, and I are thinking of walking by the river tomorrow.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:edbcc6e89345faa7ad38",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:0bfb6027e77e76c48734"
+              ],
+              "statement": "The user asked for help thinking of a couple of ways to rearrange things.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:9c3ad6743c79acdb3fe2",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:cbac3e3e09824dbd952b"
+              ],
+              "statement": "The user reported that they and their friend Alex, the drummer, are thinking of walking by the river tomorrow.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b6e6512714b15b591c50",
+              "sources": [
+                "s:02bf1f323e942409f855"
+              ],
+              "statement": "user user (direct_statement): Lea is the night caretaker at an observatory and keeps putting off opening a letter from her sister.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:da3386abe902c85449a1",
+              "sources": [
+                "s:96efb78e42c0fe577d4a"
+              ],
+              "statement": "user user (direct_statement): I've only got a rough outline.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b1b33c76b940542b6dd2",
+              "sources": [
+                "s:cfad9823ecc0a6b255c8"
+              ],
+              "statement": "user user (direct_statement): I don't want it to sound like I'm chasing him.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:8a9cc0068dd2f68f7d63",
+              "sources": [
+                "s:13b1dd5b3510de7460f7"
+              ],
+              "statement": "user user (direct_statement): I'd like to finish a short story, about 1,800 words.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:2610ef2ae430dbca4c43",
+              "sources": [
+                "s:515e9b87d7c4ccbebf9f"
+              ],
+              "statement": "user user (inquiry): Could you help me put that in my journal without making it sound like a travel review?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:96830f3f58f2570a165f",
+              "sources": [
+                "s:3067d1abb41444f12b2f"
+              ],
+              "statement": "user user (direct_statement): I like working on the moment just before she opens it.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            }
+          ],
+          "memory_versions": {
+            "m:01db111bd4ec43bfaa52": {
+              "memory_id": "memory-aece56794d26adcecf3bc71326da6e93",
+              "revision": 1
+            },
+            "m:1fc6e15a53ad16ecedc9": {
+              "memory_id": "memory-50e54087e8fd09853e911948c3fb8ad9",
+              "revision": 1
+            },
+            "m:20f4d1451173a4b8cbaf": {
+              "memory_id": "memory-6de4caf72cebead66e098eb20ff49919",
+              "revision": 1
+            },
+            "m:2610ef2ae430dbca4c43": {
+              "memory_id": "memory-ce3ec3c81e0c43fbd82c84b821ac2607",
+              "revision": 1
+            },
+            "m:3ea4ebe7214c5ba9c10f": {
+              "memory_id": "memory-f30352f472b047af60a3445a9294694e",
+              "revision": 1
+            },
+            "m:3f38f6ca83ed755c28ce": {
+              "memory_id": "memory-b3f829acc7f4e56586ab50f5a53f5a41",
+              "revision": 1
+            },
+            "m:5edee58c2cb2f2e267bc": {
+              "memory_id": "memory-772ae9441c7770eff65fe244090969ac",
+              "revision": 1
+            },
+            "m:688f585140762575fc35": {
+              "memory_id": "memory-ede0c05f2252c86a54e2c1e681ddd4d8",
+              "revision": 1
+            },
+            "m:71aa2a4f3dbfd2033134": {
+              "memory_id": "memory-91f830b59509fc89cd705d9758a3ca86",
+              "revision": 1
+            },
+            "m:8a9cc0068dd2f68f7d63": {
+              "memory_id": "memory-7cf4851aac40b97cfa58865d6e29984b",
+              "revision": 1
+            },
+            "m:91905cc265299bd0c142": {
+              "memory_id": "semantic-1d09c8ce00fcee05bab5ad75c670db48",
+              "revision": 1
+            },
+            "m:96830f3f58f2570a165f": {
+              "memory_id": "memory-f5ac6f000fd21eb3ece3e95a3316600f",
+              "revision": 1
+            },
+            "m:9c3ad6743c79acdb3fe2": {
+              "memory_id": "semantic-c43027655d5cad63aa863b41b7cf2f18",
+              "revision": 1
+            },
+            "m:9f6067385cdf1670bdfe": {
+              "memory_id": "memory-48aa91d3b70f93bd890621861a92611e",
+              "revision": 1
+            },
+            "m:b13864c1994b5c971309": {
+              "memory_id": "memory-c6ce04879a23ef7c0d1d6ded3433c2f2",
+              "revision": 1
+            },
+            "m:b1b33c76b940542b6dd2": {
+              "memory_id": "memory-57e9682634fe26810a76144e04e180b9",
+              "revision": 1
+            },
+            "m:b6e6512714b15b591c50": {
+              "memory_id": "memory-5f0cdd275031ebb29b24e97cb3ccd968",
+              "revision": 1
+            },
+            "m:bd828ba83e1d42f5272f": {
+              "memory_id": "memory-a7981d7b4d25bd21dfe03037e0c4d72d",
+              "revision": 1
+            },
+            "m:c8ab2a414ba429a949b0": {
+              "memory_id": "memory-91123e3870aec8b1bb93a8564511d1c6",
+              "revision": 1
+            },
+            "m:da3386abe902c85449a1": {
+              "memory_id": "memory-c96b258db1b358b5ec961cbfe6fea301",
+              "revision": 1
+            },
+            "m:edbcc6e89345faa7ad38": {
+              "memory_id": "semantic-b1f10db6c47c53abc5846d229c32833f",
+              "revision": 1
+            }
+          },
+          "next_step": "answer_with_limits",
+          "relations": {},
+          "sources": {
+            "s:02bf1f323e942409f855": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 153,
+                "start": 53,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:037a6ee0371be7089f79": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:0bfb6027e77e76c48734": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 185,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:13b1dd5b3510de7460f7": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 52,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:1960aa53edc1754222f0": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 229,
+                "start": 189,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:201b13bca35376456299": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 7,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ff7100400726321c474": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:30369377d0f6ba5c3e55": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 188,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:3067d1abb41444f12b2f": {
+              "event_id": "790f7db5-7827-4a59-be9d-9ed966b0dbf4",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 54,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:515e9b87d7c4ccbebf9f": {
+              "event_id": "8b9c956d-d484-455d-83b4-9712c97c4c9c",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 236,
+                "start": 150,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:6b1f9935fa91b4ed01cf": {
+              "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 185,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:91e2b728c9d799ccb9ad": {
+              "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 92,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:96efb78e42c0fe577d4a": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 184,
+                "start": 154,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ac2e501b3826fc5f498b": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 271,
+                "start": 235,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c95e33624d8e081477cd": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cb556a146ded6de68027": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 234,
+                "start": 185,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cbac3e3e09824dbd952b": {
+              "event_id": "60de9418-2c02-4239-adac-23a703c799ef",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 81,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cfad9823ecc0a6b255c8": {
+              "event_id": "9d7b9948-a149-4fbf-ab73-b4711067df60",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 198,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d2ece855c0b78dc9725d": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d7162f14a8a78f2baade": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 50,
+                "start": 8,
+                "unit": "unicode_code_point"
+              }
+            }
+          },
+          "status": "partial",
+          "trust": "memory_data_not_instructions",
+          "unknowns": [
+            "Candidate rank signals do not establish semantic answer sufficiency."
+          ]
+        }
+      },
+      {
+        "query_id": "grandma_power_cuts",
+        "access_age_days": 3650,
+        "elapsed_ms": 171,
+        "status": "partial",
+        "context": {
+          "ambiguities": [],
+          "conflicts": [],
+          "format": "compact-memory-v1",
+          "historical_evidence_status": "not_requested",
+          "limitations": [
+            "index_lag",
+            "partial_scope",
+            "budget_exhausted"
+          ],
+          "memories": [
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:bd828ba83e1d42f5272f",
+              "source_act": {
+                "act": "direct_statement",
+                "rule_version": "literal-episodes-v3"
+              },
+              "sources": [
+                "s:d2ece855c0b78dc9725d"
+              ],
+              "statement": "user user (inquiry): When our power went out, Grandma would light a lantern and put buttons in a tea tin for us to sort.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:71aa2a4f3dbfd2033134",
+              "sources": [
+                "s:30369377d0f6ba5c3e55"
+              ],
+              "statement": "user user (direct_statement): It made a scary dark house feel safe.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3ea4ebe7214c5ba9c10f",
+              "sources": [
+                "s:d7162f14a8a78f2baade"
+              ],
+              "statement": "user user (direct_statement): On a different note, I found an old photo.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:9f6067385cdf1670bdfe",
+              "sources": [
+                "s:201b13bca35376456299"
+              ],
+              "statement": "user user (direct_statement): Thanks.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:01db111bd4ec43bfaa52",
+              "sources": [
+                "s:1960aa53edc1754222f0"
+              ],
+              "statement": "user user (inquiry): Could you help me write a quiet caption?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:c8ab2a414ba429a949b0",
+              "sources": [
+                "s:ac2e501b3826fc5f498b"
+              ],
+              "statement": "user user (inquiry): Can we find two short writing slots?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:3f38f6ca83ed755c28ce",
+              "sources": [
+                "s:2ff7100400726321c474"
+              ],
+              "statement": "user user (direct_statement): I need help starting the opening, not a new story idea.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b13864c1994b5c971309",
+              "sources": [
+                "s:6b1f9935fa91b4ed01cf"
+              ],
+              "statement": "user user (inquiry): Could you adjust the writing plan?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:91905cc265299bd0c142",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:c95e33624d8e081477cd"
+              ],
+              "statement": "The user said: 'The observatory story, with Lea and the unopened letter. I need help starting the opening, not a new story idea.'",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:1fc6e15a53ad16ecedc9",
+              "sources": [
+                "s:cb556a146ded6de68027"
+              ],
+              "statement": "user user (direct_statement): My evening class takes up Tuesdays and Thursdays.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:20f4d1451173a4b8cbaf",
+              "sources": [
+                "s:037a6ee0371be7089f79"
+              ],
+              "statement": "user user (direct_statement): The observatory story, with Lea and the unopened letter.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:5edee58c2cb2f2e267bc",
+              "sources": [
+                "s:91e2b728c9d799ccb9ad"
+              ],
+              "statement": "user user (direct_statement): This Friday alone I've got the repair person coming round.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:688f585140762575fc35",
+              "sources": [
+                "s:cbac3e3e09824dbd952b"
+              ],
+              "statement": "user user (direct_statement): My friend Alex, the drummer, and I are thinking of walking by the river tomorrow.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:edbcc6e89345faa7ad38",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:0bfb6027e77e76c48734"
+              ],
+              "statement": "The user asked for help thinking of a couple of ways to rearrange things.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "applicability": {
+                "conflict": false,
+                "evidence_refs": [],
+                "opposing_observation_ids": [],
+                "reasons": [
+                  "time_unknown"
+                ],
+                "supporting_observation_ids": [],
+                "unresolved_observation_ids": [],
+                "value": "unknown"
+              },
+              "claim_kind": "reported_fact",
+              "conditions": {
+                "op": "always"
+              },
+              "counterexamples": [],
+              "display_mode": "background_context",
+              "epistemic_status": "derived_inference",
+              "memory_ref": "m:9c3ad6743c79acdb3fe2",
+              "procedure": null,
+              "representation": "episode_fragment",
+              "sources": [
+                "s:cbac3e3e09824dbd952b"
+              ],
+              "statement": "The user reported that they and their friend Alex, the drummer, are thinking of walking by the river tomorrow.",
+              "use": "historical_report_not_current_rule",
+              "valid_during": {
+                "kind": "unknown"
+              },
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "verification": {
+                "state": "supported_inference"
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b6e6512714b15b591c50",
+              "sources": [
+                "s:02bf1f323e942409f855"
+              ],
+              "statement": "user user (direct_statement): Lea is the night caretaker at an observatory and keeps putting off opening a letter from her sister.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:da3386abe902c85449a1",
+              "sources": [
+                "s:96efb78e42c0fe577d4a"
+              ],
+              "statement": "user user (direct_statement): I've only got a rough outline.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:b1b33c76b940542b6dd2",
+              "sources": [
+                "s:cfad9823ecc0a6b255c8"
+              ],
+              "statement": "user user (direct_statement): I don't want it to sound like I'm chasing him.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:8a9cc0068dd2f68f7d63",
+              "sources": [
+                "s:13b1dd5b3510de7460f7"
+              ],
+              "statement": "user user (direct_statement): I'd like to finish a short story, about 1,800 words.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:2610ef2ae430dbca4c43",
+              "sources": [
+                "s:515e9b87d7c4ccbebf9f"
+              ],
+              "statement": "user user (inquiry): Could you help me put that in my journal without making it sound like a travel review?",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            },
+            {
+              "display_mode": "background_context",
+              "epistemic_status": "supported_report",
+              "memory_ref": "m:96830f3f58f2570a165f",
+              "sources": [
+                "s:3067d1abb41444f12b2f"
+              ],
+              "statement": "user user (direct_statement): I like working on the moment just before she opens it.",
+              "use": "historical_report_not_current_rule",
+              "valid_time": {
+                "basis": "unknown",
+                "end": null,
+                "precision": "unknown",
+                "start": null
+              },
+              "world": "real_world"
+            }
+          ],
+          "memory_versions": {
+            "m:01db111bd4ec43bfaa52": {
+              "memory_id": "memory-aece56794d26adcecf3bc71326da6e93",
+              "revision": 1
+            },
+            "m:1fc6e15a53ad16ecedc9": {
+              "memory_id": "memory-50e54087e8fd09853e911948c3fb8ad9",
+              "revision": 1
+            },
+            "m:20f4d1451173a4b8cbaf": {
+              "memory_id": "memory-6de4caf72cebead66e098eb20ff49919",
+              "revision": 1
+            },
+            "m:2610ef2ae430dbca4c43": {
+              "memory_id": "memory-ce3ec3c81e0c43fbd82c84b821ac2607",
+              "revision": 1
+            },
+            "m:3ea4ebe7214c5ba9c10f": {
+              "memory_id": "memory-f30352f472b047af60a3445a9294694e",
+              "revision": 1
+            },
+            "m:3f38f6ca83ed755c28ce": {
+              "memory_id": "memory-b3f829acc7f4e56586ab50f5a53f5a41",
+              "revision": 1
+            },
+            "m:5edee58c2cb2f2e267bc": {
+              "memory_id": "memory-772ae9441c7770eff65fe244090969ac",
+              "revision": 1
+            },
+            "m:688f585140762575fc35": {
+              "memory_id": "memory-ede0c05f2252c86a54e2c1e681ddd4d8",
+              "revision": 1
+            },
+            "m:71aa2a4f3dbfd2033134": {
+              "memory_id": "memory-91f830b59509fc89cd705d9758a3ca86",
+              "revision": 1
+            },
+            "m:8a9cc0068dd2f68f7d63": {
+              "memory_id": "memory-7cf4851aac40b97cfa58865d6e29984b",
+              "revision": 1
+            },
+            "m:91905cc265299bd0c142": {
+              "memory_id": "semantic-1d09c8ce00fcee05bab5ad75c670db48",
+              "revision": 1
+            },
+            "m:96830f3f58f2570a165f": {
+              "memory_id": "memory-f5ac6f000fd21eb3ece3e95a3316600f",
+              "revision": 1
+            },
+            "m:9c3ad6743c79acdb3fe2": {
+              "memory_id": "semantic-c43027655d5cad63aa863b41b7cf2f18",
+              "revision": 1
+            },
+            "m:9f6067385cdf1670bdfe": {
+              "memory_id": "memory-48aa91d3b70f93bd890621861a92611e",
+              "revision": 1
+            },
+            "m:b13864c1994b5c971309": {
+              "memory_id": "memory-c6ce04879a23ef7c0d1d6ded3433c2f2",
+              "revision": 1
+            },
+            "m:b1b33c76b940542b6dd2": {
+              "memory_id": "memory-57e9682634fe26810a76144e04e180b9",
+              "revision": 1
+            },
+            "m:b6e6512714b15b591c50": {
+              "memory_id": "memory-5f0cdd275031ebb29b24e97cb3ccd968",
+              "revision": 1
+            },
+            "m:bd828ba83e1d42f5272f": {
+              "memory_id": "memory-a7981d7b4d25bd21dfe03037e0c4d72d",
+              "revision": 1
+            },
+            "m:c8ab2a414ba429a949b0": {
+              "memory_id": "memory-91123e3870aec8b1bb93a8564511d1c6",
+              "revision": 1
+            },
+            "m:da3386abe902c85449a1": {
+              "memory_id": "memory-c96b258db1b358b5ec961cbfe6fea301",
+              "revision": 1
+            },
+            "m:edbcc6e89345faa7ad38": {
+              "memory_id": "semantic-b1f10db6c47c53abc5846d229c32833f",
+              "revision": 1
+            }
+          },
+          "next_step": "answer_with_limits",
+          "relations": {},
+          "sources": {
+            "s:02bf1f323e942409f855": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 153,
+                "start": 53,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:037a6ee0371be7089f79": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 56,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:0bfb6027e77e76c48734": {
+              "event_id": "ceee6f6e-c9b6-4fc2-b19d-e3345c314ea0",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 185,
+                "start": 131,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:13b1dd5b3510de7460f7": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 52,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:1960aa53edc1754222f0": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 229,
+                "start": 189,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:201b13bca35376456299": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 7,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:2ff7100400726321c474": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 57,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:30369377d0f6ba5c3e55": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 188,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:3067d1abb41444f12b2f": {
+              "event_id": "790f7db5-7827-4a59-be9d-9ed966b0dbf4",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 54,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:515e9b87d7c4ccbebf9f": {
+              "event_id": "8b9c956d-d484-455d-83b4-9712c97c4c9c",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 236,
+                "start": 150,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:6b1f9935fa91b4ed01cf": {
+              "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 185,
+                "start": 151,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:91e2b728c9d799ccb9ad": {
+              "event_id": "5f7f44d2-237b-4504-a8cf-7cc2b8cd9d52",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 92,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:96efb78e42c0fe577d4a": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 184,
+                "start": 154,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:ac2e501b3826fc5f498b": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 271,
+                "start": 235,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:c95e33624d8e081477cd": {
+              "event_id": "5ce7336d-5c14-4399-9e57-9b0c873ddaee",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 112,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cb556a146ded6de68027": {
+              "event_id": "2660c1dd-d4c7-45f1-8a6b-03d1aa2f3729",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 234,
+                "start": 185,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cbac3e3e09824dbd952b": {
+              "event_id": "60de9418-2c02-4239-adac-23a703c799ef",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 81,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:cfad9823ecc0a6b255c8": {
+              "event_id": "9d7b9948-a149-4fbf-ab73-b4711067df60",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 198,
+                "start": 152,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d2ece855c0b78dc9725d": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 150,
+                "start": 51,
+                "unit": "unicode_code_point"
+              }
+            },
+            "s:d7162f14a8a78f2baade": {
+              "event_id": "6fdfc574-006d-4da7-8fb0-3d60928ae108",
+              "event_revision": 1,
+              "relationship": "supports",
+              "span": {
+                "end": 50,
+                "start": 8,
+                "unit": "unicode_code_point"
+              }
+            }
+          },
+          "status": "partial",
+          "trust": "memory_data_not_instructions",
+          "unknowns": [
+            "Candidate rank signals do not establish semantic answer sufficiency."
+          ]
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Targeted encoded-source and frozen prepared-request replay, not a new complete longitudinal campaign.",
+    "No acceptance pass, cross-vendor reliability or real elapsed-year aging claim.",
+    "Three whole-answer passes and two failures despite correct recall in the three family-card answers.",
+    "Accepted local encoding remains episode fragments, often quotations; no verified gist-first forgetting or cognitive-token saving.",
+    "No probe result or isolated encoding publication is merged into the original source brain.",
+    "No retry, actor, paid reviewer or Codex/Claude subscription-backed test."
+  ]
+}

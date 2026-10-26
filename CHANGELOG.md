@@ -13,6 +13,10 @@ Agent Memory is a human-inspired memory engine for AI agents. It keeps persisten
 - Local retrieval and preparation optimizations without adding a separate model for memory admission or promoting experimental verification formats.
 - English and Chinese entry-point documentation, integration references and retained evaluation reports.
 - Explicit semantic time allowances up to 600 seconds, with desktop response waits of 615 seconds for retained frozen jobs. The default 30-second allowance and existing 240-second reasoning preset are unchanged; proposal and verification still share one deadline.
+- Versioned source-act interpretation for new captures and cognitive jobs, with unchanged old source/capture identities and legacy frozen request contracts.
+- Scoped frequency-weighted lexical ranking, bounded adjacent source units, and comparable indexed/tail scores with access-age weighting.
+- Assistant speech remains available for explicit speech/quote/episode/commitment requests with its own attribution label; it is excluded from ordinary personal recollection.
+- Materialized episode-neighbor discovery to avoid a pathological nested join, plus language-neutral acknowledgment guidance and explicit remembered-detail boundaries.
 
 ### Known limits
 

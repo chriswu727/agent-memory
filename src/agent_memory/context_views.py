@@ -24,8 +24,16 @@ def relation_handle(value):
     return _handle("r", {key: value[key] for key in ("relation_id", "revision")})
 
 
+def assistant_speech(memory):
+    return memory.get("claim_kind") in {"agent_said", "proposal_offered", "commitment_expressed"} or (
+        memory.get("derivation", {}).get("method") == "direct_capture" and memory["statement"].startswith("assistant ")
+    )
+
+
 def memory_use(item):
     memory = item["memory"]
+    if assistant_speech(memory):
+        return "assistant_speech_not_user_experience"
     if memory["memory_kind"] == "episodic" or memory.get("representation") == "literal":
         return "historical_report_not_current_rule"
     assessment, resolution = item.get("applicability"), item.get("belief_resolution")
@@ -45,7 +53,7 @@ def memory_content(item):
         "claim_kind", "verification", "counterexamples", "procedure", "valid_during",
     ) if key in memory}
     result["memory_version"] = {key: memory[key] for key in ("memory_id", "revision")}
-    for key in ("applicability", "belief_resolution"):
+    for key in ("applicability", "belief_resolution", "source_act"):
         if key in item:
             result[key] = copy.deepcopy(item[key])
     result["use"] = memory_use(item)

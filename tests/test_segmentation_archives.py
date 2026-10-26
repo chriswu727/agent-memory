@@ -91,10 +91,13 @@ def test_upload_validation_cache_keeps_extraction_versions_separate(monkeypatch)
 @pytest.mark.integration
 @pytest.mark.parametrize("upload", [False, True])
 def test_database_restore_preserves_legacy_source_units_and_capture_identity(archive, monkeypatch, upload):
-    original_classifier = cognition.classify_segments
+    append = archive.service._append_event
+
+    def legacy_append(*args, **kwargs):
+        return append(*args, **{**kwargs, "segmentation_rule_version": "literal-episodes-v1"})
+
     with monkeypatch.context() as patch:
-        patch.setattr(cognition, "classify_segments", lambda content, **_: original_classifier(
-            content, rule_version="literal-episodes-v1"))
+        patch.setattr(archive.service, "_append_event", legacy_append)
         source = archive.observe("1. The letter remains unopened until 7 p.m. “Not yet.”")
     captures = cognition.extract_event(source)
     assert all(memory["derivation"]["rule_version"] == "literal-episodes-v1" for memory in captures)
@@ -122,10 +125,13 @@ def test_database_restore_preserves_legacy_source_units_and_capture_identity(arc
 
 @pytest.mark.integration
 def test_local_restore_and_recall_preserve_old_semantic_span_after_list_prefix(archive, monkeypatch):
-    original_classifier = cognition.classify_segments
+    append = archive.service._append_event
+
+    def legacy_append(*args, **kwargs):
+        return append(*args, **{**kwargs, "segmentation_rule_version": "literal-episodes-v1"})
+
     with monkeypatch.context() as patch:
-        patch.setattr(cognition, "classify_segments", lambda content, **_: original_classifier(
-            content, rule_version="literal-episodes-v1"))
+        patch.setattr(archive.service, "_append_event", legacy_append)
         source = archive.observe("1. The letter remains unopened. She will decide later.")
     literal = next(memory for memory in cognition.extract_event(source)
                    if "letter remains unopened" in memory["statement"])

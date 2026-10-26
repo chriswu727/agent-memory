@@ -364,7 +364,7 @@ def restore_memories(conn, service, principal, brain, data, available, blocked_e
                             or any(field in memory for field in ("verification", "procedure", "conditions", "claim_kind"))):
                         raise DomainError("invalid_evidence", "Imported semantic interpretations require local reverification.")
                     rule_version = memory["derivation"]["rule_version"]
-                    if rule_version not in {cognition.LEGACY_RULE_VERSION, cognition.RULE_VERSION}:
+                    if rule_version not in cognition.LITERAL_RULE_VERSIONS:
                         raise DomainError("invalid_evidence", "Unknown imported literal segmentation rule version.")
                     for event_id in {ref["event_id"] for ref in memory["evidence_refs"]}:
                         capture_key = (event_id, rule_version)

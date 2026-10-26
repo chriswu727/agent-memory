@@ -1,7 +1,30 @@
+from collections import Counter
+
 from . import cognition
 
 MAX_QUERY_TERMS = 128
 MAX_TERM_LENGTH = 256
+LEXICAL_RANK_VERSION = "bounded-frequency-passage-v1"
+
+
+class LexicalScorer:
+    def __init__(self, query, texts):
+        self.query_terms = cognition._terms(query)
+        documents = {tuple(frozenset(part) for part in cognition._terms(text)) for text in texts}
+        frequencies = [Counter(term for document in documents for term in document[index])
+                       for index in range(3)]
+        self.weights = [{term: (1 + len(documents)) / (1 + frequency[term])
+                         for term in query} for query, frequency in zip(self.query_terms, frequencies, strict=True)]
+
+    def _score(self, terms):
+        scores = [sum(weight[term] for term in query & present) / max(1, sum(weight.values()))
+                  for query, present, weight in zip(self.query_terms, terms, self.weights, strict=True)]
+        return scores[0] + scores[1] + (0.15 * scores[2] if len(self.query_terms[2] & terms[2]) >= 2 else 0)
+
+    def __call__(self, query, text):
+        score = max((self._score(cognition._terms(text[start:end]))
+                     for start, end in cognition._sentence_spans(text)), default=0.0)
+        return score or self._score(cognition._terms(text))
 
 
 def passage_score(query, text):

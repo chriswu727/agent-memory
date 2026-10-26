@@ -81,6 +81,8 @@ The replacement runner and commands are documented in the [implementation status
 
 ## Progress checkpoint
 
+The [source and recall repair follow-up](../evaluations/v1-2026-10-26-longitudinal-repairs.md) addresses the diagnosed source-act, lexical, context/attribution and database-query paths while preserving old evidence. Its scoped checks and isolated probes do not replace another source-reviewed varied campaign after the remaining release blockers are resolved. G4 remains unpassed.
+
 The latest [2026-10-26 varied diagnostic](../evaluations/v1-2026-10-26-longitudinal-round.md) exercised sixteen sessions and all 33 authored inputs: 32 replies completed required learning, and one timeout remains unanswered. Original failure journals are closed; a separately frozen same-brain tail completed the remaining fourteen inputs without retrying the failed request or resetting its allowance. The report preserves semantic failures, both procedural amendments, five isolated cue probes and eighteen zero-model access-age retrievals. Meaningful recall, unsupported recalled detail, language continuity and cognitive cost require repairs. Paid execution for this diagnostic has stopped; diagnose and verify those repairs locally before proposing another finite real-model run. No maturity threshold is lowered.
 
 The [local acceptance checkpoint](../evaluations/v1-2026-10-25-local-acceptance.md) records the bounded-attention, private-funding, capability and speech-attribution repairs, exact artifact identity, full regression and necessary fixture follow-up. Local retrieval and capability measurements meet their recorded budgets.

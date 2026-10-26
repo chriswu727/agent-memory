@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 from . import cognition
+from .context_views import assistant_speech
 from .dynamics import access_state, rank_weight
 from .embeddings import EmbeddingResult
 from .helpers import DomainError, digest, now
@@ -93,11 +94,14 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
         roots = [key for key in requested if key in documents]
         signals = {}
     else:
-        from .lexical_candidates import lexical_rows, passage_score
+        from .lexical_candidates import LexicalScorer, lexical_rows
         from .source_candidates import SOURCE_ROUTE_VERSION, source_candidates
 
         rows, truncated = lexical_rows(conn, params, target, text, limit=scan_limit)
-        lexical = [(cognition._lexical_score(text, row["document"]["statement"]), row)
+        if not cognition.speech_requested({**query, "query": text}):
+            rows = [row for row in rows if not assistant_speech(row["document"])]
+        score_text = LexicalScorer(text, [row["document"]["statement"] for row in rows])
+        lexical = [(score_text(text, row["document"]["statement"]), row)
                    for row in rows]
         lexical = [(score, row) for score, row in lexical if score > 0]
         lexical.sort(key=lambda value: (-value[0], value[1]["document"]["memory_id"]))
@@ -106,7 +110,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
             [service._rebind(row["document"], principal, brain) for _, row in lexical[:candidate_limit]],
             source_limit=min(64, candidate_limit), scan_limit=scan_limit,
             through_sequence=brain["durable_sequence"],
-            score_text=passage_score,
+            score_text=score_text,
         )
         truncated = truncated or source_truncated
         lexical.extend(bridged)
@@ -158,6 +162,16 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                     neighbors[key] = (score, version)
 
         if seeds:
+            from .source_passages import SOURCE_PASSAGE_VERSION, source_passage_candidates
+
+            passages, passage_truncated = source_passage_candidates(
+                conn, service, principal, brain, target,
+                [(item["score"], documents[(item["memory_id"], item["revision"])]) for item in seeds],
+                through_sequence=brain["durable_sequence"],
+            )
+            truncated = truncated or passage_truncated
+            for key, (score, _) in zip(remember([row for _, row in passages]), passages, strict=True):
+                neighbors[key] = (score, SOURCE_PASSAGE_VERSION)
             association_rows = conn.execute(
                 "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[],%s::double precision[]) AS s(id,revision,score)) "
                 "SELECT a.id,a.revision,a.document,max(s.score) AS relevance FROM memory_associations e JOIN seeds s "
@@ -172,22 +186,25 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                 (seed_ids, seed_revisions, seed_scores, *params, *scope_params, candidate_limit + 1),
             ).fetchall()
             episode_rows = conn.execute(
-                "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[],%s::double precision[]) AS s(id,revision,score)) "
-                "SELECT a.id,a.revision,a.document,max(s.score) AS relevance FROM memory_episode_members seed "
+                "WITH seeds AS (SELECT * FROM unnest(%s::text[],%s::bigint[],%s::double precision[]) AS s(id,revision,score)), "
+                "matched AS MATERIALIZED (SELECT e.id,e.revision,max(s.score) AS score FROM memory_episode_members seed "
                 "JOIN seeds s ON seed.memory_id=s.id AND seed.memory_revision=s.revision "
                 "JOIN memory_episodes e ON e.tenant_id=seed.tenant_id AND e.owner_id=seed.owner_id AND e.brain_id=seed.brain_id "
                 "AND e.id=seed.episode_id AND e.revision=seed.episode_revision "
-                "JOIN memory_episode_members member ON member.tenant_id=e.tenant_id AND member.owner_id=e.owner_id "
-                "AND member.brain_id=e.brain_id AND member.episode_id=e.id AND member.episode_revision=e.revision "
+                "WHERE seed.tenant_id=%s AND seed.owner_id=%s AND seed.brain_id=%s "
+                "AND e.is_current AND NOT e.invalidated AND NOT e.deleted AND e.document IS NOT NULL "
+                "AND (e.conversation_id IS DISTINCT FROM %s OR e.branch_id IS NOT DISTINCT FROM %s) "
+                "GROUP BY e.id,e.revision) "
+                "SELECT a.id,a.revision,a.document,max(matched.score) AS relevance FROM matched "
+                "JOIN memory_episode_members member ON member.tenant_id=%s AND member.owner_id=%s "
+                "AND member.brain_id=%s AND member.episode_id=matched.id AND member.episode_revision=matched.revision "
                 "JOIN memory_assertions a ON a.tenant_id=member.tenant_id AND a.owner_id=member.owner_id "
                 "AND a.brain_id=member.brain_id AND a.id=member.memory_id AND a.revision=member.memory_revision "
                 "WHERE " + _eligible() + scope_sql
-                + "AND e.is_current AND NOT e.invalidated AND NOT e.deleted AND e.document IS NOT NULL "
-                "AND (e.conversation_id IS DISTINCT FROM %s OR e.branch_id IS NOT DISTINCT FROM %s) "
-                "AND NOT EXISTS (SELECT 1 FROM seeds own WHERE own.id=a.id AND own.revision=a.revision) "
+                + "AND NOT EXISTS (SELECT 1 FROM seeds own WHERE own.id=a.id AND own.revision=a.revision) "
                 "GROUP BY a.id,a.revision,a.document ORDER BY relevance DESC,a.id,a.revision LIMIT %s",
-                (seed_ids, seed_revisions, seed_scores, *params, *scope_params, target.get("conversation_ref"),
-                 target.get("branch_ref"), candidate_limit + 1),
+                (seed_ids, seed_revisions, seed_scores, *params, target.get("conversation_ref"),
+                 target.get("branch_ref"), *params, *params, *scope_params, candidate_limit + 1),
             ).fetchall()
             truncated = truncated or len(association_rows) > candidate_limit or len(episode_rows) > candidate_limit
             expand(association_rows[:candidate_limit] + episode_rows[:candidate_limit], "bounded-seed-neighborhood-v2")
@@ -211,6 +228,8 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
             item["rank_signals"].append({"method": "association", "score": score,
                                         "meaning": "ranking_only_not_probability", "model_or_index_version": version})
         ranked = list(combined.values())
+        if not cognition.speech_requested({**query, "query": text}):
+            ranked = [item for item in ranked if not assistant_speech(documents[(item["memory_id"], item["revision"])])]
         usage_rows = conn.execute(
             "SELECT memory_id,memory_revision,external_uses,successes,failures,last_external_use_at,last_reinforcement_at "
             "FROM memory_access_state WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "

@@ -28,6 +28,8 @@ Whole-sequence review records 27 passes (three assisted), two partial results an
 
 This round used 153 real calls with **1,710,383 known tokens and two unknown-usage calls**, including the closed initial time-budget failure. The original primary and tail share their original 248-call ceiling; auxiliary probes used five of fifteen allowed calls. No paid answer reviewer was used. The earlier stopped plan-review attempt below remains separate and closed. No further paid execution is active; locally verified repairs and a newly frozen bounded plan are required before another acceptance run.
 
+The [source and recall repair follow-up](../evaluations/v1-2026-10-26-longitudinal-repairs.md) records the subsequent candidate, local checks and separately bounded failure-path diagnostics. It does not resume or retry the closed campaign. G4, useful gist-first forgetting, cognitive-cost improvements and stable publication remain open.
+
 ## Historical proposed longitudinal follow-up
 
 The [2026-10-26 preparation record](../evaluations/v1-2026-10-26-closeout.md) stopped at the independent plan-review call: it timed out with unknown usage. No primary session or auxiliary diagnostic started. The proposed ceilings below are preserved for audit; unused capacity is not permission to resume or retry that stopped attempt.

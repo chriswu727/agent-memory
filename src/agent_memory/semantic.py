@@ -30,9 +30,9 @@ from .citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSION,
     CITATION_COVERAGE_INPUT_VERSIONS,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
-    CITATION_PROVENANCE_INPUT_VERSION,
     CITATION_PROVENANCE_INPUT_VERSIONS,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
+    SOURCE_ACT_INPUT_VERSION,
     citation_coverage_schema,
     citation_coverage_supported,
     citation_scope,
@@ -217,7 +217,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = CITATION_PROVENANCE_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = SOURCE_ACT_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -498,7 +498,8 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
             "reference_semantics": "citation_authority_not_request_evidence",
         }
     if input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
-        data["belief_relation_capabilities"] = belief_capabilities(scope, sources, assertions)
+        data["belief_relation_capabilities"] = belief_capabilities(
+            scope, sources, assertions, input_contract_version=input_contract_version)
     if proposal_mode == LOCAL_OBSERVATION_MODE:
         data["local_observation_contract"] = {
             "version": LOCAL_OBSERVATION_MODE, "history_intentionally_withheld": True,
@@ -508,6 +509,14 @@ def proposal_data(sources, assertions, working_state, episodes, sampling, belief
         from .history_attention import model_manifest
 
         data["integration_manifest"] = model_manifest(integration_manifest)
+    if input_contract_version == SOURCE_ACT_INPUT_VERSION:
+        data["source_act_views"] = [
+            {"event_id": source["event_id"], "revision": source["revision"],
+             "content_sha256": source["content_sha256"], "rule_version": cognition.RULE_VERSION,
+             "segments": cognition.evidence_segments(source)}
+            for source in sources
+            if cognition.evidence_segments(source) != source["utterance_segments"]
+        ]
     return data
 
 
@@ -560,6 +569,18 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
         instructions += " " + CITATION_COVERAGE_VERIFY_INSTRUCTIONS
     elif phase == "verification" and input_contract_version in CITATION_PROVENANCE_INPUT_VERSIONS:
         instructions += " " + CITATION_PROVENANCE_VERIFY_INSTRUCTIONS
+    if input_contract_version == SOURCE_ACT_INPUT_VERSION:
+        instructions += (
+            " source_act_views, when present, are versioned server interpretations of the exact source's "
+            "speech-act boundaries; the original source record remains unchanged. Use these views rather "
+            "than legacy utterance labels when assessing source eligibility. A declarative temporal clause "
+            "is not a question merely because it contains a question word. Questions and their "
+            "presuppositions still do not establish described events. Propose separate concise claims for "
+            "asserted facts and preferences, citing complete declarative units; do not combine them with "
+            "an adjacent request or question. Summarize assistant speech concisely with attribution rather "
+            "than copying entire replies unless exact wording matters. Preserve user-expressed meaning "
+            "and qualifications; choose representations and retention based on the actual source."
+        )
     if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
             and proposal_mode not in BOUNDED_MODES):
         data = shared_verification_sources(data)
@@ -780,7 +801,9 @@ def _check_claim_sources(proposal, events, scope, *, situation=False, current_re
         if observed["content"]["media_type"] != "text/plain":
             if bounds["start"] != 0 or bounds["end"] != len(cognition._content_text(observed["content"])):
                 raise ValueError("partial_structured_source")
-        for segment in cognition._segments(event):
+        segments = (cognition.evidence_segments(event) if input_contract_version == SOURCE_ACT_INPUT_VERSION
+                    else cognition._segments(event))
+        for segment in segments:
             span = segment.get("span")
             if span and max(span["start"], bounds["start"]) < min(span["end"], bounds["end"]):
                 if bounds["start"] > span["start"] or bounds["end"] < span["end"]:
@@ -804,7 +827,7 @@ def _check_claim_sources(proposal, events, scope, *, situation=False, current_re
                     or observed["event_kind"] != "tool_result"):
                 raise ValueError("verified_outcome_required")
         if role != "assistant" and not current_request:
-            for segment in cognition._segments(event):
+            for segment in segments:
                 span = segment.get("span")
                 selected = reference["span"]
                 if span and max(span["start"], selected["start"]) >= min(span["end"], selected["end"]):
@@ -954,12 +977,14 @@ def _validate_belief_link(item, scope, events, assertions, episodes, claims, *, 
     return item["evidence_refs"]
 
 
-def belief_capabilities(scope, sources, assertions):
+def belief_capabilities(scope, sources, assertions, *, input_contract_version=RELATION_CAPABILITIES_INPUT_VERSION):
     return relation_capabilities(
         scope, {(source["event_id"], source["revision"]): source for source in sources},
         {(memory["memory_id"], memory["revision"]): memory for memory in assertions},
         claim_schema={**copy.deepcopy(_CLAIM), "$defs": PROPOSAL_SCHEMA["$defs"]},
-        check_sources=partial(_check_claim_sources, input_contract_version=RELATION_CAPABILITIES_INPUT_VERSION),
+        check_sources=partial(_check_claim_sources, input_contract_version=(
+            SOURCE_ACT_INPUT_VERSION if input_contract_version == SOURCE_ACT_INPUT_VERSION
+            else RELATION_CAPABILITIES_INPUT_VERSION)),
         max_link_evidence=_BELIEF_LINK["properties"]["evidence_refs"]["maxItems"],
     )
 
@@ -1256,7 +1281,8 @@ class SemanticProcessor:
         groups = ("claims", "situation_updates", "episode_actions", "belief_links")
         items = [(group, item) for group in groups for item in proposed.get(group, [])]
         proposed_claims = {item["proposal_id"]: item for item in proposed.get("claims", [])}
-        capabilities = (belief_capabilities(batch.scope, events.values(), assertions.values())
+        capabilities = (belief_capabilities(batch.scope, events.values(), assertions.values(),
+                                           input_contract_version=batch.input_contract_version)
                         if batch.input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS else None)
         ids = [item["proposal_id"] for _, item in items]
         if len(ids) != len(set(ids)) or len(items) > policy.max_proposals:
@@ -1354,6 +1380,8 @@ class SemanticProcessor:
             batch.proposal_mode, events.values(), assertions.values(), batch.belief_relations,
             input_refs=batch.learning_input_refs, manifest=batch.integration_manifest,
         )}
+        if batch.input_contract_version == SOURCE_ACT_INPUT_VERSION:
+            verification_data["source_act_views"] = copy.deepcopy(data["source_act_views"])
         verified, error = invoke("verification", verification_data, verification_schema, self.verify)
         if error:
             return result(error)

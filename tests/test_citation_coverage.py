@@ -27,7 +27,6 @@ from agent_memory.citation_coverage import (
 from agent_memory.citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSIONS,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
-    CITATION_PROVENANCE_INPUT_VERSION,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
     citation_coverage_schema,
     citation_scope,
@@ -311,7 +310,7 @@ def test_new_schema_does_not_mutate_legacy_and_history_accounting_is_inherited()
     assert result.status == "completed" and len(result.integration_decisions) == 1
     assert LINK_DERIVED_INSTRUCTIONS in requests[0].messages[0]["content"]
     assert Draft202012Validator(requests[1].response_schema).is_valid({"assessments": list(result.verification_assessments)})
-    assert LATEST_INPUT_CONTRACT_VERSION == CITATION_PROVENANCE_INPUT_VERSION
+    assert LATEST_INPUT_CONTRACT_VERSION == "source-act-boundary-v1"
     assert batch(event("A direct report.")).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     for version in (None, COMMUNICATION_INTENT_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION, VERSION):
         assert _snapshot_input_contract({"input_contract_version": version}) == version
@@ -341,7 +340,7 @@ def test_new_orientation_and_manual_jobs_preserve_coverage_contract_across_resta
     before, after = "2026-10-25T10:00:00Z", "2026-10-25T10:01:00Z"
     monkeypatch.setattr("agent_memory.service.now", lambda: before)
     current, snapshot = engine._snapshot(learning.principal, learning.brain, job)
-    assert current.input_contract_version == snapshot["input_contract_version"] == CITATION_PROVENANCE_INPUT_VERSION
+    assert current.input_contract_version == snapshot["input_contract_version"] == LATEST_INPUT_CONTRACT_VERSION
     monkeypatch.setattr("agent_memory.service.now", lambda: after)
     resumed, frozen = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, job)
     assert frozen == snapshot

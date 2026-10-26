@@ -38,7 +38,7 @@ def event(text, sequence=1, role="user", **changes):
         "origin": {"user": "user_statement", "assistant": "assistant_output",
                    "tool": "tool_observation"}[role],
         "origin_verification": "verified_producer", "previous_revision": None,
-        "utterance_segments": cognition.classify_segments(content),
+        "utterance_segments": cognition.classify_segments(content, rule_version=cognition.PREVIOUS_RULE_VERSION),
     }
     result.update(changes)
     return result

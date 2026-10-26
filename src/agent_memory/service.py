@@ -325,6 +325,7 @@ class MemoryService:
             }[incoming["actor_role"]],
             "origin_verification": "unverified_import" if imported else "unknown",
             "previous_revision": previous["revision"] if previous else None,
+            "segmentation_rule_version": segmentation_rule_version,
             "utterance_segments": cognition.classify_segments(
                 incoming["content"], rule_version=segmentation_rule_version),
         }

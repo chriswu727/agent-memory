@@ -180,7 +180,8 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
         except (ValueError, KeyError, TypeError) as error:
             raise DomainError("invalid_evidence", "Historical integration decisions are unsupported") from error
     episodes = {episode["episode_id"]: episode for episode in batch.episodes}
-    capabilities = (belief_capabilities(batch.scope, snapshot["events"].values(), snapshot["assertions"].values())
+    capabilities = (belief_capabilities(batch.scope, snapshot["events"].values(), snapshot["assertions"].values(),
+                                       input_contract_version=batch.input_contract_version)
                     if batch.input_contract_version in RELATION_CAPABILITIES_INPUT_VERSIONS else None)
     ids, changed_episodes = set(), set()
     claim_fields = set(PROPOSAL_SCHEMA["properties"]["claims"]["items"]["properties"])

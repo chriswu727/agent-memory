@@ -1,6 +1,6 @@
 from . import cognition
 
-SOURCE_ROUTE_VERSION = "exact-word-hash-and-source-passage-v1"
+SOURCE_ROUTE_VERSION = "exact-word-hash-and-frequency-source-passage-v2"
 
 
 def _matching_references(memory, events, scope, query, superseded, score_text=None):
