@@ -1,0 +1,349 @@
+{
+  "campaign": "longitudinal-life-v5",
+  "checkpoint": {
+    "checkpoint_ledger_hash_definition": "SHA-256 of the canonical JSON array of the first 30 parsed call-ledger records, exactly matching ledger_sha256 in journal event 98. This is distinct from the raw JSONL file hash.",
+    "checkpoint_ledger_sha256": "38608402646dc50a9f4d00ca3a0ab71122ccd5bc8e0b23087e473a890dc421fb",
+    "completed_call_records": 15,
+    "completed_sessions": 2,
+    "completed_turns": 4,
+    "delivered_turns": 4,
+    "frozen_evidence_excludes_later_appended_events": true,
+    "journal_last_event_sha256": "df7e546d5d592e9512310ff2b89723dd0e1dbe16b09879546dbc59eafbf14260",
+    "journal_sequence_end": 99,
+    "journal_sequence_start": 1,
+    "last_event_kind": "paused",
+    "ledger_records": 30,
+    "reserved_call_records": 15,
+    "session_completion_sequence": 98,
+    "unsettled_deliveries": 0
+  },
+  "continuation_decision": {
+    "additional_sessions": 4,
+    "budget_changed": false,
+    "decision": "continue_same_frozen_campaign_for_downstream_effect_diagnosis",
+    "failed_paid_jobs_retried": false,
+    "meaning": "Continue the same frozen campaign to observe downstream effects while retaining the existing quality issues; neither overall semantic quality nor longitudinal acceptance has passed.",
+    "next_review_after_completed_sessions": 6
+  },
+  "evidence_sha256": {
+    "answer-review-stage-2.json": {
+      "hash": "72e435233dafbd99d3b2c863f100135b57eca2dcbe89ad2d7eb17f89e1a87557",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "first-turn-publication-review.json": {
+      "hash": "94199c3955fd6b6dbbeef741eaea1110565aede857685f1cf1ed8776b4d3e42e",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "fourth-turn-publication-review.json": {
+      "hash": "13bbbab6f97b44909d0519226fc01daf651d1554ae8d31098f3d71aad67e3530",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "plan.json": {
+      "hash": "ea668245a7feb22d7eb140d910ef29f50fa64c7a0b5611a8e47d27119568b8d5",
+      "scope": "Frozen campaign plan file bytes; no prompt text is included in this public report."
+    },
+    "second-turn-publication-review.json": {
+      "hash": "9d77293fc62db91303cb1796ed4519b8c27e4861d54f469f0cb0d17c2513a732",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "stage-2-calls.jsonl": {
+      "hash": "475b899b27265455bfaf7e1c29cbd6698777296182510a86bd6d5d0cfdf2c94a",
+      "scope": "Exact original raw call-ledger records 1 through 30; canonical parsed-array hash separately matches checkpoint_ledger_sha256."
+    },
+    "stage-2-decision.json": {
+      "hash": "7eab80e17bbf0c3a6984dab241079da0e815db440cbc328e0ce19faa82a24590",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "stage-2-head.json": {
+      "hash": "d1503633924ec74c1425c454f787ca198ebc564ede9e810507649ada37f0b6cd",
+      "scope": "Canonical JSON plus newline for event_count 99 and the recorded final event hash; equals the independently captured original head bytes hash."
+    },
+    "stage-2-journal.jsonl": {
+      "hash": "f240ef01df33e2346af84f37e0caeed95d8b6a9d7d17e476a7e5e7ac1daf32ec",
+      "scope": "Exact original raw JSONL lines 1 through 99, including line terminators; excludes later campaign append activity."
+    },
+    "stage-2-publication-gate.json": {
+      "hash": "9d30c1d7245a71d5db7783a8bab92f9c04397016232bd8983ffc92d2b051dc36",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "stage-2.json": {
+      "hash": "f35c940060e7b28f64fc309fcb33cb21e5ba3ab6cca0f35685e158dc9a144530",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    },
+    "third-turn-publication-review.json": {
+      "hash": "bec79ca97468df94c6b1c7cc8698d6bdaaa3a21cfa4b18c3bf6772b55362b9ad",
+      "scope": "Private checkpoint review or checkpoint execution report; contains no later-stage result."
+    }
+  },
+  "execution_state_at_checkpoint": "paused_at_two_session_boundary",
+  "independent_checks": {
+    "answer_and_publication_review_hashes_match_continuation_decision": true,
+    "call_ledger_prefix_matches_recorded_checkpoint_ledger_sha256": true,
+    "exact_call_reservation_completion_pairing": true,
+    "frozen_plan_unchanged": true,
+    "journal_prefix_chain_valid": true,
+    "known_usage_arithmetic_matches_checkpoint": true,
+    "reconstructed_checkpoint_head_matches_original_captured_head_hash": true
+  },
+  "input_contract_version": "citation-coverage-v1",
+  "limitations": [
+    "This is a four-turn checkpoint with two executed frozen cases, not a completed longitudinal evaluation or product acceptance.",
+    "Current-input grounding and same-conversation continuity do not isolate long-term database recall from recent context.",
+    "Delayed project return, schedule and folder corrections, two-Alex separation, guest-preference scoping and new completion-versus-delivery cases remain unexecuted.",
+    "The personal-memory return, cue assistance and uncommunicated photo location have not been tested; no unknown-location success is claimed.",
+    "Access aging, real model-callback change, identical-state cue experiments and human field use are not assessed.",
+    "Supported candidates can still be rejected, and literal fragmentation remains. Preserving literals does not establish a satisfactory semantic consolidation outcome.",
+    "Independent source review and model judgments are fallible; successful execution alone does not establish semantic truth.",
+    "Historical failed campaigns and the preceding paired diagnostic remain separate evidence; this checkpoint gives them no retroactive pass."
+  ],
+  "paid_retries_at_checkpoint": 0,
+  "publication_review": {
+    "belief_relations": 0,
+    "critical_unsupported_publication_found": false,
+    "episode_evidence_scope": "One accepted episode is present in the actual publication result at journal event 68; memory-only snapshots do not independently enumerate episode rows.",
+    "episode_publications": 1,
+    "history_integration": {
+      "no_change_count": 3,
+      "objective_count": 3,
+      "published_count": 0,
+      "reasons": [
+        "insufficient_evidence",
+        "incompatible_qualifiers",
+        "insufficient_evidence"
+      ]
+    },
+    "literal_memories": 59,
+    "literal_quotes_exact": true,
+    "per_turn": [
+      {
+        "claims_rejected": 5,
+        "episode_accepted": 0,
+        "episode_rejected": 1,
+        "literal_added": 21,
+        "semantic_accepted": 2,
+        "snapshot_line": 25,
+        "turn_id": "story-start"
+      },
+      {
+        "claims_rejected": 3,
+        "episode_accepted": 0,
+        "episode_rejected": 0,
+        "literal_added": 14,
+        "semantic_accepted": 1,
+        "snapshot_line": 48,
+        "turn_id": "story-slots"
+      },
+      {
+        "claims_rejected": 1,
+        "episode_accepted": 1,
+        "episode_rejected": 0,
+        "literal_added": 18,
+        "semantic_accepted": 2,
+        "snapshot_line": 70,
+        "turn_id": "work-alex"
+      },
+      {
+        "claims_rejected": 2,
+        "episode_accepted": 0,
+        "episode_rejected": 1,
+        "literal_added": 6,
+        "semantic_accepted": 0,
+        "snapshot_line": 97,
+        "turn_id": "work-tone"
+      }
+    ],
+    "semantic_memories": 5,
+    "source_revision_hash_span_bindings_match": true,
+    "source_revision_hash_span_references_checked": 85,
+    "supported_positive_observation": {
+      "cases": [
+        "A first-task summary asserted details whose source spans were absent from its cited set.",
+        "A three-session summary cited the stopping suggestion and outline question but omitted the actual three-session proposal."
+      ],
+      "count": 2,
+      "outcome": "Candidates with materially incomplete or incorrect bound citation sets were rejected before publication.",
+      "scope": "An actual new proposal/verification/publication path exercises the citation-coverage repair; this does not establish general verifier reliability.",
+      "turn": "story-slots"
+    },
+    "total_memories": 64,
+    "unresolved_quality_findings": [
+      {
+        "count": 2,
+        "fallback": "Exact literal source records remain available; semantic consolidation was not successful for those candidates.",
+        "kind": "coverage_false_negative_under_independent_source_review",
+        "observed": "Two whole-source speech reports were rejected with citation coverage unknown although independent review supports their cited speech content.",
+        "qualification": "Packet authority or attribution ambiguity may contribute; the cause has not been established. One candidate uses escaped paragraph newlines, without additional factual content.",
+        "status": "unresolved",
+        "turn": "work-tone"
+      },
+      {
+        "kind": "abbreviation_fragmentation",
+        "observed": "The phrase email vs. chat. produced an isolated chat. literal; the semantic summary cites both spans correctly.",
+        "status": "unresolved_broader_segmentation_quality"
+      },
+      {
+        "kind": "unsupported_identity_candidates_rejected",
+        "observed": "Several first-turn candidates inferred a user name from an opaque conversation identifier instead of communicated utterances and were rejected.",
+        "status": "not_published; candidate quality remains a limitation"
+      }
+    ]
+  },
+  "release_acceptance": "not passed",
+  "report_preparation": {
+    "campaign_files_modified": false,
+    "database_connections": 0,
+    "database_mutations": 0,
+    "provider_calls": 0
+  },
+  "review_state": "no_critical_unsupported_publication_found_with_unresolved_quality_issues",
+  "runtime_build": "8737d89308f7d66333ae3cfc0f1ae48b4562696c22b20aa006ff1598c494aecc",
+  "scope": "A reviewed historical checkpoint after the first two sessions and four delivered turns. This file does not describe the current endpoint or completion of the continuing campaign.",
+  "timing": {
+    "aging_assessed": false,
+    "completed_invocation_seconds": 806.393039333052,
+    "time_mode": "narrative_order_only"
+  },
+  "usage": {
+    "completed_calls": 15,
+    "reserved_calls": 15,
+    "reserved_output_tokens": 164864,
+    "usage_confirmed_calls": 15,
+    "usage_totals": {
+      "completion_tokens": 55506,
+      "prompt_cache_hit_tokens": 36224,
+      "prompt_cache_miss_tokens": 98986,
+      "prompt_tokens": 135210,
+      "total_tokens": 190716
+    },
+    "usage_unknown_calls": 0
+  },
+  "user_branches": {
+    "assisted": 0,
+    "correction": 0,
+    "memory_reteaching_observed": false,
+    "ordinary": 4
+  },
+  "version": "longitudinal-v5-reviewed-checkpoint-v1",
+  "whole_answer_review": {
+    "case_results": [
+      {
+        "at_turn": "story-start",
+        "case_id": "initial-practical-plan",
+        "status": "pass"
+      },
+      {
+        "at_turn": "story-slots",
+        "case_id": "same-session-opening",
+        "status": "pass"
+      },
+      {
+        "at_turn": "class-moved",
+        "case_id": "changed-schedule",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "walk-cancelled",
+        "case_id": "cancelled-outing",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "story-return",
+        "case_id": "first-return-without-reteaching",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "folder-corrected",
+        "case_id": "corrected-work-detail",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "museum-visited",
+        "case_id": "separate-similar-episodes",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "nia-dinner",
+        "case_id": "guest-preference-scope",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "draft-still-open",
+        "case_id": "plan-is-not-completion",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "lamp-choice",
+        "case_id": "unrelated-task-focus",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "grandma-card",
+        "case_id": "delayed-meaningful-memory",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "grandma-cue",
+        "case_id": "cue-assisted-card",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "late-week-plan",
+        "case_id": "late-project-continuity",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "solo-mushrooms",
+        "case_id": "no-guest-preference-leak",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "photo-location",
+        "case_id": "uncommunicated-location",
+        "status": "unexecuted"
+      },
+      {
+        "at_turn": "draft-finished",
+        "case_id": "new-completion-not-delivery",
+        "status": "unexecuted"
+      }
+    ],
+    "frozen_cases": {
+      "fail": 0,
+      "pass": 2,
+      "total": 16,
+      "unexecuted": 14
+    },
+    "practical_fit_not_equated_with_memory_faithfulness": true,
+    "scope": "All four complete delivered answers, judged against each actual received prefix; source text, content hashes, roles and settled delivery states were checked.",
+    "supplemental_practical_fit": [
+      {
+        "detail": "Two provisional slots avoid known class nights, but 45/75 minutes and completing a 1,800-word story in about two hours are ambitious. The frozen case supplies no hard duration cap.",
+        "status": "pass_with_caveat",
+        "turn": "story-start"
+      },
+      {
+        "detail": "A bounded first writing task preserves the known premise. The optional three-session plan expands the earlier two-slot aim and is not an agreed schedule.",
+        "status": "pass_with_caveat",
+        "turn": "story-slots"
+      },
+      {
+        "detail": "Drafts a low-pressure access-list request without claiming to send it or adding unrelated memories.",
+        "status": "pass",
+        "turn": "work-alex"
+      },
+      {
+        "detail": "The entire answer is shorter because it offers one draft instead of three. Its message text is longer than the earlier casual option, so literal shortening is not fully met.",
+        "new_message_characters": 165,
+        "new_message_whitespace_words": 33,
+        "new_whole_answer_characters": 207,
+        "previous_message_characters": 155,
+        "previous_message_whitespace_words": 30,
+        "previous_whole_answer_characters": 696,
+        "status": "mixed",
+        "turn": "work-tone"
+      }
+    ],
+    "unknown_photo_location_case": "unexecuted",
+    "unsupported_memory_claim_observed": false
+  }
+}
