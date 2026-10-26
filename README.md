@@ -177,3 +177,7 @@ Read the [acceptance criteria](architecture/v1-acceptance.md), [closed longitudi
 Building an agent with persistent memory? [Share your use case or an installation problem](https://github.com/chriswu727/agent-memory/issues). Reports with reproducible steps, redacted logs, and the integration you use are especially helpful. Repository documentation and developer-facing contributions use English; this overview is also maintained in [简体中文](README.zh-CN.md).
 
 If the project is useful to you, **star the repository** and help us identify the next integration that matters. Local checks are preferred; GitHub Actions remains manual-only.
+
+## License
+
+Licensed under the [MIT License](LICENSE).
