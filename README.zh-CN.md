@@ -230,6 +230,7 @@ membrain desktop start
 | [自动运行时契约](architecture/autonomous-runtime.contract.json) | 生命周期职责、接入要求和实现边界。 |
 | [认知预算控制](architecture/cognitive-budgets.md) | 明确的模型调用额度、用量记录和配置。 |
 | [记忆质量与效率](architecture/memory-quality-and-efficiency.md) | 实测开销、算法选择，以及未来人格与情绪研究的架构边界。 |
+| [路线图：面向聊天与生活类 Agent 的记忆](architecture/companion-roadmap.md) | 规划中的工作：与其他记忆工具功能对齐，记住人物、计划与关系，然后是人格与情绪。尚未实现。 |
 | [开发设置](docs/reference.md#development-setup) | 克隆仓库后的设置、数据库迁移和后台任务处理器。 |
 | [本地验证](docs/reference.md#verification) | 测试命令和现有证据的覆盖范围。 |
 

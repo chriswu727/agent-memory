@@ -225,6 +225,7 @@ Read the [acceptance criteria](architecture/v1-acceptance.md), [closed longitudi
 | [Automatic runtime contract](architecture/autonomous-runtime.contract.json) | Lifecycle responsibilities, integration requirements, and implementation boundaries. |
 | [Cognitive budget controls](architecture/cognitive-budgets.md) | Explicit model-call allowances, accounting, and configuration. |
 | [Memory quality and efficiency](architecture/memory-quality-and-efficiency.md) | Measured costs, algorithm choices, and boundaries for future personality and emotion research. |
+| [Roadmap: memory for chat and life agents](architecture/companion-roadmap.md) | Planned work: parity with other memory tools, memory of people, plans and relationships, then personality and emotion. Not yet implemented. |
 | [Development setup](docs/reference.md#development-setup) | Clone-based setup, database migrations, and the worker. |
 | [Local verification](docs/reference.md#verification) | Test commands and the scope of existing evidence. |
 
