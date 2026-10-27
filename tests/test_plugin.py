@@ -8,6 +8,12 @@ from membrain import desktop, embedded_database, plugin
 from membrain.local_profile import load_profile
 
 
+@pytest.fixture(autouse=True)
+def no_model_download(monkeypatch):
+    # plugin start would otherwise fetch the 135 MB embedding model and restart the service mid-test.
+    monkeypatch.setenv("MEMBRAIN_SEMANTIC", "0")
+
+
 def _memory(statement, conversation="earlier", recorded="2026-10-03T08:00:00Z", world="real_world"):
     return {"memory": {"statement": statement, "scope": {"conversation_id": conversation},
                        "system_time": {"recorded_at": recorded}, "world": world}}
