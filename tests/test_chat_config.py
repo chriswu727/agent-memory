@@ -8,16 +8,16 @@ from dataclasses import FrozenInstanceError, replace
 import httpx
 import pytest
 
-from agent_memory import chat_config, local_profile
-from agent_memory.chat_config import (
+from membrain import chat_config, local_profile
+from membrain.chat_config import (
     ChatConfiguration,
     ChatConfigurationError,
     load_chat_configuration,
     save_chat_configuration,
     use_cognition_configuration,
 )
-from agent_memory.desktop import _fingerprint
-from agent_memory.local_profile import configure_cognition, ensure_profile, load_profile
+from membrain.desktop import _fingerprint
+from membrain.local_profile import configure_cognition, ensure_profile, load_profile
 
 
 @pytest.fixture
@@ -100,7 +100,7 @@ def test_loading_and_saving_do_not_read_environment_or_construct_http_clients(
 ):
     monkeypatch.setenv("MEMORY_CHAT_API_KEY", "wrong-chat-key")
     monkeypatch.setenv("MEMORY_COGNITION_API_KEY", "wrong-memory-key")
-    monkeypatch.setattr("agent_memory.config.load_dotenv", lambda: pytest.fail("No dotenv lookup"))
+    monkeypatch.setattr("membrain.config.load_dotenv", lambda: pytest.fail("No dotenv lookup"))
     monkeypatch.setattr(httpx, "Client", lambda **kwargs: pytest.fail("No HTTP client"))
     monkeypatch.setattr(local_profile, "default_profile_directory", lambda: profile.directory)
     monkeypatch.chdir(tmp_path)
@@ -121,7 +121,7 @@ def test_fingerprint_ignores_secret_rotation_but_binds_all_generation_parameters
 
 
 def test_generator_is_lazy_and_receives_only_explicit_configuration(configuration, monkeypatch):
-    from agent_memory import chat_provider
+    from membrain import chat_provider
 
     seen = []
     instance = object()

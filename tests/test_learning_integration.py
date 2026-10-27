@@ -11,12 +11,12 @@ from test_learning_windows import claim, execute, jobs
 from test_semantic import claim as proposed_claim
 from test_semantic import encoded, proposals, reference, verifier
 
-from agent_memory.helpers import uid
-from agent_memory.history_attention import POLICY, model_manifest
-from agent_memory.jobs import JobStore
-from agent_memory.learning_allocations import ENCODING_PHASE, phase
-from agent_memory.learning_integration import reconsider
-from agent_memory.semantic import SemanticProcessor
+from membrain.helpers import uid
+from membrain.history_attention import POLICY, model_manifest
+from membrain.jobs import JobStore
+from membrain.learning_allocations import ENCODING_PHASE, phase
+from membrain.learning_integration import reconsider
+from membrain.semantic import SemanticProcessor
 
 pytestmark = pytest.mark.integration
 
@@ -69,7 +69,7 @@ def setup_history(harness, monkeypatch, count=1):
         return encoded(checked)
 
     harness.service.semantic_processor = SemanticProcessor(propose, verify)
-    import agent_memory.neighborhood as neighborhood
+    import membrain.neighborhood as neighborhood
 
     original = neighborhood.select_neighborhood
 
@@ -82,7 +82,7 @@ def setup_history(harness, monkeypatch, count=1):
 
 
 def setup_legacy_history(harness, monkeypatch, count=1):
-    import agent_memory.learning_windows as learning_windows
+    import membrain.learning_windows as learning_windows
 
     monkeypatch.setattr(learning_windows, "ordinary_root_metadata", lambda scope: {})
     return setup_history(harness, monkeypatch, count=count)
@@ -355,7 +355,7 @@ def test_legacy_unknown_selected_call_keeps_untouched_tail_runnable_under_later_
     funded_id = learning.job(tail_id)["payload"]["integration_continuation_job_id"]
     assert execute(learning, claim(learning, funded_id))["state"] == "completed"
     assert learning.job(child_id)["model_calls"] == 1 and len(requests) == 6
-    from agent_memory.helpers import DomainError
+    from membrain.helpers import DomainError
 
     with pytest.raises(DomainError) as error:
         JobStore(learning.database).retry_learning(learning.principal, learning.brain, child_id,

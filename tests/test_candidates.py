@@ -5,15 +5,15 @@ from types import SimpleNamespace
 import pytest
 from psycopg.types.json import Jsonb
 
-from agent_memory import cognition
-from agent_memory.candidates import collect_candidates
-from agent_memory.client import default_budget, default_read_fence
-from agent_memory.config import Settings
-from agent_memory.contracts import CONTRACT_VERSION
-from agent_memory.embeddings import EmbeddingResult, EmbeddingSpace
-from agent_memory.helpers import DomainError, Principal, digest, now, uid
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain import cognition
+from membrain.candidates import collect_candidates
+from membrain.client import default_budget, default_read_fence
+from membrain.config import Settings
+from membrain.contracts import CONTRACT_VERSION
+from membrain.embeddings import EmbeddingResult, EmbeddingSpace
+from membrain.helpers import DomainError, Principal, digest, now, uid
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 SPACE = EmbeddingSpace("test-embedding", "v1", 3)
@@ -280,7 +280,7 @@ def test_duplicate_paths_do_not_multiply_neighbor_relevance(candidates, monkeypa
     anchor = candidates.add("pottery workshop timetable")
     neighbor = candidates.add("Twenty minutes is manageable")
     timestamp = now()
-    monkeypatch.setattr("agent_memory.candidates.now", lambda: timestamp)
+    monkeypatch.setattr("membrain.candidates.now", lambda: timestamp)
     candidates.edge(anchor, neighbor)
     first = candidates.query("pottery workshop timetable")[1]
     candidates.edge(anchor, neighbor)

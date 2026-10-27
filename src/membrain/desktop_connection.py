@@ -18,10 +18,10 @@ def mcp_config(directory: Path | None = None) -> dict:
     profile = load_profile(directory)
     return {
         "mcpServers": {
-            "agent-memory": {
+            "membrain": {
                 "command": str(Path(sys.executable).absolute()),
                 "args": [
-                    "-m", "agent_memory.cli", "desktop", "mcp",
+                    "-m", "membrain.cli", "desktop", "mcp",
                     "--directory", str(profile.directory.resolve()),
                 ],
             },

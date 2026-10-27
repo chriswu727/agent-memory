@@ -6,11 +6,11 @@ from psycopg.types.json import Jsonb
 from test_consolidation import Consolidation
 from test_semantic import claim, episode, proposals, run
 
-from agent_memory.archive_views import REBUILD_POLICY
-from agent_memory.client import default_budget
-from agent_memory.config import Settings
-from agent_memory.helpers import DomainError, uid
-from agent_memory.storage import Database
+from membrain.archive_views import REBUILD_POLICY
+from membrain.client import default_budget
+from membrain.config import Settings
+from membrain.helpers import DomainError, uid
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

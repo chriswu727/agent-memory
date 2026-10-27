@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from agent_memory.client import MemoryClient
-from agent_memory.helpers import uid
+from membrain.client import MemoryClient
+from membrain.helpers import uid
 
 pytestmark = pytest.mark.integration
 
@@ -36,7 +36,7 @@ def test_stdio_tools_recall_persistent_events_through_real_http(tmp_path):
     environment = {**os.environ, "MEMORY_DATABASE_URL": dsn,
                    "MEMORY_API_KEYS_FILE": str(key_file)}
     server = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "agent_memory.api:create_app", "--factory",
+        [sys.executable, "-m", "uvicorn", "membrain.api:create_app", "--factory",
          "--host", "127.0.0.1", "--port", str(port), "--log-level", "error"],
         env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
     )
@@ -65,14 +65,14 @@ def test_stdio_tools_recall_persistent_events_through_real_http(tmp_path):
 
         async def recall():
             params = StdioServerParameters(
-                command=sys.executable, args=["-m", "agent_memory.mcp_server"],
+                command=sys.executable, args=["-m", "membrain.mcp_server"],
                 env={**environment, "MEMORY_BASE_URL": base_url, "MEMORY_API_KEY": key,
                      "MEMORY_BRAIN_ID": brain_id},
             )
             async with stdio_client(params) as (read, write):
                 async with ClientSession(read, write) as session:
                     initialized = await session.initialize()
-                    assert initialized.serverInfo.name == "Agent Memory"
+                    assert initialized.serverInfo.name == "memBrain"
                     response = await session.call_tool("memory_recall", {
                         "query": "周五看海", "conversation_id": "trip", "branch_id": "main",
                     })

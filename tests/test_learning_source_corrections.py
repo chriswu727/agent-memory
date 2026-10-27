@@ -8,11 +8,11 @@ from test_learning_neighborhood import publish, source
 from test_learning_windows import claim, execute, jobs
 from test_semantic import encoded, proposals, verifier
 
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import CONTRACT_VERSION, ENCODING_PHASE, phase
-from agent_memory.learning_windows import recover_windows, select_window
-from agent_memory.neighborhood import _Incomplete, _Selector
-from agent_memory.semantic import SemanticProcessor
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import CONTRACT_VERSION, ENCODING_PHASE, phase
+from membrain.learning_windows import recover_windows, select_window
+from membrain.neighborhood import _Incomplete, _Selector
+from membrain.semantic import SemanticProcessor
 
 pytestmark = pytest.mark.integration
 TARGET = {"conversation_ref": "chat", "branch_ref": "main"}

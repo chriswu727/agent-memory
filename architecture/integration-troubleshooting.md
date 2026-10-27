@@ -5,7 +5,7 @@ The desktop chat and Python runtime support synchronous text generation with a h
 ## Inspect the unfinished turn
 
 ```sh
-agent-memory desktop turn-status --conversation example --branch main
+membrain desktop turn-status --conversation example --branch main
 ```
 
 The default conversation is `desktop-chat`, matching `desktop chat`; the default branch is `main`. Supply the same `--directory` as the original installation when using a non-default location. This command connects only to an already-running local service. It performs one authenticated scope lookup, does not start the worker, and does not generate, deliver, resume, cancel, or retry anything.

@@ -8,17 +8,17 @@ from test_cognition import event, scope
 from test_episode_semantics import action, existing
 from test_semantic import batch, claim, encoded, episode, proposals
 
-from agent_memory.consolidation import _check_result
-from agent_memory.episode_semantics import (
+from membrain.consolidation import _check_result
+from membrain.episode_semantics import (
     EPISODE_FIDELITY_INSTRUCTIONS,
     EPISODE_FIDELITY_VERIFY_INSTRUCTIONS,
     episode_assessment,
     episode_fidelity_schema,
     episode_fidelity_supported,
 )
-from agent_memory.helpers import DomainError, digest
-from agent_memory.learning import _snapshot_input_contract
-from agent_memory.semantic import (
+from membrain.helpers import DomainError, digest
+from membrain.learning import _snapshot_input_contract
+from membrain.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_FIDELITY_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,

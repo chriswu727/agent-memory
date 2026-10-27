@@ -8,7 +8,7 @@ from test_desktop_learning import install_client
 from test_learning_phase_monitor import encoding, history
 from test_learning_progress import summarize
 
-from agent_memory import desktop_chat_monitor, desktop_cli
+from membrain import desktop_chat_monitor, desktop_cli
 
 
 def phase_job(state="deferred", *, phase="encoding", resolved=True):

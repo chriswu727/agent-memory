@@ -3,9 +3,9 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agent-memory-runtime"
+name = "membrain-ai"
 version = "0.1.0"
-description = "A human-inspired memory engine for AI agents"
+description = "memBrain: a human-inspired, source-traceable memory engine for AI agents"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -30,23 +30,23 @@ dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.12", "build>=1,<2", "ht
        "pgserver>=0.1.4,<0.2; python_version < '3.13' and (sys_platform != 'linux' or platform_machine == 'x86_64')"]
 
 [project.urls]
-Homepage = "https://github.com/chriswu727/agent-memory"
-Documentation = "https://github.com/chriswu727/agent-memory/blob/main/docs/reference.md"
-Repository = "https://github.com/chriswu727/agent-memory"
-Issues = "https://github.com/chriswu727/agent-memory/issues"
+Homepage = "https://github.com/chriswu727/membrain"
+Documentation = "https://github.com/chriswu727/membrain/blob/main/docs/reference.md"
+Repository = "https://github.com/chriswu727/membrain"
+Issues = "https://github.com/chriswu727/membrain/issues"
 
 [project.scripts]
-agent-memory = "agent_memory.cli:main"
+membrain = "membrain.cli:main"
 
 [tool.hatch.build.targets.sdist]
 exclude = ["/evaluations", "/sdk/typescript/node_modules"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agent_memory"]
+packages = ["src/membrain", "src/agent_memory"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"architecture/memory-contract.schema.json" = "agent_memory/resources/memory-contract.schema.json"
-"migrations" = "agent_memory/resources/migrations"
+"architecture/memory-contract.schema.json" = "membrain/resources/memory-contract.schema.json"
+"migrations" = "membrain/resources/migrations"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

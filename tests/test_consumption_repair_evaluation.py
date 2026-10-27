@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from agent_memory.helpers import digest
+from membrain.helpers import digest
 
 
 @pytest.fixture
@@ -135,7 +135,7 @@ def test_plan_is_read_only_and_freezes_three_cases_with_separate_additional_budg
     assert planned["source_report_sha256"] == hashlib.sha256(original).hexdigest()
     assert planned["semantic_review"]["status"] == "pending_developer_review"
     for name in ("examples/evaluate_consumption_repair.py", "examples/evaluation_host.py",
-                 "examples/evaluation_support.py", "src/agent_memory/runtime.py"):
+                 "examples/evaluation_support.py", "src/membrain/runtime.py"):
         assert planned["code_fingerprints"][name] == digest((evaluation.ROOT / name).read_text())
     assert not output.exists()
     assert evaluation.SOURCE_REPORT.read_bytes() == original

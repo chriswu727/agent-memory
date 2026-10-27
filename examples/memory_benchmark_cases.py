@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from agent_memory.helpers import digest
+from membrain.helpers import digest
 
 DATASET_VERSION = "long-memory-synthetic-v1"
 DEFAULT_SEED = 20261025

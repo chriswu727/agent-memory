@@ -13,7 +13,7 @@ from test_semantic import (
     verifier,
 )
 
-from agent_memory.helpers import DomainError
+from membrain.helpers import DomainError
 
 
 def current_batch(*sources, **changes):

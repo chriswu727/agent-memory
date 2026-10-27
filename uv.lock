@@ -7,58 +7,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "agent-memory-runtime"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "jsonschema", extra = ["format"] },
-    { name = "mcp" },
-    { name = "psycopg", extra = ["binary"] },
-    { name = "python-dotenv" },
-    { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-embedded = [
-    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64') or (python_full_version < '3.13' and sys_platform != 'linux')" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "build" },
-    { name = "httpx2" },
-    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64') or (python_full_version < '3.13' and sys_platform != 'linux')" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.115,<1" },
-    { name = "httpx", specifier = ">=0.28,<1" },
-    { name = "jsonschema", extras = ["format"], specifier = ">=4.23,<5" },
-    { name = "mcp", specifier = ">=1.26,<2" },
-    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64' and extra == 'embedded') or (python_full_version < '3.13' and sys_platform != 'linux' and extra == 'embedded')", specifier = ">=0.1.4,<0.2" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
-    { name = "python-dotenv", specifier = ">=1,<2" },
-    { name = "uvicorn", specifier = ">=0.34,<1" },
-]
-provides-extras = ["embedded"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "build", specifier = ">=1,<2" },
-    { name = "httpx2", specifier = ">=2.16,<3" },
-    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64') or (python_full_version < '3.13' and sys_platform != 'linux')", specifier = ">=0.1.4,<0.2" },
-    { name = "pytest", specifier = ">=8,<10" },
-    { name = "pytest-asyncio", specifier = ">=1,<2" },
-    { name = "ruff", specifier = ">=0.12" },
-]
-
-[[package]]
 name = "annotated-doc"
 version = "0.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -521,6 +469,58 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ba/93/0142dc84a666daf8ad51a34268f34c12fd6fda4f3810c4be2504eecc8212/mcp-1.30.0.tar.gz", hash = "sha256:445414625fce5c295faa505bb11bacece661ab6f4028d57c935db57820b7a3e4", size = 680511, upload-time = "2026-09-07T14:34:15.845Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/f4/e58bc33317c92a0203664daaf00bf6f41166cc0149e5d6870a03f7cd004a/mcp-1.30.0-py3-none-any.whl", hash = "sha256:666edb5009503e1047c9d60346a756f94b261f05cc2625f23d41c728ffc484d0", size = 234581, upload-time = "2026-09-07T14:34:14.266Z" },
+]
+
+[[package]]
+name = "membrain-ai"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "jsonschema", extra = ["format"] },
+    { name = "mcp" },
+    { name = "psycopg", extra = ["binary"] },
+    { name = "python-dotenv" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+embedded = [
+    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64') or (python_full_version < '3.13' and sys_platform != 'linux')" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "build" },
+    { name = "httpx2" },
+    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64') or (python_full_version < '3.13' and sys_platform != 'linux')" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "httpx", specifier = ">=0.28,<1" },
+    { name = "jsonschema", extras = ["format"], specifier = ">=4.23,<5" },
+    { name = "mcp", specifier = ">=1.26,<2" },
+    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64' and extra == 'embedded') or (python_full_version < '3.13' and sys_platform != 'linux' and extra == 'embedded')", specifier = ">=0.1.4,<0.2" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
+    { name = "python-dotenv", specifier = ">=1,<2" },
+    { name = "uvicorn", specifier = ">=0.34,<1" },
+]
+provides-extras = ["embedded"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "build", specifier = ">=1,<2" },
+    { name = "httpx2", specifier = ">=2.16,<3" },
+    { name = "pgserver", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64') or (python_full_version < '3.13' and sys_platform != 'linux')", specifier = ">=0.1.4,<0.2" },
+    { name = "pytest", specifier = ">=8,<10" },
+    { name = "pytest-asyncio", specifier = ">=1,<2" },
+    { name = "ruff", specifier = ">=0.12" },
 ]
 
 [[package]]

@@ -14,10 +14,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
-from agent_memory.helpers import digest
-from agent_memory.semantic import (
+from examples.evaluate_deepseek import save
+from examples.evaluation_support import MeteredTransport
+from membrain import cognition
+from membrain.contracts import validate
+from membrain.helpers import digest
+from membrain.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_FIDELITY_INPUT_VERSION,
     CognitiveBatch,
@@ -26,9 +28,7 @@ from agent_memory.semantic import (
     SemanticProcessor,
     _parse,
 )
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from examples.evaluate_deepseek import save
-from examples.evaluation_support import MeteredTransport
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
 
 ROOT = Path(__file__).resolve().parents[1]
 LONG_ARCHIVE = ROOT / "evaluations/deepseek-2026-10-25-long-history-stopped.evidence.tar.gz"
@@ -55,7 +55,7 @@ def sha(raw):
 def fingerprints():
     files = ["examples/evaluate_episode_fidelity.py", "examples/evaluation_support.py",
              "examples/evaluate_deepseek.py", "architecture/memory-contract.schema.json"]
-    files += [str(path.relative_to(ROOT)) for path in sorted((ROOT / "src/agent_memory").glob("*.py"))]
+    files += [str(path.relative_to(ROOT)) for path in sorted((ROOT / "src/membrain").glob("*.py"))]
     return {name: sha((ROOT / name).read_bytes()) for name in files}
 
 

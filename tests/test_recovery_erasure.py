@@ -4,12 +4,12 @@ import pytest
 from test_deletion_registry import acknowledgement
 from test_learning import learning as learning
 
-from agent_memory.client import MemoryActionError
-from agent_memory.deletion_registry import DeletionRegistry, RegistryError
-from agent_memory.helpers import digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.recovery_authority import RecoveryAuthority
-from agent_memory.turns import TurnStore
+from membrain.client import MemoryActionError
+from membrain.deletion_registry import DeletionRegistry, RegistryError
+from membrain.helpers import digest, uid
+from membrain.jobs import JobStore
+from membrain.recovery_authority import RecoveryAuthority
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 
@@ -120,7 +120,7 @@ def test_owner_archive_access_fails_closed_until_another_brains_erasure_is_appli
 
 
 def test_restore_records_absent_post_checkpoint_brain_without_recreating_it(recovery):
-    from agent_memory.helpers import Principal
+    from membrain.helpers import Principal
 
     harness, authority = recovery
     absent = uid()

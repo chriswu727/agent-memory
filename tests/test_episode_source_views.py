@@ -13,16 +13,16 @@ from test_learning_neighborhood import source
 from test_learning_windows import claim, execute, jobs
 from test_semantic import batch, encoded, episode, proposals
 
-from agent_memory.consolidation import _check_result
-from agent_memory.episode_semantics import (
+from membrain.consolidation import _check_result
+from membrain.episode_semantics import (
     EPISODE_SOURCE_VIEW_INPUT_VERSION,
     EPISODE_SOURCE_VIEW_INSTRUCTIONS,
     episode_navigation_view,
 )
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.jobs import JobStore, sanitize_learning_summary
-from agent_memory.learning import _snapshot_input_contract
-from agent_memory.semantic import (
+from membrain.helpers import DomainError, digest, uid
+from membrain.jobs import JobStore, sanitize_learning_summary
+from membrain.learning import _snapshot_input_contract
+from membrain.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_FIDELITY_INPUT_VERSION,
     LATEST_INPUT_CONTRACT_VERSION,

@@ -6,8 +6,8 @@ from test_answer_review import assessment
 from test_learning import learning as learning
 from test_runtime import memory as memory
 
-from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, RuntimePolicy
+from membrain.answer_review import AnswerReviewer, AnswerReviewPolicy
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, RuntimePolicy
 
 pytestmark = pytest.mark.integration
 
@@ -219,10 +219,10 @@ def test_partial_delivery_is_recorded_as_actual_text_without_certifying_altered_
 def test_validity_expiring_during_review_blocks_delivery_without_a_database_revision_change(learning, monkeypatch):
     from test_semantic import claim, proposals, run
 
-    from agent_memory import cognition
-    from agent_memory.consolidation import publish_semantic
-    from agent_memory.helpers import uid
-    from agent_memory.semantic import CognitiveBatch
+    from membrain import cognition
+    from membrain.consolidation import publish_semantic
+    from membrain.helpers import uid
+    from membrain.semantic import CognitiveBatch
 
     clock = ["2026-10-25T12:59:00Z"]
     monkeypatch.setattr(cognition, "now", lambda: clock[0])

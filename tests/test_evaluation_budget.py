@@ -10,13 +10,13 @@ from test_memory_lifecycle_evaluation import evaluation as evaluation
 from test_semantic_call_usage import Provider
 from test_semantic_provider import completion
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.helpers import digest
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticProcessor
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.helpers import digest
+from membrain.runtime import BrainRuntime, DeliveryReceipt
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

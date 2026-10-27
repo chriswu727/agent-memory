@@ -9,8 +9,8 @@ from test_contextual_recall import UNBOUNDED, case
 from test_learning import learning as learning
 from test_semantic import reference
 
-from agent_memory import cognition
-from agent_memory.ontology import CORE_REGISTRY
+from membrain import cognition
+from membrain.ontology import CORE_REGISTRY
 
 
 def variant(observation, index):

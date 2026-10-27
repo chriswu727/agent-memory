@@ -3,7 +3,7 @@ import stat
 
 import pytest
 
-from agent_memory.cli import initialize
+from membrain.cli import initialize
 
 
 def test_initialization_preserves_existing_configuration_and_limits_permissions(tmp_path):

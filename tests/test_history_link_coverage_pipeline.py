@@ -7,11 +7,11 @@ import pytest
 from test_bounded_learning_semantics import publication_snapshot
 from test_semantic import encoded, verifier
 
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError
-from agent_memory.history_semantics import LINK_DERIVED_INPUT_VERSION
-from agent_memory.local_semantics import LINK_DERIVED_INSTRUCTIONS
-from agent_memory.semantic import CognitiveBatch, SemanticPolicy, SemanticProcessor
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError
+from membrain.history_semantics import LINK_DERIVED_INPUT_VERSION
+from membrain.local_semantics import LINK_DERIVED_INSTRUCTIONS
+from membrain.semantic import CognitiveBatch, SemanticPolicy, SemanticProcessor
 
 
 @pytest.fixture

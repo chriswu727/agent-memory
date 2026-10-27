@@ -3,7 +3,7 @@ import copy
 import pytest
 from test_cognition import event, request, scope, state
 
-from agent_memory import cognition
+from membrain import cognition
 
 
 def instruction_preference(source):

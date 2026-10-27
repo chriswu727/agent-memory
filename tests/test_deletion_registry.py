@@ -3,8 +3,8 @@ import sqlite3
 
 import pytest
 
-from agent_memory.deletion_registry import DeletionRegistry, RegistryError
-from agent_memory.helpers import Principal, digest, uid
+from membrain.deletion_registry import DeletionRegistry, RegistryError
+from membrain.helpers import Principal, digest, uid
 
 
 def append(registry, principal, **changes):

@@ -9,10 +9,10 @@ import pytest
 from jsonschema import Draft202012Validator
 from test_cognition import event
 
-from agent_memory import cognition
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.storage import Database
+from membrain import cognition
+from membrain.config import Settings
+from membrain.helpers import Principal, digest, uid
+from membrain.storage import Database
 
 
 @pytest.fixture

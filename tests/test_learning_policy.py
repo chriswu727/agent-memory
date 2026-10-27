@@ -9,10 +9,10 @@ from test_learning_recovery import seed_legacy_window
 from test_learning_windows import claim
 from test_semantic import encoded, proposals
 
-from agent_memory.helpers import DomainError, digest
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine, _snapshot_policy, validate_snapshot
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
+from membrain.helpers import DomainError, digest
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine, _snapshot_policy, validate_snapshot
+from membrain.semantic import SemanticPolicy, SemanticProcessor
 
 ORIGINAL = SemanticPolicy(max_wall_time_ms=240_000, max_output_tokens=16384, max_response_bytes=65536)
 

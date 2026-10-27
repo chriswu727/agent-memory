@@ -12,23 +12,23 @@ from pathlib import Path
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
 
-from agent_memory import cognition
-from agent_memory.config import Settings
-from agent_memory.consolidation_planning import plan_consolidation, validate_consolidation_plan
-from agent_memory.helpers import Principal, digest
-from agent_memory.semantic import (
+from examples.evaluate_deepseek import SCENARIOS, Trial, code_fingerprints, save
+from examples.evaluation_support import MeteredTransport
+from membrain import cognition
+from membrain.config import Settings
+from membrain.consolidation_planning import plan_consolidation, validate_consolidation_plan
+from membrain.helpers import Principal, digest
+from membrain.semantic import (
     PROPOSAL_SCHEMA,
     VERIFICATION_SCHEMA,
     CognitiveBatch,
     SemanticPolicy,
     SemanticProcessor,
 )
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from agent_memory.service import MemoryService
-from agent_memory.source_candidates import SOURCE_ROUTE_VERSION
-from agent_memory.storage import Database
-from examples.evaluate_deepseek import SCENARIOS, Trial, code_fingerprints, save
-from examples.evaluation_support import MeteredTransport
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.service import MemoryService
+from membrain.source_candidates import SOURCE_ROUTE_VERSION
+from membrain.storage import Database
 
 MODEL = "deepseek-v4-pro"
 POLICY = SemanticPolicy(max_model_calls=2, max_output_tokens=16384,
@@ -42,8 +42,8 @@ DEFAULT_ABSTRACTION = Path(".local/deepseek-evaluation-final/report.json")
 def fingerprints():
     values = code_fingerprints()
     root = Path(__file__).resolve().parents[1]
-    for path in ("examples/evaluate_memory_repairs.py", "src/agent_memory/candidates.py",
-                 "src/agent_memory/source_candidates.py"):
+    for path in ("examples/evaluate_memory_repairs.py", "src/membrain/candidates.py",
+                 "src/membrain/source_candidates.py"):
         values[path] = digest((root / path).read_text())
     return values
 

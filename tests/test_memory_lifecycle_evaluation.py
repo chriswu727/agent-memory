@@ -10,9 +10,9 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.runtime import DeliveryRequest, ModelRequest
+from membrain.answer_review import AnswerReviewer, AnswerReviewPolicy
+from membrain.helpers import Principal, digest, uid
+from membrain.runtime import DeliveryRequest, ModelRequest
 
 
 @pytest.fixture
@@ -42,8 +42,8 @@ def test_smoke_plan_freezes_review_budget_and_whole_chain_without_live_access(ev
     assert planned["review_policy"]["max_output_tokens"] == 8192
     assert planned["runtime_policy"]["orientation_policy"] == "always"
     assert [x["name"] for x in planned["fixtures"]] == ["learn", "recall", "change", "recall_change", "empty_control"]
-    assert planned["code_fingerprints"]["src/agent_memory/answer_review.py"] == digest(
-        (evaluation.ROOT / "src/agent_memory/answer_review.py").read_text())
+    assert planned["code_fingerprints"]["src/membrain/answer_review.py"] == digest(
+        (evaluation.ROOT / "src/membrain/answer_review.py").read_text())
     assert not (tmp_path / "unused").exists()
 
 

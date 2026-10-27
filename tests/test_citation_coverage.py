@@ -21,31 +21,31 @@ from test_history_attention import manifest
 from test_learning import learning as learning
 from test_semantic import batch, encoded, episode, proposals, reference, run, situation, verifier
 
-from agent_memory.citation_coverage import (
+from membrain.citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSION as VERSION,
 )
-from agent_memory.citation_coverage import (
+from membrain.citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSIONS,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
     citation_coverage_schema,
     citation_scope,
 )
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, uid
-from agent_memory.history_semantics import LINK_DERIVED_INPUT_VERSION
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine, _snapshot_input_contract
-from agent_memory.local_semantics import HISTORY_INTEGRATION_MODE, LINK_DERIVED_INSTRUCTIONS
-from agent_memory.semantic import (
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, uid
+from membrain.history_semantics import LINK_DERIVED_INPUT_VERSION
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine, _snapshot_input_contract
+from membrain.local_semantics import HISTORY_INTEGRATION_MODE, LINK_DERIVED_INSTRUCTIONS
+from membrain.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     LATEST_INPUT_CONTRACT_VERSION,
     ORIENT_PROPOSAL_MODE,
     VERIFICATION_SCHEMA,
     proposal_schema,
 )
-from agent_memory.source_composition import SHARED_COMMUNICATION_INPUT_VERSION
-from agent_memory.verification_sources import SHARED_VERIFICATION_INPUT_VERSION
+from membrain.source_composition import SHARED_COMMUNICATION_INPUT_VERSION
+from membrain.verification_sources import SHARED_VERIFICATION_INPUT_VERSION
 
 
 def case(kind):
@@ -339,10 +339,10 @@ def snapshot_job(learning, kind):
 def test_new_orientation_and_manual_jobs_preserve_coverage_contract_across_restart(learning, kind, monkeypatch):
     engine, job = snapshot_job(learning, kind)
     before, after = "2026-10-25T10:00:00Z", "2026-10-25T10:01:00Z"
-    monkeypatch.setattr("agent_memory.service.now", lambda: before)
+    monkeypatch.setattr("membrain.service.now", lambda: before)
     current, snapshot = engine._snapshot(learning.principal, learning.brain, job)
     assert current.input_contract_version == snapshot["input_contract_version"] == LATEST_INPUT_CONTRACT_VERSION
-    monkeypatch.setattr("agent_memory.service.now", lambda: after)
+    monkeypatch.setattr("membrain.service.now", lambda: after)
     resumed, frozen = LearningEngine(learning.service)._snapshot(learning.principal, learning.brain, job)
     assert frozen == snapshot
     if kind == "orient":

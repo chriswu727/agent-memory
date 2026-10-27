@@ -3,9 +3,9 @@ import hashlib
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_memory.api import create_app
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal
+from membrain.api import create_app
+from membrain.config import Settings
+from membrain.helpers import Principal
 
 
 class RecordingService:

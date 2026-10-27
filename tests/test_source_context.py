@@ -3,9 +3,9 @@ import copy
 import pytest
 from test_cognition import budget, event, prepare_payload, request, scope, state, working
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
-from agent_memory.source_context import MAX_SOURCE_CONTEXTS, MAX_TOTAL_SOURCE_BYTES
+from membrain import cognition
+from membrain.contracts import validate
+from membrain.source_context import MAX_SOURCE_CONTEXTS, MAX_TOTAL_SOURCE_BYTES
 
 TEXT = ("Aunt Mara spread the blue map. I marked the route while Leo folded the blanket. "
         "Being trusted to choose made me feel capable.")
@@ -31,7 +31,7 @@ def report_recall():
 
 
 def test_complete_original_replaces_duplicate_plain_episode_wrappers_without_removing_records():
-    from agent_memory.context_views import recall_context_view
+    from membrain.context_views import recall_context_view
 
     source, report, result = report_recall()
     assert any(item["memory"]["memory_id"] == report["memory_id"] for item in result["items"])
@@ -57,7 +57,7 @@ def test_complete_original_replaces_duplicate_plain_episode_wrappers_without_rem
     {"dynamics": {"user_pinned": True}},
 ])
 def test_full_source_never_suppresses_rules_validity_inference_dependencies_or_pins(changes):
-    from agent_memory.source_context import covering_passage
+    from membrain.source_context import covering_passage
 
     _, report, result = report_recall()
     report.update(changes)
@@ -65,7 +65,7 @@ def test_full_source_never_suppresses_rules_validity_inference_dependencies_or_p
 
 
 def test_literal_occurrence_time_stays_visible_alongside_original_communication():
-    from agent_memory.context_views import recall_context_view
+    from membrain.context_views import recall_context_view
 
     source = event(TEXT)
     memories = cognition.extract_event(source)
@@ -78,7 +78,7 @@ def test_literal_occurrence_time_stays_visible_alongside_original_communication(
 
 
 def test_source_unit_admission_retains_distinct_coverage_before_duplicate_versions():
-    from agent_memory.source_context import source_unit_candidates
+    from membrain.source_context import source_unit_candidates
 
     documents, ranked = {}, []
     for number, text in enumerate(["The shift is temporary. I am free later.",
@@ -105,7 +105,7 @@ def test_source_unit_admission_retains_distinct_coverage_before_duplicate_versio
 
 
 def test_duplicate_family_cannot_exceed_the_version_cap_or_starve_other_selected_units():
-    from agent_memory.source_context import source_unit_candidates
+    from membrain.source_context import source_unit_candidates
 
     source = event(TEXT)
     literal = cognition.extract_event(source)[0]
@@ -127,7 +127,7 @@ def test_duplicate_family_cannot_exceed_the_version_cap_or_starve_other_selected
 
 @pytest.mark.parametrize("difference", ["scope", "world"])
 def test_identical_citations_do_not_join_candidate_families_across_scope_or_world(difference):
-    from agent_memory.source_context import source_unit_candidates
+    from membrain.source_context import source_unit_candidates
 
     source = event(TEXT)
     report, literal = plain_report(source), cognition.extract_event(source)[0]

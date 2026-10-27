@@ -8,10 +8,10 @@ from test_candidates import candidates as candidates
 from test_recall_resolution import SHORT, TEXT, example
 from test_source_passages import captures
 
-from agent_memory.client import MemoryClient
-from agent_memory.consolidation import _assertion, _publish_assertion, validate_batch
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.client import MemoryClient
+from membrain.consolidation import _assertion, _publish_assertion, validate_batch
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 
@@ -82,8 +82,8 @@ def test_trusted_archive_keeps_both_views_and_explicit_erasure_removes_both(cand
 
 
 def test_runtime_without_resolution_migration_refuses_the_upgraded_database(candidates, monkeypatch):
-    from agent_memory import storage
-    from agent_memory.storage import SchemaCompatibilityError
+    from membrain import storage
+    from membrain.storage import SchemaCompatibilityError
 
     assert storage.MIGRATIONS[-1][0] == "024_recall_resolution.sql"
     monkeypatch.setattr(storage, "MIGRATIONS", storage.MIGRATIONS[:-1])

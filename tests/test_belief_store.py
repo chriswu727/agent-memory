@@ -8,15 +8,15 @@ from test_cognitive_archives import Archives
 from test_consolidation import memory as memory
 from test_semantic import claim, proposals, reference, run, verifier
 
-from agent_memory import cognition
-from agent_memory.belief_store import (
+from membrain import cognition
+from membrain.belief_store import (
     assertion_fingerprint,
     load_belief_relations,
     validate_relation,
 )
-from agent_memory.helpers import DomainError, Principal, uid
-from agent_memory.neighborhood import _Selector
-from agent_memory.semantic import PROPOSAL_SCHEMA, SemanticPolicy
+from membrain.helpers import DomainError, Principal, uid
+from membrain.neighborhood import _Selector
+from membrain.semantic import PROPOSAL_SCHEMA, SemanticPolicy
 
 pytestmark = pytest.mark.integration
 UNBOUNDED = {"kind": "interval", "start": {"kind": "unbounded"}, "end": {"kind": "unbounded"}}
@@ -172,7 +172,7 @@ def test_full_observed_context_is_a_relation_dependency_even_without_a_selected_
 
 def test_source_budget_cannot_drop_the_exception_and_return_an_unqualified_old_rule(store, monkeypatch):
     _, old, _, _, _, _, _ = linked(store)
-    monkeypatch.setattr("agent_memory.belief_store.MAX_SOURCES", 1)
+    monkeypatch.setattr("membrain.belief_store.MAX_SOURCES", 1)
     result = load(store, [old])
     assert result["relations"] == [] and version(old) in result["incomplete_versions"]
 
@@ -343,7 +343,7 @@ def test_relation_loading_and_learning_neighborhood_include_a_derived_parents_ex
 def test_missing_or_oversized_parent_relation_package_marks_the_original_derived_candidate_incomplete(store, monkeypatch, failure):
     sources, _, _, child = derived_from_changed_parent(store)
     if failure == "budget":
-        monkeypatch.setattr("agent_memory.belief_store.MAX_MEMORIES", 2)
+        monkeypatch.setattr("membrain.belief_store.MAX_MEMORIES", 2)
     else:
         with store.database.transaction(store.principal) as conn:
             conn.execute("UPDATE memory_events SET retired=true WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND id=%s",

@@ -2,8 +2,8 @@ import copy
 
 import pytest
 
-from agent_memory.orientation import ORIENTATION_ROUTE_VERSION, assess_orientation
-from agent_memory.runtime import RuntimePolicy
+from membrain.orientation import ORIENTATION_ROUTE_VERSION, assess_orientation
+from membrain.runtime import RuntimePolicy
 
 
 def route_inputs():

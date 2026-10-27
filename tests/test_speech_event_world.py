@@ -10,11 +10,11 @@ from test_bounded_learning_semantics import publication_snapshot
 from test_cognition import event
 from test_semantic import batch, claim, encoded, proposals, reference, run, verifier
 
-from agent_memory.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION as VERSION
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError
-from agent_memory.history_semantics import LINK_DERIVED_INPUT_VERSION
-from agent_memory.semantic import (
+from membrain.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION as VERSION
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError
+from membrain.history_semantics import LINK_DERIVED_INPUT_VERSION
+from membrain.semantic import (
     SPEECH_EVENT_INSTRUCTIONS,
     CognitiveBatch,
     SemanticPolicy,

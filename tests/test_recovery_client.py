@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from agent_memory.client import MemoryClient
-from agent_memory.helpers import uid
+from membrain.client import MemoryClient
+from membrain.helpers import uid
 
 
 @pytest.mark.parametrize('epoch', [None, uid()])

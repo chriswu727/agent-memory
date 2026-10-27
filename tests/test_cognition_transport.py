@@ -10,19 +10,19 @@ from test_desktop_chat import arguments
 from test_semantic import batch, encoded, event, proposals
 from test_semantic_provider import REQUEST, completion
 
-from agent_memory import desktop, desktop_cli, semantic_provider, storage
-from agent_memory.chat_provider import ReasoningEffort
-from agent_memory.cognition_config import (
+from membrain import desktop, desktop_cli, semantic_provider, storage
+from membrain.chat_provider import ReasoningEffort
+from membrain.cognition_config import (
     CONFIGURATION_FILE,
     CognitionConfigurationError,
     CognitionPolicyConfiguration,
     load_cognition_policy,
     save_cognition_policy,
 )
-from agent_memory.config import Settings, configured_service
-from agent_memory.local_profile import configure_cognition, ensure_profile, load_profile
-from agent_memory.semantic import SemanticPolicy
-from agent_memory.semantic_provider import SemanticProviderError
+from membrain.config import Settings, configured_service
+from membrain.local_profile import configure_cognition, ensure_profile, load_profile
+from membrain.semantic import SemanticPolicy
+from membrain.semantic_provider import SemanticProviderError
 
 
 @pytest.mark.parametrize("effort", [None, *get_args(ReasoningEffort)])

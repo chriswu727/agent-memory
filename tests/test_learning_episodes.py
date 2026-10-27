@@ -7,12 +7,12 @@ from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_semantic import encoded, episode, proposals, run, verifier
 
-from agent_memory.client import MemoryActionError, default_budget
-from agent_memory.consolidation import publish_semantic
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine, validate_snapshot
-from agent_memory.semantic import CognitiveBatch, SemanticProcessor
+from membrain.client import MemoryActionError, default_budget
+from membrain.consolidation import publish_semantic
+from membrain.helpers import DomainError, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine, validate_snapshot
+from membrain.semantic import CognitiveBatch, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

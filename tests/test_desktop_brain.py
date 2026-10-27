@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from dotenv import load_dotenv
 
-from agent_memory.helpers import DomainError, Principal, uid
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.helpers import DomainError, Principal, uid
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

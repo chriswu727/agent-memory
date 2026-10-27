@@ -4,8 +4,8 @@ from dataclasses import asdict
 import pytest
 from test_desktop_chat import arguments
 
-from agent_memory import desktop, desktop_cli
-from agent_memory.cognition_config import (
+from membrain import desktop, desktop_cli
+from membrain.cognition_config import (
     CONFIGURATION_FILE,
     CognitionConfigurationError,
     CognitionPolicyConfiguration,
@@ -13,8 +13,8 @@ from agent_memory.cognition_config import (
     load_cognition_policy,
     save_cognition_policy,
 )
-from agent_memory.local_profile import ensure_profile
-from agent_memory.semantic import SemanticPolicy
+from membrain.local_profile import ensure_profile
+from membrain.semantic import SemanticPolicy
 
 EXPECTED = {"max_wall_time_ms": 240000, "max_output_tokens": 16384, "max_response_bytes": 65536,
             "reasoning_effort": None, "max_envelope_bytes": 65536}

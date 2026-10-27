@@ -7,9 +7,9 @@ import httpx
 import pytest
 from test_answer_review import assessment
 
-from agent_memory.answer_review import AnswerReviewer
-from agent_memory.answer_review_provider import ChatCompletionsAnswerReviewProvider
-from agent_memory.helpers import digest
+from membrain.answer_review import AnswerReviewer
+from membrain.answer_review_provider import ChatCompletionsAnswerReviewProvider
+from membrain.helpers import digest
 
 
 @pytest.fixture

@@ -10,8 +10,8 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from agent_memory import desktop_connection, recovery_profile
-from agent_memory.client import MemoryClient
+from membrain import desktop_connection, recovery_profile
+from membrain.client import MemoryClient
 
 
 @pytest.fixture
@@ -21,13 +21,13 @@ def local_connection(monkeypatch, tmp_path):
         api_key="private-profile-access-token", brain_id="persistent-brain",
     )
     profile.directory.mkdir()
-    profiles = ModuleType("agent_memory.local_profile")
+    profiles = ModuleType("membrain.local_profile")
     profiles.load_profile = Mock(return_value=profile)
-    desktop = ModuleType("agent_memory.desktop")
+    desktop = ModuleType("membrain.desktop")
     desktop.start = Mock(return_value={"ready": True})
-    monkeypatch.setitem(sys.modules, "agent_memory.local_profile", profiles)
-    monkeypatch.setitem(sys.modules, "agent_memory.desktop", desktop)
-    monkeypatch.setattr("agent_memory.desktop", desktop, raising=False)
+    monkeypatch.setitem(sys.modules, "membrain.local_profile", profiles)
+    monkeypatch.setitem(sys.modules, "membrain.desktop", desktop)
+    monkeypatch.setattr("membrain.desktop", desktop, raising=False)
     monkeypatch.setattr(recovery_profile, "check_start_allowed", lambda _: None)
     monkeypatch.setattr(recovery_profile, "load_binding", lambda _: None)
     return SimpleNamespace(profile=profile, start=desktop.start, load=profiles.load_profile)
@@ -41,11 +41,11 @@ def test_mcp_configuration_has_absolute_launcher_and_no_credentials(
     outside.mkdir()
     monkeypatch.chdir(outside)
     config = desktop_connection.mcp_config(profile.directory)
-    launcher = config["mcpServers"]["agent-memory"]
+    launcher = config["mcpServers"]["membrain"]
     assert launcher == {
         "command": str(Path(sys.executable).absolute()),
         "args": [
-            "-m", "agent_memory.cli", "desktop", "mcp", "--directory", str(profile.directory),
+            "-m", "membrain.cli", "desktop", "mcp", "--directory", str(profile.directory),
         ],
     }
     assert Path(launcher["command"]).is_absolute()
@@ -67,7 +67,7 @@ def test_mcp_launcher_preserves_virtual_environment_executable(
     executable.symlink_to(sys.executable)
     monkeypatch.setattr(sys, "executable", str(executable))
     config = desktop_connection.mcp_config()
-    assert config["mcpServers"]["agent-memory"]["command"] == str(executable)
+    assert config["mcpServers"]["membrain"]["command"] == str(executable)
     local_connection.load.assert_called_once_with(None)
 
 
@@ -158,7 +158,7 @@ def test_mcp_start_failure_does_not_start_protocol(local_connection, monkeypatch
 
 @pytest.mark.parametrize("failure_stage", ["create", "run"])
 def test_mcp_closes_client_on_server_failure(local_connection, monkeypatch, failure_stage):
-    from agent_memory import mcp_server
+    from membrain import mcp_server
 
     client = desktop_connection.open_client(start_service=False)
     monkeypatch.setattr(desktop_connection, "open_client", lambda directory: client)
@@ -198,22 +198,22 @@ def test_desktop_mcp_reports_tool_only_capabilities(local_connection, monkeypatc
 @pytest.mark.parametrize("trust_env", [True, False])
 def test_memory_client_forwards_proxy_policy(monkeypatch, trust_env):
     client_factory = Mock()
-    monkeypatch.setattr("agent_memory.client.httpx.Client", client_factory)
+    monkeypatch.setattr("membrain.client.httpx.Client", client_factory)
     MemoryClient("http://127.0.0.1:18787", "private-access-token", trust_env=trust_env)
     assert client_factory.call_args.kwargs["trust_env"] is trust_env
 
 
 def test_memory_client_preserves_existing_proxy_default(monkeypatch):
     client_factory = Mock()
-    monkeypatch.setattr("agent_memory.client.httpx.Client", client_factory)
+    monkeypatch.setattr("membrain.client.httpx.Client", client_factory)
     MemoryClient("http://127.0.0.1:18787", "private-access-token")
     assert client_factory.call_args.kwargs["trust_env"] is True
 
 
 @pytest.mark.parametrize("failure", [False, True])
 def test_desktop_rpc_timeout_covers_frozen_policy_after_current_limits_are_lowered(tmp_path, monkeypatch, failure):
-    from agent_memory.cognition_config import CognitionPolicyConfiguration, save_cognition_policy
-    from agent_memory.local_profile import ensure_profile
+    from membrain.cognition_config import CognitionPolicyConfiguration, save_cognition_policy
+    from membrain.local_profile import ensure_profile
 
     profile = ensure_profile(tmp_path / "profile")
     save_cognition_policy(CognitionPolicyConfiguration(max_wall_time_ms=1), profile.directory)

@@ -12,8 +12,8 @@ import httpx
 import pytest
 from test_semantic_provider import REQUEST
 
-from agent_memory.runtime import ModelRequest
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider, SemanticProviderError
+from membrain.runtime import ModelRequest
+from membrain.semantic_provider import ChatCompletionsSemanticProvider, SemanticProviderError
 
 _SPEC = importlib.util.spec_from_file_location(
     "evaluation_support", Path(__file__).parents[1] / "examples" / "evaluation_support.py",

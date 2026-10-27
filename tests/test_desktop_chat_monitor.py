@@ -5,10 +5,10 @@ import pytest
 from test_desktop_chat import arguments
 from test_desktop_chat import fake_session as fake_session
 
-from agent_memory import desktop_chat, desktop_chat_monitor
-from agent_memory.client import MemoryClient
-from agent_memory.local_profile import configure_cognition
-from agent_memory.runtime import TurnResult
+from membrain import desktop_chat, desktop_chat_monitor
+from membrain.client import MemoryClient
+from membrain.local_profile import configure_cognition
+from membrain.runtime import TurnResult
 
 
 def connect(monkeypatch, handle):

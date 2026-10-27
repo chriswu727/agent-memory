@@ -3,10 +3,10 @@ import pytest
 from test_runtime_api import BASE, BEGIN, HEADERS, PRINCIPAL, TURN
 from test_runtime_api import runtime_api as runtime_api
 
-from agent_memory.client import MemoryClient
-from agent_memory.delivery_receipts import receipt_for
-from agent_memory.helpers import DomainError
-from agent_memory.runtime_client import RuntimeClient
+from membrain.client import MemoryClient
+from membrain.delivery_receipts import receipt_for
+from membrain.helpers import DomainError
+from membrain.runtime_client import RuntimeClient
 
 
 def test_scope_conflict_is_an_authenticated_conflict_without_starting_turn(runtime_api):

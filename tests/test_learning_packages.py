@@ -11,29 +11,29 @@ from test_learning import learning as learning
 from test_learning_neighborhood import link_exception, publish, source, versions
 from test_semantic import encoded, proposals, reference
 
-from agent_memory import cognition, learning_packages
-from agent_memory.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION
-from agent_memory.belief_store import _insert, _relation_id, assertion_fingerprint
-from agent_memory.consolidation import publish_semantic
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.history_semantics import LINK_DERIVED_INPUT_VERSION, MANIFEST_VERSION
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import HISTORY_PHASE, allocation_metadata
-from agent_memory.learning_integration import _snapshot as integration_snapshot
-from agent_memory.learning_packages import (
+from membrain import cognition, learning_packages
+from membrain.belief_capabilities import RELATION_CAPABILITIES_INPUT_VERSION
+from membrain.belief_store import _insert, _relation_id, assertion_fingerprint
+from membrain.consolidation import publish_semantic
+from membrain.contracts import validate
+from membrain.helpers import DomainError, digest, uid
+from membrain.history_semantics import LINK_DERIVED_INPUT_VERSION, MANIFEST_VERSION
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import HISTORY_PHASE, allocation_metadata
+from membrain.learning_integration import _snapshot as integration_snapshot
+from membrain.learning_packages import (
     discover_manifest,
     empty_working,
     integration_package,
     local_neighborhood,
 )
-from agent_memory.local_semantics import (
+from membrain.local_semantics import (
     HISTORY_INTEGRATION_MODE,
     LOCAL_OBSERVATION_MODE,
     bounded_verification_context,
 )
-from agent_memory.neighborhood import _Selector
-from agent_memory.semantic import (
+from membrain.neighborhood import _Selector
+from membrain.semantic import (
     EPISODE_FIDELITY_INPUT_VERSION,
     VERIFICATION_SCHEMA,
     SemanticPolicy,
@@ -456,7 +456,7 @@ def test_discovery_advances_past_exhausted_bridge_sources_to_all_derived_tail_ve
 def test_rebound_history_resumes_with_exact_raw_snapshot_and_separate_authority_fence(
     learning, later_change, input_version, monkeypatch,
 ):
-    monkeypatch.setattr("agent_memory.learning_integration.LATEST_INPUT_CONTRACT_VERSION", input_version)
+    monkeypatch.setattr("membrain.learning_integration.LATEST_INPUT_CONTRACT_VERSION", input_version)
     root = publish(learning, source(learning, "A concise planning routine."))
     current = source(learning, "That concise planning routine.")
     manifest = manifest_for(current, root)

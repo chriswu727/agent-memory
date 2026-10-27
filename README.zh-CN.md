@@ -1,12 +1,14 @@
-# Agent Memory
+# memBrain
 
 **受人类记忆机制启发的 AI Agent 记忆引擎。**
 
 [English](README.md) | 简体中文
 
+memBrain 原名 Agent Memory。已有的安装、数据目录和 `agent_memory` 导入均可继续使用。
+
 通过分层回忆、选择性遗忘和可追溯来源，让 Agent 在不同对话之间保留并使用有用的记忆。
 
-Agent Memory 以本地服务运行。将 Agent 的对话生命周期接入一次后，运行时会自动捕获消息，在回复前准备相关记忆，并在后台学习。进程重启或切换已配置的回复模型后，Agent 仍使用同一个大脑。
+memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后，运行时会自动捕获消息，在回复前准备相关记忆，并在后台学习。进程重启或切换已配置的回复模型后，Agent 仍使用同一个大脑。
 
 [Claude Code 插件](#claude-code-plugin) · [快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
 
@@ -18,9 +20,9 @@ Agent Memory 以本地服务运行。将 Agent 的对话生命周期接入一次
 
 对你的 Agent 说：
 
-> 安装 Agent Memory 插件：`claude plugin install agent-memory --marketplace chriswu727/agent-memory`
+> 安装 memBrain 插件：`claude plugin install membrain --marketplace chriswu727/membrain`
 
-也可以在 Claude Code 会话中运行 `/plugin install agent-memory --marketplace chriswu727/agent-memory`。唯一的前置条件是 [uv](https://docs.astral.sh/uv/)。不需要 Docker、配置向导或额外的模型 API key。
+也可以在 Claude Code 会话中运行 `/plugin install membrain --marketplace chriswu727/membrain`。唯一的前置条件是 [uv](https://docs.astral.sh/uv/)。不需要 Docker、配置向导或额外的模型 API key。
 
 从下一个会话开始，插件会：
 
@@ -28,9 +30,9 @@ Agent Memory 以本地服务运行。将 Agent 的对话生命周期接入一次
 - 在 Claude 回复前，以带日期和说话人标注的条目加入此前会话中匹配的记录；
 - 为 Claude 提供记忆工具，用于主动检索、记录简短笔记以及按用户要求删除。
 
-第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按当前消息中的词语匹配；当问题涉及个人背景时，Claude 会被引导用具体关键词主动检索。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/agent-memory`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
+第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按当前消息中的词语匹配；当问题涉及个人背景时，Claude 会被引导用具体关键词主动检索。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
 
-其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "agent-memory-runtime[embedded] @ git+https://github.com/chriswu727/agent-memory" agent-memory plugin mcp`。这样可以使用记忆工具，但不会自动记录。
+其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
 <a id="desktop-setup"></a>
 <a id="quickstart"></a>
@@ -40,13 +42,13 @@ Agent Memory 以本地服务运行。将 Agent 的对话生命周期接入一次
 安装 [uv](https://docs.astral.sh/uv/)。准备好兼容 Chat Completions 的模型服务地址、模型名称和 API key；记忆学习还要求模型支持 JSON 模式。
 
 ```sh
-uv tool install --python 3.12 'agent-memory-runtime[embedded] @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
-agent-memory desktop setup
-agent-memory desktop configure-chat --use-cognition
-agent-memory desktop chat
+uv tool install --python 3.12 'membrain-ai[embedded] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
+membrain desktop setup
+membrain desktop configure-chat --use-cognition
+membrain desktop chat
 ```
 
-在 `setup` 中填写用于记忆学习的模型配置。`configure-chat --use-cognition` 明确选择复用这份配置来生成回复。如需使用不同的回复模型，请运行不带该参数的 `agent-memory desktop configure-chat`。
+在 `setup` 中填写用于记忆学习的模型配置。`configure-chat --use-cognition` 明确选择复用这份配置来生成回复。如需使用不同的回复模型，请运行不带该参数的 `membrain desktop configure-chat`。
 
 设置会创建一个持久大脑，并启动数据库、API 和后台任务处理器。在 macOS、Windows 或 Linux x86_64 上使用 Python 3.12 并安装 `embedded` 附加组件时，数据库以嵌入式 PostgreSQL 运行，无需 Docker；其他环境下设置会使用 Docker Desktop（可用 `--database docker|embedded` 指定）。无需克隆仓库，也无需分别启动这些服务。如果终端找不到安装后的命令，请运行 `uv tool update-shell`，然后重新打开终端。
 
@@ -61,8 +63,8 @@ agent-memory desktop chat
 继续交流，然后输入 `/quit`。查看后台学习状态，再在同一安装中打开另一段对话：
 
 ```sh
-agent-memory desktop learning-status
-agent-memory desktop chat --conversation writing-followup
+membrain desktop learning-status
+membrain desktop chat --conversation writing-followup
 ```
 
 请 Agent 帮你安排下一次写作。这个练习可以让你观察早先的反馈是否帮助了新的请求，无需手动调用保存或搜索工具。新会话沿用同一个大脑，不是不同用户之间的隐私边界。如果学习仍在等待或已被阻塞，请先检查状态，再解读结果。
@@ -77,14 +79,14 @@ agent-memory desktop chat --conversation writing-followup
 完成桌面设置和聊天配置后，还需在应用自己的 Python 3.12+ 环境中安装此包。请在已激活虚拟环境或包含 `.venv` 目录的项目中运行以下命令。CLI 使用的隔离环境不会让应用自动获得可导入的 SDK。
 
 ```sh
-uv pip install 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
+uv pip install 'membrain @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
 ```
 
 下面的终端示例会使用已保存的模型配置和持久大脑：
 
 ```python
-from agent_memory.agent_session import open_agent
-from agent_memory.runtime import DeliveryReceipt
+from membrain.agent_session import open_agent
+from membrain.runtime import DeliveryReceipt
 
 
 def deliver(request):
@@ -110,7 +112,7 @@ with open_agent(conversation_id="writing", deliver=deliver) as agent:
 完成设置后，为 stdio MCP 宿主生成配置：
 
 ```sh
-agent-memory desktop mcp-config
+membrain desktop mcp-config
 ```
 
 将生成的配置添加到宿主。桥接进程会启动或连接同一个本地服务，并提供记忆工具。
@@ -155,11 +157,11 @@ flowchart LR
 ## 本地运行
 
 ```sh
-agent-memory desktop status
-agent-memory desktop logs
-agent-memory desktop learning-status
-agent-memory desktop stop
-agent-memory desktop start
+membrain desktop status
+membrain desktop logs
+membrain desktop learning-status
+membrain desktop stop
+membrain desktop start
 ```
 
 停止服务会保留已提交的记忆。下一次聊天、MCP 或 SDK 连接可以重新启动服务。配置位于安装目录，记忆内容位于该安装的 Docker 数据库卷。仅复制配置目录不等于备份数据库。
@@ -222,7 +224,7 @@ agent-memory desktop start
 
 ## 反馈与贡献
 
-正在为 Agent 加入持久记忆？欢迎[分享使用场景或安装问题](https://github.com/chriswu727/agent-memory/issues)。可复现步骤、已脱敏的日志和你使用的接入方式尤其有帮助。仓库文档及面向开发者的贡献使用英文。本页是中文概览；[英文首页](README.md)为默认入口。
+正在为 Agent 加入持久记忆？欢迎[分享使用场景或安装问题](https://github.com/chriswu727/membrain/issues)。可复现步骤、已脱敏的日志和你使用的接入方式尤其有帮助。仓库文档及面向开发者的贡献使用英文。本页是中文概览；[英文首页](README.md)为默认入口。
 
 如果项目对你有帮助，欢迎 **Star 仓库**，并帮助我们确定下一项值得支持的接入方式。优先使用本地检查；GitHub Actions 保持仅手动运行。
 

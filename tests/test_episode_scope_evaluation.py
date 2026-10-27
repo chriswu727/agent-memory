@@ -10,9 +10,9 @@ from test_belief_semantic import SINCE, known, link_verifier, version
 from test_cognition import event, scope
 from test_semantic import claim, encoded, episode, proposals, reference
 
-from agent_memory.helpers import digest
-from agent_memory.semantic import CognitiveBatch, SemanticPolicy, SemanticProcessor, SemanticResult
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.helpers import digest
+from membrain.semantic import CognitiveBatch, SemanticPolicy, SemanticProcessor, SemanticResult
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
 
 
 @pytest.fixture

@@ -1,9 +1,9 @@
-# Agent Memory for Claude Code
+# memBrain for Claude Code
 
 Automatic, local long-term memory across Claude Code sessions.
 
 ```sh
-claude plugin install agent-memory --marketplace chriswu727/agent-memory
+claude plugin install membrain --marketplace chriswu727/membrain
 ```
 
 Requires [uv](https://docs.astral.sh/uv/). No Docker, setup wizard or extra model API key.
@@ -21,14 +21,14 @@ Every hook fails open: if memory is unavailable the prompt and reply proceed unc
 
 ## Data and control
 
-- Memory is stored under your user data directory (`~/.local/share/agent-memory` on Linux, `~/Library/Application Support/Agent Memory` on macOS, `%LOCALAPPDATA%\Agent Memory` on Windows). Set `AGENT_MEMORY_DIRECTORY` to use another location.
-- `agent-memory plugin status` shows the service state and queued records; `agent-memory desktop stop` stops the service.
+- Memory is stored under your user data directory (`~/.local/share/membrain` on Linux, `~/Library/Application Support/memBrain` on macOS, `%LOCALAPPDATA%\memBrain` on Windows). Set `MEMBRAIN_DIRECTORY` to use another location.
+- `membrain plugin status` shows the service state and queued records; `membrain desktop stop` stops the service.
 - Ask Claude to forget something, or use the `memory_forget` tool, to suppress or erase records.
 
 ## Limits
 
 - Automatic recall matches words; related records with different wording may need a deliberate search.
-- Model-driven background learning is off unless a provider is configured with `agent-memory desktop setup`.
+- Model-driven background learning is off unless a provider is configured with `membrain desktop setup`.
 - The embedded database needs CPython 3.12 (installed automatically by uv) on macOS, Windows or Linux x86_64. Linux ARM uses Docker instead.
 - Verified on Linux x86_64. macOS and Windows have not yet been tested on real machines.
 

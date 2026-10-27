@@ -2,11 +2,11 @@ import copy
 
 import pytest
 
-from agent_memory.config import Settings
-from agent_memory.contracts import CONTRACT_VERSION, validate
-from agent_memory.helpers import Principal, uid
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.config import Settings
+from membrain.contracts import CONTRACT_VERSION, validate
+from membrain.helpers import Principal, uid
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

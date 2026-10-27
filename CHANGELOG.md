@@ -2,13 +2,14 @@
 
 ## Unreleased — 0.1.0 candidate
 
-Agent Memory is a human-inspired memory engine for AI agents. It keeps persistent memory outside the model's current prompt and supplies relevant context through an explicit agent lifecycle. This candidate is not yet a stable release: longitudinal behavioral acceptance remains incomplete.
+memBrain is a human-inspired memory engine for AI agents. It keeps persistent memory outside the model's current prompt and supplies relevant context through an explicit agent lifecycle. This candidate is not yet a stable release: longitudinal behavioral acceptance remains incomplete.
 
 ### Included
 
-- A Claude Code plugin and marketplace (`plugins/agent-memory`) installable with one command. Hooks record messages and final replies, add matching records from earlier sessions before replies, queue records while the service starts, and never block the host. No Docker or extra model key is required.
+- Renamed the project to memBrain: distribution `membrain-ai`, command `membrain`, Claude Code plugin and marketplace `membrain`. Existing data directories, database and Docker volume names, the export format and `agent_memory` imports remain compatible.
+- A Claude Code plugin and marketplace (`plugins/membrain`) installable with one command. Hooks record messages and final replies, add matching records from earlier sessions before replies, queue records while the service starts, and never block the host. No Docker or extra model key is required.
 - An embedded PostgreSQL + pgvector database engine from the optional `embedded` extra, with the same schema, roles and row-level security as Docker. `desktop setup --database auto` selects it when installed; backup and restore keep the installation's engine. When run as root it uses a dedicated unprivileged account.
-- `agent-memory plugin` entry points for hooks, service start, MCP and status. Docker failures now include Docker's own error output.
+- `membrain plugin` entry points for hooks, service start, MCP and status. Docker failures now include Docker's own error output.
 - Persistent source-backed memory, working context, background learning, consolidation and cue-guided retrieval.
 - Source-faithful composition instructions for autobiographical drafts, a versioned fifth episode participant-action facet, and required action checks for ordinary claims and their short views during verification and publication.
 - Version-3 source-rendered assistant communication and mixed episode views preserve embedded draft voices as quotations, with publication-time source recomputation and unchanged user-report semantic encoding. Overlong communication remains available in original records instead of being clipped into a derived claim.

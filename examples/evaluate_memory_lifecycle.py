@@ -26,19 +26,6 @@ from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient, default_budget
-from agent_memory.config import Settings, configured_service
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.recall_provider import ChatCompletionsRecallReasoner
-from agent_memory.runtime import (
-    MEMORY_CONSUMPTION_INSTRUCTIONS,
-    BrainRuntime,
-    ModelRequest,
-)
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
 from examples import evaluate_conversation as conversation
 from examples.evaluate_deepseek import save
 from examples.evaluation_host import ChatCompletionsHost, loopback_server
@@ -59,6 +46,19 @@ from examples.memory_benchmark_cases import (
     long_history,
     validate_dataset,
 )
+from membrain.api import create_app
+from membrain.client import MemoryClient, default_budget
+from membrain.config import Settings, configured_service
+from membrain.helpers import Principal, digest, uid
+from membrain.recall_provider import ChatCompletionsRecallReasoner
+from membrain.runtime import (
+    MEMORY_CONSUMPTION_INSTRUCTIONS,
+    BrainRuntime,
+    ModelRequest,
+)
+from membrain.runtime_client import RuntimeClient
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST_OUTPUT_TOKENS = 4096
@@ -121,7 +121,7 @@ def plan(profile="smoke", *, seed=DEFAULT_SEED, history_turns=None, orientation_
         outputs.pop("answer_review")
     files = sorted(set(conversation.fingerprints()) | {
         "examples/evaluate_memory_lifecycle.py", "examples/memory_benchmark_cases.py", "examples/lifecycle_learning.py",
-    } | {str(path.relative_to(ROOT)) for path in (ROOT / "src/agent_memory").glob("*.py")})
+    } | {str(path.relative_to(ROOT)) for path in (ROOT / "src/membrain").glob("*.py")})
     planned = {
         "version": "memory-lifecycle-evaluation-v2", "profile": profile, "model": conversation.MODEL,
         "provider_base_url": "https://api.deepseek.com",
@@ -302,7 +302,7 @@ def learning_queue_audit(stage, windows):
 
 
 def archive_graph(document, *, restored=False):
-    from agent_memory.belief_store import assertion_fingerprint
+    from membrain.belief_store import assertion_fingerprint
 
     sources = {event["event_id"]: event for event in document["events"]}
     if len(sources) != len(document["events"]):
@@ -438,7 +438,7 @@ class LifecycleTrial(conversation.ConversationTrial):
         if (settings.cognition_model != planned["model"] or settings.cognition_thinking != planned["thinking"]
                 or settings.cognition_base_url != planned["provider_base_url"]):
             raise RuntimeError("Configured provider differs from the frozen evaluation plan")
-        from agent_memory import semantic_provider
+        from membrain import semantic_provider
 
         original = semantic_provider.ChatCompletionsSemanticProvider
 
@@ -488,7 +488,7 @@ class LifecycleTrial(conversation.ConversationTrial):
             if self.arm != "memory" or self.review_provider is not None or self.summary_host is not None:
                 raise RuntimeError("Acceptance does not authorize baseline or review providers")
             return BrainRuntime(memory, generate, **kwargs)
-        from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
+        from membrain.answer_review import AnswerReviewer, AnswerReviewPolicy
 
         reviewer = AnswerReviewer(self.review, reviewer_id=self.report["plan"]["reviewer_id"],
                                   policy=AnswerReviewPolicy(**self.report["plan"]["review_policy"]))

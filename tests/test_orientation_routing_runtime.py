@@ -10,15 +10,15 @@ from test_learning_windows import jobs
 from test_recall_control import decision
 from test_semantic import claim, proposals, run
 
-from agent_memory.answer_review import AnswerReviewer
-from agent_memory.client import MemoryActionError, default_read_fence
-from agent_memory.consolidation import publish_semantic
-from agent_memory.helpers import digest, uid
-from agent_memory.orientation import orientation_route
-from agent_memory.recall_control import RecallController
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, RuntimePolicy
-from agent_memory.semantic import CognitiveBatch
-from agent_memory.turns import TurnStore
+from membrain.answer_review import AnswerReviewer
+from membrain.client import MemoryActionError, default_read_fence
+from membrain.consolidation import publish_semantic
+from membrain.helpers import digest, uid
+from membrain.orientation import orientation_route
+from membrain.recall_control import RecallController
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, RuntimePolicy
+from membrain.semantic import CognitiveBatch
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 

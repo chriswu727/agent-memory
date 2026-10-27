@@ -13,8 +13,8 @@ from typing import Literal
 import httpx
 import uvicorn
 
-from agent_memory.chat_provider import ReasoningEffort, _validate_reasoning_effort
-from agent_memory.runtime import ModelRequest
+from membrain.chat_provider import ReasoningEffort, _validate_reasoning_effort
+from membrain.runtime import ModelRequest
 
 
 class HostProviderError(RuntimeError):

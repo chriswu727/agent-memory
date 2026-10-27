@@ -8,13 +8,13 @@ from test_learning import delivered
 from test_learning import learning as learning
 from test_semantic import claim, encoded, proposals, reference, run, situation
 
-from agent_memory import cognition
-from agent_memory.client import default_budget
-from agent_memory.consolidation import publish_semantic
-from agent_memory.helpers import uid
-from agent_memory.ontology import CORE_REGISTRY
-from agent_memory.runtime import BrainRuntime, RuntimePolicy
-from agent_memory.semantic import CognitiveBatch, SemanticProcessor
+from membrain import cognition
+from membrain.client import default_budget
+from membrain.consolidation import publish_semantic
+from membrain.helpers import uid
+from membrain.ontology import CORE_REGISTRY
+from membrain.runtime import BrainRuntime, RuntimePolicy
+from membrain.semantic import CognitiveBatch, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

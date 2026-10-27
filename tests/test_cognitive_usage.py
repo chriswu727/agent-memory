@@ -6,11 +6,11 @@ from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_semantic_call_usage import Provider
 
-from agent_memory.helpers import DomainError, Principal, uid
-from agent_memory.jobs import JobStore
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.storage import Database
+from membrain.helpers import DomainError, Principal, uid
+from membrain.jobs import JobStore
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticProcessor
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

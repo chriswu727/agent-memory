@@ -7,14 +7,14 @@ from test_learning import learning as learning
 from test_learning_packages import history_graph, integrate, manifest_for, versions
 from test_learning_windows import jobs
 
-from agent_memory.history_attention import POLICY, admit, attention_summary
-from agent_memory.history_semantics import validate_manifest
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
-from agent_memory.learning_integration import _refresh_manifest
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.service import MemoryService
+from membrain.history_attention import POLICY, admit, attention_summary
+from membrain.history_semantics import validate_manifest
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
+from membrain.learning_integration import _refresh_manifest
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.service import MemoryService
 
 pytestmark = pytest.mark.integration
 
@@ -45,7 +45,7 @@ def test_incomplete_admitted_package_remains_exact_debt_and_is_never_rediscovere
     def unexpected_discovery(*args, **kwargs):
         pytest.fail("A fixed attention authorization must not rediscover omitted candidates.")
 
-    monkeypatch.setattr("agent_memory.learning_integration.discover_manifest", unexpected_discovery)
+    monkeypatch.setattr("membrain.learning_integration.discover_manifest", unexpected_discovery)
     assert _refresh_manifest(None, None, None, None, None, remaining, SemanticPolicy()) == frozen
     exhausted = {**copy.deepcopy(remaining), "objectives": []}
     assert _refresh_manifest(None, None, None, None, None, exhausted, SemanticPolicy()) == exhausted

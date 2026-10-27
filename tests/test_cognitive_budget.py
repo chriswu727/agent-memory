@@ -6,11 +6,11 @@ import pytest
 from test_jobs import jobs as jobs
 from test_learning import learning as learning
 
-from agent_memory.cognitive_budget import DEFAULT_POLICY
-from agent_memory.helpers import DomainError, Principal, uid
-from agent_memory.jobs import JobStore
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.storage import Database
+from membrain.cognitive_budget import DEFAULT_POLICY
+from membrain.helpers import DomainError, Principal, uid
+from membrain.jobs import JobStore
+from membrain.runtime_client import RuntimeClient
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

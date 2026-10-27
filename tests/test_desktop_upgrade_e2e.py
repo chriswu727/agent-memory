@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from agent_memory import desktop
-from agent_memory.build_identity import package_manifest
-from agent_memory.client import MemoryClient
-from agent_memory.local_profile import ensure_profile
+from membrain import desktop
+from membrain.build_identity import package_manifest
+from membrain.client import MemoryClient
+from membrain.local_profile import ensure_profile
 
 pytestmark = [pytest.mark.integration, pytest.mark.skipif(
     os.environ.get("MEMORY_DESKTOP_E2E") != "1",
@@ -23,8 +23,8 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from agent_memory import desktop
-from agent_memory.local_profile import load_profile
+from membrain import desktop
+from membrain.local_profile import load_profile
 directory, operation = Path(sys.argv[2]), sys.argv[3]
 try:
     if operation == 'prepare':
@@ -42,14 +42,14 @@ except desktop.DesktopError as error:
 def test_independent_builds_detect_staleness_upgrade_and_reject_downgrade_without_data_loss(tmp_path):
     repository = Path(__file__).resolve().parents[1]
     first = tmp_path / "first package"
-    package = first / "agent_memory"
-    for name, content in package_manifest(repository / "src/agent_memory", repository).items():
+    package = first / "membrain"
+    for name, content in package_manifest(repository / "src/membrain", repository).items():
         destination = package / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
     second = tmp_path / "second package"
     shutil.copytree(first, second)
-    (second / "agent_memory/resources/migrations/999_upgrade_probe.sql").write_text(
+    (second / "membrain/resources/migrations/999_upgrade_probe.sql").write_text(
         "CREATE TABLE memory_upgrade_probe(id int PRIMARY KEY);\n",
     )
     profile = ensure_profile(tmp_path / "upgrade profile")

@@ -8,9 +8,9 @@ from test_current_request_runtime import orientation_job
 from test_learning import learning as learning
 from test_semantic import batch, encoded, event, situation, verifier
 
-from agent_memory.helpers import digest
-from agent_memory.learning import LearningEngine
-from agent_memory.semantic import (
+from membrain.helpers import digest
+from membrain.learning import LearningEngine
+from membrain.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,
     GENERAL_PROPOSAL_MODE,

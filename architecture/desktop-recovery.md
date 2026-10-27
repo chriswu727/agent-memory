@@ -9,7 +9,7 @@ A backup directory and the **independently current deletion registry** are both 
 Pause external chat adapters before taking a checkpoint. The command confirms shutdown of the local API and worker, but cannot stop model or messaging operations already running in another application.
 
 ```sh
-agent-memory desktop backup \
+membrain desktop backup \
   --directory /private/path/current-profile \
   --output /private/path/backups/checkpoint-001 \
   --request-id checkpoint-001
@@ -26,7 +26,7 @@ If interrupted, repeat exactly the same command, destination, request ID, and li
 To abandon an incomplete backup, inspect `desktop recovery-status`, then use:
 
 ```sh
-agent-memory desktop cancel-backup \
+membrain desktop cancel-backup \
   --directory /private/path/current-profile \
   --backup-id BACKUP_UUID_FROM_STATUS
 ```
@@ -38,13 +38,13 @@ Cancellation releases maintenance mode and preserves partial files for inspectio
 The destination must be empty. Do not use a current profile directory or a live database volume. Supply the registry that is independently known to contain all accepted deletions, including deletions after the selected checkpoint.
 
 ```sh
-agent-memory desktop restore-backup \
+membrain desktop restore-backup \
   --directory /private/path/recovered-profile \
   --backup /private/path/backups/checkpoint-001 \
   --registry /private/path/current-deletion-authority \
   --request-id recovery-001
 
-agent-memory desktop recovery-status \
+membrain desktop recovery-status \
   --directory /private/path/recovered-profile
 ```
 
@@ -65,7 +65,7 @@ First stop the previous installation and any external adapters. Reconcile the ho
 Copy the exact values from `recovery-status`:
 
 ```sh
-agent-memory desktop activate-recovery \
+membrain desktop activate-recovery \
   --directory /private/path/recovered-profile \
   --recovery-epoch RECOVERY_EPOCH_UUID \
   --backup-id BACKUP_UUID \
@@ -81,13 +81,13 @@ Activation atomically compares the current registry head and installation before
 Activation leaves services stopped. Start the recovered installation explicitly:
 
 ```sh
-agent-memory desktop start --directory /private/path/recovered-profile
+membrain desktop start --directory /private/path/recovered-profile
 ```
 
 The local SDK and MCP bridge use the epoch acknowledged by activation. External API adapters must explicitly supply `X-Memory-Recovery-Epoch` on operational requests. An authenticated `GET /v1/recovery` returns the epoch and recovery point without accepting them on the adapter's behalf.
 
 ```python
-from agent_memory.client import MemoryClient
+from membrain.client import MemoryClient
 
 # Call recovery() to inspect metadata, then reconcile the external host first.
 with MemoryClient(base_url, new_api_key) as inspection:

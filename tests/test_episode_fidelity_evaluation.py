@@ -8,8 +8,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from agent_memory.helpers import digest
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.helpers import digest
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
 
 
 @pytest.fixture(scope="module")

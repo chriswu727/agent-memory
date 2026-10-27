@@ -78,7 +78,7 @@ class Settings:
         load_dotenv()
         database_url = os.environ.get("MEMORY_DATABASE_URL")
         if not database_url:
-            raise ValueError("MEMORY_DATABASE_URL is required; run agent-memory init")
+            raise ValueError("MEMORY_DATABASE_URL is required; run membrain init")
         key_file = os.environ.get("MEMORY_API_KEYS_FILE")
         dimensions = os.environ.get("MEMORY_EMBEDDING_DIMENSIONS")
         if dimensions is not None and (not dimensions.isascii() or not dimensions.isdecimal()):

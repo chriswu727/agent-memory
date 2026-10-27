@@ -11,17 +11,17 @@ from test_learning import learning as learning
 from test_semantic import claim as proposed_claim
 from test_semantic import encoded, episode, proposals, reference
 
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine, validate_snapshot
-from agent_memory.learning_allocations import CONTRACT_VERSION
-from agent_memory.learning_windows import (
+from membrain.helpers import DomainError, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine, validate_snapshot
+from membrain.learning_allocations import CONTRACT_VERSION
+from membrain.learning_windows import (
     SAMPLING_RESERVE_BYTES,
     enqueue_window,
     pending_window,
     select_window,
 )
-from agent_memory.semantic import (
+from membrain.semantic import (
     PROPOSAL_SCHEMA,
     SemanticPolicy,
     SemanticProcessor,
@@ -94,7 +94,7 @@ def processed_refs(harness):
 
 @pytest.mark.parametrize("contract", ["source-act-boundary-v1", "recall-resolution-v1"])
 def test_forty_input_burst_preserves_every_input_across_budgeted_windows(learning, monkeypatch, contract):
-    monkeypatch.setattr("agent_memory.learning.LATEST_INPUT_CONTRACT_VERSION", contract)
+    monkeypatch.setattr("membrain.learning.LATEST_INPUT_CONTRACT_VERSION", contract)
     original = learning.propose
 
     def propose(request):

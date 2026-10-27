@@ -8,10 +8,10 @@ from test_current_request_runtime import orientation_job, request_processor
 from test_learning import learning as learning
 from test_semantic import encoded
 
-from agent_memory.helpers import DomainError, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine, orientation_result
-from agent_memory.semantic import GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE, SemanticProcessor
+from membrain.helpers import DomainError, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine, orientation_result
+from membrain.semantic import GENERAL_PROPOSAL_MODE, ORIENT_PROPOSAL_MODE, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

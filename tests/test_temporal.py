@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from agent_memory.temporal import evaluate_valid_during, resolve_today, validate_valid_during
+from membrain.temporal import evaluate_valid_during, resolve_today, validate_valid_during
 
 AT = "2026-10-24T12:00:00Z"
 

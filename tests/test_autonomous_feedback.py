@@ -11,14 +11,14 @@ import pytest
 from fastapi.testclient import TestClient
 from test_feedback_dynamics import Feedback
 
-from agent_memory import prepared_selection
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient, default_budget, integration_capabilities
-from agent_memory.config import Settings
-from agent_memory.feedback import observe_feedback
-from agent_memory.helpers import uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
-from agent_memory.storage import Database
+from membrain import prepared_selection
+from membrain.api import create_app
+from membrain.client import MemoryClient, default_budget, integration_capabilities
+from membrain.config import Settings
+from membrain.feedback import observe_feedback
+from membrain.helpers import uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 QUESTION = "我喜欢哪种香味，松木吗？"

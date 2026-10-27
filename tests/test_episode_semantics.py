@@ -6,7 +6,7 @@ from jsonschema import Draft202012Validator
 from test_cognition import event, scope
 from test_semantic import batch, claim, encoded, proposals, run, verifier
 
-from agent_memory.episode_semantics import (
+from membrain.episode_semantics import (
     EPISODE_INSTRUCTIONS,
     EPISODE_VERIFY_INSTRUCTIONS,
     MAX_EPISODE_EVIDENCE,

@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from agent_memory.helpers import DomainError
-from agent_memory.recall_control import RecallController, RecallPolicy
+from membrain.helpers import DomainError
+from membrain.recall_control import RecallController, RecallPolicy
 
 
 def candidate(key="promise", *, statement="user person (direct_statement): 备考先聊十分钟。", event=None):
@@ -220,7 +220,7 @@ def test_failed_reservation_cannot_trigger_a_model_call():
 
 def test_reservation_latency_cannot_start_a_model_after_the_deadline(monkeypatch):
     current = [100.0]
-    monkeypatch.setattr("agent_memory.recall_control.time.monotonic", lambda: current[0])
+    monkeypatch.setattr("membrain.recall_control.time.monotonic", lambda: current[0])
 
     def reserve(**_):
         current[0] += 20
@@ -231,7 +231,7 @@ def test_reservation_latency_cannot_start_a_model_after_the_deadline(monkeypatch
 
 def test_deadline_is_cooperative_and_late_result_is_discarded(monkeypatch):
     current = [100.0]
-    monkeypatch.setattr("agent_memory.recall_control.time.monotonic", lambda: current[0])
+    monkeypatch.setattr("membrain.recall_control.time.monotonic", lambda: current[0])
 
     def reason(request):
         assert request.timeout_seconds == 15.0

@@ -7,11 +7,11 @@ from test_bounded_learning_semantics import local_batch, local_claim, publicatio
 from test_cognition import event
 from test_semantic import encoded, episode, proposals, verifier
 
-from agent_memory import cognition
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, digest
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.source_composition import (
+from membrain import cognition
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, digest
+from membrain.semantic import SemanticProcessor
+from membrain.source_composition import (
     COMMUNICATION_VIEW_INPUT_VERSION,
     COMPOSITION_V2_INPUT_VERSION,
 )

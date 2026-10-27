@@ -14,8 +14,8 @@ from typing import Any
 
 import httpx
 
-from agent_memory.chat_provider import _reject_constant, _unique_object
-from agent_memory.chat_provider import _usage as _validated_usage
+from membrain.chat_provider import _reject_constant, _unique_object
+from membrain.chat_provider import _usage as _validated_usage
 
 _MAX_RESPONSE_BYTES = 65536
 _USAGE_FIELDS = {

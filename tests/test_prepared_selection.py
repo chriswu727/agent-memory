@@ -7,17 +7,17 @@ from test_feedback_dynamics import Feedback
 from test_runtime_api import HEADERS, TURN
 from test_runtime_api import runtime_api as runtime_api
 
-from agent_memory import prepared_selection
-from agent_memory.client import default_budget, default_read_fence, integration_capabilities
-from agent_memory.config import Settings
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.prepared_selection import (
+from membrain import prepared_selection
+from membrain.client import default_budget, default_read_fence, integration_capabilities
+from membrain.config import Settings
+from membrain.helpers import DomainError, digest, uid
+from membrain.prepared_selection import (
     sanitize_prepared_selection,
     selection_for_turn,
     text_hash,
 )
-from agent_memory.storage import Database
-from agent_memory.turns import TurnStore
+from membrain.storage import Database
+from membrain.turns import TurnStore
 
 
 def selection():

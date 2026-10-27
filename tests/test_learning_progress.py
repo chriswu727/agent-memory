@@ -7,14 +7,14 @@ from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_semantic import claim, encoded, proposals
 
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, uid
-from agent_memory.jobs import JobStore, summarize_learning
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_progress import _summary, learning_progress, sanitize_learning_progress
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.config import Settings
+from membrain.helpers import Principal, uid
+from membrain.jobs import JobStore, summarize_learning
+from membrain.learning import LearningEngine
+from membrain.learning_progress import _summary, learning_progress, sanitize_learning_progress
+from membrain.semantic import SemanticProcessor
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 AT = datetime(2026, 10, 24, tzinfo=UTC)
 

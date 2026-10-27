@@ -6,10 +6,10 @@ from test_learning_windows import claim as claim_job
 from test_learning_windows import drain, jobs
 from test_semantic import claim, encoded, proposals, verifier
 
-from agent_memory import learning as learning_module
-from agent_memory.consolidation_planning import PLANNER_VERSION, plan_consolidation
-from agent_memory.learning import LearningEngine
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
+from membrain import learning as learning_module
+from membrain.consolidation_planning import PLANNER_VERSION, plan_consolidation
+from membrain.learning import LearningEngine
+from membrain.semantic import SemanticPolicy, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

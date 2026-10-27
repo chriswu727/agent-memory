@@ -4,8 +4,8 @@ import json
 import pytest
 from test_cognition import STAMP, event, prepare_payload, request, scope, state, working
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
+from membrain import cognition
+from membrain.contracts import validate
 
 
 def observation(source, *, polarity="positive", unknown_time=False):

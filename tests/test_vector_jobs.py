@@ -5,9 +5,9 @@ import httpx
 import pytest
 from test_turns import turns as turns
 
-from agent_memory.client import default_budget, default_read_fence
-from agent_memory.embeddings import ChatCompletionsEmbeddingProvider
-from agent_memory.helpers import DomainError, uid
+from membrain.client import default_budget, default_read_fence
+from membrain.embeddings import ChatCompletionsEmbeddingProvider
+from membrain.helpers import DomainError, uid
 
 pytestmark = pytest.mark.integration
 

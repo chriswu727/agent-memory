@@ -4,8 +4,8 @@ import pytest
 from test_cognition import event
 from test_semantic import batch, claim, encoded, proposals, verifier
 
-from agent_memory.provider_usage import reported_usage
-from agent_memory.semantic import SemanticProcessor
+from membrain.provider_usage import reported_usage
+from membrain.semantic import SemanticProcessor
 
 
 class Provider:

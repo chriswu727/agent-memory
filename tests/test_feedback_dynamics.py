@@ -5,14 +5,14 @@ from datetime import datetime
 import pytest
 from psycopg.types.json import Jsonb
 
-from agent_memory import cognition
-from agent_memory.client import default_budget, default_read_fence, integration_capabilities
-from agent_memory.config import Settings
-from agent_memory.contracts import CONTRACT_VERSION
-from agent_memory.dynamics import access_state
-from agent_memory.helpers import Principal, digest, now, uid
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain import cognition
+from membrain.client import default_budget, default_read_fence, integration_capabilities
+from membrain.config import Settings
+from membrain.contracts import CONTRACT_VERSION
+from membrain.dynamics import access_state
+from membrain.helpers import Principal, digest, now, uid
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

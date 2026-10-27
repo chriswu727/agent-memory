@@ -5,9 +5,9 @@ import httpx
 import pytest
 from test_desktop_chat import arguments
 
-from agent_memory import desktop_cli, desktop_turns
-from agent_memory.client import MemoryClient
-from agent_memory.local_profile import LocalProfileError
+from membrain import desktop_cli, desktop_turns
+from membrain.client import MemoryClient
+from membrain.local_profile import LocalProfileError
 
 TURN = {"turn_id": "turn-old", "brain_id": "brain", "conversation_id": "room", "branch_id": "branch",
         "stage": "generated", "scope_reserved": True, "lease_active": False, "recovery_required": None}

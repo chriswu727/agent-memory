@@ -12,13 +12,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
-from agent_memory.answer_review_provider import ChatCompletionsAnswerReviewProvider
-from agent_memory.helpers import digest
-from agent_memory.runtime import ModelRequest
 from examples.evaluate_conversation import safe_error
 from examples.evaluate_deepseek import save
 from examples.evaluation_support import MeteredTransport
+from membrain.answer_review import AnswerReviewer, AnswerReviewPolicy
+from membrain.answer_review_provider import ChatCompletionsAnswerReviewProvider
+from membrain.helpers import digest
+from membrain.runtime import ModelRequest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "evaluations/deepseek-2026-10-24-interaction-repair.json"
@@ -30,8 +30,8 @@ REVIEWER_ID = MODEL + ":thinking-enabled:answer-review-v1"
 def fingerprints():
     return {name: digest((ROOT / name).read_text()) for name in (
         "examples/evaluate_answer_review.py", "examples/evaluation_support.py",
-        "src/agent_memory/answer_review.py", "src/agent_memory/answer_review_provider.py",
-        "src/agent_memory/recall_provider.py",
+        "src/membrain/answer_review.py", "src/membrain/answer_review_provider.py",
+        "src/membrain/recall_provider.py",
     )}
 
 

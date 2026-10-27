@@ -13,17 +13,17 @@ from test_desktop_chat import arguments
 from test_semantic import batch, encoded, event, proposals
 from test_semantic_provider import completion
 
-from agent_memory import api, config, desktop, desktop_cli, semantic_provider, storage
-from agent_memory.cognition_config import (
+from membrain import api, config, desktop, desktop_cli, semantic_provider, storage
+from membrain.cognition_config import (
     CONFIGURATION_FILE,
     CognitionConfigurationError,
     CognitionPolicyConfiguration,
     load_cognition_policy,
     save_cognition_policy,
 )
-from agent_memory.config import Settings, configured_service
-from agent_memory.local_profile import configure_cognition, ensure_profile, load_profile
-from agent_memory.semantic import SemanticPolicy
+from membrain.config import Settings, configured_service
+from membrain.local_profile import configure_cognition, ensure_profile, load_profile
+from membrain.semantic import SemanticPolicy
 
 CUSTOM = {"max_wall_time_ms": 240_000, "max_output_tokens": 16384, "max_response_bytes": 65536}
 PUBLIC_CUSTOM = {**CUSTOM, "reasoning_effort": None, "max_envelope_bytes": 65536}
@@ -144,7 +144,7 @@ def test_failed_atomic_write_keeps_prior_policy(tmp_path, monkeypatch):
     def fail(*args):
         raise OSError("private-failure")
 
-    monkeypatch.setattr("agent_memory.cognition_config.os.replace", fail)
+    monkeypatch.setattr("membrain.cognition_config.os.replace", fail)
     with pytest.raises(CognitionConfigurationError):
         save_cognition_policy(CognitionPolicyConfiguration(**CUSTOM), profile.directory)
     assert (profile.directory / CONFIGURATION_FILE).read_bytes() == before

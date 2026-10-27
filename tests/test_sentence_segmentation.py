@@ -3,8 +3,8 @@ import copy
 import pytest
 from test_cognition import event, request, scope, state
 
-from agent_memory import cognition
-from agent_memory.helpers import DomainError
+from membrain import cognition
+from membrain.helpers import DomainError
 
 
 def captured(text, **changes):
@@ -163,7 +163,7 @@ def test_old_literal_and_semantic_citations_remain_recallable_after_boundary_rep
 def test_frozen_old_semantic_units_remain_valid_but_new_sources_require_repaired_units():
     from test_semantic import claim
 
-    from agent_memory.semantic import _check_claim_sources
+    from membrain.semantic import _check_claim_sources
 
     source = legacy_source("1. The letter remains unopened.", role="assistant")
     old = cognition.extract_event(source)[0]

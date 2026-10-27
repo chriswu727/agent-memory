@@ -12,19 +12,19 @@ from test_belief_semantic import UNBOUNDED, link_verifier, version
 from test_cognitive_archives import archive as archive
 from test_semantic import claim, encoded, episode, proposals, reference, run, situation, verifier
 
-from agent_memory import candidates, cognition, consolidation
-from agent_memory import service as service_module
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient, default_budget
-from agent_memory.config import Settings
-from agent_memory.consolidation_planning import plan_consolidation
-from agent_memory.dynamics import access_state
-from agent_memory.helpers import digest, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain import candidates, cognition, consolidation
+from membrain import service as service_module
+from membrain.api import create_app
+from membrain.client import MemoryClient, default_budget
+from membrain.config import Settings
+from membrain.consolidation_planning import plan_consolidation
+from membrain.dynamics import access_state
+from membrain.helpers import digest, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticProcessor
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 POLICY = RuntimePolicy(memory_context_tokens=60000, max_input_tokens=90000, recent_context_events=0,

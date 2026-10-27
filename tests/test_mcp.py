@@ -11,8 +11,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from agent_memory.client import MemoryClient
-from agent_memory.mcp_server import create_server
+from membrain.client import MemoryClient
+from membrain.mcp_server import create_server
 
 
 def response_for(request):
@@ -134,14 +134,14 @@ def test_stdio_subprocess_handshake_and_http_roundtrip():
 
     async def run():
         params = StdioServerParameters(
-            command=sys.executable, args=["-m", "agent_memory.mcp_server"],
+            command=sys.executable, args=["-m", "membrain.mcp_server"],
             env={**os.environ, "MEMORY_BASE_URL": f"http://127.0.0.1:{server.server_port}",
                  "MEMORY_API_KEY": "stdio-key", "MEMORY_BRAIN_ID": "stdio-brain"},
         )
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write) as session:
                 initialized = await session.initialize()
-                assert initialized.serverInfo.name == "Agent Memory"
+                assert initialized.serverInfo.name == "memBrain"
                 assert (await session.list_tools()).tools
                 result = await session.call_tool("memory_recall", {"query": "a real stdio roundtrip"})
                 assert not result.isError

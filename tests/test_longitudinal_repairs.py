@@ -6,14 +6,14 @@ from test_cognition import event as old_event
 from test_cognition import request, scope, state
 from test_semantic import claim, reference
 
-from agent_memory import cognition
-from agent_memory.citation_coverage import (
+from membrain import cognition
+from membrain.citation_coverage import (
     CITATION_PROVENANCE_INPUT_VERSION,
     SOURCE_ACT_INPUT_VERSION,
 )
-from agent_memory.context_views import memory_content
-from agent_memory.lexical_candidates import LexicalScorer
-from agent_memory.semantic import _check_claim_sources
+from membrain.context_views import memory_content
+from membrain.lexical_candidates import LexicalScorer
+from membrain.semantic import _check_claim_sources
 
 BLACKOUT = (
     "When our power went out, Grandma would light a lantern and put buttons in a tea tin "

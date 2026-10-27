@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from test_belief_semantic import abstraction
 
-from agent_memory.semantic import SemanticResult
+from membrain.semantic import SemanticResult
 
 
 @pytest.fixture

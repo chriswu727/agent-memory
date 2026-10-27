@@ -5,8 +5,8 @@ import httpx
 import pytest
 from test_desktop_chat import arguments
 
-from agent_memory import desktop_cli, desktop_learning
-from agent_memory.client import MemoryClient
+from membrain import desktop_cli, desktop_learning
+from membrain.client import MemoryClient
 
 
 def install_client(monkeypatch, handler):

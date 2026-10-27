@@ -215,7 +215,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         finally:
             resources.close()
 
-    app = FastAPI(title="Agent Memory", version=__version__, lifespan=lifespan)
+    app = FastAPI(title="memBrain", version=__version__, lifespan=lifespan)
     app.state.service = service
     app.state.turns = turns
     app.state.jobs = jobs
@@ -622,7 +622,7 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
         from starlette.concurrency import run_in_threadpool
         return await run_in_threadpool(service.upload_archive, principal, brain_id, document)
 
-    static = files("agent_memory").joinpath("web")
+    static = files("membrain").joinpath("web")
     app.mount("/static", StaticFiles(directory=str(static)), name="static")
 
     @app.get("/", response_class=HTMLResponse)

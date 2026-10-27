@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import copy
 
-from agent_memory.helpers import digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import (
+from membrain.helpers import digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import (
     ALLOCATION_POLICY,
     ENCODING_PHASE,
     HISTORY_PHASE,

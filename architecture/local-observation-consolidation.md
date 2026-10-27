@@ -10,10 +10,10 @@ Nevertheless, the job rejected all four proposals as `incomplete_history_package
 
 The boundaries observed in the failed revision were:
 
-- [neighborhood.py](../src/agent_memory/neighborhood.py): omitting a relevant historical package sets a global publication restriction.
-- [semantic.py](../src/agent_memory/semantic.py): that restriction rejects every non-situation proposal, including independently sourced new reports.
-- [learning.py](../src/agent_memory/learning.py): a restricted batch cannot advance its processing window.
-- [consolidation.py](../src/agent_memory/consolidation.py): every published claim and episode retains all source roots from the supplied snapshot. In the recorded run, a note with two episode members acquired four roots, and the following note acquired six.
+- [neighborhood.py](../src/membrain/neighborhood.py): omitting a relevant historical package sets a global publication restriction.
+- [semantic.py](../src/membrain/semantic.py): that restriction rejects every non-situation proposal, including independently sourced new reports.
+- [learning.py](../src/membrain/learning.py): a restricted batch cannot advance its processing window.
+- [consolidation.py](../src/membrain/consolidation.py): every published claim and episode retains all source roots from the supplied snapshot. In the recorded run, a note with two episode members acquired four roots, and the following note acquired six.
 
 The last rule is conservative provenance protection, not permission to drop roots. A model that saw historical context may have depended on it even when its citations omit it. Removing the global guard, deleting contextual roots after generation, or increasing the context budget alone would not establish safe independent learning.
 

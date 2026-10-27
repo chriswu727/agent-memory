@@ -3,9 +3,9 @@ import copy
 import pytest
 from test_cognition import event, request, scope, state
 
-from agent_memory import cognition
-from agent_memory.helpers import DomainError
-from agent_memory.retrieval import fuse_rankings, resolve_dependency_closure
+from membrain import cognition
+from membrain.helpers import DomainError
+from membrain.retrieval import fuse_rankings, resolve_dependency_closure
 
 
 def version(memory):

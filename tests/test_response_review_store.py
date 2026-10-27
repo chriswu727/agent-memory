@@ -5,7 +5,7 @@ import pytest
 from psycopg.types.json import Jsonb
 from test_turns import turns as turns
 
-from agent_memory.helpers import DomainError, digest, uid
+from membrain.helpers import DomainError, digest, uid
 
 pytestmark = pytest.mark.integration
 TEXT = "The latest remembered arrangement is therefore applicable now."

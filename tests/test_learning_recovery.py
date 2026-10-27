@@ -12,11 +12,11 @@ from test_learning_windows import claim, drain, execute, jobs, observations, pro
 from test_semantic import claim as proposed_claim
 from test_semantic import encoded, proposals
 
-from agent_memory.helpers import DomainError, Principal, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_windows import enqueue_window, recover_windows
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
+from membrain.helpers import DomainError, Principal, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.learning_windows import enqueue_window, recover_windows
+from membrain.semantic import SemanticPolicy, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

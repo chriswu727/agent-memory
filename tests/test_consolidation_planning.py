@@ -7,14 +7,14 @@ from test_belief_semantic import abstraction, link_verifier, version
 from test_cognition import event
 from test_semantic import claim, encoded, proposals, run, verifier
 
-from agent_memory.consolidation_planning import (
+from membrain.consolidation_planning import (
     MAX_OBJECTIVES,
     PLANNER_VERSION,
     plan_consolidation,
     validate_consolidation_plan,
 )
-from agent_memory.helpers import digest
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
+from membrain.helpers import digest
+from membrain.semantic import SemanticPolicy, SemanticProcessor
 
 
 def instances():
@@ -387,7 +387,7 @@ def test_supplied_plan_cannot_expand_the_weak_exploration_budget():
     data = text_instances(LONG_INSTANCE_TEXTS)
     forged = plan_consolidation(data.sources, data.existing_assertions, include_all=True)
     forged["objectives"] = forged["objectives"][:2]
-    from agent_memory.helpers import DomainError
+    from membrain.helpers import DomainError
 
     with pytest.raises(DomainError, match="Invalid consolidation plan"):
         run(replace(data, consolidation_plan=forged), proposals())

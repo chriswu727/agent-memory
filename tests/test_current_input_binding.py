@@ -3,8 +3,8 @@ import copy
 import pytest
 from test_cognition import scope
 
-from agent_memory.helpers import DomainError
-from agent_memory.learning import _current_input_authorization
+from membrain.helpers import DomainError
+from membrain.learning import _current_input_authorization
 
 
 def authorization():

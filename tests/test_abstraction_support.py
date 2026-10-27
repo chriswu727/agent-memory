@@ -7,7 +7,7 @@ from test_belief_semantic import known, link_verifier, version
 from test_cognition import event
 from test_semantic import batch, claim, encoded, proposals, reference, run
 
-from agent_memory.consolidation_planning import plan_consolidation
+from membrain.consolidation_planning import plan_consolidation
 
 
 def sampled_walks():

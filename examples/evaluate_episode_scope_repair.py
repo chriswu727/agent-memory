@@ -12,10 +12,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agent_memory.contracts import validate
-from agent_memory.episode_semantics import episode_assessment
-from agent_memory.helpers import digest
-from agent_memory.semantic import (
+from examples.evaluate_consumption_repair import _confirmed_source_usage, _safe_error, save_report
+from examples.evaluation_support import MeteredTransport
+from membrain.contracts import validate
+from membrain.episode_semantics import episode_assessment
+from membrain.helpers import digest
+from membrain.semantic import (
     _PROPOSAL_VALIDATOR,
     _VERIFICATION_VALIDATOR,
     EPISODE_SCOPE_INPUT_VERSION,
@@ -28,9 +30,7 @@ from agent_memory.semantic import (
     proposal_data,
     request_payload,
 )
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from examples.evaluate_consumption_repair import _confirmed_source_usage, _safe_error, save_report
-from examples.evaluation_support import MeteredTransport
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REPORT = ROOT / ".local/deepseek-orientation-on-demand-v1/memory/report.json"
@@ -54,7 +54,7 @@ REVIEW = (
 def fingerprints():
     names = ["examples/evaluate_episode_scope_repair.py", "examples/evaluate_consumption_repair.py",
              "examples/evaluate_deepseek.py", "examples/evaluation_support.py"]
-    names += [str(path.relative_to(ROOT)) for path in sorted((ROOT / "src/agent_memory").glob("*.py"))]
+    names += [str(path.relative_to(ROOT)) for path in sorted((ROOT / "src/membrain").glob("*.py"))]
     names += ["architecture/memory-contract.schema.json"]
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
 

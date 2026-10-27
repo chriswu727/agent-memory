@@ -12,8 +12,8 @@ from test_learning import learning as learning
 from test_semantic import encoded, proposals, verifier
 from test_semantic_call_usage import Provider
 
-from agent_memory.runtime import ModelRequest
-from agent_memory.semantic import SemanticProcessor
+from membrain.runtime import ModelRequest
+from membrain.semantic import SemanticProcessor
 
 
 @pytest.fixture
@@ -169,7 +169,7 @@ def test_malformed_completed_response_is_not_mislabeled_as_uncertain_when_usage_
 
 
 def test_schema_failure_is_retained_and_stops_dependent_work(evaluation, tmp_path):
-    from agent_memory.semantic import CognitiveRequest
+    from membrain.semantic import CognitiveRequest
 
     with evaluation.CampaignJournal(tmp_path / "run", evaluation.plan()) as journal:
         request = CognitiveRequest("request", "proposal", (), {"type": "object", "required": ["value"]}, 10, 1)
@@ -407,7 +407,7 @@ def test_live_entrypoint_reopens_brain_and_cumulative_ledger_in_a_fresh_process(
     script.write_text('''
 import json, os, sys
 from pathlib import Path
-import agent_memory
+import membrain
 import httpx
 sys.path.insert(0, sys.argv[1])
 from examples import evaluate_longitudinal as evaluation

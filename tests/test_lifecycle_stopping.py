@@ -8,7 +8,7 @@ import pytest
 from test_memory_lifecycle_evaluation import Meter, no_live_access
 from test_memory_lifecycle_evaluation import evaluation as evaluation
 
-from agent_memory.runtime import ModelRequest
+from membrain.runtime import ModelRequest
 
 
 def completed_stage(result=None):

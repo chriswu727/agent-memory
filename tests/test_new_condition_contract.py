@@ -8,7 +8,7 @@ from test_belief_semantic import scenario
 from test_cognition import event
 from test_semantic import batch, claim, proposals, run, situation
 
-from agent_memory.applicability import (
+from membrain.applicability import (
     CONDITION_SCHEMA,
     NEW_CONDITION_SCHEMA,
     evaluate_applicability,
@@ -16,7 +16,7 @@ from agent_memory.applicability import (
     validate_new_condition,
     validate_observation,
 )
-from agent_memory.semantic import PROPOSAL_SCHEMA, SemanticProcessor, evaluate_condition
+from membrain.semantic import PROPOSAL_SCHEMA, SemanticProcessor, evaluate_condition
 
 UNRESOLVED = {"op": "unresolved", "label": "银色状态"}
 LEGACY = {"op": "eq", "key": "user_defined_state", "value": "silver"}

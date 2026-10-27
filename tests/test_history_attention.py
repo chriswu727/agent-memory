@@ -5,20 +5,20 @@ from types import SimpleNamespace
 import pytest
 from test_cognition import event
 
-from agent_memory import cognition
-from agent_memory.belief_store import assertion_fingerprint
-from agent_memory.helpers import DomainError, digest
-from agent_memory.history_attention import (
+from membrain import cognition
+from membrain.belief_store import assertion_fingerprint
+from membrain.helpers import DomainError, digest
+from membrain.history_attention import (
     POLICY,
     admit,
     attention_summary,
     model_manifest,
     sanitize_attention_summary,
 )
-from agent_memory.history_semantics import MANIFEST_VERSION, validate_manifest
-from agent_memory.learning_packages import discover_manifest
-from agent_memory.local_semantics import HISTORY_INTEGRATION_MODE, bounded_verification_context
-from agent_memory.semantic import EPISODE_SOURCE_VIEW_INPUT_VERSION, SemanticPolicy
+from membrain.history_semantics import MANIFEST_VERSION, validate_manifest
+from membrain.learning_packages import discover_manifest
+from membrain.local_semantics import HISTORY_INTEGRATION_MODE, bounded_verification_context
+from membrain.semantic import EPISODE_SOURCE_VIEW_INPUT_VERSION, SemanticPolicy
 
 
 def memory(text, sequence, **changes):
@@ -306,7 +306,7 @@ def test_discovery_applies_attention_only_with_an_explicit_policy_and_leaves_bro
 
     selector = SimpleNamespace(scope=current["scope"], reasons=set(), candidates=candidates,
                                source_package=lambda ids: {current["event_id"]: current}, bind=lambda value: value)
-    monkeypatch.setattr("agent_memory.learning_packages._Selector", lambda *args, **kwargs: selector)
+    monkeypatch.setattr("membrain.learning_packages._Selector", lambda *args, **kwargs: selector)
     kwargs = {"through_sequence": 200, "required_event_refs": [{"event_id": current["event_id"], "revision": 1}],
               "policy": SemanticPolicy(max_assertions=128), "input_contract_version": EPISODE_SOURCE_VIEW_INPUT_VERSION}
     old = discover_manifest(None, None, None, None, {}, **kwargs)

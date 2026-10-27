@@ -7,13 +7,13 @@ from psycopg.types.json import Jsonb
 from test_cognition import request
 from test_semantic import claim, episode, proposals, reference, run, situation
 
-from agent_memory.config import Settings
-from agent_memory.consolidation import publish_semantic
-from agent_memory.contracts import CONTRACT_VERSION, validate
-from agent_memory.helpers import DomainError, Principal, uid
-from agent_memory.semantic import CognitiveBatch
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.config import Settings
+from membrain.consolidation import publish_semantic
+from membrain.contracts import CONTRACT_VERSION, validate
+from membrain.helpers import DomainError, Principal, uid
+from membrain.semantic import CognitiveBatch
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 
@@ -113,8 +113,8 @@ def test_legacy_persisted_validity_and_frozen_parent_snapshot_remain_unchanged(m
 
     from test_semantic import encoded, verifier
 
-    from agent_memory.consolidation_planning import plan_consolidation
-    from agent_memory.semantic import SemanticProcessor
+    from membrain.consolidation_planning import plan_consolidation
+    from membrain.semantic import SemanticProcessor
 
     source = memory.observe("从2026年10月20日00:00 UTC起，我希望回答简短。")
     old_batch = memory.batch(source)

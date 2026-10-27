@@ -6,13 +6,13 @@ import pytest
 from test_candidates import Candidates
 from test_cognition import STAMP, event, prepare_payload, request, scope, state, working
 
-from agent_memory import candidates as candidate_module
-from agent_memory import cognition
-from agent_memory.config import Settings
-from agent_memory.contracts import CONTRACT_VERSION
-from agent_memory.helpers import DomainError, uid
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain import candidates as candidate_module
+from membrain import cognition
+from membrain.config import Settings
+from membrain.contracts import CONTRACT_VERSION
+from membrain.helpers import DomainError, uid
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 
 @pytest.fixture

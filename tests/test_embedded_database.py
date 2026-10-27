@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory import backup_transport, desktop, desktop_cli, embedded_database
-from agent_memory.local_profile import LocalProfileError, ensure_profile, load_profile
+from membrain import backup_transport, desktop, desktop_cli, embedded_database
+from membrain.local_profile import LocalProfileError, ensure_profile, load_profile
 
 
 def test_docker_profiles_keep_their_original_file_format(tmp_path):
@@ -67,8 +67,8 @@ def test_backup_streams_use_bundled_client_tools(tmp_path, monkeypatch):
 
 @pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
 def test_embedded_installation_starts_without_docker_and_keeps_memory_across_restarts(tmp_path, monkeypatch):
-    from agent_memory.desktop_connection import open_client
-    from agent_memory.mcp_server import recalled_context
+    from membrain.desktop_connection import open_client
+    from membrain.mcp_server import recalled_context
 
     def no_docker(*args, **kwargs):
         raise AssertionError("Docker must not be used by the embedded engine")

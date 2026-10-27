@@ -1,9 +1,9 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
 
-from agent_memory.dynamics import DEFAULT_POLICY
-from agent_memory.helpers import Principal
-from agent_memory.service import MemoryService
+from membrain.dynamics import DEFAULT_POLICY
+from membrain.helpers import Principal
+from membrain.service import MemoryService
 
 
 def test_dashboard_reports_the_effective_default_access_policy(monkeypatch):

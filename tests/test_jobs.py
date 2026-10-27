@@ -5,11 +5,11 @@ from threading import Barrier
 import pytest
 from psycopg.types.json import Jsonb
 
-from agent_memory.config import Settings
-from agent_memory.helpers import DomainError, Principal, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.config import Settings
+from membrain.helpers import DomainError, Principal, digest, uid
+from membrain.jobs import JobStore
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

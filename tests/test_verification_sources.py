@@ -8,17 +8,17 @@ from test_citation_coverage import case
 from test_cognition import event
 from test_semantic import batch, encoded, episode, proposals, reference, verifier
 
-from agent_memory.citation_coverage import (
+from membrain.citation_coverage import (
     CITATION_PROVENANCE_INPUT_VERSION,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
 )
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, digest
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor, _json
-from agent_memory.verification_sources import (
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, digest
+from membrain.semantic import SemanticPolicy, SemanticProcessor, _json
+from membrain.verification_sources import (
     SHARED_VERIFICATION_INPUT_VERSION as VERSION,
 )
-from agent_memory.verification_sources import (
+from membrain.verification_sources import (
     SHARED_VERIFICATION_INSTRUCTIONS,
     shared_verification_sources,
 )

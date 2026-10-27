@@ -5,9 +5,9 @@ from dataclasses import replace
 import pytest
 from test_cognition import UNKNOWN_TIME, event, scope
 
-from agent_memory import cognition
-from agent_memory.helpers import DomainError
-from agent_memory.semantic import (
+from membrain import cognition
+from membrain.helpers import DomainError
+from membrain.semantic import (
     CognitiveBatch,
     SemanticPolicy,
     SemanticProcessor,
@@ -368,7 +368,7 @@ def test_provider_failure_is_degraded_but_lease_failure_still_propagates():
 def test_reservation_latency_cannot_start_a_call_after_deadline(monkeypatch):
     source = event("工作时我希望直接获得建议。")
     clock = [0.0]
-    monkeypatch.setattr("agent_memory.semantic.time.monotonic", lambda: clock[0])
+    monkeypatch.setattr("membrain.semantic.time.monotonic", lambda: clock[0])
 
     def reserve(**_):
         clock[0] = 31
@@ -382,7 +382,7 @@ def test_reservation_latency_cannot_start_a_call_after_deadline(monkeypatch):
 def test_late_provider_result_is_not_published(monkeypatch):
     source = event("工作时我希望直接获得建议。")
     clock = [0.0]
-    monkeypatch.setattr("agent_memory.semantic.time.monotonic", lambda: clock[0])
+    monkeypatch.setattr("membrain.semantic.time.monotonic", lambda: clock[0])
 
     def propose(_):
         clock[0] = 31
@@ -482,7 +482,7 @@ def test_request_fingerprint_does_not_depend_on_changing_time_budget(monkeypatch
     source = event("工作时我希望直接获得建议。")
     reserved = []
     clock = [0.0]
-    monkeypatch.setattr("agent_memory.semantic.time.monotonic", lambda: clock[0])
+    monkeypatch.setattr("membrain.semantic.time.monotonic", lambda: clock[0])
     proposed = proposals(claim(source))
     run(batch(source), proposed, verify=None, reserve=lambda **r: reserved.append(r))
     clock[0] = 99

@@ -5,8 +5,8 @@ import pytest
 from test_cognition import UNKNOWN_TIME, event
 from test_semantic import batch, claim, encoded, proposals, reference, run, verifier
 
-from agent_memory import cognition
-from agent_memory.ontology import CORE_REGISTRY
+from membrain import cognition
+from membrain.ontology import CORE_REGISTRY
 
 UNBOUNDED = {"kind": "interval", "start": {"kind": "unbounded"}, "end": {"kind": "unbounded"}}
 SINCE = {"kind": "interval", "start": {"kind": "instant", "at": "2026-10-24T00:00:00Z"},

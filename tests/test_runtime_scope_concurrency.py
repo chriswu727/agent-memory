@@ -4,9 +4,9 @@ from threading import Event
 import pytest
 from test_runtime import memory as memory
 
-from agent_memory.client import MemoryClient
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
-from agent_memory.runtime_client import RuntimeClient
+from membrain.client import MemoryClient
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
+from membrain.runtime_client import RuntimeClient
 
 pytestmark = pytest.mark.integration
 

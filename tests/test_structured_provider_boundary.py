@@ -10,10 +10,10 @@ from test_answer_review import assessment, prompt, reviewer
 from test_recall_provider import REQUEST as RECALL_REQUEST
 from test_semantic_provider import REQUEST as SEMANTIC_REQUEST
 
-from agent_memory.answer_review import AnswerReviewError
-from agent_memory.answer_review_provider import ChatCompletionsAnswerReviewProvider
-from agent_memory.recall_provider import ChatCompletionsRecallReasoner, RecallProviderError
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider, SemanticProviderError
+from membrain.answer_review import AnswerReviewError
+from membrain.answer_review_provider import ChatCompletionsAnswerReviewProvider
+from membrain.recall_provider import ChatCompletionsRecallReasoner, RecallProviderError
+from membrain.semantic_provider import ChatCompletionsSemanticProvider, SemanticProviderError
 
 USAGE = {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13}
 

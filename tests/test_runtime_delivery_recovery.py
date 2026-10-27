@@ -7,12 +7,12 @@ import pytest
 from test_agent_session import live_local as live_local
 from test_runtime import memory as memory
 
-from agent_memory.agent_session import open_agent
-from agent_memory.config import Settings
-from agent_memory.delivery_receipts import receipt_for
-from agent_memory.helpers import Principal, digest, now
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, _Lease
-from agent_memory.storage import Database
+from membrain.agent_session import open_agent
+from membrain.config import Settings
+from membrain.delivery_receipts import receipt_for
+from membrain.helpers import Principal, digest, now
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, _Lease
+from membrain.storage import Database
 
 
 def response_error(code="scope_conflict", *, status=409, body=None):

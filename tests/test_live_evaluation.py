@@ -9,9 +9,9 @@ from test_cognition import event, prepare_payload, request, scope, state, workin
 from test_contextual_recall import CONDITION
 from test_semantic import batch, claim, proposals, reference, run
 
-from agent_memory import cognition
-from agent_memory.consolidation import _assertion
-from agent_memory.consolidation_planning import plan_consolidation
+from membrain import cognition
+from membrain.consolidation import _assertion
+from membrain.consolidation_planning import plan_consolidation
 
 with pytest.MonkeyPatch.context() as imports:
     imports.syspath_prepend(str(Path(__file__).parents[1]))
@@ -54,7 +54,7 @@ def temporal_stages():
                         working_event_metadata={value["event_id"]: value for value in sources})
         observations = []
         for at in EVALUATION_TIMES:
-            with patch("agent_memory.cognition.now", return_value=at):
+            with patch("membrain.cognition.now", return_value=at):
                 recalled = cognition.recall(scope(), request("回复偏好 简短 详细解释 结论 理由"), memories, sources, current)
                 packet = cognition.prepare(scope(), prepare_payload(), working(), recalled, current)
             observations.append({"at": at, "items": recalled["items"], "blocks": packet["blocks"]})
@@ -171,7 +171,7 @@ def make_stage(sources, memories, links, current_inputs, published, new_links=()
                     working_event_metadata={source["event_id"]: source for source in sources})
     observations = []
     for at in EVALUATION_TIMES:
-        with patch("agent_memory.cognition.now", return_value=at):
+        with patch("membrain.cognition.now", return_value=at):
             recalled = cognition.recall(scope(), request("建议 倾听 备考 复习 散步 记录"), memories, sources, current)
             packet = cognition.prepare(scope(), prepare_payload(), working(), recalled, current)
         observations.append({"at": at, "items": recalled["items"], "blocks": packet["blocks"]})

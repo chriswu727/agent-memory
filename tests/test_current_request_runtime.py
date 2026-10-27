@@ -9,12 +9,12 @@ from test_learning import delivered
 from test_learning import learning as learning
 from test_semantic import encoded, proposals, situation
 
-from agent_memory.helpers import DomainError, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine, orientation_result, validate_snapshot
-from agent_memory.runtime import BrainRuntime, RuntimePolicy
-from agent_memory.semantic import SemanticProcessor, SemanticResult
-from agent_memory.turns import TurnStore
+from membrain.helpers import DomainError, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine, orientation_result, validate_snapshot
+from membrain.runtime import BrainRuntime, RuntimePolicy
+from membrain.semantic import SemanticProcessor, SemanticResult
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 

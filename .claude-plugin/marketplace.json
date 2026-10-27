@@ -1,15 +1,15 @@
 {
-  "name": "agent-memory",
+  "name": "membrain",
   "owner": {
     "name": "chriswu727"
   },
   "metadata": {
-    "description": "Local, source-traceable long-term memory for AI agents."
+    "description": "memBrain: local, source-traceable long-term memory for AI agents."
   },
   "plugins": [
     {
-      "name": "agent-memory",
-      "source": "./plugins/agent-memory",
+      "name": "membrain",
+      "source": "./plugins/membrain",
       "description": "Automatic long-term memory across Claude Code sessions: records conversations locally, recalls matching earlier records before replies, and adds memory tools. No Docker or extra API key."
     }
   ]

@@ -5,11 +5,11 @@ import pytest
 from test_belief_recall import recall, relation, scenario
 from test_cognition import STAMP, event, prepare_payload, request, scope, state, working
 
-from agent_memory import cognition
-from agent_memory.belief_resolution import factor_relations, relation_assessments
-from agent_memory.context_views import context_view, reasoning_context_view, recall_context_view
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError
+from membrain import cognition
+from membrain.belief_resolution import factor_relations, relation_assessments
+from membrain.context_views import context_view, reasoning_context_view, recall_context_view
+from membrain.contracts import validate
+from membrain.helpers import DomainError
 
 
 @pytest.fixture(autouse=True)

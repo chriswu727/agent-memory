@@ -1,13 +1,13 @@
 {
   "mcpServers": {
-    "agent-memory": {
+    "membrain": {
       "command": "uvx",
       "args": [
         "--python",
         "3.12",
         "--from",
-        "${AGENT_MEMORY_PACKAGE:-agent-memory-runtime[embedded] @ git+https://github.com/chriswu727/agent-memory}",
-        "agent-memory",
+        "${MEMBRAIN_PACKAGE:-membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain}",
+        "membrain",
         "plugin",
         "mcp"
       ]

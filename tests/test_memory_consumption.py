@@ -6,13 +6,13 @@ import pytest
 from test_cognition import STAMP, event, prepare_payload, request, scope, state, working
 from test_runtime import memory as memory
 
-from agent_memory import answer_review as answer_review_module
-from agent_memory import cognition
-from agent_memory import runtime as runtime_module
-from agent_memory.answer_review import HISTORICAL_SUGGESTION_BOUNDARY, AnswerReviewer
-from agent_memory.context_views import context_view, memory_content, memory_use, recall_context_view
-from agent_memory.ontology import CORE_REGISTRY
-from agent_memory.runtime import (
+from membrain import answer_review as answer_review_module
+from membrain import cognition
+from membrain import runtime as runtime_module
+from membrain.answer_review import HISTORICAL_SUGGESTION_BOUNDARY, AnswerReviewer
+from membrain.context_views import context_view, memory_content, memory_use, recall_context_view
+from membrain.ontology import CORE_REGISTRY
+from membrain.runtime import (
     MEMORY_CONSUMPTION_INSTRUCTIONS,
     MEMORY_CONSUMPTION_VERSION,
     BrainRuntime,

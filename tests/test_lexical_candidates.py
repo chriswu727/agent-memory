@@ -6,13 +6,13 @@ from psycopg.types.json import Jsonb
 from test_candidates import candidates as candidates
 from test_candidates import key
 
-from agent_memory.lexical_candidates import (
+from membrain.lexical_candidates import (
     MAX_QUERY_TERMS,
     LexicalScorer,
     lexical_rows,
     passage_score,
 )
-from agent_memory.service import _vector
+from membrain.service import _vector
 
 
 class RecordingConnection:
@@ -30,7 +30,7 @@ class RecordingConnection:
 def test_repeated_representations_of_one_source_do_not_change_topic_frequency():
     from test_cognition import event
 
-    from agent_memory import cognition
+    from membrain import cognition
 
     first = cognition.extract_event(event("The blue map belongs to Mara."))[0]
     other = cognition.extract_event(event("The green cup belongs to Leo.", 2))[0]
@@ -63,7 +63,7 @@ def test_character_only_cues_remain_reachable_when_spread_across_passages():
     ("workshop 2.5", "1. The workshop starts at 2.5 hours.\n2. Bring a notebook."),
 ])
 def test_passage_score_retains_conditions_multilingual_cues_and_decimal_boundaries(query, text):
-    from agent_memory import cognition
+    from membrain import cognition
 
     assert passage_score(query, text) == cognition._lexical_score(query, text)
 

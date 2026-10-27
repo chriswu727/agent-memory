@@ -7,7 +7,7 @@ from typing import Any, Literal
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from agent_memory.client import (
+from membrain.client import (
     MemoryClient,
     default_budget,
     integration_capabilities,
@@ -24,7 +24,7 @@ def create_server(client: MemoryClient) -> FastMCP:
     if not client.brain_id:
         raise ValueError("MCP requires a configured brain_id")
     server = FastMCP(
-        "Agent Memory",
+        "memBrain",
         instructions=(
             "Memory tools operate only in the configured brain using process credentials. "
             "They do not capture chat history automatically or control host compaction. "

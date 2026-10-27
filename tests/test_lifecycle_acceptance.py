@@ -10,7 +10,7 @@ import pytest
 from test_memory_lifecycle_evaluation import evaluation as evaluation
 from test_memory_lifecycle_evaluation import no_live_access, trial_fixture
 
-from agent_memory.runtime import ModelRequest, TurnResult
+from membrain.runtime import ModelRequest, TurnResult
 
 
 def test_acceptance_plan_is_fixed_memory_only_without_review_or_live_access(
@@ -82,7 +82,7 @@ def acceptance_trial(evaluation, tmp_path):
 
 
 def test_acceptance_constructs_no_reviewer_and_records_no_fictitious_approval(evaluation, tmp_path, monkeypatch):
-    import agent_memory.answer_review as module
+    import membrain.answer_review as module
 
     trial = acceptance_trial(evaluation, tmp_path)
     monkeypatch.setattr(module, "AnswerReviewer", lambda *a, **kw: pytest.fail("No answer reviewer"))

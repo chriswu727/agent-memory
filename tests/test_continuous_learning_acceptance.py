@@ -12,18 +12,18 @@ from test_learning import learning as learning
 from test_learning_windows import jobs
 from test_semantic import claim, encoded, proposals, reference, verifier
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.history_attention import POLICY as ATTENTION_POLICY
-from agent_memory.history_attention import model_manifest
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
-from agent_memory.learning_packages import integration_package
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.service import MemoryService
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.history_attention import POLICY as ATTENTION_POLICY
+from membrain.history_attention import model_manifest
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
+from membrain.learning_packages import integration_package
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.service import MemoryService
 
 pytestmark = pytest.mark.integration
 
