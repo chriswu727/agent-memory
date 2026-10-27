@@ -117,6 +117,11 @@ def database_stream(profile, path, *, snapshot=None, restore=False, max_bytes=64
         if not isinstance(snapshot, str) or not snapshot or any(char not in '0123456789ABCDEFabcdef-' for char in snapshot):
             raise BackupError('backup_invalid')
         arguments.append('--snapshot=' + snapshot)
-    command, environment = _compose_invocation(profile, *arguments)
+    if profile.database_engine == 'embedded':
+        from .embedded_database import client_command
+
+        command, environment = client_command(profile, *arguments[3:])
+    else:
+        command, environment = _compose_invocation(profile, *arguments)
     return stream_process(command, environment, path, write=not restore,
                           max_bytes=max_bytes, timeout_seconds=timeout_seconds)

@@ -189,6 +189,7 @@ class DesktopProfile:
     tenant_id: str
     principal_id: str
     cognition: dict | None = field(default=None, repr=False)
+    database_engine: str = "docker"
 
     @property
     def base_url(self) -> str:
@@ -259,8 +260,11 @@ def _cognition(value) -> dict | None:
 
 def _validate(document, directory: Path) -> DesktopProfile:
     fields = {field.name for field in DesktopProfile.__dataclass_fields__.values()} - {"directory"}
-    if not isinstance(document, dict) or set(document) != fields | {"version"}:
+    optional = {"database_engine"}
+    if not isinstance(document, dict) or not (fields - optional) | {"version"} <= set(document) <= fields | {"version"}:
         raise LocalProfileError("Profile is incomplete or contains unknown fields; restore its original configuration.")
+    if document.get("database_engine", "docker") not in ("docker", "embedded"):
+        raise LocalProfileError("Profile database engine must be docker or embedded.")
     if type(document["version"]) is not int or document["version"] != PROFILE_VERSION:
         raise LocalProfileError("Profile version is unsupported.")
     for name in ("installation_id", "brain_id", "tenant_id", "principal_id"):
@@ -285,7 +289,7 @@ def _validate(document, directory: Path) -> DesktopProfile:
             raise LocalProfileError("Profile credentials are missing or invalid; restore its original configuration.")
         if name == "api_key" and any(not 33 <= ord(character) <= 126 for character in value):
             raise LocalProfileError("Profile API credential must contain only visible ASCII characters.")
-    values = {key: document[key] for key in fields}
+    values = {key: document[key] for key in fields if key in document}
     values["cognition"] = _cognition(values["cognition"])
     return DesktopProfile(directory=directory, **values)
 
@@ -324,6 +328,8 @@ def load_profile(directory: Path | None = None) -> DesktopProfile:
 
 def _save(profile: DesktopProfile) -> None:
     document = {name: getattr(profile, name) for name in DesktopProfile.__dataclass_fields__ if name != "directory"}
+    if profile.database_engine == "docker":
+        del document["database_engine"]  # Keep profiles written before engine selection byte-compatible.
     document["version"] = PROFILE_VERSION
     _validate(document, profile.directory)
     destination = profile.directory / PROFILE_FILE
@@ -371,7 +377,10 @@ def _available_port(requested: int | None, preferred: int, excluded: set[int]) -
 
 def ensure_profile(
     directory: Path | None = None, *, api_port: int | None = None, database_port: int | None = None,
+    database_engine: str = "docker",
 ) -> DesktopProfile:
+    if database_engine not in ("docker", "embedded"):
+        raise LocalProfileError("Database engine must be docker or embedded.")
     for port in (api_port, database_port):
         if port is not None and (type(port) is not int or not 1024 <= port <= 65535):
             raise LocalProfileError("Requested ports must be integers from 1024 to 65535.")
@@ -393,7 +402,7 @@ def ensure_profile(
             directory=path, installation_id=str(uuid4()), brain_id=str(uuid4()), name="My Agent",
             api_port=api, database_port=database, api_key="am_" + secrets.token_urlsafe(36),
             admin_password=secrets.token_hex(24), app_password=secrets.token_hex(24),
-            tenant_id=str(uuid4()), principal_id=str(uuid4()),
+            tenant_id=str(uuid4()), principal_id=str(uuid4()), database_engine=database_engine,
         )
         _save(profile)
         return profile

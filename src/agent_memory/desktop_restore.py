@@ -53,6 +53,7 @@ def _new_profile(directory, journal, configuration, *, api_port, database_port):
         tenant_id=configuration['tenant_id'], principal_id=configuration['principal_id'], name=configuration['name'],
         cognition=configuration['cognition'], api_port=api, database_port=database,
         api_key='am_' + secrets.token_urlsafe(36), admin_password=secrets.token_hex(24), app_password=secrets.token_hex(24),
+        database_engine=configuration.get('database_engine', 'docker'),
     )
     _save(profile)
     return profile
@@ -108,7 +109,8 @@ def restore(*, backup_path: Path, directory: Path, registry_path: Path, request_
     manifest = verify_bundle(source, registry, max_bytes=max_bytes)
     configuration = read_document(source / 'configuration.json')
     expected = {'installation_id', 'brain_id', 'tenant_id', 'principal_id', 'name', 'cognition', 'chat', 'cognition_policy'}
-    if (not isinstance(configuration, dict) or set(configuration) != expected
+    if (not isinstance(configuration, dict) or not expected <= set(configuration) <= expected | {'database_engine'}
+            or configuration.get('database_engine', 'docker') not in ('docker', 'embedded')
             or configuration['installation_id'] != manifest['source_installation_id']):
         raise BackupError('backup_invalid')
     request_hash = digest([request_id, str(target), str(source), str(authority_path), digest(manifest),
@@ -144,7 +146,7 @@ def restore(*, backup_path: Path, directory: Path, registry_path: Path, request_
         write_document(target / BINDING_FILE, binding)
         write_document(target / MAINTENANCE_FILE, {'operation': 'restore', 'request_hash': request_hash})
         _restore_configuration(profile, configuration)
-        desktop._compose(profile, 'up', '--detach', '--wait', '--wait-timeout', '90')
+        desktop._database_up(profile)
         if not _database_source(profile, manifest):
             database_stream(profile, source / 'database.dump', restore=True, max_bytes=max_bytes,
                             timeout_seconds=timeout_seconds)
@@ -242,7 +244,7 @@ def activate(directory, *, recovery_epoch, backup_id, checkpoint_at, retire_inst
                 (profile.directory / MAINTENANCE_FILE).unlink()
                 sync_directory(profile.directory)
             return recovery_status(profile.directory)
-        desktop._compose(profile, 'up', '--detach', '--wait', '--wait-timeout', '90')
+        desktop._database_up(profile)
         database = Database(profile.database_url, profile.migration_database_url)
         database.check_compatibility(require_current=True)
         principal = Principal(profile.tenant_id, profile.principal_id)

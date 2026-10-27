@@ -121,12 +121,42 @@ def _compose(profile, *arguments: str) -> None:
     command, environment = _compose_invocation(profile, *arguments)
     try:
         result = subprocess.run(command, cwd=profile.directory, env=environment,
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                                 timeout=300, check=False)
     except (OSError, subprocess.TimeoutExpired):
         raise DesktopError("docker_unavailable", "Docker did not respond; open Docker and retry.") from None
     if result.returncode:
-        raise DesktopError("database_start_failed", "Docker could not manage the database. Check Docker, available ports and disk space, then retry.")
+        detail = result.stderr.decode("utf-8", "replace").strip()[-600:]
+        raise DesktopError("database_start_failed", "Docker could not manage the database. Check Docker, available ports and disk space, then retry." + (
+            f" Docker reported:\n{detail}" if detail else ""))
+
+
+def _database_up(profile) -> None:
+    if profile.database_engine != "embedded":
+        _compose(profile, "up", "--detach", "--wait", "--wait-timeout", "90")
+        return
+    from . import embedded_database
+
+    try:
+        embedded_database.start(profile)
+    except embedded_database.EmbeddedDatabaseError as error:
+        raise DesktopError(error.code, str(error)) from None
+    except (OSError, subprocess.SubprocessError):
+        raise DesktopError("database_start_failed", "The embedded database could not be started; data was preserved.") from None
+
+
+def _database_stop(profile) -> None:
+    if profile.database_engine != "embedded":
+        _compose(profile, "stop", "--timeout", "15")
+        return
+    from . import embedded_database
+
+    try:
+        embedded_database.stop(profile)
+    except embedded_database.EmbeddedDatabaseError as error:
+        raise DesktopError(error.code, str(error)) from None
+    except (OSError, subprocess.SubprocessError):
+        raise DesktopError("database_stop_failed", "The embedded database did not confirm shutdown; data was preserved.") from None
 
 
 def _fingerprint(profile, *, settings=None) -> str:
@@ -244,7 +274,7 @@ def _prepare_database(profile) -> None:
 
     if _port_open(profile.database_port):
         _check_database(profile)
-    _compose(profile, "up", "--detach", "--wait", "--wait-timeout", "90")
+    _database_up(profile)
     _check_database(profile)
     try:
         with contextlib.redirect_stdout(io.StringIO()):
@@ -330,7 +360,7 @@ def stop(directory: Path | None = None) -> dict:
         elif _port_open(profile.api_port):
             raise DesktopError("port_conflict", "The API port is not this installation; no process was stopped.")
         _wait_stopped(profile)
-        _compose(profile, "stop", "--timeout", "15")
+        _database_stop(profile)
         return {**_base_status(profile), "ready": False, "state": "stopped",
                 "database": "stopped", "worker": "stopped", "data_preserved": True}
 

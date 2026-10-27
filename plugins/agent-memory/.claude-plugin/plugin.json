@@ -1,0 +1,12 @@
+{
+  "name": "agent-memory",
+  "version": "0.1.0",
+  "description": "Automatic long-term memory across Claude Code sessions: records conversations locally, recalls matching earlier records before replies, and adds memory tools. No Docker or extra API key.",
+  "author": {
+    "name": "chriswu727"
+  },
+  "homepage": "https://github.com/chriswu727/agent-memory",
+  "repository": "https://github.com/chriswu727/agent-memory",
+  "license": "MIT",
+  "keywords": ["memory", "long-term memory", "recall", "mcp"]
+}
