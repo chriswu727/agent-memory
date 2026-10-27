@@ -1,5 +1,5 @@
 {
-  "status": "local_repairs_verified_remaining_diagnostic_pending",
+  "status": "local_repairs_verified_diagnostic_closed_publication_failed",
   "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
   "local_checks": {
     "passed": true,
@@ -387,8 +387,147 @@
     "source_unchanged": true
   },
   "failed_predecessor": "v1-2026-10-26-coherent-recall.json",
-  "new_paid_calls": 0,
+  "new_paid_calls": 14,
   "remaining_plan_sha256": "566d2d586d137e731a76de83c8ee74e1860a6d383bb74de8ab02984aec999d4d",
   "limits": "Candidate quota counts eligible source units; final versions <=128, lexical scan <=512, dependencies <=256, context budgets unchanged. No source edit or new model call for retrieval.",
-  "acceptance": "G4 remains failed; original caption and regular-week cases are not credited. A diagnostic continuation cannot lower that gate."
+  "acceptance": "G4 remains failed; original caption and regular-week cases are not credited. A diagnostic continuation cannot lower that gate.",
+  "source_commit": "d05bc3839bb5728f65ff89af57a27107173507f7",
+  "remaining_diagnostic": {
+    "status": "closed_by_bound_review",
+    "execution_journal_terminal_state": "paused",
+    "continue_permitted": false,
+    "plan_sha256": "566d2d586d137e731a76de83c8ee74e1860a6d383bb74de8ab02984aec999d4d",
+    "source_head_sha256": "62a00579d71f6b1c61eb54264292ed7cbec21bd1a709fd067dbf0cf554d7321a",
+    "new_inputs_executed": 3,
+    "new_sessions_completed": 2,
+    "unexecuted_remaining_inputs": 8,
+    "whole_answer_passes": 3,
+    "derived_versions_reviewed": 10,
+    "derived_version_failures": 1,
+    "episode_organizations_reviewed": 3,
+    "episode_organization_failures": 1,
+    "model_created_short_views": 0,
+    "new_paid_calls": 14,
+    "new_known_tokens": 163822,
+    "cumulative_usage": {
+      "completed_calls": 66,
+      "reserved_calls": 66,
+      "reserved_output_tokens": 863232,
+      "usage_confirmed_calls": 66,
+      "usage_totals": {
+        "completion_tokens": 267193,
+        "prompt_cache_hit_tokens": 143744,
+        "prompt_cache_miss_tokens": 323152,
+        "prompt_tokens": 466896,
+        "total_tokens": 734089
+      },
+      "usage_unknown_calls": 0
+    },
+    "cumulative_counts": {
+      "delivered": 15,
+      "learning_complete": 14,
+      "sessions_complete": 8
+    },
+    "actual_timing": {
+      "actual_elapsed_seconds": 977.802623,
+      "completed_invocation_seconds": 977.7939181660768,
+      "between_invocation_seconds": []
+    },
+    "independent_review": {
+      "plan_sha256": "566d2d586d137e731a76de83c8ee74e1860a6d383bb74de8ab02984aec999d4d",
+      "source_head_sha256": "62a00579d71f6b1c61eb54264292ed7cbec21bd1a709fd067dbf0cf554d7321a",
+      "stage": 8,
+      "continue_permitted": false,
+      "diagnostic_closed": true,
+      "verdict": "failed_publication_actor_assignment",
+      "answers_reviewed": [
+        "class-moved-again",
+        "booklet-status",
+        "booklet-casual"
+      ],
+      "whole_answer_review": {
+        "class-moved-again": "Pass: Monday repair cafe and Wednesday ceramics kept clear, Thursday available, single Saturday exception bounded. Thursday as usual refers to this newly suggested rhythm, not a proved past habit. Proposed slots are not user-adopted commitments.",
+        "booklet-status": "Pass: Sam exported, user checked captions, Priya uploaded, receipt explicitly unconfirmed; no brother conflation.",
+        "booklet-casual": "Pass as a draft in the user voice. No re-teaching/correction input was needed."
+      },
+      "derived_memory_review": {
+        "new_versions": 10,
+        "critical_failures": [
+          {
+            "memory_id": "semantic-445e4297bf7ba7e06a1b22939253af0f",
+            "revision": 1,
+            "defect": "Paraphrase resolves I inside the assistant-authored user-voice draft as the assistant, falsely making the assistant the caption checker and recipient awaiting confirmation. The source quote does not establish those referents."
+          }
+        ],
+        "other_new_versions": "Nine new derived versions retain source attribution, proposal modality and temporal bounds. No invented completion or permanent adoption of proposed slots found.",
+        "short_views": 0
+      },
+      "episode_review": {
+        "new_organizations": 3,
+        "critical_failures": [
+          {
+            "proposal_id": "episode-morgan-booklet-return-casual-revision",
+            "defect": "Identifies the assistant as caption checker by resolving quoted draft I as the source-message speaker. Existing participant_actions and other fidelity verdicts incorrectly all supports."
+          }
+        ],
+        "other_organizations": "Two broad interaction groupings preserve request/reply scope."
+      },
+      "mechanical_checks": "Passed; these checks cannot establish semantic fidelity.",
+      "usage": {
+        "completed_calls": 66,
+        "reserved_calls": 66,
+        "reserved_output_tokens": 863232,
+        "usage_confirmed_calls": 66,
+        "usage_totals": {
+          "completion_tokens": 267193,
+          "prompt_cache_hit_tokens": 143744,
+          "prompt_cache_miss_tokens": 323152,
+          "prompt_tokens": 466896,
+          "total_tokens": 734089
+        },
+        "usage_unknown_calls": 0
+      },
+      "new_calls": 14,
+      "new_known_tokens": 163822,
+      "unexecuted_remaining_inputs": 8,
+      "root_cause": "Local encoding sees only the current revision request and its assistant reply, without the earlier explicit draft-in-my-voice request. The exact reply has a quotation boundary, but both proposal and verification normalize the quoted first person to assistant despite the existing general instruction. Episode organization has the same defect. No source lost; this is nested-speech interpretation and verifier false acceptance.",
+      "limits": [
+        "Original G4 remains failed.",
+        "Do not continue under this plan, regenerate previous inputs, repair old records or retry the cancelled uncertain operation.",
+        "No paid call is in flight. Original journal remains paused at its terminal review checkpoint; closure is the bound independent review.",
+        "No claims about Mara birthday recall or other eight unexecuted inputs."
+      ]
+    },
+    "mechanical_checks": {
+      "plan_sha256": "566d2d586d137e731a76de83c8ee74e1860a6d383bb74de8ab02984aec999d4d",
+      "source_head_sha256": "62a00579d71f6b1c61eb54264292ed7cbec21bd1a709fd067dbf0cf554d7321a",
+      "stage": 8,
+      "derived_versions": 46,
+      "episode_organizations": 3,
+      "reference_checks": 360,
+      "accepted_ordinary_verdicts_checked": 10,
+      "short_views": 0,
+      "usage": {
+        "completed_calls": 66,
+        "reserved_calls": 66,
+        "reserved_output_tokens": 863232,
+        "usage_confirmed_calls": 66,
+        "usage_totals": {
+          "completion_tokens": 267193,
+          "prompt_cache_hit_tokens": 143744,
+          "prompt_cache_miss_tokens": 323152,
+          "prompt_tokens": 466896,
+          "total_tokens": 734089
+        },
+        "usage_unknown_calls": 0
+      },
+      "mechanical_checks": "passed",
+      "semantic_review": "required_separately"
+    },
+    "aging_assessed": false,
+    "original_G4": "failed",
+    "later_mara_note_and_other_inputs": "unexecuted_no_credit",
+    "next_repair": "Source-bound distinction between the source message speaker and the narrator inside a draft/quotation; unresolved narrator cannot be assigned to the assistant. Not implemented or validated."
+  },
+  "raw_evidence_manifest": "v1-2026-10-26-source-capsules-evidence.json"
 }
