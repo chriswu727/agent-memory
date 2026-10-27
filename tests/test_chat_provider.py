@@ -534,12 +534,15 @@ def test_default_transport_disables_environment_and_retries(monkeypatch):
         calls.append(kwargs)
         return httpx.MockTransport(lambda _: httpx.Response(200, json=completion()))
 
+    for name in ("HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy", "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE"):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(httpx, "HTTPTransport", transport)
     with ChatCompletionsGenerator("https://provider.example", "key", "model") as generate:
         assert generate._http.trust_env is False
         assert generate._http.follow_redirects is False
         generate(REQUEST)
-    assert calls == [{"retries": 0, "trust_env": False}]
+    # Only the standard proxy and CA variables are honoured (see test_outbound); none are set here.
+    assert calls == [{"retries": 0, "trust_env": False, "proxy": None, "verify": True}]
 
 
 def test_real_local_http_ignores_environment_proxy_and_uses_the_expected_path(monkeypatch):

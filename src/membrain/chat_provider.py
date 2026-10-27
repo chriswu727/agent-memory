@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import httpx
 
+from .outbound import provider_transport
 from .runtime import ModelRequest
 
 _ERROR_CODES = frozenset({
@@ -185,9 +186,7 @@ class ChatCompletionsGenerator:
         self._http = httpx.Client(
             base_url=str(url).rstrip("/") + "/",
             headers={"Authorization": f"Bearer {api_key}", "Accept-Encoding": "identity"},
-            transport=transport if transport is not None else httpx.HTTPTransport(
-                retries=0, trust_env=False,
-            ),
+            transport=transport if transport is not None else provider_transport(str(url)),
             follow_redirects=False, trust_env=False,
         )
 

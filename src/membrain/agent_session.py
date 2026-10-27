@@ -257,11 +257,17 @@ class AgentSession:
             raise SessionError("invalid_message") from None
         with self._operation():
             pending = _read_pending(self._path, self._identity)
-            new_pending = pending is None
             fingerprint = digest({"message_id": message_id, "text": text})
-            if pending:
-                if pending["message_id"] != message_id or pending["input_fingerprint"] != fingerprint:
+            if pending and (pending["message_id"] != message_id or pending["input_fingerprint"] != fingerprint):
+                row = self._existing_turn(pending, allow_missing=True)
+                if row is None or row.get("stage") != "failed" or row.get("failure_code") != "cancelled":
                     raise SessionError("pending_turn", pending["turn_id"])
+                # The turn was explicitly cancelled, so no answer exists or can be delivered for it; a new
+                # message may start instead of every later message failing on the closed turn.
+                self._clear(pending)
+                pending = None
+            new_pending = pending is None
+            if pending:
                 self._recovery_configuration(pending, self._existing_turn(pending, allow_missing=True))
             else:
                 pending = {

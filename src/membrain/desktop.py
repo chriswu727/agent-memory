@@ -407,9 +407,12 @@ class LocalSupervisor:
             self.settings = profile.settings()
             self.configuration = _fingerprint(profile, settings=self.settings)
 
-    def log(self, event):
-        self.logger.info(json.dumps({"time": round(time.time(), 3), "event": event,
-                                    "instance_id": self.instance_id}))
+    def log(self, event, error=None):
+        record = {"time": round(time.time(), 3), "event": event, "instance_id": self.instance_id}
+        if error is not None:
+            # The class and error code identify the cause; exception text may contain memory content.
+            record["error"] = {"type": type(error).__name__, "code": getattr(error, "code", None)}
+        self.logger.info(json.dumps(record))
 
     def work(self):
         try:
@@ -424,13 +427,13 @@ class LocalSupervisor:
                             service.work_once(principal, brain["id"])
                         self.last_progress = time.monotonic()
                         self.worker_state = "ready"
-                    except Exception:
+                    except Exception as error:
                         self.worker_state = "retrying"
-                        self.log("worker_iteration_failed")
+                        self.log("worker_iteration_failed", error)
                     self.stopped.wait(1)
-        except Exception:
+        except Exception as error:
             self.worker_state = "failed"
-            self.log("worker_failed")
+            self.log("worker_failed", error)
         finally:
             if self.stopped.is_set():
                 self.worker_state = "stopped"

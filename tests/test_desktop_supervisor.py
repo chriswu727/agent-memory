@@ -85,7 +85,7 @@ def test_worker_failure_records_fixed_code_and_stays_not_ready(supervisor, monke
     with caplog.at_level(logging.INFO):
         supervisor.work()
     assert supervisor.worker_state == "failed"
-    assert "worker_failed" in caplog.text
+    assert "worker_failed" in caplog.text and '"type": "RuntimeError"' in caplog.text
     assert "secret conversation" not in caplog.text
 
 
