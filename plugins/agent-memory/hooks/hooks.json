@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v uvx >/dev/null 2>&1 && uvx --offline --python 3.12 --from agent-memory-runtime agent-memory plugin hook user-prompt 2>/dev/null; true",
+            "command": "input=$(cat); if command -v uvx >/dev/null 2>&1 && printf '%s' \"$input\" | uvx --offline --python 3.12 --from agent-memory-runtime agent-memory plugin hook user-prompt 2>/dev/null; then :; elif [ -n \"$CLAUDE_PLUGIN_DATA\" ]; then mkdir -p \"$CLAUDE_PLUGIN_DATA\" && { printf '%s' \"$input\" | tr -d '\\n'; echo; } >> \"$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl\"; fi; true",
             "timeout": 15
           }
         ]
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v uvx >/dev/null 2>&1 && uvx --offline --python 3.12 --from agent-memory-runtime agent-memory plugin hook stop 2>/dev/null; true",
+            "command": "input=$(cat); if command -v uvx >/dev/null 2>&1 && printf '%s' \"$input\" | uvx --offline --python 3.12 --from agent-memory-runtime agent-memory plugin hook stop 2>/dev/null; then :; elif [ -n \"$CLAUDE_PLUGIN_DATA\" ]; then mkdir -p \"$CLAUDE_PLUGIN_DATA\" && { printf '%s' \"$input\" | tr -d '\\n'; echo; } >> \"$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl\"; fi; true",
             "timeout": 10
           }
         ]
