@@ -6,8 +6,8 @@ from dataclasses import replace
 import httpx
 import pytest
 
-from agent_memory import answer_review as answer_review_module
-from agent_memory.answer_review import (
+from membrain import answer_review as answer_review_module
+from membrain.answer_review import (
     ANSWER_REVIEW_VERSION,
     CHECKS,
     HISTORICAL_SUGGESTION_BOUNDARY,
@@ -15,9 +15,9 @@ from agent_memory.answer_review import (
     AnswerReviewError,
     AnswerReviewPolicy,
 )
-from agent_memory.answer_review_provider import ChatCompletionsAnswerReviewProvider
-from agent_memory.helpers import digest
-from agent_memory.runtime import ModelRequest
+from membrain.answer_review_provider import ChatCompletionsAnswerReviewProvider
+from membrain.helpers import digest
+from membrain.runtime import ModelRequest
 
 
 def assessment(**checks):

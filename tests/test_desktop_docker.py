@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory import desktop
-from agent_memory.local_profile import ensure_profile
+from membrain import desktop
+from membrain.local_profile import ensure_profile
 
 
 @pytest.mark.parametrize("endpoint", [
@@ -129,7 +129,7 @@ def test_compose_uses_packaged_template_and_private_stable_profile(tmp_path, mon
     assert profile.admin_password not in json.dumps(arguments)
     assert profile.app_password not in json.dumps(arguments)
     assert (profile.directory / "compose.env").read_text() == ""
-    template = files("agent_memory").joinpath("resources/desktop-compose.yaml").read_text()
+    template = files("membrain").joinpath("resources/desktop-compose.yaml").read_text()
     assert (profile.directory / "compose.yaml").read_text() == template
     assert "memory_database:/var/lib/postgresql/data" in template
     assert "127.0.0.1:${MEMORY_DESKTOP_DATABASE_PORT" in template

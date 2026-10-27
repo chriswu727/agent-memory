@@ -45,14 +45,23 @@ class LocalProfileBusy(LocalProfileError):
     pass
 
 
-def default_profile_directory() -> Path:
+def _platform_data_directory(title: str, slug: str) -> Path:
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Agent Memory"
+        return Path.home() / "Library" / "Application Support" / title
     if sys.platform == "win32":
         root = os.environ.get("LOCALAPPDATA")
-        return (Path(root) if root and Path(root).is_absolute() else Path.home() / "AppData" / "Local") / "Agent Memory"
+        return (Path(root) if root and Path(root).is_absolute() else Path.home() / "AppData" / "Local") / title
     root = os.environ.get("XDG_DATA_HOME")
-    return (Path(root) if root and Path(root).is_absolute() else Path.home() / ".local" / "share") / "agent-memory"
+    return (Path(root) if root and Path(root).is_absolute() else Path.home() / ".local" / "share") / slug
+
+
+def default_profile_directory() -> Path:
+    current = _platform_data_directory("memBrain", "membrain")
+    # Installations created before the memBrain rename keep their existing brain.
+    legacy = _platform_data_directory("Agent Memory", "agent-memory")
+    if not current.exists() and (legacy / PROFILE_FILE).exists():
+        return legacy
+    return current
 
 
 def _directory(directory: Path | None) -> Path:

@@ -10,12 +10,12 @@ from test_learning_allocations import insert, params, replan_child, reserve, row
 from test_learning_recovery import operation_rows, retry, stopped_window
 from test_learning_windows import claim, execute
 
-from agent_memory.helpers import DomainError, digest
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import freeze_input
-from agent_memory.learning_windows import recover_windows
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.service import MemoryService
+from membrain.helpers import DomainError, digest
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import freeze_input
+from membrain.learning_windows import recover_windows
+from membrain.semantic import SemanticProcessor
+from membrain.service import MemoryService
 
 pytestmark = pytest.mark.integration
 

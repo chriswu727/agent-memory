@@ -5,12 +5,12 @@ from threading import Barrier
 
 import pytest
 
-from agent_memory.config import Settings
-from agent_memory.contracts import CONTRACT_VERSION
-from agent_memory.helpers import DomainError, Principal, digest, now, uid
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
-from agent_memory.turns import TurnStore
+from membrain.config import Settings
+from membrain.contracts import CONTRACT_VERSION
+from membrain.helpers import DomainError, Principal, digest, now, uid
+from membrain.service import MemoryService
+from membrain.storage import Database
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 

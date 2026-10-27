@@ -12,11 +12,11 @@ from test_learning_recovery import seed_legacy_window
 from test_learning_windows import claim as claim_job
 from test_semantic import batch, encoded, episode, proposals, run, situation, verifier
 
-from agent_memory.helpers import DomainError
-from agent_memory.learning import LearningEngine, _learning_inputs
-from agent_memory.learning_windows import SAMPLING_RESERVE_BYTES, select_window
-from agent_memory.neighborhood import _Incomplete, _Selector
-from agent_memory.semantic import (
+from membrain.helpers import DomainError
+from membrain.learning import LearningEngine, _learning_inputs
+from membrain.learning_windows import SAMPLING_RESERVE_BYTES, select_window
+from membrain.neighborhood import _Incomplete, _Selector
+from membrain.semantic import (
     COMMUNICATION_INTENT_INPUT_VERSION,
     EPISODE_SCOPE_INPUT_VERSION,
     LATEST_INPUT_CONTRACT_VERSION,
@@ -27,7 +27,7 @@ from agent_memory.semantic import (
     proposal_data,
     request_payload,
 )
-from agent_memory.service import MemoryService
+from membrain.service import MemoryService
 
 
 def ref(source):

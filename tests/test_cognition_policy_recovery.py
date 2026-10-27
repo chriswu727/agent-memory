@@ -12,16 +12,16 @@ from test_semantic import claim as proposed_claim
 from test_semantic import encoded, proposals, verifier
 from test_semantic_provider import completion
 
-from agent_memory import desktop_cli, semantic_provider
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.cognition_config import CognitionPolicyConfiguration, save_cognition_policy
-from agent_memory.config import configured_service
-from agent_memory.helpers import uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.local_profile import configure_cognition, ensure_profile, load_profile
-from agent_memory.runtime_client import RuntimeClient
+from membrain import desktop_cli, semantic_provider
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.cognition_config import CognitionPolicyConfiguration, save_cognition_policy
+from membrain.config import configured_service
+from membrain.helpers import uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.local_profile import configure_cognition, ensure_profile, load_profile
+from membrain.runtime_client import RuntimeClient
 
 pytestmark = pytest.mark.integration
 

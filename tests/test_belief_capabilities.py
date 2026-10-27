@@ -14,14 +14,14 @@ from test_episode_fidelity import process as episode_process
 from test_episode_source_views import WRONG_LABEL, continuation
 from test_semantic import batch, claim, encoded, proposals, reference, run
 
-from agent_memory import cognition
-from agent_memory.belief_capabilities import (
+from membrain import cognition
+from membrain.belief_capabilities import (
     CAPABILITY_INSTRUCTIONS,
     RELATION_CAPABILITIES_INPUT_VERSION,
 )
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, digest
-from agent_memory.semantic import (
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, digest
+from membrain.semantic import (
     EPISODE_SOURCE_VIEW_INPUT_VERSION,
     CognitiveBatch,
     SemanticPolicy,

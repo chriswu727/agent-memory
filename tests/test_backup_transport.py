@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory.backup_transport import BackupError, stream_process
-from agent_memory.local_profile import LocalProfileError
+from membrain.backup_transport import BackupError, stream_process
+from membrain.local_profile import LocalProfileError
 
 
 def test_streamed_dump_and_restore_preserve_large_binary_without_buffering_the_file(tmp_path):
@@ -69,7 +69,7 @@ def test_restore_failure_is_bounded_and_preserves_input(tmp_path, maximum, timeo
                                       for kind in ('symlink', 'hardlink', 'directory', 'missing')
                                       if not (write and kind == 'missing')])
 def test_unsafe_file_identity_is_rejected_before_subprocess(tmp_path, monkeypatch, kind, write):
-    from agent_memory import backup_transport
+    from membrain import backup_transport
 
     original = tmp_path / 'original'
     original.write_bytes(b'preserved')
@@ -101,7 +101,7 @@ def test_dump_and_restore_use_private_files(tmp_path):
 
 @pytest.mark.parametrize('restore', [False, True])
 def test_database_tools_use_fixed_transaction_and_snapshot_arguments(tmp_path, monkeypatch, restore):
-    from agent_memory import backup_transport, desktop
+    from membrain import backup_transport, desktop
 
     invocations = []
     profile = SimpleNamespace(installation_id='test')
@@ -138,7 +138,7 @@ def test_database_tools_use_fixed_transaction_and_snapshot_arguments(tmp_path, m
 
 @pytest.mark.parametrize('snapshot', ['', '--file=private', '1; exit', '1\n2', True])
 def test_snapshot_arguments_cannot_add_options_or_shell_code(tmp_path, monkeypatch, snapshot):
-    from agent_memory import backup_transport, desktop
+    from membrain import backup_transport, desktop
 
     monkeypatch.setattr(desktop, '_compose_invocation', lambda *a, **k: pytest.fail('No command expected'))
     with pytest.raises(BackupError) as error:
@@ -152,7 +152,7 @@ def test_restore_rejects_fifo_before_open_can_wait_for_a_writer(tmp_path):
     os.mkfifo(path, 0o600)
     script = (
         'import os,sys; from pathlib import Path; '
-        'from agent_memory.backup_transport import stream_process; '
+        'from membrain.backup_transport import stream_process; '
         'stream_process([sys.executable,"-c",""],os.environ.copy(),Path(sys.argv[1]),'
         'write=False,max_bytes=100,timeout_seconds=1)'
     )

@@ -6,15 +6,15 @@ import pytest
 from test_learning import learning as learning
 from test_turns import turns as turns
 
-from agent_memory.delivery_receipts import (
+from membrain.delivery_receipts import (
     confirmed_delivery_receipt,
     failed_receipt,
     receipt_for,
     recorded_delivery_receipt,
     sanitize_delivery_receipt,
 )
-from agent_memory.helpers import DomainError, digest, now, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
+from membrain.helpers import DomainError, digest, now, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
 
 
 def authorized_row():

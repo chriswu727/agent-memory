@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from agent_memory.ontology import CORE_REGISTRY, ConceptDefinition, PredicateDefinition, Registry
+from membrain.ontology import CORE_REGISTRY, ConceptDefinition, PredicateDefinition, Registry
 
 
 def test_registry_and_definitions_are_immutable_and_defensively_copied():

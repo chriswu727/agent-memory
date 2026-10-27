@@ -9,10 +9,10 @@ import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from agent_memory import desktop
-from agent_memory.desktop_connection import mcp_config, open_client
-from agent_memory.local_profile import ensure_profile, load_profile
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
+from membrain import desktop
+from membrain.desktop_connection import mcp_config, open_client
+from membrain.local_profile import ensure_profile, load_profile
+from membrain.runtime import BrainRuntime, DeliveryReceipt
 
 pytestmark = [pytest.mark.integration, pytest.mark.skipif(
     os.environ.get("MEMORY_DESKTOP_E2E") != "1",
@@ -64,7 +64,7 @@ def test_cold_start_concurrent_connect_restart_and_mcp_preserve_one_brain(tmp_pa
         assert len(generated) == len(delivered) == 1
         assert desktop.stop(profile.directory)["data_preserved"]
         assert desktop.status(profile.directory)["state"] == "stopped"
-        configuration = mcp_config(profile.directory)["mcpServers"]["agent-memory"]
+        configuration = mcp_config(profile.directory)["mcpServers"]["membrain"]
         assert profile.api_key not in json.dumps(configuration)
 
         async def connect_mcp():
@@ -72,7 +72,7 @@ def test_cold_start_concurrent_connect_restart_and_mcp_preserve_one_brain(tmp_pa
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as session:
                     initialized = await session.initialize()
-                    assert initialized.serverInfo.name == "Agent Memory"
+                    assert initialized.serverInfo.name == "memBrain"
                     response = await session.call_tool("memory_capabilities", {})
                     assert not response.isError
                     capabilities = response.structuredContent

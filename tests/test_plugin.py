@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from agent_memory import desktop, embedded_database, plugin
-from agent_memory.local_profile import load_profile
+from membrain import desktop, embedded_database, plugin
+from membrain.local_profile import load_profile
 
 
 def _memory(statement, conversation="earlier", recorded="2026-10-03T08:00:00Z", world="real_world"):
@@ -25,7 +25,7 @@ def test_rendered_context_is_attributed_dated_and_excludes_the_current_conversat
         _memory("user user (direct_statement): The dragon guards the bridge.", world="roleplay"),
     ), current_conversation="current")
     lines = context.splitlines()
-    assert lines[0] == "<agent-memory>" and lines[-1] == "</agent-memory>"
+    assert lines[0] == "<membrain-memory>" and lines[-1] == "</membrain-memory>"
     assert "- [2026-10-03 · user said] My left knee cannot take consecutive run days." in lines
     assert "- [2026-10-04 · assistant said] I suggested Sunday long runs." in lines
     assert "- [2026-10-03 · user said, roleplay] The dragon guards the bridge." in lines
@@ -117,7 +117,7 @@ def test_hooks_carry_memory_across_sessions_on_an_embedded_installation(tmp_path
 
     try:
         plugin.start(directory)
-        assert "Agent Memory is active" in hook("session-start", {"session_id": "a"})
+        assert "memBrain memory is active" in hook("session-start", {"session_id": "a"})
         assert hook("user-prompt", {"session_id": "a", "prompt_id": "1",
                                     "prompt": "My physio says my left knee cannot handle consecutive run days."}) is None
         hook("stop", {"session_id": "a", "prompt_id": "1", "last_assistant_message": "I will plan rest days."})
@@ -135,7 +135,7 @@ def test_hooks_carry_memory_across_sessions_on_an_embedded_installation(tmp_path
 def _hook_command(event):
     from pathlib import Path
 
-    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "agent-memory" / "hooks" / "hooks.json").read_text())
+    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "membrain" / "hooks" / "hooks.json").read_text())
     return hooks["hooks"][event][0]["hooks"][0]["command"]
 
 

@@ -4,9 +4,9 @@ from types import SimpleNamespace
 import psycopg
 import pytest
 
-from agent_memory import desktop_cli, desktop_recovery
-from agent_memory.local_profile import ensure_profile
-from agent_memory.recovery_profile import MAINTENANCE_FILE, read_document, write_document
+from membrain import desktop_cli, desktop_recovery
+from membrain.local_profile import ensure_profile
+from membrain.recovery_profile import MAINTENANCE_FILE, read_document, write_document
 
 
 def parser():
@@ -36,8 +36,8 @@ def test_recovery_database_errors_are_redacted(monkeypatch, capsys):
 
 
 def test_cancel_backup_only_releases_matching_maintenance_and_preserves_evidence(tmp_path):
-    from agent_memory.backup_transport import BackupError
-    from agent_memory.helpers import uid
+    from membrain.backup_transport import BackupError
+    from membrain.helpers import uid
 
     profile = ensure_profile(tmp_path / 'profile')
     identifier = uid()

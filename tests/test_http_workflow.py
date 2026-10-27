@@ -6,10 +6,10 @@ import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient, default_budget, prepared_context
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, uid
+from membrain.api import create_app
+from membrain.client import MemoryClient, default_budget, prepared_context
+from membrain.config import Settings
+from membrain.helpers import Principal, uid
 
 pytestmark = pytest.mark.integration
 

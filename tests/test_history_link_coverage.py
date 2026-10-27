@@ -3,20 +3,20 @@ import copy
 import pytest
 from jsonschema import Draft202012Validator
 
-from agent_memory.history_semantics import (
+from membrain.history_semantics import (
     HISTORY_ABSTENTIONS,
     LINK_DERIVED_INPUT_VERSION,
     derive_link_decisions,
     integration_coverage,
     validate_decisions,
 )
-from agent_memory.local_semantics import (
+from membrain.local_semantics import (
     HISTORY_INTEGRATION_MODE,
     LINK_DERIVED_INSTRUCTIONS,
     LOCAL_OBSERVATION_MODE,
     bounded_proposal_schema,
 )
-from agent_memory.semantic import PROPOSAL_SCHEMA
+from membrain.semantic import PROPOSAL_SCHEMA
 
 
 def manifest(count=3):

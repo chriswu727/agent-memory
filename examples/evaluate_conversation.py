@@ -13,27 +13,27 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.contracts import validator
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.orientation import ORIENTATION_ROUTE_VERSION
-from agent_memory.runtime import (
+from examples.evaluate_deepseek import Trial, code_fingerprints, save
+from examples.evaluation_host import ChatCompletionsHost, loopback_server
+from examples.evaluation_support import MeteredTransport
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.contracts import validator
+from membrain.helpers import Principal, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.orientation import ORIENTATION_ROUTE_VERSION
+from membrain.runtime import (
     MEMORY_CONSUMPTION_INSTRUCTIONS,
     BrainRuntime,
     DeliveryReceipt,
     RuntimePolicy,
 )
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
-from examples.evaluate_deepseek import Trial, code_fingerprints, save
-from examples.evaluation_host import ChatCompletionsHost, loopback_server
-from examples.evaluation_support import MeteredTransport
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 MODEL = "deepseek-v4-pro"
 MAX_CALLS = 20
@@ -71,9 +71,9 @@ def fingerprints():
     result = code_fingerprints()
     root = Path(__file__).resolve().parents[1]
     for name in ("examples/evaluate_conversation.py", "examples/evaluation_host.py",
-                 "src/agent_memory/runtime.py", "src/agent_memory/runtime_client.py",
-                 "src/agent_memory/turns.py", "src/agent_memory/source_candidates.py",
-                 "src/agent_memory/orientation.py"):
+                 "src/membrain/runtime.py", "src/membrain/runtime_client.py",
+                 "src/membrain/turns.py", "src/membrain/source_candidates.py",
+                 "src/membrain/orientation.py"):
         result[name] = digest((root / name).read_text())
     return result
 

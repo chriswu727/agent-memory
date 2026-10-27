@@ -6,7 +6,7 @@ import pytest
 from test_continuous_learning_acceptance import NOTEBOOK, GroundedCognition, restarted_service
 from test_learning import learning as learning
 
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
 
 _SPEC = importlib.util.spec_from_file_location(
     "longitudinal_learning", Path(__file__).parents[1] / "examples" / "longitudinal_learning.py",

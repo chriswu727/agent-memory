@@ -24,29 +24,29 @@ from test_learning_allocations import insert, params, reserve, row
 from test_learning_windows import claim, execute
 from test_learning_windows import jobs as learning_jobs
 
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.history_attention import POLICY as ATTENTION_POLICY
-from agent_memory.history_attention import model_manifest
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import (
+from membrain.contracts import validate
+from membrain.helpers import DomainError, digest, uid
+from membrain.history_attention import POLICY as ATTENTION_POLICY
+from membrain.history_attention import model_manifest
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import (
     HISTORY_PHASE,
     allocation_metadata,
     freeze_input,
     phase,
 )
-from agent_memory.learning_funding import (
+from membrain.learning_funding import (
     PERMISSION_VERSION,
     funding_origin,
     funding_permission,
     ordinary_root_metadata,
     permitted_target,
 )
-from agent_memory.learning_integration import reconsider
-from agent_memory.learning_phase_monitor import sanitize_phase_metadata
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
-from agent_memory.runtime_client import RuntimeClient
+from membrain.learning_integration import reconsider
+from membrain.learning_phase_monitor import sanitize_phase_metadata
+from membrain.runtime import BrainRuntime, DeliveryReceipt
+from membrain.runtime_client import RuntimeClient
 
 
 def scope(brain="brain", branch="main"):

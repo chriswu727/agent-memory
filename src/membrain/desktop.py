@@ -102,7 +102,7 @@ def _compose_invocation(profile, *arguments: str):
     if docker is None:
         raise DesktopError("docker_missing", "Install and open Docker Desktop, then run setup again.")
     compose = profile.directory / "compose.yaml"
-    _private_write(compose, files("agent_memory").joinpath(
+    _private_write(compose, files("membrain").joinpath(
         "resources/desktop-compose.yaml").read_text(encoding="utf-8"))
     environment_file = profile.directory / "compose.env"
     _private_write(environment_file, "")
@@ -293,7 +293,7 @@ def _prepare_database(profile) -> None:
 
 
 def _launch(profile):
-    arguments = [sys.executable, "-m", "agent_memory.cli", "desktop", "_run",
+    arguments = [sys.executable, "-m", "membrain.cli", "desktop", "_run",
                  "--directory", str(profile.directory)]
     options = {"start_new_session": True} if os.name != "nt" else {
         "creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
@@ -384,7 +384,7 @@ def _logger(profile):
     if not path.exists():
         _private_write(path, "")
     _private(path)
-    logger = logging.getLogger("agent_memory.desktop." + profile.installation_id)
+    logger = logging.getLogger("membrain.desktop." + profile.installation_id)
     logger.setLevel(logging.INFO)
     logger.propagate = False
     handler = RotatingFileHandler(path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")

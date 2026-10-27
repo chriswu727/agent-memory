@@ -4,10 +4,10 @@ Status: **implemented, verified on Linux x86_64 only**. This document is the des
 
 ## Goal
 
-An agent can install Agent Memory from one instruction and use it immediately, with no Docker, no setup wizard and no extra model API key. In Claude Code the target is a single command that the agent itself can run:
+An agent can install memBrain from one instruction and use it immediately, with no Docker, no setup wizard and no extra model API key. In Claude Code the target is a single command that the agent itself can run:
 
 ```sh
-claude plugin install agent-memory --marketplace chriswu727/agent-memory
+claude plugin install membrain --marketplace chriswu727/membrain
 ```
 
 Other MCP hosts use one stdio server entry instead.
@@ -29,7 +29,7 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 
 1. **Embedded database engine.** A desktop profile records `database_engine` (`docker` or `embedded`). The embedded engine uses only the PostgreSQL and pgvector binaries shipped in `pgserver`, runs `initdb` once, and starts `pg_ctl` on `127.0.0.1:<port>` with password authentication. Connection strings, migrations, roles and row-level security are identical to Docker. When running as root, the cluster runs under a dedicated unprivileged system user, because PostgreSQL refuses to run as root.
 2. **Zero-configuration bootstrap.** `open_client(start_service=True)` already creates a profile and starts the service. Plugin entry points select the embedded engine automatically when it is available, otherwise fall back to Docker with the existing guidance.
-3. **Hook commands.** `agent-memory plugin hook <event>` reads the host's hook JSON from stdin and always exits 0.
+3. **Hook commands.** `membrain plugin hook <event>` reads the host's hook JSON from stdin and always exits 0.
    - An asynchronous `SessionStart` command installs or updates the runtime with `uv tool install` and runs `plugin start`. Only this hook may install, so a timed-out prompt hook can never interrupt an installation.
    - `session-start`: adds one line saying memory is active and how to search it; starts the service in the background when needed.
    - `user-prompt`: recalls records from other conversations with an explicit evidence cutoff (the current message is not yet stored), prints compact context as `additionalContext`, then records the message. If the service is not ready, the message is spooled and no context is injected.
@@ -58,9 +58,9 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 
 ## Verification record (2026-10-27, Linux x86_64 container)
 
-- **Embedded engine.** `pgserver` 0.1.4 (PostgreSQL 16.2, pgvector 0.6.2). A fresh installation initializes, migrates and becomes ready in about 2.2 s; restart takes about 1.7 s. Start, stop, restart, backup, restore into a new quarantined installation and activation were exercised with real commands. The same checks ran as root (dedicated `agent-memory-db` account, binaries copied under `/var/lib/agent-memory`) and as an unprivileged user (cluster inside the profile directory).
+- **Embedded engine.** `pgserver` 0.1.4 (PostgreSQL 16.2, pgvector 0.6.2). A fresh installation initializes, migrates and becomes ready in about 2.2 s; restart takes about 1.7 s. Start, stop, restart, backup, restore into a new quarantined installation and activation were exercised with real commands. The same checks ran as root (dedicated service account, binaries copied under a shared root; these were `agent-memory-db` and `/var/lib/agent-memory` at the time and are `membrain-db` and `/var/lib/membrain` after the rename, with existing clusters left in place) and as an unprivileged user (cluster inside the profile directory).
 - **Hooks.** Through the real CLI, a per-message hook takes about 0.5 to 0.7 s including interpreter start; local recall itself takes 55 to 100 ms. With the service stopped, a prompt hook returned in 0.4 s, spooled the record and started the service in the background; the next prompt replayed it and recalled it.
-- **Claude Code.** An isolated Claude Code 2.1.311 configuration added the repository as a local marketplace and installed the plugin. `claude plugin validate` passed for the plugin and marketplace (the only warning is the optional icon). With a local stub standing in for the model API, three separate `claude -p` sessions showed: automatic recording of every user message; the first session's knee constraint injected into the second session's model request inside `<agent-memory>`; the session notice in context; the MCP server connected; and, after making `Stop` synchronous, the assistant reply recorded with its parent prompt. The stub verifies integration only, not answer quality.
+- **Claude Code.** An isolated Claude Code 2.1.311 configuration added the repository as a local marketplace and installed the plugin. `claude plugin validate` passed for the plugin and marketplace (the only warning is the optional icon). With a local stub standing in for the model API, three separate `claude -p` sessions showed: automatic recording of every user message; the first session's knee constraint injected into the second session's model request inside `<membrain-memory>`; the session notice in context; the MCP server connected; and, after making `Stop` synchronous, the assistant reply recorded with its parent prompt. The stub verifies integration only, not answer quality.
 
 ### Known limits
 

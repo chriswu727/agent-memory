@@ -6,11 +6,11 @@ import pytest
 from test_runtime_api import HEADERS, PRINCIPAL, TURN
 from test_runtime_api import runtime_api as runtime_api
 
-from agent_memory.api import runtime_metadata
-from agent_memory.client import MemoryClient
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError
-from agent_memory.runtime_client import RuntimeClient
+from membrain.api import runtime_metadata
+from membrain.client import MemoryClient
+from membrain.contracts import validate
+from membrain.helpers import DomainError
+from membrain.runtime_client import RuntimeClient
 
 RESERVE = {
     "lease_token": "lease", "expected_revision": 1, "policy_fingerprint": "a" * 64,

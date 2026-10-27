@@ -8,16 +8,16 @@ from psycopg.types.json import Jsonb
 from test_deletion_registry import acknowledgement
 from test_learning import learning as learning
 
-from agent_memory import cognition
-from agent_memory.client import MemoryClient
-from agent_memory.deletion_registry import DeletionRegistry, RegistryError
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.recovery import activate_database, quarantine
-from agent_memory.recovery_authority import RecoveryAuthority
-from agent_memory.runtime import BrainRuntime, RuntimeBlocked
-from agent_memory.turns import TurnStore
+from membrain import cognition
+from membrain.client import MemoryClient
+from membrain.deletion_registry import DeletionRegistry, RegistryError
+from membrain.helpers import DomainError, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.recovery import activate_database, quarantine
+from membrain.recovery_authority import RecoveryAuthority
+from membrain.runtime import BrainRuntime, RuntimeBlocked
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 

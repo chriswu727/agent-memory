@@ -8,12 +8,12 @@ from test_learning import learning as learning
 from test_learning_integration import encode, setup_history, setup_legacy_history
 from test_learning_windows import claim, execute, jobs
 
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning_allocations import HISTORY_PHASE, phase
-from agent_memory.learning_integration import reconsider
-from agent_memory.learning_progress import learning_progress
-from agent_memory.learning_windows import recover_windows
+from membrain.helpers import DomainError, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning_allocations import HISTORY_PHASE, phase
+from membrain.learning_integration import reconsider
+from membrain.learning_progress import learning_progress
+from membrain.learning_windows import recover_windows
 
 pytestmark = pytest.mark.integration
 

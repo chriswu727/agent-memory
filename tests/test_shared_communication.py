@@ -8,10 +8,10 @@ from test_bounded_learning_semantics import publication_snapshot
 from test_communication_views import run as communication_case
 from test_semantic import verifier
 
-from agent_memory import semantic
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, digest
-from agent_memory.source_composition import (
+from membrain import semantic
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, digest
+from membrain.source_composition import (
     COMMUNICATION_VIEW_INPUT_VERSION,
     SHARED_COMMUNICATION_INPUT_VERSION,
 )

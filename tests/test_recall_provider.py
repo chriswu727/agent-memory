@@ -6,8 +6,8 @@ from dataclasses import replace
 import httpx
 import pytest
 
-from agent_memory.recall_control import DECISION_SCHEMA, RecallReasoningRequest
-from agent_memory.recall_provider import ChatCompletionsRecallReasoner, RecallProviderError
+from membrain.recall_control import DECISION_SCHEMA, RecallReasoningRequest
+from membrain.recall_provider import ChatCompletionsRecallReasoner, RecallProviderError
 
 REQUEST = RecallReasoningRequest(
     request_id="recall-1",
@@ -238,7 +238,7 @@ def test_transport_failures_are_sanitized_and_not_retried(exception, code):
 
 def test_elapsed_budget_is_checked_between_response_chunks(monkeypatch):
     clock = {"now": 0.0}
-    monkeypatch.setattr("agent_memory.chat_provider.time.monotonic", lambda: clock["now"])
+    monkeypatch.setattr("membrain.chat_provider.time.monotonic", lambda: clock["now"])
 
     class DelayedStream(TrackedStream):
         def __iter__(self):

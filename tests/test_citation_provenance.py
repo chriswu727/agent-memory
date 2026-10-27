@@ -10,18 +10,18 @@ from test_cognition import event
 from test_learning import learning as learning
 from test_semantic import batch, proposals
 
-from agent_memory.citation_coverage import (
+from membrain.citation_coverage import (
     CITATION_COVERAGE_INPUT_VERSION,
     CITATION_COVERAGE_VERIFY_INSTRUCTIONS,
     CITATION_PROVENANCE_VERIFY_INSTRUCTIONS,
 )
-from agent_memory.citation_coverage import (
+from membrain.citation_coverage import (
     CITATION_PROVENANCE_INPUT_VERSION as VERSION,
 )
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, digest
-from agent_memory.learning import LearningEngine
-from agent_memory.semantic import LATEST_INPUT_CONTRACT_VERSION, SemanticProcessor
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, digest
+from membrain.learning import LearningEngine
+from membrain.semantic import LATEST_INPUT_CONTRACT_VERSION, SemanticProcessor
 
 LEGACY_REQUEST_HASHES = {
     "general": ("7876b7255f78a0444335ea44261ad9898d63ff81f8702ee23630ccd0186cbfe5",

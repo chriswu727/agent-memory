@@ -6,8 +6,8 @@ from test_learning import learning as learning
 from test_learning_recovery import operation_rows, stopped_window
 from test_learning_windows import drain
 
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticProcessor
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

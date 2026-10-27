@@ -1,8 +1,8 @@
 import pytest
 from test_semantic import batch, claim, encoded, event, proposals, verifier
 
-from agent_memory import semantic
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
+from membrain import semantic
+from membrain.semantic import SemanticPolicy, SemanticProcessor
 
 
 @pytest.mark.parametrize("limit,expected", [(240000, "provider_unavailable"), (600000, "completed")])

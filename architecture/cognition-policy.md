@@ -7,15 +7,15 @@ Situation understanding and background learning use a bounded proposal followed,
 Select the preset during desktop setup:
 
 ```sh
-agent-memory desktop setup --cognition-preset reasoning
+membrain desktop setup --cognition-preset reasoning
 ```
 
 Or change an existing installation:
 
 ```sh
-agent-memory desktop configure-cognition-policy --preset reasoning
-agent-memory desktop restart
-agent-memory desktop cognition-policy
+membrain desktop configure-cognition-policy --preset reasoning
+membrain desktop restart
+membrain desktop cognition-policy
 ```
 
 The preset allows 240,000 milliseconds per batch, 16,384 output tokens per request, and 65,536 decoded response bytes. It does not enable provider thinking mode, select a model, enable cognition without provider credentials, change the default `always` orientation policy, or increase the maximum two model calls per batch. Setup and configuration do not probe the provider or make paid requests.
@@ -58,9 +58,9 @@ New snapshots freeze the full effective semantic policy. Changing configuration 
 After fixing the provider or policy, inspect the blocked interval and explicitly authorize bounded recovery:
 
 ```sh
-agent-memory desktop learning-status
-agent-memory desktop learning-status --job JOB_ID
-agent-memory desktop retry-learning JOB_ID --expected-fence FENCE --request-id recover-1
+membrain desktop learning-status
+membrain desktop learning-status --job JOB_ID
+membrain desktop retry-learning JOB_ID --expected-fence FENCE --request-id recover-1
 ```
 
 Use the exact job ID and fence from monitoring. Recovery creates a child over the original unprocessed interval. Its new snapshot uses the restarted service policy, with at most two calls and 196,608 input bytes per batch under the brain's cumulative budget. The parent's frozen policy, usage, and uncertain outcomes remain recorded. Repeating the same request ID and fence returns the same child; it does not authorize another paid attempt. Successful finite continuations may require further batches within that original interval. A subsequent failed child requires a new explicit recovery request.

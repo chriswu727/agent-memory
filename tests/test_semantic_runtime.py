@@ -5,10 +5,10 @@ import httpx
 import pytest
 from test_runtime import memory as memory
 
-from agent_memory.client import MemoryActionError, default_budget, prepared_context
-from agent_memory.helpers import DomainError, uid
-from agent_memory.recall_control import RecallController, RecallPolicy
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
+from membrain.client import MemoryActionError, default_budget, prepared_context
+from membrain.helpers import DomainError, uid
+from membrain.recall_control import RecallController, RecallPolicy
+from membrain.runtime import BrainRuntime, DeliveryReceipt
 
 pytestmark = pytest.mark.integration
 
@@ -41,7 +41,7 @@ def search_then_select(needle, records):
     return reason
 
 
-def test_semantic_bridge_selects_existing_evidence_without_agent_memory_tools(memory):
+def test_semantic_bridge_selects_existing_evidence_without_membrain_tools(memory):
     source = seed(memory, "备考期间，晚上先聊十分钟，再安排复习。")
     while memory.work()["processed"]:
         pass

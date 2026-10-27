@@ -9,12 +9,12 @@ from psycopg.rows import dict_row
 from test_runtime import memory as memory
 from test_turns import turns as turns
 
-from agent_memory.config import Settings
-from agent_memory.helpers import DomainError, Principal, digest, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.storage import Database
-from agent_memory.turns import TurnStore
+from membrain.config import Settings
+from membrain.helpers import DomainError, Principal, digest, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
+from membrain.runtime_client import RuntimeClient
+from membrain.storage import Database
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 MIGRATION = Path(__file__).parents[1] / "migrations" / "012_runtime_scope_reservations.sql"

@@ -4,12 +4,12 @@ import pytest
 from test_cognition import event, scope
 from test_semantic import compressed_example
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
-from agent_memory.helpers import digest
-from agent_memory.ontology import CORE_REGISTRY
-from agent_memory.patterns import build_patterns, expand_instance, validate_pattern
-from agent_memory.semantic import expand_schema_residual
+from membrain import cognition
+from membrain.contracts import validate
+from membrain.helpers import digest
+from membrain.ontology import CORE_REGISTRY
+from membrain.patterns import build_patterns, expand_instance, validate_pattern
+from membrain.semantic import expand_schema_residual
 
 UNBOUNDED = {"kind": "interval", "start": {"kind": "unbounded"}, "end": {"kind": "unbounded"}}
 

@@ -29,8 +29,8 @@ Changing a policy never resets, refunds, or deletes recorded operations. Complet
 The local service must already be running:
 
 ```sh
-agent-memory desktop budget
-agent-memory desktop configure-budget \
+membrain desktop budget
+membrain desktop configure-budget \
   --request-id allowance-2026-10-25 --expected-revision 0 \
   --window-seconds 3600 --max-model-calls 200 --max-input-bytes 4000000
 ```

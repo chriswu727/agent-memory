@@ -3,21 +3,21 @@ from psycopg.types.json import Jsonb
 from test_jobs import jobs as jobs
 from test_learning_allocations import insert, params, row
 
-from agent_memory.helpers import DomainError, digest
-from agent_memory.learning_allocations import (
+from membrain.helpers import DomainError, digest
+from membrain.learning_allocations import (
     CONTRACT_VERSION,
     ENCODING_PHASE,
     HISTORY_PHASE,
     freeze_input,
     phase,
 )
-from agent_memory.learning_windows import (
+from membrain.learning_windows import (
     enqueue_window,
     pending_window,
     record_progress,
     recover_windows,
 )
-from agent_memory.service import MemoryService
+from membrain.service import MemoryService
 
 pytestmark = pytest.mark.integration
 TARGET = {"conversation_ref": "chat", "branch_ref": "main"}

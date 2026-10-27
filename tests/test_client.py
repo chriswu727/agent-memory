@@ -6,7 +6,7 @@ import httpx
 import pytest
 from jsonschema import Draft202012Validator
 
-from agent_memory.client import (
+from membrain.client import (
     MemoryActionError,
     MemoryClient,
     default_budget,
@@ -200,7 +200,7 @@ def test_archive_transport_preserves_content():
 def test_recalled_context_accepts_result_or_successful_action_without_control_metadata():
     from test_cognition import event, request, scope, state
 
-    from agent_memory import cognition
+    from membrain import cognition
 
     source = event("rainy day bookstore")
     result = cognition.recall(scope(), request("bookstore"), cognition.extract_event(source), [source], state())
@@ -247,7 +247,7 @@ def test_authoritative_context_cannot_bypass_response_action_or_failure_checks(a
 def test_legacy_recall_without_authoritative_context_keeps_canonical_fallback():
     from test_cognition import event, request, scope, state
 
-    from agent_memory import cognition
+    from membrain import cognition
 
     source = event("旧来源仍可回忆🌧️。")
     result = cognition.recall(scope(), request("旧来源"), cognition.extract_event(source), [source], state())

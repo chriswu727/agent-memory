@@ -8,11 +8,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from agent_memory import desktop
-from agent_memory.chat_config import ChatConfiguration, save_chat_configuration
-from agent_memory.desktop_connection import open_client
-from agent_memory.local_profile import ensure_profile, load_profile
-from agent_memory.runtime_client import RuntimeClient
+from membrain import desktop
+from membrain.chat_config import ChatConfiguration, save_chat_configuration
+from membrain.desktop_connection import open_client
+from membrain.local_profile import ensure_profile, load_profile
+from membrain.runtime_client import RuntimeClient
 
 pytestmark = [pytest.mark.integration, pytest.mark.skipif(
     os.environ.get("MEMORY_DESKTOP_E2E") != "1",
@@ -70,13 +70,13 @@ def test_chat_processes_recall_restart_deduplicate_and_block_unknown_generation(
 
     def chat(conversation, *arguments):
         return subprocess.run([
-            executable, "-m", "agent_memory.cli", "desktop", "chat", "--directory", str(profile.directory),
+            executable, "-m", "membrain.cli", "desktop", "chat", "--directory", str(profile.directory),
             "--conversation", conversation, *arguments,
         ], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=180)
 
     try:
         setup = subprocess.run([
-            executable, "-m", "agent_memory.cli", "desktop", "setup", "--non-interactive",
+            executable, "-m", "membrain.cli", "desktop", "setup", "--non-interactive",
             "--directory", str(profile.directory),
         ], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=180)
         assert setup.returncode == 0, setup.stderr
@@ -87,7 +87,7 @@ def test_chat_processes_recall_restart_deduplicate_and_block_unknown_generation(
         assert first.stdout == "Understood.\n"
         assert len(calls) == 1
         progress = subprocess.run([
-            executable, "-m", "agent_memory.cli", "desktop", "learning-status",
+            executable, "-m", "membrain.cli", "desktop", "learning-status",
             "--directory", str(profile.directory),
         ], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30)
         assert progress.returncode == 0, progress.stderr

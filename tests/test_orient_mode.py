@@ -6,10 +6,10 @@ import pytest
 from test_cognition import event
 from test_semantic import batch, claim, encoded, episode, proposals, run, situation, verifier
 
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError
-from agent_memory.learning import _snapshot_proposal_mode
-from agent_memory.semantic import (
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError
+from membrain.learning import _snapshot_proposal_mode
+from membrain.semantic import (
     GENERAL_PROPOSAL_MODE,
     ORIENT_PROPOSAL_MODE,
     ORIENT_PROPOSAL_SCHEMA,

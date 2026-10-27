@@ -11,25 +11,25 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 from pathlib import Path
 
-from agent_memory.api import create_app
-from agent_memory.chat_provider import ChatCompletionsGenerator
-from agent_memory.client import MemoryClient, default_budget
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
 from examples import evaluate_longitudinal as longitudinal
 from examples.evaluate_memory_lifecycle import archive_evidence, archive_graph
 from examples.evaluation_host import loopback_server
 from examples.evaluation_support import MeteredTransport
 from examples.longitudinal_journal import CampaignJournal
+from membrain.api import create_app
+from membrain.chat_provider import ChatCompletionsGenerator
+from membrain.client import MemoryClient, default_budget
+from membrain.config import Settings
+from membrain.helpers import Principal, digest, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimePolicy
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 ROOT = Path(__file__).resolve().parents[1]
-HOST_CALLBACK = "agent_memory.chat_provider.ChatCompletionsGenerator"
+HOST_CALLBACK = "membrain.chat_provider.ChatCompletionsGenerator"
 CASES = (
     {"id": "unaided", "text": "I'm writing Grandma a card and don't want a generic thank-you. "
      "Is there something I've told you about her that we could use as a starting point?"},
@@ -63,7 +63,7 @@ def plan(source=None):
     for name in ("examples/longitudinal_cue_diagnostics.py", "examples/evaluate_memory_lifecycle.py"):
         files[name] = digest((ROOT / name).read_text())
     files.update({str(path.relative_to(ROOT)): digest(path.read_text())
-                  for path in (ROOT / "src/agent_memory").glob("*.py")})
+                  for path in (ROOT / "src/membrain").glob("*.py")})
     return {
         "version": "longitudinal-cue-diagnostics-v2", "source": copy.deepcopy(source),
         "source_boundary": "Exactly eleven clean completed sessions, before grandma-card.",

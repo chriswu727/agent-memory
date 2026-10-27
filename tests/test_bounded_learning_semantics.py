@@ -11,17 +11,17 @@ from test_belief_semantic import known, scenario
 from test_cognition import STAMP, UNKNOWN_TIME, event
 from test_semantic import batch, claim, encoded, episode, proposals, reference, situation, verifier
 
-from agent_memory.belief_store import assertion_fingerprint
-from agent_memory.consolidation import _check_result
-from agent_memory.helpers import DomainError, digest
-from agent_memory.history_semantics import (
+from membrain.belief_store import assertion_fingerprint
+from membrain.consolidation import _check_result
+from membrain.helpers import DomainError, digest
+from membrain.history_semantics import (
     MANIFEST_VERSION,
     integration_coverage,
     validate_decisions,
     validate_manifest,
 )
-from agent_memory.local_semantics import HISTORY_INTEGRATION_MODE, LOCAL_OBSERVATION_MODE
-from agent_memory.semantic import (
+from membrain.local_semantics import HISTORY_INTEGRATION_MODE, LOCAL_OBSERVATION_MODE
+from membrain.semantic import (
     EPISODE_FIDELITY_INPUT_VERSION,
     GENERAL_PROPOSAL_MODE,
     CognitiveBatch,

@@ -5,10 +5,10 @@ from test_cognition import request
 from test_cognitive_archives import archive as archive
 from test_sentence_segmentation import legacy_source
 
-from agent_memory import cognition
-from agent_memory.archive_views import restore_memories
-from agent_memory.helpers import Principal, uid
-from agent_memory.service import MemoryService
+from membrain import cognition
+from membrain.archive_views import restore_memories
+from membrain.helpers import Principal, uid
+from membrain.service import MemoryService
 
 
 class EmptyMemoryStore:

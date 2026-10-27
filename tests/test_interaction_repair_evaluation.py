@@ -12,9 +12,9 @@ import httpx
 import pytest
 from jsonschema import Draft202012Validator
 
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.storage import Database
+from membrain.config import Settings
+from membrain.helpers import Principal, digest, uid
+from membrain.storage import Database
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_plan_freezes_source_protocol_code_and_shared_budget_without_live_access
     assert planned["memory_consumption_protocol"]["instructions"] == evaluation.MEMORY_CONSUMPTION_INSTRUCTIONS
     for name in ("episode_semantics", "learning", "runtime", "context_views", "cognition",
                  "consolidation", "service", "neighborhood"):
-        path = f"src/agent_memory/{name}.py"
+        path = f"src/membrain/{name}.py"
         assert planned["code_fingerprints"][path] == digest((evaluation.ROOT / path).read_text())
     assert not output.exists()
     assert evaluation.SOURCE_REPORT.read_bytes() == source

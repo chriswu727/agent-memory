@@ -6,8 +6,8 @@ from test_candidates import candidates as candidates
 from test_candidates import key
 from test_longitudinal_repairs import BLACKOUT
 
-from agent_memory import cognition
-from agent_memory.source_passages import SOURCE_PASSAGE_VERSION, source_passage_candidates
+from membrain import cognition
+from membrain.source_passages import SOURCE_PASSAGE_VERSION, source_passage_candidates
 
 pytestmark = pytest.mark.integration
 

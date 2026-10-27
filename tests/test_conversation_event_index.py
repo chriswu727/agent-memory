@@ -3,8 +3,8 @@ import json
 import psycopg
 import pytest
 
-from agent_memory.build_identity import MIGRATIONS
-from agent_memory.config import Settings
+from membrain.build_identity import MIGRATIONS
+from membrain.config import Settings
 
 pytestmark = pytest.mark.integration
 

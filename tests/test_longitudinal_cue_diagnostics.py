@@ -13,9 +13,9 @@ import pytest
 from test_evaluation_archive import rebound, sample_archive
 from test_learning import learning as learning
 
-from agent_memory.belief_store import assertion_fingerprint
-from agent_memory.helpers import digest
-from agent_memory.runtime import ModelRequest, TurnResult
+from membrain.belief_store import assertion_fingerprint
+from membrain.helpers import digest
+from membrain.runtime import ModelRequest, TurnResult
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def test_plan_is_offline_bounded_and_withholds_target_details(diagnostic, monkey
     assert planned["cognitive_reasoning_effort"] == "low"
     assert planned["provider_envelope_bytes"] == 262144
     assert planned["semantic_policy"]["max_response_bytes"] == 65536
-    assert planned["host_callback"] == "agent_memory.chat_provider.ChatCompletionsGenerator"
+    assert planned["host_callback"] == "membrain.chat_provider.ChatCompletionsGenerator"
     assert planned["callback_comparison"]["source_callback"] == "examples.evaluation_host.ChatCompletionsHost"
     assert planned["callback_comparison"]["diagnostic_callback"] == planned["host_callback"]
     assert len(planned["cases"]) == len({case["id"] for case in planned["cases"]}) == 5

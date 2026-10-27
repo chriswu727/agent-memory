@@ -8,10 +8,10 @@ from test_cognition import request
 from test_learning import learning as learning
 from test_learning_neighborhood import literal, publish, select, source, versions
 
-from agent_memory import cognition
-from agent_memory.contracts import CONTRACT_VERSION
-from agent_memory.helpers import digest, uid
-from agent_memory.source_candidates import SOURCE_ROUTE_VERSION
+from membrain import cognition
+from membrain.contracts import CONTRACT_VERSION
+from membrain.helpers import digest, uid
+from membrain.source_candidates import SOURCE_ROUTE_VERSION
 
 pytestmark = pytest.mark.integration
 

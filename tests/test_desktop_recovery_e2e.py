@@ -10,18 +10,18 @@ from fastapi.testclient import TestClient
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from agent_memory import desktop, desktop_restore
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.deletion_registry import RegistryError
-from agent_memory.desktop_backup import backup, verify_bundle
-from agent_memory.desktop_connection import open_client
-from agent_memory.desktop_restore import activate, restore
-from agent_memory.helpers import Principal, uid
-from agent_memory.local_profile import ensure_profile, load_profile
-from agent_memory.recovery_profile import authority_for, check_start_allowed, load_binding
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain import desktop, desktop_restore
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.deletion_registry import RegistryError
+from membrain.desktop_backup import backup, verify_bundle
+from membrain.desktop_connection import open_client
+from membrain.desktop_restore import activate, restore
+from membrain.helpers import Principal, uid
+from membrain.local_profile import ensure_profile, load_profile
+from membrain.recovery_profile import authority_for, check_start_allowed, load_binding
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = [pytest.mark.integration, pytest.mark.skipif(
     os.environ.get('MEMORY_DESKTOP_E2E') != '1',

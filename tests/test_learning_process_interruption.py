@@ -9,19 +9,19 @@ from test_learning import learning as learning
 from test_learning_settlement_recovery import expire, operations
 from test_learning_windows import observations
 
-from agent_memory.jobs import JobStore
-from agent_memory.storage import Database
+from membrain.jobs import JobStore
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 
 CHILD = """
 import json,sys
-from agent_memory.helpers import Principal
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.helpers import Principal
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.semantic import SemanticProcessor
+from membrain.service import MemoryService
+from membrain.storage import Database
 config=json.loads(sys.stdin.readline())
 principal=Principal(config['tenant'],config['owner'])
 database=Database(config['dsn'])

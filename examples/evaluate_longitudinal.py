@@ -15,18 +15,6 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from agent_memory.api import create_app
-from agent_memory.build_identity import BUILD_ID
-from agent_memory.chat_provider import ChatCompletionsGenerator
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, ModelRequest, RuntimePolicy
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
 from examples.evaluate_conversation import safe_error, source_snapshot
 from examples.evaluate_deepseek import Trial
 from examples.evaluation_host import ChatCompletionsHost, loopback_server
@@ -39,6 +27,18 @@ from examples.longitudinal_scenario import (
     selected_utterance,
     validate_scenario,
 )
+from membrain.api import create_app
+from membrain.build_identity import BUILD_ID
+from membrain.chat_provider import ChatCompletionsGenerator
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.helpers import Principal, digest, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, ModelRequest, RuntimePolicy
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST_INSTRUCTIONS = (

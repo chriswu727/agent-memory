@@ -11,18 +11,18 @@ from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_turns import turns as turns
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.helpers import DomainError, Principal, digest, now, uid
-from agent_memory.runtime import (
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.helpers import DomainError, Principal, digest, now, uid
+from membrain.runtime import (
     BrainRuntime,
     DeliveryReceipt,
     RuntimeBlocked,
     RuntimePolicy,
     _Lease,
 )
-from agent_memory.runtime_client import RuntimeClient
+from membrain.runtime_client import RuntimeClient
 
 
 def test_runtime_client_orientation_is_a_leased_turn_operation():
@@ -169,8 +169,8 @@ def test_generation_retains_sources_seen_by_orientation_but_not_selected_for_pro
 def test_default_runtime_recalls_verified_preference_from_a_prior_instruction(learning, has_counterexample):
     from test_semantic import claim, proposals, reference, run
 
-    from agent_memory.consolidation import publish_semantic
-    from agent_memory.semantic import CognitiveBatch
+    from membrain.consolidation import publish_semantic
+    from membrain.semantic import CognitiveBatch
 
     receipt = learning.observe("请用简短回答。", conversation="preferences")
     source_ids = receipt["accepted_event_ids"]
@@ -219,9 +219,9 @@ def test_semantic_context_recovery_rechecks_validity_without_timestamp_churn(
 ):
     from test_semantic import claim, proposals, run
 
-    from agent_memory import cognition
-    from agent_memory.consolidation import publish_semantic
-    from agent_memory.semantic import CognitiveBatch
+    from membrain import cognition
+    from membrain.consolidation import publish_semantic
+    from membrain.semantic import CognitiveBatch
 
     clock = ["2026-10-25T12:00:00Z"]
     monkeypatch.setattr(cognition, "now", lambda: clock[0])
@@ -409,7 +409,7 @@ def test_orientation_source_binding_rejects_incomplete_or_stale_plans(turns, inv
 
 @pytest.mark.integration
 def test_finish_commits_verified_orientation_updates_without_a_model_call(turns, monkeypatch):
-    from agent_memory import learning
+    from membrain import learning
 
     capture_turn(turns)
     turns.row = bind(turns, make_job(turns))
@@ -451,7 +451,7 @@ def test_finish_commits_verified_orientation_updates_without_a_model_call(turns,
 
 @pytest.mark.integration
 def test_failed_orientation_does_not_block_delivery_completion(turns, monkeypatch):
-    from agent_memory import learning
+    from membrain import learning
 
     capture_turn(turns)
     job = make_job(turns)

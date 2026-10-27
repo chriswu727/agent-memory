@@ -13,10 +13,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
-from agent_memory.helpers import digest
-from agent_memory.semantic import (
+from examples.evaluate_conversation import FIXTURES, MODEL, plan, safe_error
+from examples.evaluate_deepseek import save
+from examples.evaluation_support import MeteredTransport
+from membrain import cognition
+from membrain.contracts import validate
+from membrain.helpers import digest
+from membrain.semantic import (
     _PROPOSAL_VALIDATOR,
     _VERIFICATION_VALIDATOR,
     PROPOSAL_SCHEMA,
@@ -25,11 +28,8 @@ from agent_memory.semantic import (
     SemanticProcessor,
     _parse,
 )
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from agent_memory.temporal import evaluate_valid_during
-from examples.evaluate_conversation import FIXTURES, MODEL, plan, safe_error
-from examples.evaluate_deepseek import save
-from examples.evaluation_support import MeteredTransport
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.temporal import evaluate_valid_during
 
 BASE_CALLS = 18
 BASE_RESERVED_OUTPUT = 233472
@@ -47,8 +47,8 @@ def fingerprints():
     root = Path(__file__).resolve().parents[1]
     return {name: digest((root / name).read_text()) for name in (
         "examples/evaluate_temporal_repair.py", "examples/evaluation_support.py",
-        "src/agent_memory/semantic.py", "src/agent_memory/semantic_provider.py",
-        "src/agent_memory/temporal.py",
+        "src/membrain/semantic.py", "src/membrain/semantic_provider.py",
+        "src/membrain/temporal.py",
     )}
 
 

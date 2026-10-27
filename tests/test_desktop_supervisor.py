@@ -5,17 +5,17 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_memory.desktop import LocalSupervisor, _identity_signature, _logger, _private_write
-from agent_memory.local_profile import LocalProfileError, ensure_profile
+from membrain.desktop import LocalSupervisor, _identity_signature, _logger, _private_write
+from membrain.local_profile import LocalProfileError, ensure_profile
 
 
 @pytest.fixture
 def supervisor(tmp_path, monkeypatch):
-    import agent_memory.recovery_authority
-    from agent_memory.storage import Database
+    import membrain.recovery_authority
+    from membrain.storage import Database
 
     monkeypatch.setattr(Database, "check_compatibility", lambda *args, **kwargs: None)
-    monkeypatch.setattr(agent_memory.recovery_authority, "configure_authority", lambda *args: None)
+    monkeypatch.setattr(membrain.recovery_authority, "configure_authority", lambda *args: None)
     profile = ensure_profile(tmp_path / "profile")
     return LocalSupervisor(profile, logging.getLogger("desktop-test"))
 
@@ -61,12 +61,12 @@ def test_local_identity_proves_key_possession_without_receiving_key(supervisor):
 
 
 def test_database_failure_and_dead_worker_are_not_ready(supervisor, monkeypatch):
-    import agent_memory.storage
+    import membrain.storage
 
     def unavailable(*args, **kwargs):
         raise RuntimeError("secret connection information")
 
-    monkeypatch.setattr(agent_memory.storage.Database, "transaction", unavailable)
+    monkeypatch.setattr(membrain.storage.Database, "transaction", unavailable)
     result = supervisor.snapshot()
     assert result["database"] == "unavailable"
     assert result["worker"] == "stopped"
@@ -76,12 +76,12 @@ def test_database_failure_and_dead_worker_are_not_ready(supervisor, monkeypatch)
 
 
 def test_worker_failure_records_fixed_code_and_stays_not_ready(supervisor, monkeypatch, caplog):
-    import agent_memory.desktop
+    import membrain.desktop
 
     def unavailable(*args):
         raise RuntimeError("secret conversation content")
 
-    monkeypatch.setattr(agent_memory.desktop, "configured_service", unavailable)
+    monkeypatch.setattr(membrain.desktop, "configured_service", unavailable)
     with caplog.at_level(logging.INFO):
         supervisor.work()
     assert supervisor.worker_state == "failed"

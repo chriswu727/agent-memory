@@ -7,12 +7,12 @@ import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, RuntimePolicy
-from agent_memory.runtime_client import RuntimeClient
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.helpers import Principal, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked, RuntimePolicy
+from membrain.runtime_client import RuntimeClient
 
 pytestmark = pytest.mark.integration
 

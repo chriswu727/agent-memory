@@ -5,12 +5,12 @@ import pytest
 from test_cognition import event
 from test_semantic import batch, claim, encoded, proposals, reference, run, situation, verifier
 
-from agent_memory.applicability import SCHEMA_DEFINITIONS
-from agent_memory.contracts import schema
-from agent_memory.helpers import DomainError
-from agent_memory.ontology import CORE_REGISTRY
-from agent_memory.semantic import PROPOSAL_SCHEMA, SemanticProcessor
-from agent_memory.temporal import evaluate_valid_during, resolve_today
+from membrain.applicability import SCHEMA_DEFINITIONS
+from membrain.contracts import schema
+from membrain.helpers import DomainError
+from membrain.ontology import CORE_REGISTRY
+from membrain.semantic import PROPOSAL_SCHEMA, SemanticProcessor
+from membrain.temporal import evaluate_valid_during, resolve_today
 
 
 def condition():

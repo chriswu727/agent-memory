@@ -2,7 +2,7 @@ import argparse
 import os
 from uuid import uuid4
 
-from agent_memory.client import MemoryClient, default_read_fence, prepared_context
+from membrain.client import MemoryClient, default_read_fence, prepared_context
 
 
 def main() -> None:

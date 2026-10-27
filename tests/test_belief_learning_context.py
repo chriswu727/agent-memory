@@ -8,9 +8,9 @@ from test_belief_store import store as store
 from test_consolidation import memory as memory
 from test_semantic import claim, proposals, run
 
-from agent_memory.helpers import DomainError, uid
-from agent_memory.neighborhood import select_neighborhood
-from agent_memory.semantic import CognitiveBatch, SemanticPolicy, SemanticProcessor
+from membrain.helpers import DomainError, uid
+from membrain.neighborhood import select_neighborhood
+from membrain.semantic import CognitiveBatch, SemanticPolicy, SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

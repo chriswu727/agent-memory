@@ -6,9 +6,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_memory import api, cli, config, embeddings, semantic_provider, service, storage
-from agent_memory.config import Settings, configured_service
-from agent_memory.helpers import Principal
+from membrain import api, cli, config, embeddings, semantic_provider, service, storage
+from membrain.config import Settings, configured_service
+from membrain.helpers import Principal
 
 
 @pytest.fixture

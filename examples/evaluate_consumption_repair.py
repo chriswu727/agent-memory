@@ -11,15 +11,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agent_memory.helpers import digest
-from agent_memory.runtime import (
+from examples.evaluate_deepseek import save
+from examples.evaluation_host import ChatCompletionsHost
+from examples.evaluation_support import MeteredTransport
+from membrain.helpers import digest
+from membrain.runtime import (
     MEMORY_CONSUMPTION_INSTRUCTIONS,
     MEMORY_CONSUMPTION_VERSION,
     ModelRequest,
 )
-from examples.evaluate_deepseek import save
-from examples.evaluation_host import ChatCompletionsHost
-from examples.evaluation_support import MeteredTransport
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REPORT = ROOT / ".local/deepseek-interaction-repair/report.json"
@@ -42,7 +42,7 @@ def fingerprints():
     return {name: digest((ROOT / name).read_text()) for name in (
         "examples/evaluate_consumption_repair.py", "examples/evaluate_deepseek.py",
         "examples/evaluation_host.py", "examples/evaluation_support.py",
-        "src/agent_memory/runtime.py", "src/agent_memory/helpers.py",
+        "src/membrain/runtime.py", "src/membrain/helpers.py",
     )}
 
 

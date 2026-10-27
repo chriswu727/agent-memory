@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from agent_memory import desktop, desktop_cli
-from agent_memory.local_profile import (
+from membrain import desktop, desktop_cli
+from membrain.local_profile import (
     LocalProfileBusy,
     LocalProfileError,
     configure_cognition,
@@ -338,7 +338,7 @@ def test_environment_excludes_ambient_memory_compose_and_python_configuration(mo
 
 
 def test_cli_no_start_reports_configuration_without_claiming_ready(profile, monkeypatch, capsys):
-    from agent_memory import desktop_connection
+    from membrain import desktop_connection
 
     monkeypatch.setattr(desktop, "_probe", lambda candidate: None)
     monkeypatch.setattr(desktop, "_port_open", lambda port: False)
@@ -404,7 +404,7 @@ def test_private_managed_file_writer_rejects_hardlinks_before_truncation(profile
 
 @pytest.mark.parametrize("no_start", [False, True])
 def test_setup_applies_changed_provider_with_automatic_restart_unless_disabled(profile, monkeypatch, no_start):
-    from agent_memory import desktop_connection
+    from membrain import desktop_connection
 
     profile = configure_cognition(profile, "https://old-provider.example/v1", "old-model", "old-private-key")
     monkeypatch.setenv("TEST_DESKTOP_PROVIDER_KEY", "new-private-key")

@@ -5,7 +5,7 @@ from dataclasses import replace
 import httpx
 import pytest
 
-from agent_memory.embeddings import (
+from membrain.embeddings import (
     ChatCompletionsEmbeddingProvider,
     EmbeddingProviderError,
     EmbeddingRequest,
@@ -163,7 +163,7 @@ def test_response_budget_stops_stream_and_closes_connection():
 
 def test_deadline_is_checked_between_chunks(monkeypatch):
     ticks = iter([0.0, 1.0, 3.0])
-    monkeypatch.setattr("agent_memory.embeddings.time.monotonic", lambda: next(ticks))
+    monkeypatch.setattr("membrain.embeddings.time.monotonic", lambda: next(ticks))
     stream = TrackedStream([b" "] * 4)
     with provider(lambda _: httpx.Response(200, stream=stream)) as embed:
         with pytest.raises(EmbeddingProviderError, match="timeout"):

@@ -2,14 +2,14 @@ import os
 
 import pytest
 
-from agent_memory.backup_transport import BackupError
-from agent_memory.build_identity import BUILD_ID, MIGRATIONS, SCHEMA_ID
-from agent_memory.deletion_registry import DeletionRegistry, RegistryError
-from agent_memory.desktop_backup import backup, file_digest, verify_bundle
-from agent_memory.desktop_restore import restore
-from agent_memory.helpers import digest, uid
-from agent_memory.local_profile import LocalProfileError, _open_private, ensure_profile
-from agent_memory.recovery_profile import (
+from membrain.backup_transport import BackupError
+from membrain.build_identity import BUILD_ID, MIGRATIONS, SCHEMA_ID
+from membrain.deletion_registry import DeletionRegistry, RegistryError
+from membrain.desktop_backup import backup, file_digest, verify_bundle
+from membrain.desktop_restore import restore
+from membrain.helpers import digest, uid
+from membrain.local_profile import LocalProfileError, _open_private, ensure_profile
+from membrain.recovery_profile import (
     BINDING_FILE,
     MAINTENANCE_FILE,
     read_document,

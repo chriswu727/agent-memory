@@ -80,7 +80,7 @@ PostgreSQL database. They ran no migration or schema writes. The test subprocess
 received only the three database configuration keys
 (`MEMORY_DATABASE_URL`, `MEMORY_MIGRATION_DATABASE_URL`,
 `MEMORY_DATABASE_APP_PASSWORD`), process path, an explicit worktree `PYTHONPATH`,
-and `PYTHON_DOTENV_DISABLED=1`. It asserted that `agent_memory.__file__` resolved
+and `PYTHON_DOTENV_DISABLED=1`. It asserted that `membrain.__file__` resolved
 inside the worktree before running pytest. No model credentials or model calls
 were used. These results are targeted local verification, not a full-suite or
 paid-model evaluation result.

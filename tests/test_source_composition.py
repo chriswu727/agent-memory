@@ -7,12 +7,12 @@ from test_bounded_learning_semantics import local_batch, publication_snapshot
 from test_cognition import event
 from test_semantic import encoded, episode, proposals, verifier
 
-from agent_memory.consolidation import _assertion, _check_result
-from agent_memory.episode_semantics import EPISODE_FIDELITY_INSTRUCTIONS, EPISODE_INSTRUCTIONS
-from agent_memory.helpers import DomainError
-from agent_memory.recall_resolution import RESOLUTION_INPUT_VERSION
-from agent_memory.semantic import SemanticProcessor, proposal_schema, request_payload
-from agent_memory.source_composition import PARTICIPANT_ACTIONS, SOURCE_COMPOSITION_INPUT_VERSION
+from membrain.consolidation import _assertion, _check_result
+from membrain.episode_semantics import EPISODE_FIDELITY_INSTRUCTIONS, EPISODE_INSTRUCTIONS
+from membrain.helpers import DomainError
+from membrain.recall_resolution import RESOLUTION_INPUT_VERSION
+from membrain.semantic import SemanticProcessor, proposal_schema, request_payload
+from membrain.source_composition import PARTICIPANT_ACTIONS, SOURCE_COMPOSITION_INPUT_VERSION
 
 
 def run(statement, verdict="supports", *, version=SOURCE_COMPOSITION_INPUT_VERSION, missing=False):

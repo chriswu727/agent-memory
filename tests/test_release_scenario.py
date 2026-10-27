@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory.runtime import RuntimePolicy
+from membrain.runtime import RuntimePolicy
 
 
 @pytest.fixture

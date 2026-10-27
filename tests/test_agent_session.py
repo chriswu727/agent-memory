@@ -15,14 +15,14 @@ import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 
-from agent_memory import agent_session
-from agent_memory.agent_session import SessionError, open_agent
-from agent_memory.api import create_app
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest
-from agent_memory.local_profile import _save, ensure_profile
-from agent_memory.runtime import DeliveryReceipt, RuntimeBlocked, RuntimePolicy, TurnResult
+from membrain import agent_session
+from membrain.agent_session import SessionError, open_agent
+from membrain.api import create_app
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.helpers import Principal, digest
+from membrain.local_profile import _save, ensure_profile
+from membrain.runtime import DeliveryReceipt, RuntimeBlocked, RuntimePolicy, TurnResult
 
 
 def turn_id(profile, message_id="one", conversation_id="conversation", branch_id="main"):
@@ -267,9 +267,9 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from agent_memory import agent_session
-from agent_memory.agent_session import open_agent, SessionError
-from agent_memory.local_profile import load_profile
+from membrain import agent_session
+from membrain.agent_session import open_agent, SessionError
+from membrain.local_profile import load_profile
 profile = load_profile(Path(sys.argv[1]))
 @contextmanager
 def connect(*args, **kwargs):
@@ -419,7 +419,7 @@ def test_failed_pending_persistence_prevents_runtime_call(mocked, monkeypatch):
 
 
 def test_default_generator_owned_by_session_and_key_rotation_preserves_resume(mocked, monkeypatch):
-    from agent_memory import chat_config
+    from membrain import chat_config
 
     calls, generators = [], []
 

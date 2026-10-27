@@ -6,10 +6,10 @@ from test_consolidation_diversity import CROWDED_TEXTS, fragmented_data
 from test_consolidation_planning import LONG_INSTANCE_TEXTS
 from test_semantic import reference
 
-from agent_memory.consolidation_planning import plan_consolidation, select_consolidation_candidates
-from agent_memory.contracts import validate
-from agent_memory.helpers import digest
-from agent_memory.service import MemoryService
+from membrain.consolidation_planning import plan_consolidation, select_consolidation_candidates
+from membrain.contracts import validate
+from membrain.helpers import digest
+from membrain.service import MemoryService
 
 ORIGINAL_PLAN_HASHES = {
     1: (

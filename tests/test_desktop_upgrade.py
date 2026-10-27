@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory import cli, config, desktop, semantic_provider, storage
-from agent_memory.config import Settings
-from agent_memory.local_profile import ensure_profile, load_profile
-from agent_memory.storage import SchemaCompatibilityError
+from membrain import cli, config, desktop, semantic_provider, storage
+from membrain.config import Settings
+from membrain.local_profile import ensure_profile, load_profile
+from membrain.storage import SchemaCompatibilityError
 
 
 @pytest.fixture

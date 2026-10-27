@@ -10,13 +10,13 @@ from test_learning_monitoring import job_row
 from test_learning_progress import AT, outcome_row, semantic_result, summarize, window
 from test_learning_progress import stored as stored
 
-from agent_memory.api import create_app
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest
-from agent_memory.history_semantics import MANIFEST_VERSION
-from agent_memory.jobs import JobStore, sanitize_learning_summary
-from agent_memory.learning_allocations import HISTORY_PHASE, allocation_metadata
-from agent_memory.learning_phase_monitor import (
+from membrain.api import create_app
+from membrain.config import Settings
+from membrain.helpers import Principal, digest
+from membrain.history_semantics import MANIFEST_VERSION
+from membrain.jobs import JobStore, sanitize_learning_summary
+from membrain.learning_allocations import HISTORY_PHASE, allocation_metadata
+from membrain.learning_phase_monitor import (
     DEFERRED_REASON,
     classify,
     coverage_summary,

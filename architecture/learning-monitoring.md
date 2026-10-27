@@ -7,8 +7,8 @@ The current implementation separates local encoding from historical integration 
 With the desktop service already running:
 
 ```sh
-agent-memory desktop learning-status
-agent-memory desktop learning-status --job JOB_ID
+membrain desktop learning-status
+membrain desktop learning-status --job JOB_ID
 ```
 
 Both commands accept `--directory PATH`. They make authenticated read requests and do not start the service, call a model, deliver a message, or retry work. JSON stays on standard output. An exact job inspection may additionally print a fixed phase notice on standard error.

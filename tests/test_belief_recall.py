@@ -9,18 +9,18 @@ from test_contextual_recall import CONDITION, UNBOUNDED, observation
 from test_recall_control import decision, run
 from test_recall_control import packet as control_packet
 
-from agent_memory import cognition
-from agent_memory.belief_resolution import _cyclic_nodes, frozen_relations, version
-from agent_memory.belief_store import (
+from membrain import cognition
+from membrain.belief_resolution import _cyclic_nodes, frozen_relations, version
+from membrain.belief_store import (
     VERIFICATION,
     _relation_id,
     assertion_fingerprint,
     relation_ref,
 )
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError
-from agent_memory.ontology import CORE_REGISTRY
-from agent_memory.recall_control import RecallPolicy
+from membrain.contracts import validate
+from membrain.helpers import DomainError
+from membrain.ontology import CORE_REGISTRY
+from membrain.recall_control import RecallPolicy
 
 
 def ref(memory):

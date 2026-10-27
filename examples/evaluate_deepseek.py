@@ -9,19 +9,19 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from agent_memory.client import default_budget, default_read_fence, integration_capabilities
-from agent_memory.cognition import render_context
-from agent_memory.config import Settings
-from agent_memory.context_views import render_recall
-from agent_memory.contracts import CONTRACT_VERSION
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
 from examples.evaluation_support import MeteredTransport
+from membrain.client import default_budget, default_read_fence, integration_capabilities
+from membrain.cognition import render_context
+from membrain.config import Settings
+from membrain.context_views import render_recall
+from membrain.contracts import CONTRACT_VERSION
+from membrain.helpers import Principal, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 SCENARIOS = {
     "temporal": [
@@ -121,7 +121,7 @@ class Trial:
         return {"memories": memories, "relations": relations}
 
     def inspect_time(self, at, query, input_event_ids, context_budget=48000):
-        with patch("agent_memory.cognition.now", return_value=at):
+        with patch("membrain.cognition.now", return_value=at):
             recall = self.action("recall", {"query": query, "intent": "explore", "cue_event_ids": [],
                                             "additional_cues": [], "read_fence": default_read_fence(),
                                             "budget": default_budget(context_budget)})
@@ -384,10 +384,10 @@ def stage_checks(name, index, stage, previous):
 
 def code_fingerprints():
     paths = ["examples/evaluate_deepseek.py", "examples/evaluation_support.py",
-             "src/agent_memory/semantic.py", "src/agent_memory/semantic_provider.py",
-             "src/agent_memory/recall_provider.py", "src/agent_memory/learning.py",
-             "src/agent_memory/consolidation_planning.py", "src/agent_memory/context_views.py",
-             "src/agent_memory/cognition.py", "src/agent_memory/applicability.py"]
+             "src/membrain/semantic.py", "src/membrain/semantic_provider.py",
+             "src/membrain/recall_provider.py", "src/membrain/learning.py",
+             "src/membrain/consolidation_planning.py", "src/membrain/context_views.py",
+             "src/membrain/cognition.py", "src/membrain/applicability.py"]
     root = Path(__file__).resolve().parents[1]
     return {path: digest((root / path).read_text()) for path in paths}
 

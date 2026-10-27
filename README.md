@@ -1,12 +1,14 @@
-# Agent Memory
+# memBrain
 
 **A human-inspired memory engine for AI agents.**
 
 English | [简体中文](README.zh-CN.md)
 
+memBrain was previously named Agent Memory. Existing installations, data directories and `agent_memory` imports keep working.
+
 Help your agent carry useful memories across conversations—with layered recall, selective forgetting, and traceable sources.
 
-Agent Memory runs as a local service. Connect your agent's conversation lifecycle once, and the runtime captures messages, prepares relevant memory before replies, and learns in the background. The agent keeps the same brain across process restarts and changes to its configured reply model.
+memBrain runs as a local service. Connect your agent's conversation lifecycle once, and the runtime captures messages, prepares relevant memory before replies, and learns in the background. The agent keeps the same brain across process restarts and changes to its configured reply model.
 
 [Claude Code plugin](#claude-code-plugin) · [Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
 
@@ -18,9 +20,9 @@ Agent Memory runs as a local service. Connect your agent's conversation lifecycl
 
 Tell your agent:
 
-> Install the Agent Memory plugin: `claude plugin install agent-memory --marketplace chriswu727/agent-memory`
+> Install the memBrain plugin: `claude plugin install membrain --marketplace chriswu727/membrain`
 
-Inside a Claude Code session you can also run `/plugin install agent-memory --marketplace chriswu727/agent-memory`. The only prerequisite is [uv](https://docs.astral.sh/uv/). There is no Docker, setup wizard or extra model API key.
+Inside a Claude Code session you can also run `/plugin install membrain --marketplace chriswu727/membrain`. The only prerequisite is [uv](https://docs.astral.sh/uv/). There is no Docker, setup wizard or extra model API key.
 
 From the next session on, the plugin:
 
@@ -28,9 +30,9 @@ From the next session on, the plugin:
 - adds matching records from earlier sessions before Claude replies, as dated and attributed lines;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 
-The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches words in the current message, and Claude is instructed to search with concrete keywords when personal context matters. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/agent-memory` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
+The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches words in the current message, and Claude is instructed to search with concrete keywords when personal context matters. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
 
-Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "agent-memory-runtime[embedded] @ git+https://github.com/chriswu727/agent-memory" agent-memory plugin mcp`. That provides the memory tools without automatic recording.
+Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
 
 <a id="desktop-setup"></a>
 
@@ -39,13 +41,13 @@ Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "agen
 Install [uv](https://docs.astral.sh/uv/). You will need a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
 
 ```sh
-uv tool install --python 3.12 'agent-memory-runtime[embedded] @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
-agent-memory desktop setup
-agent-memory desktop configure-chat --use-cognition
-agent-memory desktop chat
+uv tool install --python 3.12 'membrain-ai[embedded] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
+membrain desktop setup
+membrain desktop configure-chat --use-cognition
+membrain desktop chat
 ```
 
-During `setup`, enter the provider details for memory learning. `configure-chat --use-cognition` explicitly reuses that configuration for replies. To use a different reply model, run `agent-memory desktop configure-chat` without the flag.
+During `setup`, enter the provider details for memory learning. `configure-chat --use-cognition` explicitly reuses that configuration for replies. To use a different reply model, run `membrain desktop configure-chat` without the flag.
 
 Setup creates a persistent brain and starts its database, API, and background worker. With the `embedded` extra on macOS, Windows or Linux x86_64 and Python 3.12, the database runs as an embedded PostgreSQL without Docker; elsewhere setup uses Docker Desktop (`--database docker|embedded` overrides the choice). You do not need to clone the repository or start these services separately. If the installed command is missing from your shell, run `uv tool update-shell` and reopen the terminal.
 
@@ -60,8 +62,8 @@ Start with an ordinary task, such as:
 Continue the conversation, then enter `/quit`. Check background learning and open another conversation in the same installation:
 
 ```sh
-agent-memory desktop learning-status
-agent-memory desktop chat --conversation writing-followup
+membrain desktop learning-status
+membrain desktop chat --conversation writing-followup
 ```
 
 Ask for help planning the next writing session. This lets you explore whether earlier feedback helps with a new request, without manually calling a save or search tool. A new conversation reuses the same brain; it is not a separate user's privacy boundary. If learning is pending or blocked, inspect its status before interpreting the result.
@@ -75,14 +77,14 @@ This is a suggested hands-on exercise, not a prerecorded result or a guarantee o
 After desktop setup and chat configuration, install the package in your application's Python 3.12+ environment too. Run this from a project with an active virtual environment or a `.venv` directory. The CLI's isolated environment does not make the SDK importable in your application.
 
 ```sh
-uv pip install 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
+uv pip install 'membrain @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
 ```
 
 The following terminal example uses your saved model configuration and persistent brain:
 
 ```python
-from agent_memory.agent_session import open_agent
-from agent_memory.runtime import DeliveryReceipt
+from membrain.agent_session import open_agent
+from membrain.runtime import DeliveryReceipt
 
 
 def deliver(request):
@@ -108,7 +110,7 @@ For your own model callback, delivery channel, recovery handling, or optional an
 After setup, generate the configuration for a stdio MCP host:
 
 ```sh
-agent-memory desktop mcp-config
+membrain desktop mcp-config
 ```
 
 Add the generated configuration to your host. The bridge starts or connects to the same local service and exposes memory tools.
@@ -151,11 +153,11 @@ The current context still has a limit. The runtime selects memory within that bu
 ## Local operation
 
 ```sh
-agent-memory desktop status
-agent-memory desktop logs
-agent-memory desktop learning-status
-agent-memory desktop stop
-agent-memory desktop start
+membrain desktop status
+membrain desktop logs
+membrain desktop learning-status
+membrain desktop stop
+membrain desktop start
 ```
 
 Stopping the service retains committed memories. The next chat, MCP, or SDK connection can start it again. Configuration lives in the installation directory; memory content lives in its Docker database volume. Copying the configuration directory alone is not a database backup.
@@ -217,7 +219,7 @@ Read the [acceptance criteria](architecture/v1-acceptance.md), [closed longitudi
 
 ## Feedback and contributions
 
-Building an agent with persistent memory? [Share your use case or an installation problem](https://github.com/chriswu727/agent-memory/issues). Reports with reproducible steps, redacted logs, and the integration you use are especially helpful. Repository documentation and developer-facing contributions use English; this overview is also maintained in [简体中文](README.zh-CN.md).
+Building an agent with persistent memory? [Share your use case or an installation problem](https://github.com/chriswu727/membrain/issues). Reports with reproducible steps, redacted logs, and the integration you use are especially helpful. Repository documentation and developer-facing contributions use English; this overview is also maintained in [简体中文](README.zh-CN.md).
 
 If the project is useful to you, **star the repository** and help us identify the next integration that matters. Local checks are preferred; GitHub Actions remains manual-only.
 

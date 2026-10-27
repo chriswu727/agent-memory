@@ -15,9 +15,9 @@ from test_continuous_learning_acceptance import (
 from test_learning import learning as learning
 from test_learning_windows import jobs
 
-from agent_memory.helpers import digest
-from agent_memory.jobs import JobStore
-from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
+from membrain.helpers import digest
+from membrain.jobs import JobStore
+from membrain.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, phase
 
 _SPEC = importlib.util.spec_from_file_location(
     "longitudinal_learning", Path(__file__).parents[1] / "examples" / "longitudinal_learning.py",

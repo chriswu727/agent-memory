@@ -3,7 +3,7 @@ from jsonschema import Draft202012Validator
 from test_cognition import event
 from test_semantic import batch, episode, proposals, run
 
-from agent_memory.semantic import PROPOSAL_SCHEMA, SemanticProcessor
+from membrain.semantic import PROPOSAL_SCHEMA, SemanticProcessor
 
 
 @pytest.mark.parametrize("identifier,revision", [("model-invented-id", None), (None, 1), ("model-invented-id", 1)])

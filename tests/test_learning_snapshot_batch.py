@@ -9,8 +9,8 @@ from test_belief_store import store as store
 from test_consolidation import memory as memory
 from test_semantic import episode, proposals, run
 
-from agent_memory.helpers import DomainError, digest
-from agent_memory.learning import LearningEngine, validate_snapshot
+from membrain.helpers import DomainError, digest
+from membrain.learning import LearningEngine, validate_snapshot
 
 pytestmark = pytest.mark.integration
 GROUPS = {

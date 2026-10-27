@@ -11,11 +11,11 @@ from test_learning_progress import AT, summarize, window
 from test_learning_settlement_recovery import expire, operations, reserve
 from test_learning_windows import claim, execute, observations
 
-from agent_memory.history_semantics import integration_coverage
-from agent_memory.jobs import NO_UNSETTLED_RETRY_POLICY, JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.learning_allocations import HISTORY_PHASE, allocation_metadata
-from agent_memory.learning_phase_monitor import history_debt, resolve_history_status
+from membrain.history_semantics import integration_coverage
+from membrain.jobs import NO_UNSETTLED_RETRY_POLICY, JobStore
+from membrain.learning import LearningEngine
+from membrain.learning_allocations import HISTORY_PHASE, allocation_metadata
+from membrain.learning_phase_monitor import history_debt, resolve_history_status
 
 
 def pending(count=3, *, state="running"):

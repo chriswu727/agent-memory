@@ -4,10 +4,10 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from psycopg.rows import dict_row
 
-from agent_memory import storage
-from agent_memory.config import Settings
-from agent_memory.helpers import uid
-from agent_memory.storage import Database, SchemaCompatibilityError
+from membrain import storage
+from membrain.config import Settings
+from membrain.helpers import uid
+from membrain.storage import Database, SchemaCompatibilityError
 
 pytestmark = pytest.mark.integration
 

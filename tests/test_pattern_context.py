@@ -11,10 +11,10 @@ from test_recall_control import packet as controller_packet
 from test_recall_control import run as control
 from test_semantic import episode, proposals, run
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
-from agent_memory.helpers import digest
-from agent_memory.patterns import build_patterns
+from membrain import cognition
+from membrain.contracts import validate
+from membrain.helpers import digest
+from membrain.patterns import build_patterns
 
 
 @pytest.fixture(autouse=True)

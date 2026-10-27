@@ -7,9 +7,9 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from agent_memory import desktop_chat, desktop_cli
-from agent_memory.local_profile import ensure_profile, load_profile
-from agent_memory.runtime import DeliveryRequest, RuntimeBlocked, TurnResult
+from membrain import desktop_chat, desktop_cli
+from membrain.local_profile import ensure_profile, load_profile
+from membrain.runtime import DeliveryRequest, RuntimeBlocked, TurnResult
 
 
 def arguments(*values):
@@ -19,7 +19,7 @@ def arguments(*values):
 
 
 def test_configuration_is_separate_and_never_prints_secrets(tmp_path, monkeypatch, capsys):
-    from agent_memory.chat_config import load_chat_configuration
+    from membrain.chat_config import load_chat_configuration
 
     profile = ensure_profile(tmp_path / "profile")
     before = (profile.directory / "profile.json").read_bytes()
@@ -41,7 +41,7 @@ def test_configuration_is_separate_and_never_prints_secrets(tmp_path, monkeypatc
 
 
 def test_configure_interactively_uses_hidden_key_input(tmp_path, monkeypatch, capsys):
-    from agent_memory.chat_config import load_chat_configuration
+    from membrain.chat_config import load_chat_configuration
 
     monkeypatch.setattr(desktop_chat.sys, "stdin", Mock(isatty=lambda: True))
     answers = iter(["https://models.example/v1", "configured-model"])
@@ -71,7 +71,7 @@ def test_invalid_configuration_does_not_create_profile(tmp_path, monkeypatch, fl
 
 @pytest.fixture
 def fake_session(tmp_path, monkeypatch):
-    from agent_memory import agent_session
+    from membrain import agent_session
 
     profile = ensure_profile(tmp_path / "profile")
     session = Mock(pending=None)

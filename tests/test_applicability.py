@@ -3,13 +3,13 @@ import copy
 import pytest
 from jsonschema import Draft202012Validator
 
-from agent_memory.applicability import (
+from membrain.applicability import (
     SCHEMA_DEFINITIONS,
     evaluate_applicability,
     validate_condition,
     validate_observation,
 )
-from agent_memory.ontology import CORE_REGISTRY, PredicateDefinition
+from membrain.ontology import CORE_REGISTRY, PredicateDefinition
 
 AT = "2026-10-24T12:00:00Z"
 UNBOUNDED = {"kind": "interval", "start": {"kind": "unbounded"}, "end": {"kind": "unbounded"}}

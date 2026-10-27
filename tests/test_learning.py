@@ -7,15 +7,15 @@ import pytest
 from fastapi.testclient import TestClient
 from test_semantic import encoded, proposals, situation, verifier
 
-from agent_memory.api import create_app
-from agent_memory.client import MemoryActionError, MemoryClient, default_budget
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
-from agent_memory.runtime_client import RuntimeClient
-from agent_memory.semantic import SemanticProcessor
-from agent_memory.service import MemoryService
-from agent_memory.storage import Database
+from membrain.api import create_app
+from membrain.client import MemoryActionError, MemoryClient, default_budget
+from membrain.config import Settings
+from membrain.helpers import Principal, digest, uid
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
+from membrain.runtime_client import RuntimeClient
+from membrain.semantic import SemanticProcessor
+from membrain.service import MemoryService
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

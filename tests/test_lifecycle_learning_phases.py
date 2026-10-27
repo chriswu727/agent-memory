@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_memory.helpers import Principal, digest
-from agent_memory.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, allocation_metadata
+from membrain.helpers import Principal, digest
+from membrain.learning_allocations import ENCODING_PHASE, HISTORY_PHASE, allocation_metadata
 
 
 @pytest.fixture
@@ -418,7 +418,7 @@ def test_learn_preserves_normal_stop_reason_without_turn_exception_relabel(runne
 def test_learning_provider_record_carries_exact_job_phase_and_shared_root(runner, tmp_path):
     from test_memory_lifecycle_evaluation import trial_fixture
 
-    from agent_memory.semantic import CognitiveRequest
+    from membrain.semantic import CognitiveRequest
 
     trial = trial_fixture(runner, tmp_path)
     trial.role = "consolidate"

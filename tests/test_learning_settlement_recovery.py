@@ -8,11 +8,11 @@ from test_learning import learning as learning
 from test_learning_recovery import seed_legacy_window
 from test_learning_windows import claim, execute, observations
 
-from agent_memory.helpers import DomainError, Principal, digest, uid
-from agent_memory.jobs import NO_UNSETTLED_RETRY_POLICY, JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.semantic import SemanticPolicy, SemanticProcessor
-from agent_memory.storage import Database
+from membrain.helpers import DomainError, Principal, digest, uid
+from membrain.jobs import NO_UNSETTLED_RETRY_POLICY, JobStore
+from membrain.learning import LearningEngine
+from membrain.semantic import SemanticPolicy, SemanticProcessor
+from membrain.storage import Database
 
 pytestmark = pytest.mark.integration
 

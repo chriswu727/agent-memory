@@ -10,8 +10,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from agent_memory import local_profile
-from agent_memory.local_profile import (
+from membrain import local_profile
+from membrain.local_profile import (
     LocalProfileBusy,
     LocalProfileError,
     configure_cognition,
@@ -51,7 +51,7 @@ def test_secrets_are_absent_from_repr_and_environment_is_ignored(tmp_path, monke
     profile = configure_cognition(ensure_profile(tmp_path), "https://provider.example/v1", "model", "model-secret")
     monkeypatch.setenv("MEMORY_DATABASE_URL", "postgresql://wrong")
     monkeypatch.setenv("MEMORY_COGNITION_API_KEY", "wrong")
-    monkeypatch.setattr("agent_memory.config.load_dotenv", lambda: pytest.fail("No dotenv lookup allowed"))
+    monkeypatch.setattr("membrain.config.load_dotenv", lambda: pytest.fail("No dotenv lookup allowed"))
     settings = profile.settings()
     assert settings.database_url == profile.database_url
     assert settings.cognition_api_key == "model-secret"
@@ -67,9 +67,9 @@ def test_secrets_are_absent_from_repr_and_environment_is_ignored(tmp_path, monke
 
 
 @pytest.mark.parametrize("platform,variable,suffix", [
-    ("darwin", None, ("Library", "Application Support", "Agent Memory")),
-    ("linux", "XDG_DATA_HOME", ("agent-memory",)),
-    ("win32", "LOCALAPPDATA", ("Agent Memory",)),
+    ("darwin", None, ("Library", "Application Support", "memBrain")),
+    ("linux", "XDG_DATA_HOME", ("membrain",)),
+    ("win32", "LOCALAPPDATA", ("memBrain",)),
 ])
 def test_default_profile_directory_uses_platform_storage(tmp_path, monkeypatch, platform, variable, suffix):
     monkeypatch.setattr(local_profile.sys, "platform", platform)
@@ -79,11 +79,37 @@ def test_default_profile_directory_uses_platform_storage(tmp_path, monkeypatch, 
     assert default_profile_directory() == tmp_path.joinpath(*suffix)
 
 
+@pytest.mark.parametrize("platform,legacy,current", [
+    ("darwin", ("Library", "Application Support", "Agent Memory"), ("Library", "Application Support", "memBrain")),
+    ("linux", (".local", "share", "agent-memory"), (".local", "share", "membrain")),
+])
+def test_installations_from_before_the_rename_keep_their_directory(tmp_path, monkeypatch, platform, legacy, current):
+    monkeypatch.setattr(local_profile.sys, "platform", platform)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    tmp_path.joinpath(*legacy).mkdir(parents=True)
+    assert default_profile_directory() == tmp_path.joinpath(*current)
+    profile = ensure_profile(tmp_path.joinpath(*legacy))
+    assert default_profile_directory() == profile.directory
+    tmp_path.joinpath(*current).mkdir(parents=True)
+    assert default_profile_directory() == tmp_path.joinpath(*current)
+
+
+def test_pre_rename_imports_resolve_to_the_same_modules():
+    import agent_memory.local_profile
+
+    import membrain
+    import membrain.local_profile
+
+    assert agent_memory.local_profile is membrain.local_profile
+    assert agent_memory.__version__ == membrain.__version__
+
+
 def test_relative_xdg_directory_is_not_resolved_from_the_working_directory(tmp_path, monkeypatch):
     monkeypatch.setattr(local_profile.sys, "platform", "linux")
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     monkeypatch.setenv("XDG_DATA_HOME", "relative")
-    assert default_profile_directory() == tmp_path / ".local" / "share" / "agent-memory"
+    assert default_profile_directory() == tmp_path / ".local" / "share" / "membrain"
 
 
 def test_default_ports_fall_back_when_occupied_and_remain_fixed(tmp_path, monkeypatch):
@@ -234,7 +260,7 @@ def test_nested_locks_and_helpers_are_reentrant(tmp_path):
 def test_cross_process_lock_times_out_and_can_be_reused(tmp_path):
     script = """
 from pathlib import Path
-from agent_memory.local_profile import profile_lock, LocalProfileBusy
+from membrain.local_profile import profile_lock, LocalProfileBusy
 import sys
 try:
     with profile_lock(Path(sys.argv[1]), timeout=0.15):
@@ -264,7 +290,7 @@ def test_unsafe_lock_path_is_not_reported_as_busy(tmp_path):
 def test_concurrent_profile_creation_preserves_one_identity(tmp_path):
     script = """
 from pathlib import Path
-from agent_memory.local_profile import ensure_profile
+from membrain.local_profile import ensure_profile
 import sys
 profile = ensure_profile(Path(sys.argv[1]))
 print(profile.installation_id, profile.brain_id)

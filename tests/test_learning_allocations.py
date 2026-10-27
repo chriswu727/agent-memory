@@ -7,8 +7,8 @@ import pytest
 from psycopg.types.json import Jsonb
 from test_jobs import jobs as jobs
 
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.learning_allocations import (
+from membrain.helpers import DomainError, digest, uid
+from membrain.learning_allocations import (
     AUTHORITY_FIELDS,
     CONTRACT_VERSION,
     ENCODING_PHASE,

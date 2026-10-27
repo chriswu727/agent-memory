@@ -13,7 +13,7 @@ CONTRACT_VERSION = "1.0.0-draft"
 @lru_cache
 def schema() -> dict:
     development = Path(__file__).resolve().parents[2] / "architecture/memory-contract.schema.json"
-    source = development if development.is_file() else files("agent_memory").joinpath(
+    source = development if development.is_file() else files("membrain").joinpath(
         "resources/memory-contract.schema.json"
     )
     return json.loads(source.read_text(encoding="utf-8"))

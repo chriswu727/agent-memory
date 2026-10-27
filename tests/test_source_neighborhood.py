@@ -6,9 +6,9 @@ from test_candidates import Candidates, key
 from test_candidates import candidates as candidates
 from test_source_candidates import derived
 
-from agent_memory import cognition
-from agent_memory.helpers import digest
-from agent_memory.source_neighborhood import source_neighborhood_candidates
+from membrain import cognition
+from membrain.helpers import digest
+from membrain.source_neighborhood import source_neighborhood_candidates
 
 pytestmark = pytest.mark.integration
 

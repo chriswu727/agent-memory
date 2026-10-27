@@ -8,11 +8,11 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_memory.api import create_app
-from agent_memory.config import Settings
-from agent_memory.helpers import Principal
-from agent_memory.jobs import JobStore, sanitize_learning_summary, summarize_learning
-from agent_memory.semantic import SemanticResult
+from membrain.api import create_app
+from membrain.config import Settings
+from membrain.helpers import Principal
+from membrain.jobs import JobStore, sanitize_learning_summary, summarize_learning
+from membrain.semantic import SemanticResult
 
 
 def job_row(result, *, kind="consolidate", state="completed"):

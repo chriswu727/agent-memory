@@ -9,9 +9,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import httpx
 import pytest
 
-import agent_memory.chat_provider as module
-from agent_memory.chat_provider import ChatCompletionsGenerator, ChatProviderError
-from agent_memory.runtime import ModelRequest
+import membrain.chat_provider as module
+from membrain.chat_provider import ChatCompletionsGenerator, ChatProviderError
+from membrain.runtime import ModelRequest
 
 REQUEST = ModelRequest(
     "turn", "request",

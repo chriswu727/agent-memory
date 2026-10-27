@@ -7,9 +7,9 @@ from test_agent_session import mocked as mocked
 from test_agent_session import session, turn_id
 from test_runtime_delivery_recovery import receipt_row, response_error
 
-from agent_memory.agent_session import SessionError, open_agent
-from agent_memory.helpers import digest
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
+from membrain.agent_session import SessionError, open_agent
+from membrain.helpers import digest
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
 
 
 def test_new_pending_clears_only_after_explicit_scope_rejection_and_confirmed_absence(mocked):

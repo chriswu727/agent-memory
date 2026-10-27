@@ -2,8 +2,8 @@ import argparse
 import json
 import os
 
-from agent_memory.client import MemoryClient
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
+from membrain.client import MemoryClient
+from membrain.runtime import BrainRuntime, DeliveryReceipt
 
 
 def main():

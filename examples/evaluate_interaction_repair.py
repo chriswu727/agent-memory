@@ -10,15 +10,15 @@ import os
 from dataclasses import asdict
 from pathlib import Path
 
-from agent_memory.helpers import Principal, digest, uid
-from agent_memory.runtime import (
+from examples import evaluate_conversation as conversation
+from examples.evaluate_deepseek import save
+from examples.evaluation_support import MeteredTransport
+from membrain.helpers import Principal, digest, uid
+from membrain.runtime import (
     MEMORY_CONSUMPTION_INSTRUCTIONS,
     MEMORY_CONSUMPTION_VERSION,
     ModelRequest,
 )
-from examples import evaluate_conversation as conversation
-from examples.evaluate_deepseek import save
-from examples.evaluation_support import MeteredTransport
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REPORT = ROOT / "evaluations/deepseek-2026-10-24-conversation.json"
@@ -37,11 +37,11 @@ PROBE_REVIEW = (
 
 def fingerprints():
     result = conversation.fingerprints()
-    for name in ("examples/evaluate_interaction_repair.py", "src/agent_memory/episode_semantics.py",
-                 "src/agent_memory/learning.py", "src/agent_memory/learning_windows.py",
-                 "src/agent_memory/consolidation.py", "src/agent_memory/service.py", "src/agent_memory/neighborhood.py",
-                 "src/agent_memory/ontology.py",
-                 "src/agent_memory/cognition.py", "src/agent_memory/context_views.py"):
+    for name in ("examples/evaluate_interaction_repair.py", "src/membrain/episode_semantics.py",
+                 "src/membrain/learning.py", "src/membrain/learning_windows.py",
+                 "src/membrain/consolidation.py", "src/membrain/service.py", "src/membrain/neighborhood.py",
+                 "src/membrain/ontology.py",
+                 "src/membrain/cognition.py", "src/membrain/context_views.py"):
         result[name] = digest((ROOT / name).read_text())
     return result
 

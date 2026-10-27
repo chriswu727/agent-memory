@@ -7,12 +7,12 @@ from psycopg.types.json import Jsonb
 from test_learning import learning as learning
 from test_semantic import claim, proposals, reference, run
 
-from agent_memory import cognition
-from agent_memory.helpers import DomainError, digest, uid
-from agent_memory.jobs import JobStore
-from agent_memory.learning import LearningEngine
-from agent_memory.neighborhood import _Selector, select_neighborhood
-from agent_memory.semantic import CognitiveBatch, SemanticPolicy
+from membrain import cognition
+from membrain.helpers import DomainError, digest, uid
+from membrain.jobs import JobStore
+from membrain.learning import LearningEngine
+from membrain.neighborhood import _Selector, select_neighborhood
+from membrain.semantic import CognitiveBatch, SemanticPolicy
 
 pytestmark = pytest.mark.integration
 
@@ -120,7 +120,7 @@ def test_literal_redundancy_never_discards_added_meaning_or_relationships(learni
     elif change == "belief_relation":
         from test_belief_recall import relation
 
-        from agent_memory.belief_store import _insert, _relation_id
+        from membrain.belief_store import _insert, _relation_id
 
         link = relation(parent, [memory])
         link["scope"] = copy.deepcopy(memory["scope"])

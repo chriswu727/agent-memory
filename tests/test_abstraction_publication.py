@@ -8,9 +8,9 @@ from test_learning import learning as learning
 from test_learning_windows import drain, jobs
 from test_semantic import claim, encoded, proposals, reference
 
-from agent_memory.client import default_budget, prepared_context, recalled_context
-from agent_memory.helpers import digest
-from agent_memory.semantic import SemanticProcessor
+from membrain.client import default_budget, prepared_context, recalled_context
+from membrain.helpers import digest
+from membrain.semantic import SemanticProcessor
 
 pytestmark = pytest.mark.integration
 

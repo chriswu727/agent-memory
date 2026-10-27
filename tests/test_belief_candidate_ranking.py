@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from agent_memory.candidates import merge_belief_candidates
+from membrain.candidates import merge_belief_candidates
 
 
 def memory(identifier, revision=1):

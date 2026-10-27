@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-from agent_memory import cognition
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError, digest
+from membrain import cognition
+from membrain.contracts import validate
+from membrain.helpers import DomainError, digest
 
 STAMP = "2026-10-22T12:00:00Z"
 UNKNOWN_TIME = {"start": None, "end": None, "precision": "unknown", "basis": "unknown"}

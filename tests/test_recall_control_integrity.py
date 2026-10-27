@@ -5,8 +5,8 @@ import pytest
 from test_belief_recall import recall, scenario
 from test_recall_control import decision, packet, run
 
-from agent_memory.belief_store import relation_ref
-from agent_memory.helpers import DomainError
+from membrain.belief_store import relation_ref
+from membrain.helpers import DomainError
 
 
 def related_packet():

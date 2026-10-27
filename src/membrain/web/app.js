@@ -226,7 +226,7 @@ bind("export", "click", async () => {
   const archive = result.archive || result;
   const document = await api(`/v1/archives/${encodeURIComponent(archive.archive_id)}`);
   const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
-  const link = element("a"); link.href = url; link.download = `agent-memory-${state.brain}.json`;
+  const link = element("a"); link.href = url; link.download = `membrain-${state.brain}.json`;
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   notify("Archive exported with original text and sources. Store it securely.");
 });

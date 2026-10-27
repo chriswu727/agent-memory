@@ -20,8 +20,11 @@ import psycopg
 from psycopg import sql
 
 ENGINES = ("docker", "embedded")
-SERVICE_ACCOUNT = "agent-memory-db"
-SHARED_ROOT = Path("/var/lib/agent-memory")
+SERVICE_ACCOUNT = "membrain-db"
+SHARED_ROOT = Path("/var/lib/membrain")
+# Root clusters created before the memBrain rename stay where they are, under their original account.
+LEGACY_SERVICE_ACCOUNT = "agent-memory-db"
+LEGACY_SHARED_ROOT = Path("/var/lib/agent-memory")
 _EXECUTABLE = ".exe" if os.name == "nt" else ""
 
 
@@ -70,16 +73,16 @@ def _nologin() -> str:
                 "/bin/false")
 
 
-def _service_account() -> tuple[int, int]:
+def _service_account(name: str = SERVICE_ACCOUNT) -> tuple[int, int]:
     import pwd
 
     try:
-        entry = pwd.getpwnam(SERVICE_ACCOUNT)
+        entry = pwd.getpwnam(name)
     except KeyError:
         commands = (
             ["useradd", "--system", "--no-create-home", "--home-dir", "/nonexistent",
-             "--shell", _nologin(), SERVICE_ACCOUNT],
-            ["adduser", "-S", "-D", "-H", "-h", "/nonexistent", "-s", _nologin(), SERVICE_ACCOUNT],
+             "--shell", _nologin(), name],
+            ["adduser", "-S", "-D", "-H", "-h", "/nonexistent", "-s", _nologin(), name],
         )
         for command in commands:
             if shutil.which(command[0]):
@@ -87,24 +90,24 @@ def _service_account() -> tuple[int, int]:
                                stderr=subprocess.DEVNULL, timeout=30, check=False)
                 break
         try:
-            entry = pwd.getpwnam(SERVICE_ACCOUNT)
+            entry = pwd.getpwnam(name)
         except KeyError:
             raise EmbeddedDatabaseError(
                 "embedded_database_account_unavailable",
-                f"PostgreSQL cannot run as root and the '{SERVICE_ACCOUNT}' system account could not be "
+                f"PostgreSQL cannot run as root and the '{name}' system account could not be "
                 "created. Run as a regular user or choose the Docker database engine.",
             ) from None
     return entry.pw_uid, entry.pw_gid
 
 
-def _shared_binaries(source: Path) -> Path:
+def _shared_binaries(source: Path, shared_root: Path = SHARED_ROOT) -> Path:
     """Copy binaries where an unprivileged account can execute them; root home directories are private."""
     marker = str(source.resolve())
-    target = SHARED_ROOT / ("postgres-" + hashlib.sha256(marker.encode()).hexdigest()[:16])
+    target = shared_root / ("postgres-" + hashlib.sha256(marker.encode()).hexdigest()[:16])
     if (target / ".complete").is_file():
         return target
-    SHARED_ROOT.mkdir(mode=0o755, parents=True, exist_ok=True)
-    staging = SHARED_ROOT / (".staging-" + secrets.token_hex(8))
+    shared_root.mkdir(mode=0o755, parents=True, exist_ok=True)
+    staging = shared_root / (".staging-" + secrets.token_hex(8))
     try:
         # Keep the wheel's relative layout: binaries locate vendored libraries through
         # an RPATH such as $ORIGIN/../../../pgserver.libs.
@@ -139,13 +142,15 @@ def _layout(profile) -> _Layout:
         )
     if not _running_as_root():
         return _Layout(source / "bin", profile.directory / "postgres", profile.directory / "postgres.log", None)
-    account = _service_account()
-    cluster = SHARED_ROOT / "clusters" / profile.installation_id
-    SHARED_ROOT.mkdir(mode=0o755, parents=True, exist_ok=True)
-    (SHARED_ROOT / "clusters").mkdir(mode=0o755, exist_ok=True)
+    legacy = (LEGACY_SHARED_ROOT / "clusters" / profile.installation_id / "data" / "PG_VERSION").is_file()
+    shared_root = LEGACY_SHARED_ROOT if legacy else SHARED_ROOT
+    account = _service_account(LEGACY_SERVICE_ACCOUNT if legacy else SERVICE_ACCOUNT)
+    cluster = shared_root / "clusters" / profile.installation_id
+    shared_root.mkdir(mode=0o755, parents=True, exist_ok=True)
+    (shared_root / "clusters").mkdir(mode=0o755, exist_ok=True)
     cluster.mkdir(mode=0o700, exist_ok=True)
     os.chown(cluster, *account)
-    binaries = _shared_binaries(source) / "pgserver" / "pginstall" / "bin"
+    binaries = _shared_binaries(source, shared_root) / "pgserver" / "pginstall" / "bin"
     return _Layout(binaries, cluster / "data", cluster / "postgres.log", account)
 
 
@@ -201,7 +206,7 @@ def _initialize(profile, layout: _Layout) -> None:
                                         "The embedded database could not be initialized." + (
                                             f" initdb reported:\n{detail}" if detail else ""))
         with open(staging / "postgresql.conf", "a", encoding="utf-8") as stream:
-            stream.write("\n# Agent Memory embedded engine\n"
+            stream.write("\n# memBrain embedded engine\n"
                          "listen_addresses = '127.0.0.1'\n"
                          f"port = {profile.database_port}\n"
                          "unix_socket_directories = ''\n"

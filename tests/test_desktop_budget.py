@@ -5,8 +5,8 @@ import httpx
 import pytest
 from test_desktop_chat import arguments
 
-from agent_memory import desktop_budget, desktop_cli
-from agent_memory.client import MemoryClient
+from membrain import desktop_budget, desktop_cli
+from membrain.client import MemoryClient
 
 CHANGE = ("configure-budget", "--request-id", "allowance-1", "--expected-revision", "2",
           "--window-seconds", "3600", "--max-model-calls", "200", "--max-input-bytes", "4000000")

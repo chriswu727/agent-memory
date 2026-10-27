@@ -4,7 +4,7 @@ from dataclasses import replace
 import pytest
 from test_consolidation_planning import LONG_INSTANCE_TEXTS, text_instances
 
-from agent_memory.consolidation_planning import (
+from membrain.consolidation_planning import (
     MAX_OBJECTIVES,
     PLANNER_VERSION,
     SELECTION_POLICY,

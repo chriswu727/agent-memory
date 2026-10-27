@@ -12,10 +12,10 @@ from test_learning_windows import jobs as recorded_jobs
 from test_memory_lifecycle_evaluation import Meter
 from test_semantic import encoded, proposals
 
-from agent_memory.helpers import digest, uid
-from agent_memory.history_attention import POLICY, attention_summary
-from agent_memory.jobs import JobStore
-from agent_memory.runtime import BrainRuntime
+from membrain.helpers import digest, uid
+from membrain.history_attention import POLICY, attention_summary
+from membrain.jobs import JobStore
+from membrain.runtime import BrainRuntime
 
 pytestmark = pytest.mark.integration
 

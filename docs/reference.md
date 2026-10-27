@@ -49,8 +49,8 @@ The core, HTTP API, and Python synchronous text runtime operate independently of
 Install [uv](https://docs.astral.sh/uv/) and start Docker Desktop, then run:
 
 ```sh
-uv tool install --python 3.12 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
-agent-memory desktop setup
+uv tool install --python 3.12 'membrain @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
+membrain desktop setup
 ```
 
 This installation does not require Git or a repository clone, or separate startup commands for the database, API, and worker. If installation reports that the command directory is not in `PATH`, run `uv tool update-shell` and reopen your terminal. First-time setup asks for the service URL, model name, and API key used for memory learning; key input is hidden. Chat Completions-compatible providers are currently supported. The user supplies the model name and endpoint. Setup does not select a subscription or make model calls to probe the configuration. You can skip model configuration and still use persistent storage and lexical recall, but model-driven semantic learning remains disabled and status reports `cognition: not_configured`.
@@ -62,7 +62,7 @@ For a reasoning model that needs more time or output than the default cognitive 
 Setup prints an MCP configuration containing no secrets and saves it as `mcp.json` in the local configuration directory. You can retrieve it again with:
 
 ```sh
-agent-memory desktop mcp-config
+membrain desktop mcp-config
 ```
 
 Add this configuration to a host that supports stdio MCP to connect the memory tools. Configuration locations vary by host; setup does not currently modify external client configuration automatically. Starting this MCP connection automatically starts or connects to the local service. Closing the MCP connection leaves the service processing background tasks. After a computer restart, the next MCP connection or SDK `open_client()` call starts the service again with the same brain; no new setup is required.
@@ -74,8 +74,8 @@ Add this configuration to a host that supports stdio MCP to connect the memory t
 After setup, explicitly reuse the configured memory learning provider for replies, or run `configure-chat` without flags to enter a separate provider:
 
 ```sh
-agent-memory desktop configure-chat --use-cognition
-agent-memory desktop chat
+membrain desktop configure-chat --use-cognition
+membrain desktop chat
 ```
 
 Chat uses the same persistent brain and automatically captures input, recalls memory, generates an answer, records actual terminal delivery, and updates working state. No chat framework or memory-tool calls are required. The next invocation reconnects to the same brain and default conversation. Use `--conversation <stable-id>` and `--branch <stable-id>` to select a session. A new conversation is not a separate brain or a tenant privacy boundary; unrelated users need separate authorized brain identities.
@@ -87,8 +87,8 @@ Reply settings live in private `chat.json`, separate from the cognition settings
 The Python entry point uses the same saved model configuration and session protection:
 
 ```python
-from agent_memory.agent_session import open_agent
-from agent_memory.runtime import DeliveryReceipt
+from membrain.agent_session import open_agent
+from membrain.runtime import DeliveryReceipt
 
 def deliver(request):
     channel.send(request.text)
@@ -105,8 +105,8 @@ One local session holds a cross-process lock for its brain, conversation, and br
 Interactive commands are `/quit`, `/resume`, and `/retry <original input>`. Recovery is explicit. If input capture was interrupted, retry the exact original input; the CLI reuses its saved message identity. For scripted use:
 
 ```sh
-agent-memory desktop chat --conversation example --message 'Hello' --message-id event-001
-agent-memory desktop chat --conversation example --resume
+membrain desktop chat --conversation example --message 'Hello' --message-id event-001
+membrain desktop chat --conversation example --resume
 ```
 
 Keep the same message ID and text when retrying a scripted send. Reusing an existing ID with different input is rejected before creating new pending state. Recovery checks the pending input fingerprint against the database. A completed replay does not print or send the answer again. An uncertain model call or terminal write stays blocked rather than automatically charging or sending again; `/resume` cannot resolve an unknown external outcome. A successful terminal receipt means output was written and flushed, not that a person read it.
@@ -116,7 +116,7 @@ To deliberately close a blocked turn, use `/cancel <exact-turn-id>` or `chat --c
 Inspect the unfinished turn before choosing a recovery action:
 
 ```sh
-agent-memory desktop turn-status --conversation example --branch main
+membrain desktop turn-status --conversation example --branch main
 ```
 
 Use the original conversation, branch, and installation directory; defaults are `desktop-chat` and `main`. This command reads bounded metadata from an already-running service without generating, sending, resuming, or cancelling anything. `turn: null` means no unfinished owner was found at that moment, not that all messages were delivered. See [integration and recovery diagnostics](../architecture/integration-troubleshooting.md) for provider errors, occupied conversations, and uncertain outcomes.
@@ -126,11 +126,11 @@ This entry point supports synchronous text Chat Completions only. It preserves r
 ### Local status and configuration
 
 ```sh
-agent-memory desktop status
-agent-memory desktop logs
-agent-memory desktop stop
-agent-memory desktop start
-agent-memory desktop restart
+membrain desktop status
+membrain desktop logs
+membrain desktop stop
+membrain desktop start
+membrain desktop restart
 ```
 
 `status` checks the authenticated service, database, brain identity, and worker. The presence of model configuration does not verify provider availability or memory quality. `logs` returns bounded, structured service events without conversation bodies or API keys. `stop` and `restart` retain the database volume and configuration; they do not delete memories. Shutdown is requested through the authenticated service instance rather than by killing a process using a stale PID. Updating cognition configuration through `setup` automatically restarts the services that need the update. With `--no-start`, setup only saves configuration; run `restart` later to apply it. After updating the installed program, also run `desktop restart` so the background instance loads the new code.
@@ -138,27 +138,27 @@ agent-memory desktop restart
 To update the source-URL installation above to the current `main` branch, reinstall the package and restart the service:
 
 ```sh
-uv tool install --python 3.12 --force --reinstall-package agent-memory-runtime 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
-agent-memory desktop restart
+uv tool install --python 3.12 --force --reinstall-package membrain 'membrain @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
+membrain desktop restart
 ```
 
 `--reinstall-package` refreshes the source archive even when the package version is unchanged. Keep using the same `--directory` for a non-default installation; there is no need to create a new profile or brain. If a separate Python host imports the SDK, update that environment before reconnecting it too, replacing the interpreter path below with the host's actual interpreter:
 
 ```sh
-uv pip install --python /absolute/path/to/host/python --reinstall-package agent-memory-runtime 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
+uv pip install --python /absolute/path/to/host/python --reinstall-package membrain 'membrain @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
 ```
 
 The service freezes a content-based build identity at startup, covering runtime code, contracts, and migrations. A changed build reports `restart_required` even when the package version is unchanged; `start` will not silently reuse the old daemon. Startup and migration reject unknown or non-prefix schema histories, and a downgrade check runs before stopping a live service. These checks do not prove that historical migration SQL was unmodified. The real two-build Docker test verifies retained brain identity and sources, plus refusal to stop a newer service during an incompatible downgrade.
 
-The default configuration directory is `~/Library/Application Support/Agent Memory` on macOS, `%LOCALAPPDATA%\Agent Memory` on Windows, or `$XDG_DATA_HOME/agent-memory` on Linux (`~/.local/share/agent-memory` when unset). All desktop subcommands accept `--directory <absolute-directory>`; use the same directory consistently for one installation. This directory contains local credentials. Memory content is persisted in the installation's Docker data volume, so copying the configuration directory does not back up the database.
+The default configuration directory is `~/Library/Application Support/memBrain` on macOS, `%LOCALAPPDATA%\memBrain` on Windows, or `$XDG_DATA_HOME/membrain` on Linux (`~/.local/share/membrain` when unset). An installation created before the memBrain rename keeps using its existing `Agent Memory` or `agent-memory` directory. All desktop subcommands accept `--directory <absolute-directory>`; use the same directory consistently for one installation. This directory contains local credentials. Memory content is persisted in the installation's Docker data volume, so copying the configuration directory does not back up the database.
 
 Use `desktop backup --output PRIVATE_DIRECTORY --request-id STABLE_ID` for a streamed full-database checkpoint. Supported recovery requires that bundle and the independently current deletion registry; it restores into a fresh quarantined installation and needs explicit checkpoint activation. Old pending work does not automatically resume. The [backup and recovery guide](../architecture/desktop-recovery.md) explains current-authority preservation, sensitive plaintext artifacts, new credentials, and the required external-host recovery epoch.
 
 For automated deployment, save configuration first and start the service later:
 
 ```sh
-agent-memory desktop setup --non-interactive --no-start
-agent-memory desktop start
+membrain desktop setup --non-interactive --no-start
+membrain desktop start
 ```
 
 To configure cognition non-interactively, use `--base-url`, `--model`, and `--api-key-env` to specify the service URL, model, and **name of an already-set environment variable containing the key**. Do not put the key value in command arguments. The optional `--thinking enabled|disabled` flag is only for providers that support it. The desktop service uses its own configuration; it does not automatically read the repository's `.env` or migrate brains from the development database into the new installation.
@@ -171,16 +171,16 @@ Existing development environments can continue using the following workflow. It 
 
 ```sh
 uv sync --frozen
-uv run agent-memory init
+uv run membrain init
 docker compose up -d --wait
-uv run agent-memory migrate
-uv run agent-memory serve
+uv run membrain migrate
+uv run membrain serve
 ```
 
 Run the persistent worker in another terminal:
 
 ```sh
-uv run agent-memory worker
+uv run membrain worker
 ```
 
 The service runs at <http://127.0.0.1:8787>, with its access token saved in `.local/access-token`. The development workbench is available at the same address for manually inspecting underlying behavior; the target product does not require opening it. Run `init` once; it does not overwrite existing configuration. `.env` and `.local/` contain local credentials and are excluded from version control.
@@ -189,22 +189,22 @@ The service runs at <http://127.0.0.1:8787>, with its access token saved in `.lo
 
 ```python
 from pathlib import Path
-from agent_memory.client import MemoryClient
+from membrain.client import MemoryClient
 
 with MemoryClient("http://127.0.0.1:8787", Path(".local/access-token").read_text().strip()) as memory:
     brain = memory.create_brain("My Agent")
     Path(".local/brain-id").write_text(brain["id"] + "\n")
 ```
 
-The database binds to `127.0.0.1:55432` by default, and HTTP binds to `127.0.0.1:8787`. The workbench, API, and worker share the same core. Use `uv run agent-memory worker --once` to process one pending job per brain manually. `docker compose down` stops the database while retaining its volume; do not use `down -v` unless you intend to delete the entire database.
+The database binds to `127.0.0.1:55432` by default, and HTTP binds to `127.0.0.1:8787`. The workbench, API, and worker share the same core. Use `uv run membrain worker --once` to process one pending job per brain manually. `docker compose down` stops the database while retaining its volume; do not use `down -v` unless you intend to delete the entire database.
 
 ## Automatic integration
 
-Python's `BrainRuntime` manages synchronous text turns. The host initializes it once with a model generation function and an actual delivery function. Application code submits received messages without calling memory tools or orchestrating reads and writes on each turn. The following example is for host developers. Install `agent-memory-runtime` in the host's Python environment as well, using the same source URL if needed; the CLI installed by `uv tool install` has an isolated environment and does not change the host's Python dependencies. Integration code can read the local configuration and connect to the stable brain directly:
+Python's `BrainRuntime` manages synchronous text turns. The host initializes it once with a model generation function and an actual delivery function. Application code submits received messages without calling memory tools or orchestrating reads and writes on each turn. The following example is for host developers. Install `membrain` in the host's Python environment as well, using the same source URL if needed; the CLI installed by `uv tool install` has an isolated environment and does not change the host's Python dependencies. Integration code can read the local configuration and connect to the stable brain directly:
 
 ```python
-from agent_memory.desktop_connection import open_client
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt
+from membrain.desktop_connection import open_client
+from membrain.runtime import BrainRuntime, DeliveryReceipt
 
 def generate(request):
     return model.generate(messages=list(request.messages))
@@ -245,7 +245,7 @@ When an external model call or delivery has an uncertain outcome, the default is
 The default `RuntimePolicy(orientation_policy="always")` retains a situation proposal and an independent verification on every turn. After applying `011_orientation_route.sql`, integrations focused on ordinary conversation and recall of known facts and preferences can explicitly select:
 
 ```python
-from agent_memory.runtime import RuntimePolicy
+from membrain.runtime import RuntimePolicy
 
 runtime = BrainRuntime(
     memory, generate, deliver=deliver,
@@ -269,8 +269,8 @@ Correctly calculating a memory's applicability does not guarantee a correct host
 ```python
 import os
 
-from agent_memory.answer_review import AnswerReviewer, AnswerReviewPolicy
-from agent_memory.answer_review_provider import ChatCompletionsAnswerReviewProvider
+from membrain.answer_review import AnswerReviewer, AnswerReviewPolicy
+from membrain.answer_review_provider import ChatCompletionsAnswerReviewProvider
 
 with ChatCompletionsAnswerReviewProvider(
     base_url=os.environ["MEMORY_REVIEW_BASE_URL"],
@@ -312,8 +312,8 @@ The host can configure a model for recall during initialization. The main agent 
 ```python
 import os
 
-from agent_memory.recall_control import RecallController, RecallPolicy
-from agent_memory.recall_provider import ChatCompletionsRecallReasoner
+from membrain.recall_control import RecallController, RecallPolicy
+from membrain.recall_provider import ChatCompletionsRecallReasoner
 
 with ChatCompletionsRecallReasoner(
     base_url=os.environ["MEMORY_REASONER_BASE_URL"],
@@ -356,9 +356,9 @@ MEMORY_COGNITION_MODEL=<your chat model>
 
 `MEMORY_COGNITION_THINKING` is optional and accepts `enabled` or `disabled`; when unset, the provider's default behavior applies. Use it only with providers that support `thinking.type`. All three settings above remain required; configuring only the switch is rejected at startup. Output-token and response-byte limits are separate, and truncated content cannot count as a successful proposal.
 
-`MEMORY_COGNITION_REASONING_EFFORT` optionally forwards a supported provider effort (`minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`); unset leaves the provider default, and an explicit effort cannot accompany disabled thinking. Provider support varies. `MEMORY_COGNITION_MAX_ENVELOPE_BYTES` separately bounds the complete HTTP response, including hidden reasoning, from 1 to 1,048,576 bytes; its default is 65,536. Neither setting changes the semantic content limit or retries a failed request. On desktop, `agent-memory desktop configure-cognition-policy --reasoning-effort low --max-envelope-bytes 262144` changes only these options and preserves existing time/output/content limits. Restart to apply. Use `--reasoning-effort default` to remove the override. Existing policy files remain readable; saves use policy format v2.
+`MEMORY_COGNITION_REASONING_EFFORT` optionally forwards a supported provider effort (`minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`); unset leaves the provider default, and an explicit effort cannot accompany disabled thinking. Provider support varies. `MEMORY_COGNITION_MAX_ENVELOPE_BYTES` separately bounds the complete HTTP response, including hidden reasoning, from 1 to 1,048,576 bytes; its default is 65,536. Neither setting changes the semantic content limit or retries a failed request. On desktop, `membrain desktop configure-cognition-policy --reasoning-effort low --max-envelope-bytes 262144` changes only these options and preserves existing time/output/content limits. Restart to apply. Use `--reasoning-effort default` to remove the override. Existing policy files remain readable; saves use policy format v2.
 
-Optional `MEMORY_COGNITION_MAX_WALL_TIME_MS`, `MEMORY_COGNITION_MAX_OUTPUT_TOKENS`, and `MEMORY_COGNITION_MAX_RESPONSE_BYTES` default to 30,000, 8,192, and 32,768. Their upper bounds are 600,000, 32,768, and 65,536 respectively. Wall time covers both proposal and verification; output tokens apply per request, and decoded-content bytes are distinct from the transport's bounded response envelope. For a desktop installation, inspect `agent-memory desktop cognition-policy`, or save all three with `desktop configure-cognition-policy --max-wall-time-ms 240000 --max-output-tokens 16384 --max-response-bytes 65536`, then restart. These example values explicitly increase the allowance; defaults are unchanged.
+Optional `MEMORY_COGNITION_MAX_WALL_TIME_MS`, `MEMORY_COGNITION_MAX_OUTPUT_TOKENS`, and `MEMORY_COGNITION_MAX_RESPONSE_BYTES` default to 30,000, 8,192, and 32,768. Their upper bounds are 600,000, 32,768, and 65,536 respectively. Wall time covers both proposal and verification; output tokens apply per request, and decoded-content bytes are distinct from the transport's bounded response envelope. For a desktop installation, inspect `membrain desktop cognition-policy`, or save all three with `desktop configure-cognition-policy --max-wall-time-ms 240000 --max-output-tokens 16384 --max-response-bytes 65536`, then restart. These example values explicitly increase the allowance; defaults are unchanged.
 
 New learning and orientation snapshots freeze the complete effective semantic policy. Restarting with different limits does not rewrite a started job's frozen policy or reset its reservations. Legacy snapshots without a policy field retain their earlier behavior of using the current processor settings; incompatible reserved requests still cannot be reused with a different fingerprint. Desktop connections allow a bounded 615-second response wait for the maximum frozen policy, with separate five-second connection/pool limits. Other hosts must choose an HTTP response timeout that covers their server policy; the Python SDK's general default remains 30 seconds.
 
@@ -400,7 +400,7 @@ When optional history is incomplete, fresh encoding switches to `local-observati
 
 Historical integration freezes a finite comparison manifest, including complete source, parent, exception, and relation closures. The verifier receives the complete context once and resolves exact references into it; selective citations cannot hide uncited qualifications. Discovery and dependency limits remain explicit. Known context is preflighted, but an unexpectedly large generated proposal can still exceed the verification budget. Unseen candidates beyond a bounded scan remain unresolved. See [the learning contract](../architecture/local-observation-consolidation.md) and [phase monitoring](../architecture/learning-monitoring.md); deterministic checks do not replace sustained real-model acceptance.
 
-Use `agent-memory desktop budget` to inspect the effective policy and current reservations. `desktop configure-budget` changes it with a stable request ID and the revision just read; the authenticated HTTP API and both SDKs expose the same operation. Explicit configuration can raise or lower the brain allowance without resetting usage or increasing existing job limits. Zero calls stops new cognitive and embedding reservations. See [cognitive budget configuration](../architecture/cognitive-budgets.md) for commands, bounds, and lost-response handling.
+Use `membrain desktop budget` to inspect the effective policy and current reservations. `desktop configure-budget` changes it with a stable request ID and the revision just read; the authenticated HTTP API and both SDKs expose the same operation. Explicit configuration can raise or lower the brain allowance without resetting usage or increasing existing job limits. Zero calls stops new cognitive and embedding reservations. See [cognitive budget configuration](../architecture/cognitive-budgets.md) for commands, bounds, and lost-response handling.
 
 Background learning uses persistent input-sequence windows. Jobs from the same conversation and branch that have not started may merge while retaining the earliest processing position. Each batch reads up to eight new inputs in order, shrinks for long messages to fit the request-byte budget, and adds relevant history. An individually oversized record remains pending. Successful processing saves progress and creates continuation jobs for the remaining window in the same transaction. Retries freeze the original batch's source, belief, episode, and relation versions. A fresh encoding allocation that has never reserved a provider call can rebuild a stale window through a validated successor under the same allocation. Paid failures and uncertain results cannot gain another allocation through automatic source recovery. Older jobs retain their original bounded retry behavior. A job's cumulative budget never resets, and new jobs are also constrained by the brain's cumulative budget. Invalid results, oversized fixed requests, or insufficient budget do not advance progress. Completed processing does not necessarily produce a new belief.
 
@@ -437,7 +437,7 @@ MEMORY_EMBEDDING_DIMENSIONS=1024
 `1024` is only an example. Replace it with the selected model's actual dimensions, within 1–8192. Background processing creates vectors for newly published memories. Queries call the embedding provider only when their request budget explicitly sets `max_embedding_calls > 0`. The default is zero; environment variables alone do not enable embedding calls on every query. For example:
 
 ```python
-from agent_memory.client import default_budget
+from membrain.client import default_budget
 
 budget = {**default_budget(16000), "max_embedding_calls": 1}
 result = memory.recall(
@@ -507,9 +507,9 @@ Both contracts preserve the parent's result, call counts, input-byte reservation
 For the desktop service, these commands use the saved profile and require the service to be running. They do not start a worker implicitly:
 
 ```sh
-agent-memory desktop learning-status
-agent-memory desktop learning-status --job JOB_ID
-agent-memory desktop retry-learning JOB_ID --expected-fence 1 --request-id recover-1
+membrain desktop learning-status
+membrain desktop learning-status --job JOB_ID
+membrain desktop retry-learning JOB_ID --expected-fence 1 --request-id recover-1
 ```
 
 Use the job ID and fence returned by monitoring. If the recovery response is lost, reuse the exact request ID and fence. Python exposes `RuntimeClient(memory).learning_progress()`, `.job(job_id)`, and `.retry_learning(job_id, request_id="recover-1", expected_fence=1)`; TypeScript exposes `memory.learningProgress()` and `memory.retryLearning(jobId, {requestId: "recover-1", expectedFence: 1})`. Neither SDK automatically retries this write.
@@ -518,7 +518,7 @@ New cognitive jobs use `source-composition-v4`. Assistant speech claims retain e
 
 ## Current low-level interfaces
 
-The Python client is in `agent_memory.client`, with an underlying workflow example in [examples/connect.py](../examples/connect.py). The TypeScript client is in [sdk/typescript](../sdk/typescript). The following HTTP contract is for adapters to orchestrate; it is not the target product's required step-by-step workflow for users or the main agent:
+The Python client is in `membrain.client`, with an underlying workflow example in [examples/connect.py](../examples/connect.py). The TypeScript client is in [sdk/typescript](../sdk/typescript). The following HTTP contract is for adapters to orchestrate; it is not the target product's required step-by-step workflow for users or the main agent:
 
 1. `observe` persists actually received or delivered messages with stable source IDs.
 2. `prepare` reads the current situation, working state, and relevant memories.
@@ -539,7 +539,7 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 
 ### Plugin mode
 
-`agent-memory plugin` provides zero-configuration entry points for host plugins. They create an installation in the default profile directory (or `AGENT_MEMORY_DIRECTORY`) on first use and choose the embedded database engine when it is installed.
+`membrain plugin` provides zero-configuration entry points for host plugins. They create an installation in the default profile directory (or `MEMBRAIN_DIRECTORY`) on first use and choose the embedded database engine when it is installed.
 
 | Command | Purpose |
 | --- | --- |
@@ -548,18 +548,18 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation. |
 | `plugin status` | Reports service state and the number of queued records. |
 
-Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/agent-memory`; see [plugin mode](../architecture/plugin-mode.md).
+Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/membrain`; see [plugin mode](../architecture/plugin-mode.md).
 
 ### MCP
 
-MCP uses stdio through the official Python SDK 1.x, with its version pinned by `uv.lock`. Desktop installations should use the secret-free configuration generated by `agent-memory desktop mcp-config`. The following is a manual client configuration for development deployments:
+MCP uses stdio through the official Python SDK 1.x, with its version pinned by `uv.lock`. Desktop installations should use the secret-free configuration generated by `membrain desktop mcp-config`. The following is a manual client configuration for development deployments:
 
 ```json
 {
   "mcpServers": {
-    "agent-memory": {
+    "membrain": {
       "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/agent-memory", "agent-memory", "mcp"],
+      "args": ["run", "--directory", "/absolute/path/to/membrain", "membrain", "mcp"],
       "env": {
         "MEMORY_BASE_URL": "http://127.0.0.1:8787",
         "MEMORY_API_KEY": "<your local access token>",
@@ -603,21 +603,21 @@ An archive is currently limited to 16 MB and 5,000 records of each type. Exceedi
 
 ## Project structure
 
-- `src/agent_memory/cognition.py`: episode capture, cue-driven recall, evidence boundaries, and workspace assembly.
-- `src/agent_memory/runtime.py`, `turns.py`: automatic text lifecycle, persistent phases, and call budgets.
-- `src/agent_memory/recall_control.py`, `recall_provider.py`: semantic recall decisions and the optional model adapter.
-- `src/agent_memory/semantic.py`, `learning.py`, `consolidation.py`: semantic proposals and checks, current situation, and background cognitive publication.
-- `src/agent_memory/belief_store.py`, `belief_resolution.py`: belief relations, complete evidence closure, and current applicability.
-- `src/agent_memory/learning_windows.py`, `neighborhood.py`: persistent processing windows and selection of complete material within count and byte budgets.
-- `src/agent_memory/patterns.py`, `pattern_store.py`: exact binding, validation, persistence, and invalidation of shared semantics and episode differences.
-- `src/agent_memory/candidates.py`, `retrieval.py`, `dynamics.py`: candidate fusion, version dependencies, access tiers, and external feedback.
-- `src/agent_memory/jobs.py`, `embeddings.py`, `vector_jobs.py`: persistent jobs, call budgets, and optional vector processing.
-- `src/agent_memory/service.py`: transactions, versions, lifecycle management, and the ten memory operations.
-- `src/agent_memory/storage.py`, `migrations/`: PostgreSQL data model and isolation.
-- `src/agent_memory/api.py`, `web/`: authentication, HTTP, and the local workbench.
-- `src/agent_memory/client.py`, `mcp_server.py`, `sdk/typescript/`: host integration.
-- `src/agent_memory/local_profile.py`, `desktop.py`, `desktop_connection.py`: local configuration, service lifecycle, and automatic connections.
-- `src/agent_memory/agent_session.py`, `chat_config.py`, `chat_provider.py`, `desktop_chat.py`: direct model integration, durable local sessions, explicit recovery, and terminal chat.
+- `src/membrain/cognition.py`: episode capture, cue-driven recall, evidence boundaries, and workspace assembly.
+- `src/membrain/runtime.py`, `turns.py`: automatic text lifecycle, persistent phases, and call budgets.
+- `src/membrain/recall_control.py`, `recall_provider.py`: semantic recall decisions and the optional model adapter.
+- `src/membrain/semantic.py`, `learning.py`, `consolidation.py`: semantic proposals and checks, current situation, and background cognitive publication.
+- `src/membrain/belief_store.py`, `belief_resolution.py`: belief relations, complete evidence closure, and current applicability.
+- `src/membrain/learning_windows.py`, `neighborhood.py`: persistent processing windows and selection of complete material within count and byte budgets.
+- `src/membrain/patterns.py`, `pattern_store.py`: exact binding, validation, persistence, and invalidation of shared semantics and episode differences.
+- `src/membrain/candidates.py`, `retrieval.py`, `dynamics.py`: candidate fusion, version dependencies, access tiers, and external feedback.
+- `src/membrain/jobs.py`, `embeddings.py`, `vector_jobs.py`: persistent jobs, call budgets, and optional vector processing.
+- `src/membrain/service.py`: transactions, versions, lifecycle management, and the ten memory operations.
+- `src/membrain/storage.py`, `migrations/`: PostgreSQL data model and isolation.
+- `src/membrain/api.py`, `web/`: authentication, HTTP, and the local workbench.
+- `src/membrain/client.py`, `mcp_server.py`, `sdk/typescript/`: host integration.
+- `src/membrain/local_profile.py`, `desktop.py`, `desktop_connection.py`: local configuration, service lifecycle, and automatic connections.
+- `src/membrain/agent_session.py`, `chat_config.py`, `chat_provider.py`, `desktop_chat.py`: direct model integration, durable local sessions, explicit recovery, and terminal chat.
 - `architecture/`: complete goals, machine-readable contracts, and 52 system acceptance scenarios.
 
 ## Verification

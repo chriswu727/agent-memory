@@ -3,8 +3,8 @@ import copy
 import pytest
 from test_cognition import event
 
-from agent_memory.archive_views import validate_extensions
-from agent_memory.helpers import DomainError
+from membrain.archive_views import validate_extensions
+from membrain.helpers import DomainError
 
 
 def archive_episode(**changes):

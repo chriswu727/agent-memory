@@ -1,9 +1,9 @@
 import pytest
 from test_learning import learning as learning
 
-from agent_memory.delivery_receipts import confirmed_delivery_receipt
-from agent_memory.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
-from agent_memory.turns import TurnStore
+from membrain.delivery_receipts import confirmed_delivery_receipt
+from membrain.runtime import BrainRuntime, DeliveryReceipt, RuntimeBlocked
+from membrain.turns import TurnStore
 
 pytestmark = pytest.mark.integration
 

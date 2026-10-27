@@ -8,9 +8,9 @@ from test_desktop_chat import arguments
 from test_desktop_chat import fake_session as fake_session
 from test_desktop_turns import TURN, install
 
-from agent_memory import desktop_chat
-from agent_memory.chat_provider import ChatProviderError
-from agent_memory.runtime import RuntimeBlocked
+from membrain import desktop_chat
+from membrain.chat_provider import ChatProviderError
+from membrain.runtime import RuntimeBlocked
 
 PENDING = "turn-" + "a" * 40
 CANDIDATE = "turn-" + "b" * 40

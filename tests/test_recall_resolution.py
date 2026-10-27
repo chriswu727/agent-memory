@@ -8,13 +8,13 @@ from test_bounded_learning_semantics import local_batch, local_claim, publicatio
 from test_cognition import STAMP, event, prepare_payload, request, scope, state, working
 from test_semantic import encoded, proposals, verifier
 
-from agent_memory import cognition
-from agent_memory.consolidation import _assertion, _check_result
-from agent_memory.context_views import recall_context_view
-from agent_memory.contracts import validate
-from agent_memory.helpers import DomainError
-from agent_memory.recall_resolution import RESOLUTION_INPUT_VERSION
-from agent_memory.semantic import SemanticProcessor, proposal_schema
+from membrain import cognition
+from membrain.consolidation import _assertion, _check_result
+from membrain.context_views import recall_context_view
+from membrain.contracts import validate
+from membrain.helpers import DomainError
+from membrain.recall_resolution import RESOLUTION_INPUT_VERSION
+from membrain.semantic import SemanticProcessor, proposal_schema
 
 TEXT = ("Grandma lit a lantern during power cuts and let me sort buttons into a tea tin beside her. "
         "She used the tin with the faded yellow lid and kept the lantern on the low shelf. "
@@ -110,7 +110,7 @@ def test_local_verification_disallows_historical_only_fields_without_silently_st
 
 
 def test_old_contract_remains_fragment_only_and_does_not_accept_new_fields():
-    from agent_memory.citation_coverage import SOURCE_ACT_INPUT_VERSION
+    from membrain.citation_coverage import SOURCE_ACT_INPUT_VERSION
 
     _, _, result, calls = example(version=SOURCE_ACT_INPUT_VERSION)
     assert len(calls) == 1 and not result.claims
@@ -217,9 +217,9 @@ def test_external_use_can_keep_old_details_active_without_rewriting_the_memory()
 
 
 def test_new_local_schema_contains_only_reachable_definitions_and_full_source_verification():
-    from agent_memory.citation_coverage import SOURCE_ACT_INPUT_VERSION
-    from agent_memory.local_semantics import LOCAL_OBSERVATION_MODE
-    from agent_memory.semantic import proposal_data, request_payload
+    from membrain.citation_coverage import SOURCE_ACT_INPUT_VERSION
+    from membrain.local_semantics import LOCAL_OBSERVATION_MODE
+    from membrain.semantic import proposal_data, request_payload
 
     source, data, _, calls = example()
     source_before = copy.deepcopy(source)
@@ -243,7 +243,7 @@ def test_new_local_schema_contains_only_reachable_definitions_and_full_source_ve
 
 @pytest.mark.parametrize("character", ['"', '\\', '\n', '🙂'])
 def test_host_budget_accounts_for_instructions_and_escaped_memory_before_retrieval(character):
-    from agent_memory.runtime import BrainRuntime, RuntimePolicy
+    from membrain.runtime import BrainRuntime, RuntimePolicy
 
     runtime = BrainRuntime(SimpleNamespace(brain_id="budget-test"), lambda _: pytest.fail("No model call"),
                            policy=RuntimePolicy(memory_context_tokens=16000, max_input_tokens=24000))

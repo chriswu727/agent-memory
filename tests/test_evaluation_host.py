@@ -14,7 +14,7 @@ import pytest
 from fastapi import FastAPI
 from test_evaluation_support import MeteredTransport
 
-from agent_memory.runtime import ModelRequest
+from membrain.runtime import ModelRequest
 
 _SPEC = importlib.util.spec_from_file_location(
     "evaluation_host", Path(__file__).parents[1] / "examples" / "evaluation_host.py",

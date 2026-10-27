@@ -6,7 +6,7 @@ from test_belief_semantic import TEMPORARY, abstraction, known, link_verifier, s
 from test_cognition import event
 from test_semantic import batch, claim, encoded, proposals, reference, run
 
-from agent_memory.semantic import SemanticProcessor
+from membrain.semantic import SemanticProcessor
 
 BASELINE = "从2026年10月20日00:00 UTC起，我的一般回复偏好是简短回答。这项偏好没有预定结束日期，也没有其他情境条件。"
 EXCEPTION = "仅在2026年10月24日00:00 UTC到2026年10月25日00:00 UTC期间，我的一般回复偏好是详细解释。这只是一天的临时例外；结束后恢复简短回答。"

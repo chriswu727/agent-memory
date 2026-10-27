@@ -8,9 +8,9 @@ import httpx
 import pytest
 from test_semantic import claim, event, proposals
 
-from agent_memory.helpers import digest
-from agent_memory.semantic import SemanticResult
-from agent_memory.semantic_provider import ChatCompletionsSemanticProvider
+from membrain.helpers import digest
+from membrain.semantic import SemanticResult
+from membrain.semantic_provider import ChatCompletionsSemanticProvider
 
 
 @pytest.fixture

@@ -5,11 +5,11 @@ import pytest
 from test_longitudinal_repairs import BLACKOUT, legacy_blackout
 from test_semantic import batch, claim, encoded, proposals, reference, verifier
 
-from agent_memory.citation_coverage import (
+from membrain.citation_coverage import (
     CITATION_PROVENANCE_INPUT_VERSION,
     SOURCE_ACT_INPUT_VERSION,
 )
-from agent_memory.semantic import SemanticProcessor
+from membrain.semantic import SemanticProcessor
 
 
 @pytest.mark.parametrize("coverage", ["supports", "unknown"])

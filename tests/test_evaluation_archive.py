@@ -11,12 +11,12 @@ from test_cognitive_archives import populated
 from test_memory_lifecycle_evaluation import evaluation as evaluation
 from test_memory_lifecycle_evaluation import trial_fixture
 
-from agent_memory import cognition
-from agent_memory.api import create_app
-from agent_memory.belief_store import assertion_fingerprint
-from agent_memory.client import MemoryClient
-from agent_memory.config import Settings
-from agent_memory.helpers import digest
+from membrain import cognition
+from membrain.api import create_app
+from membrain.belief_store import assertion_fingerprint
+from membrain.client import MemoryClient
+from membrain.config import Settings
+from membrain.helpers import digest
 
 
 def sample_archive():

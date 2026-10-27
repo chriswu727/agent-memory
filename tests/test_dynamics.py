@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from agent_memory.dynamics import AccessPolicy, access_state, rank_weight
+from membrain.dynamics import AccessPolicy, access_state, rank_weight
 
 START = datetime(2026, 1, 1, tzinfo=UTC)
 

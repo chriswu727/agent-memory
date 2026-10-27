@@ -8,8 +8,8 @@ from test_cognitive_archives import Archives
 from test_consolidation import memory as memory
 from test_semantic import claim, episode, proposals, run
 
-from agent_memory.helpers import Principal, uid
-from agent_memory.pattern_store import invalidate_patterns, load_patterns, refresh_patterns
+from membrain.helpers import Principal, uid
+from membrain.pattern_store import invalidate_patterns, load_patterns, refresh_patterns
 
 pytestmark = pytest.mark.integration
 
@@ -163,7 +163,7 @@ def test_reader_rechecks_current_source_and_parent_closure_instead_of_trusting_c
 @pytest.mark.parametrize("bound,value", [("MAX_MEMORIES", 1), ("MAX_EPISODES", 1), ("MAX_SOURCES", 1)])
 def test_reader_omits_the_entire_view_when_its_validation_budget_is_exceeded(store, monkeypatch, bound, value):
     _, memories, _, _, _ = populated(store)
-    monkeypatch.setattr("agent_memory.pattern_store." + bound, value)
+    monkeypatch.setattr("membrain.pattern_store." + bound, value)
     assert load(store, memories) == []
 
 
