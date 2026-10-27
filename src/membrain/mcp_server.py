@@ -8,6 +8,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from membrain.client import (
+    MemoryActionError,
     MemoryClient,
     default_budget,
     integration_capabilities,
@@ -60,11 +61,16 @@ def create_server(client: MemoryClient) -> FastMCP:
             retrieval["detail_level"] = detail_level
         if prior_to_event_id is not None:
             retrieval["evidence_cutoff"] = {"mode": "before_event", "event_id": prior_to_event_id}
-        response = await asyncio.to_thread(
-            client.recall, query, conversation_id=conversation_id, branch_id=branch_id,
-            intent=intent, additional_cues=additional_cues or (), cue_event_ids=cue_event_ids or (),
-            budget={**default_budget(max_context_tokens), "max_embedding_calls": 1}, **retrieval,
-        )
+        def recall(embedding_calls):
+            return client.recall(
+                query, conversation_id=conversation_id, branch_id=branch_id, intent=intent,
+                additional_cues=additional_cues or (), cue_event_ids=cue_event_ids or (),
+                budget={**default_budget(max_context_tokens), "max_embedding_calls": embedding_calls}, **retrieval)
+
+        try:
+            response = await asyncio.to_thread(recall, 1)
+        except MemoryActionError:
+            response = await asyncio.to_thread(recall, 0)  # Without a usable query embedding, keyword recall still works.
         return {"action": "recall", "outcome": response["outcome"],
                 "context": recalled_context(response),
                 "context_tokens": response["result"]["usage"]["context_tokens"]}

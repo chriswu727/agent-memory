@@ -145,3 +145,32 @@ def test_memories_written_before_a_provider_are_backfilled_once(turns):
         assert len(calls) == count
         result = turns.service.handle(turns.principal, recall_request(turns, "where is the house key hidden"))
         assert any("flowerpot" in item["memory"]["statement"] for item in result["result"]["items"])
+
+
+def test_unmetered_local_models_do_not_consume_the_background_budget(turns):
+    from membrain.embeddings import EmbeddingResult, EmbeddingSpace
+
+    class Local:
+        metered = False
+        space = EmbeddingSpace("local-test", "v1", 3)
+
+        def __init__(self):
+            self.calls = 0
+
+        def request_metadata(self, request):
+            raise AssertionError("unmetered models are not reserved")
+
+        def __call__(self, request):
+            self.calls += 1
+            return EmbeddingResult(self.space, tuple((1.0, 0.0, 0.0) for _ in request.texts), None, "local", 0)
+
+    local = Local()
+    turns.service.embedding_provider = local
+    for index in range(3):
+        turns.observe(f"Local memory number {index} about the canal boat.")
+    drain(turns)
+    result = turns.service.handle(turns.principal, recall_request(turns, "canal boat"))
+    assert result["outcome"] == "completed" and local.calls >= 4
+    with turns.database.transaction(turns.principal) as conn:
+        assert conn.execute("SELECT coalesce(sum(model_calls),0) AS n FROM memory_jobs WHERE brain_id=%s "
+                            "AND kind IN ('embed','query_embedding')", (turns.brain,)).fetchone()["n"] == 0

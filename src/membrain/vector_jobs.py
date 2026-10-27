@@ -11,6 +11,16 @@ from .jobs import JobStore
 def _call(service, principal, brain_id, job, request):
     jobs = JobStore(service.database)
     provider = service.embedding_provider
+    if not getattr(provider, "metered", True):
+        # An in-process model has no cost or external call to account for; it must not consume the brain's
+        # background budget, which limits paid provider calls.
+        try:
+            result = provider(request)
+        except Exception:
+            raise DomainError("dependency_unavailable", "Embedding model is unavailable.", True) from None
+        if result.space != provider.space or len(result.vectors) != len(request.texts):
+            raise DomainError("invalid_evidence", "Embedding response does not match its request.")
+        return result
     lease = {"lease_token": job["lease_token"], "fence": job["fence"]}
     try:
         metadata = provider.request_metadata(request)

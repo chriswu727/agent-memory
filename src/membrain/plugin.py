@@ -159,11 +159,24 @@ def _start_in_background(directory: Path) -> None:
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **options)
 
 
-def recall_budget(tokens: int = RECALL_TOKENS) -> dict:
+def recall_budget(tokens: int = RECALL_TOKENS, *, embeddings: int = 1) -> dict:
     """Recall budget for hooks and tools: one query embedding when a local model is installed, else none used."""
     from .client import default_budget
 
-    return {**default_budget(tokens), "max_embedding_calls": 1}
+    return {**default_budget(tokens), "max_embedding_calls": embeddings}
+
+
+def recall(client, query: str) -> dict:
+    """Recall earlier records; if the query embedding fails, fall back to keyword recall instead of nothing."""
+    from .client import MemoryActionError
+
+    # The current message is recorded after recall, so everything stored is prior evidence. An explicit cutoff
+    # lets "do you remember ..." questions use it; the server clamps it to its durable sequence.
+    cutoff = {"mode": "through_sequence", "through_sequence": 2**53}
+    try:
+        return client.recall(query, budget=recall_budget(), evidence_cutoff=cutoff)
+    except MemoryActionError:
+        return client.recall(query, budget=recall_budget(embeddings=0), evidence_cutoff=cutoff)
 
 
 def semantic_state(directory: Path) -> str:
@@ -393,12 +406,7 @@ def user_prompt(payload: dict, directory: Path) -> str | None:
                 # The complete earlier history is already in this session's context; recall would only repeat it.
                 _deliver(directory, client, record)
                 return None
-            # The current message is recorded after recall, so everything stored is prior evidence. An explicit
-            # cutoff lets "do you remember ..." questions use it; the server clamps it to its durable sequence.
-            context = render_context(client.recall(
-                prompt, budget=recall_budget(),
-                evidence_cutoff={"mode": "through_sequence", "through_sequence": 2**53},
-            ), current_conversation=record["conversation_id"])
+            context = render_context(recall(client, prompt), current_conversation=record["conversation_id"])
         except Exception as error:
             _log(directory, f"recall failed: {type(error).__name__}")
         _deliver(directory, client, record)  # After recall, so the new message is not recalled as history.

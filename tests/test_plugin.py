@@ -336,3 +336,22 @@ def test_fetched_model_restarts_a_running_service_and_clears_the_marker(tmp_path
 def test_hook_recall_asks_for_one_query_embedding():
     assert plugin.recall_budget()["max_embedding_calls"] == 1
     assert plugin.recall_budget()["max_context_tokens"] == plugin.RECALL_TOKENS
+
+
+def test_recall_falls_back_to_keywords_when_the_query_embedding_fails():
+    from membrain.client import MemoryActionError
+
+    class Client:
+        def __init__(self):
+            self.budgets = []
+
+        def recall(self, query, *, budget, evidence_cutoff):
+            self.budgets.append(budget["max_embedding_calls"])
+            if budget["max_embedding_calls"]:
+                raise MemoryActionError({"outcome": "failed", "error": {"code": "dependency_unavailable",
+                                                                         "message": "Embedding model is unavailable."}})
+            return {"result": {"items": []}}
+
+    client = Client()
+    assert plugin.recall(client, "what do I eat?") == {"result": {"items": []}}
+    assert client.budgets == [1, 0]
