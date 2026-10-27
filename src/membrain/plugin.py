@@ -21,6 +21,7 @@ LINE_CHARACTERS = 500
 RECALL_TOKENS = 3000
 # Hosts cap one injected context field at 10,000 characters; the notice uses the rest.
 HISTORY_CHARACTERS = 8500
+HISTORY_ITEM_CHARACTERS = 400
 SESSION_MARKER_SECONDS = 14 * 24 * 3600
 MAX_INPUT_BYTES = 4 * 1024 * 1024
 _STATEMENT = re.compile(r"^(user|assistant|tool|operator|system) \S+ \(([a-z_]+)\): (.*)$", re.DOTALL)
@@ -362,6 +363,11 @@ def session_start(payload: dict, directory: Path) -> str | None:
             try:
                 response = client.timeline(roles=("user",), max_characters=HISTORY_CHARACTERS,
                                            exclude_conversation=session)
+                if not response.get("complete"):
+                    # Long pastes would crowd out other messages; show more of them, shorter.
+                    response = client.timeline(roles=("user",), max_characters=HISTORY_CHARACTERS,
+                                               max_item_characters=HISTORY_ITEM_CHARACTERS,
+                                               exclude_conversation=session)
                 history, complete = render_history(response), bool(response.get("complete"))
             except Exception as error:
                 _log(directory, f"timeline failed: {type(error).__name__}")

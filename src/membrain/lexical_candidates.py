@@ -4,7 +4,7 @@ from . import cognition
 
 MAX_QUERY_TERMS = 128
 MAX_TERM_LENGTH = 256
-LEXICAL_RANK_VERSION = "source-origin-frequency-passage-v2"
+LEXICAL_RANK_VERSION = "source-origin-frequency-passage-v3"
 
 
 class LexicalScorer:
@@ -55,6 +55,17 @@ def passage_score(query, text):
     return score or cognition._lexical_score_terms(query_terms, cognition._terms(text))
 
 
+def _prefixes(terms):
+    """Terms are word stems, so stored forms ('running', 'married') are matched by stem prefix."""
+    for term in terms:
+        if len(term) < 3 or not term.isalpha():
+            yield "'" + term + "'"
+            continue
+        yield "'" + term + "':*"
+        if term.endswith("y") and len(term) >= 4:
+            yield "'" + term[:-1] + "i':*"
+
+
 def historical_support_filter(input_event_ids):
     if not input_event_ids:
         return "", ()
@@ -94,7 +105,7 @@ def lexical_rows(conn, params, target, text, *, limit, through_sequence=None, ex
     truncated = len(hashed) > limit or len(terms) != len(words)
     exact = []
     if terms:
-        expression = " | ".join("'" + word + "'" for word in terms)
+        expression = " | ".join(_prefixes(terms))
         exact = conn.execute(
             select + "AND to_tsvector('simple',a.search_text) @@ to_tsquery('simple',%s) " + order,
             (*values, expression, vector, limit + 1),

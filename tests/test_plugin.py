@@ -204,6 +204,7 @@ def test_history_is_rendered_oldest_first_and_states_completeness():
 class _ReadyClient:
     def __init__(self, timeline, recalled=None):
         self.timeline_response, self.recalled, self.observed, self.recalls = timeline, recalled, [], 0
+        self.timeline_calls = []
 
     def __enter__(self):
         return self
@@ -213,6 +214,7 @@ class _ReadyClient:
 
     def timeline(self, **options):
         assert options["exclude_conversation"] == "s2"
+        self.timeline_calls.append(options)
         return self.timeline_response
 
     def recall(self, *args, **kwargs):
@@ -228,6 +230,7 @@ def test_complete_history_is_injected_once_and_replaces_per_message_recall(tmp_p
     monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "complete history from earlier sessions" in context and "- [2026-10-03] I'm vegetarian." in context
+    assert len(client.timeline_calls) == 1
     assert plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "Plan dinner"}, tmp_path) is None
     assert client.recalls == 0 and client.observed[-1]["text"] == "Plan dinner"
 
@@ -239,6 +242,7 @@ def test_partial_history_keeps_per_message_recall(tmp_path, monkeypatch):
     monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "Older messages are not shown" in context and "Matching records" in context
+    assert [call.get("max_item_characters") for call in client.timeline_calls] == [None, plugin.HISTORY_ITEM_CHARACTERS]
     recall = plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "When is the wedding?"}, tmp_path)
     assert client.recalls == 1 and "December 14" in recall
 
@@ -266,3 +270,20 @@ def test_new_sessions_receive_the_complete_history_from_the_real_service(tmp_pat
             desktop.stop(directory)
         except desktop.DesktopError:
             pass
+
+
+@pytest.mark.parametrize("forms", [("run", "runs", "running", "ran"), ("marry", "married", "marries"),
+                                   ("race", "races", "racing"), ("knee", "knees"), ("week", "weeks"),
+                                   ("plan", "planned", "planning"), ("box", "boxes")])
+def test_lexical_terms_fold_common_english_word_forms(forms):
+    from membrain.cognition import _terms
+
+    assert len({frozenset(_terms(form)[0]) for form in forms}) == 1
+    for word in ("seed", "speed", "class", "bus", "physio", "5k", "2026"):
+        assert _terms(word)[0] == {word}
+
+
+def test_lexical_prefix_query_reaches_stored_word_forms():
+    from membrain.lexical_candidates import _prefixes
+
+    assert list(_prefixes(["run", "marry", "5k", "go"])) == ["'run':*", "'marry':*", "'marri':*", "'5k'", "'go'"]
