@@ -27,7 +27,7 @@ Inside a Claude Code session you can also run `/plugin install membrain --market
 From the next session on, the plugin:
 
 - records each message and Claude's final reply locally;
-- adds matching records from earlier sessions before Claude replies, as dated and attributed lines;
+- starts each session with the user's complete earlier history while it is small, and switches to recalling matching records before each reply once it grows;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 
 The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches words in the current message, and Claude is instructed to search with concrete keywords when personal context matters. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.

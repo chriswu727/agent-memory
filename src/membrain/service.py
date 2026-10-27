@@ -23,6 +23,8 @@ def _vector(text):
     return "[" + ",".join(str(v / norm) for v in values) + "]"
 
 
+TIMELINE_ROLES = frozenset({"user", "assistant", "operator", "tool"})
+
 class MemoryService:
     def __init__(self, database, *, semantic_processor=None, embedding_provider=None,
                  access_time_provider=None):
@@ -1396,6 +1398,51 @@ class MemoryService:
         from .learning import LearningEngine
 
         return LearningEngine(self).work_once(principal, brain_id)
+
+    def timeline(self, principal, brain_id, *, roles=("user",), max_characters=8000, max_item_characters=1500,
+                 limit=200, exclude_conversation=None):
+        """Original messages, newest first, within a character budget.
+
+        Deleted, suppressed, retired and superseded records are excluded. ``complete`` is true only when every
+        matching message is returned in full, so a host may treat the result as the whole history.
+        """
+        roles = tuple(roles)
+        if not roles or any(role not in TIMELINE_ROLES for role in roles):
+            raise DomainError("validation_failed", "Timeline roles must be user, assistant, operator or tool.")
+        for value, low, high in ((max_characters, 1, 200_000), (max_item_characters, 1, 20_000), (limit, 1, 1000)):
+            if type(value) is not int or not low <= value <= high:
+                raise DomainError("validation_failed", "Timeline limits are outside the supported range.")
+        if exclude_conversation is not None and (not isinstance(exclude_conversation, str)
+                                                 or not 1 <= len(exclude_conversation) <= 256):
+            raise DomainError("validation_failed", "Excluded conversation must be an identifier.")
+        with self.database.transaction(principal) as conn:
+            brain = self._brain(conn, principal, brain_id)
+            rows = conn.execute(
+                "SELECT conversation_id, document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND is_current AND NOT deleted AND NOT suppressed AND NOT retired AND document IS NOT NULL "
+                "AND document->'observed'->>'event_kind'='message' "
+                "AND document->'observed'->>'actor_role'=ANY(%s::text[]) "
+                "AND (%s::text IS NULL OR conversation_id IS DISTINCT FROM %s) "
+                "ORDER BY sequence DESC LIMIT %s",
+                (*self._params(principal, brain["id"]), list(roles), exclude_conversation, exclude_conversation,
+                 limit + 1),
+            ).fetchall()
+        items, used, complete = [], 0, len(rows) <= limit
+        for row in rows[:limit]:
+            document = row["document"]
+            text = document["observed"]["content"].get("text") or ""
+            if not text.strip():
+                continue
+            if len(text) > max_item_characters:
+                text, complete = text[:max_item_characters - 1] + "…", False
+            if used + len(text) > max_characters:
+                complete = False
+                break
+            used += len(text)
+            items.append({"event_id": document["event_id"], "conversation_id": row["conversation_id"],
+                          "actor_role": document["observed"]["actor_role"],
+                          "recorded_at": document["system_time"]["recorded_at"], "text": text})
+        return {"items": items, "complete": complete, "characters": used}
 
     def dashboard(self, principal, brain_id):
         from .dynamics import DEFAULT_POLICY

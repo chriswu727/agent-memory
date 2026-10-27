@@ -5,7 +5,7 @@ from importlib.resources import files
 from typing import Annotated, Literal
 
 import psycopg
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
@@ -374,6 +374,14 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     @app.get("/v1/brains/{brain_id}/dashboard")
     def dashboard(brain_id: str, principal: Principal = Depends(authenticate)):
         return service.dashboard(principal, brain_id)
+
+    @app.get("/v1/brains/{brain_id}/timeline")
+    def timeline(brain_id: str, role: list[str] = Query(default=["user"]), max_characters: int = 8000,
+                 max_item_characters: int = 1500, limit: int = 200, exclude_conversation: str | None = None,
+                 principal: Principal = Depends(authenticate)):
+        return service.timeline(principal, brain_id, roles=role, max_characters=max_characters,
+                                max_item_characters=max_item_characters, limit=limit,
+                                exclude_conversation=exclude_conversation)
 
     @app.post("/v1/brains/{brain_id}/work")
     def work(brain_id: str, principal: Principal = Depends(authenticate)):
