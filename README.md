@@ -171,6 +171,8 @@ The current release candidate supports **local synchronous text agents**, with a
 
 [Plugin mode](architecture/plugin-mode.md) is verified on **Linux x86_64** only. The embedded database passed real start, restart, backup, restore and activation checks as root and as an unprivileged user. An isolated Claude Code 2.1.311 installed the plugin from a local marketplace; with a stub model API, it recorded messages and replies, and a new session's model request contained the previous session's record. That check covers integration, not answer quality. Automatic recall is lexical, and macOS and Windows have not been run on real machines.
 
+A [blinded A/B diagnostic](evaluations/v1-2026-10-27-ab-baselines.md) on a fresh ten-session scenario scored the default memory runtime 4.5 of 12, a no-memory baseline 2 and a naive full-history prompt 11.5. The memory arm used about thirty times the tokens of the full-history arm and needed 58 manual interventions. Most of its misses were facts that recall did not retrieve. At this small scale full history is the stronger baseline; longer histories were not tested.
+
 The [memory-quality verification baseline](evaluations/v1-2026-10-25-memory-efficiency.md) records:
 
 - **5,234 passed** in the full candidate source suite, with four Docker-gated skips exercised separately. Restoring the existing default verification format then passed 311 focused source checks.

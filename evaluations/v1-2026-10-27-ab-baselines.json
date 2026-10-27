@@ -1,0 +1,2255 @@
+{
+ "status": "completed_with_preserved_failures",
+ "date": "2026-10-27",
+ "question": "Does the memory runtime beat a no-memory baseline and a naive full-history baseline on a fresh multi-session scenario?",
+ "provider": {
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-v4-pro",
+  "host_thinking": "enabled",
+  "cognition_thinking": "enabled",
+  "cognition_reasoning_effort": "low",
+  "cognition_preset": "reasoning"
+ },
+ "runtime_source_commit": "a808e83 plus uncommitted plugin work; memory core unchanged",
+ "arms": {
+  "M": "agent_memory.agent_session.open_agent with the default RuntimePolicy (orientation always); new conversation per session; waited for background learning after each session",
+  "N": "same host instructions, current conversation only",
+  "F": "same host instructions, every earlier message of all sessions in the prompt"
+ },
+ "scenario": "v1-2026-10-27-ab-baselines-scenario.py: 10 sessions, 20 user inputs, 12 frozen cases; fictional dates are stated in the messages",
+ "reviewer": "Claude (independent of the implementing agent), blinded by per-case shuffled labels; mapping sealed until all verdicts were written. Style cues can still leak arm identity.",
+ "scoring": {
+  "pass": 1,
+  "partial": 0.5,
+  "fail": 0
+ },
+ "blind_verdicts_by_label": {
+  "C01-no-back-to-back": {
+   "A": [
+    "pass",
+    "rest Fri+Sat, cites physio no-back-to-back rule"
+   ],
+   "B": [
+    "fail",
+    "allows Fri run + optional Sat shakeout before Sunday; no knee rule"
+   ],
+   "C": [
+    "fail",
+    "Fri run + optional Sat run; no knee rule"
+   ]
+  },
+  "C02-irrelevance": {
+   "A": [
+    "pass",
+    "focused; signs as Priya"
+   ],
+   "B": [
+    "pass",
+    "focused"
+   ],
+   "C": [
+    "pass",
+    "focused"
+   ]
+  },
+  "C03-zh-race-week": {
+   "A": [
+    "fail",
+    "generic, meat/fish, asks race type"
+   ],
+   "B": [
+    "fail",
+    "generic, chicken/fish, asks race type"
+   ],
+   "C": [
+    "pass",
+    "Chinese, vegetarian, Dec 1-6 with race Dec 7"
+   ]
+  },
+  "C04-zh-night-before": {
+   "A": [
+    "fail",
+    "suggests fish/chicken"
+   ],
+   "B": [
+    "pass",
+    "Dec 6, vegetarian options only"
+   ],
+   "C": [
+    "fail",
+    "chicken, fish, pork"
+   ]
+  },
+  "C05-knee-rule": {
+   "A": [
+    "partial",
+    "cites rule but plan allows Sat and Sun runs back to back"
+   ],
+   "B": [
+    "fail",
+    "generic overload; possible Fri-Sat-Sun runs"
+   ],
+   "C": [
+    "pass",
+    "no back-to-back days, single Sunday run, knows Dec 7"
+   ]
+  },
+  "C06-weeks-left": {
+   "A": [
+    "pass",
+    "4 weeks 4 days to Dec 7"
+   ],
+   "B": [
+    "fail",
+    "asks for race date"
+   ],
+   "C": [
+    "fail",
+    "asks for race date"
+   ]
+  },
+  "C07-photo-and-story": {
+   "A": [
+    "pass",
+    "photo not sorted; story exact"
+   ],
+   "B": [
+    "partial",
+    "photo correct; story adds 'promised' and other embellishment"
+   ],
+   "C": [
+    "fail",
+    "asks user to repeat both"
+   ]
+  },
+  "C08-wedding-facts": {
+   "A": [
+    "partial",
+    "no fabrication but omits date, groom, role, length"
+   ],
+   "B": [
+    "fail",
+    "knows nothing"
+   ],
+   "C": [
+    "pass",
+    "Dec 14, Tomas, maid of honour, 3 min; refuses to invent"
+   ]
+  },
+  "C09-race-week-plan": {
+   "A": [
+    "pass",
+    "race Sun Dec 7, no back-to-back, Sat rest, rehearsal, veg carb-load"
+   ],
+   "B": [
+    "fail",
+    "Saturday long run, unaware of race; Fri+Sat runs"
+   ],
+   "C": [
+    "fail",
+    "generic; assumes toast this weekend"
+   ]
+  },
+  "C10-day-before": {
+   "A": [
+    "partial",
+    "cautious but allows Saturday shakeout"
+   ],
+   "B": [
+    "pass",
+    "no, cites back-to-back rule"
+   ],
+   "C": [
+    "fail",
+    "recommends shakeout; asks distance"
+   ]
+  },
+  "C11-no-fabrication": {
+   "A": [
+    "pass",
+    "no record; mentions left knee"
+   ],
+   "B": [
+    "pass",
+    "no fabrication"
+   ],
+   "C": [
+    "pass",
+    "no record; mentions left knee"
+   ]
+  },
+  "C12-tom-vs-tomas": {
+   "A": [
+    "pass",
+    "correct"
+   ],
+   "B": [
+    "fail",
+    "no reply, turn failed"
+   ],
+   "C": [
+    "fail",
+    "asks user"
+   ]
+  }
+ },
+ "label_mapping": {
+  "C01-no-back-to-back": {
+   "A": "F",
+   "B": "N",
+   "C": "M"
+  },
+  "C02-irrelevance": {
+   "A": "F",
+   "B": "N",
+   "C": "M"
+  },
+  "C03-zh-race-week": {
+   "A": "N",
+   "B": "M",
+   "C": "F"
+  },
+  "C04-zh-night-before": {
+   "A": "M",
+   "B": "F",
+   "C": "N"
+  },
+  "C05-knee-rule": {
+   "A": "M",
+   "B": "N",
+   "C": "F"
+  },
+  "C06-weeks-left": {
+   "A": "F",
+   "B": "N",
+   "C": "M"
+  },
+  "C07-photo-and-story": {
+   "A": "M",
+   "B": "F",
+   "C": "N"
+  },
+  "C08-wedding-facts": {
+   "A": "M",
+   "B": "N",
+   "C": "F"
+  },
+  "C09-race-week-plan": {
+   "A": "F",
+   "B": "M",
+   "C": "N"
+  },
+  "C10-day-before": {
+   "A": "M",
+   "B": "F",
+   "C": "N"
+  },
+  "C11-no-fabrication": {
+   "A": "M",
+   "B": "N",
+   "C": "F"
+  },
+  "C12-tom-vs-tomas": {
+   "A": "F",
+   "B": "M",
+   "C": "N"
+  }
+ },
+ "totals": {
+  "M": 4.5,
+  "N": 2.0,
+  "F": 11.5,
+  "cases": 12
+ },
+ "usage": {
+  "M_cognition_calls": 184,
+  "M_cognition_tokens": 2366007,
+  "M_cognition_output_tokens": 744645,
+  "host_tokens": {
+   "M": 84478,
+   "N": 32452,
+   "F": 79631
+  }
+ },
+ "learning_waits": [
+  {
+   "after": "s02-toast",
+   "waited_seconds": 664,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 1,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 1
+    }
+   }
+  },
+  {
+   "after": "s03-travel-week",
+   "waited_seconds": 188,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 1,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 1
+    }
+   }
+  },
+  {
+   "after": "s04-work-email",
+   "waited_seconds": 358,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 3,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 3
+    }
+   }
+  },
+  {
+   "after": "s05-toast-draft",
+   "waited_seconds": 253,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 3,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 3
+    }
+   }
+  },
+  {
+   "after": "s06-zh-fuelling",
+   "waited_seconds": 403,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 2,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 2
+    }
+   }
+  },
+  {
+   "after": "s07-knee",
+   "waited_seconds": 277,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 3,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 3
+    }
+   }
+  },
+  {
+   "after": "s08-toast-check",
+   "waited_seconds": 407,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 5,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 4,
+     "history_integration_unassessed": 1
+    }
+   }
+  },
+  {
+   "after": "s09-race-week",
+   "waited_seconds": 222,
+   "unrecovered_blocked": true,
+   "state": {
+    "blocked_count": 6,
+    "blocked_reason_counts": {
+     "history_integration_deferred": 5,
+     "history_integration_unassessed": 1
+    }
+   }
+  }
+ ],
+ "interventions": [
+  {
+   "job": {
+    "job_id": "consolidate:e46bfc4230c9e64ad1e39494986cdea2afe2bb89784e454a5b7f0a30abfa37dc",
+    "from_sequence": 3,
+    "through_sequence": 4,
+    "processed_through_sequence": 2,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "literal_assertions\": 28,\n      \"through_sequence\": 4,\n      \"indexed_through_sequence\": 4,\n      \"selected_min_sequence\": 1,\n      \"selected_max_sequence\": 4,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": [\n        \"candidate_limit\",\n        \"recent_assertion_limit\"\n      ]\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:161df40102524103a32e60c9a4b49015f2b5d5c2ef72a529568c8a109b30a4fe",
+    "from_sequence": 7,
+    "through_sequence": 7,
+    "processed_through_sequence": 6,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "  \"assertion_count\": 3,\n      \"episode_count\": 0,\n      \"redundant_literal_assertions\": 10,\n      \"through_sequence\": 7,\n      \"indexed_through_sequence\": 7,\n      \"selected_min_sequence\": 1,\n      \"selected_max_sequence\": 7,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:1c649e8fc784e0c7284833397d294313b9f57eec6ebe15636ff7fabf62d60310",
+    "from_sequence": 9,
+    "through_sequence": 10,
+    "processed_through_sequence": 8,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ough_sequence\": 10,\n      \"indexed_through_sequence\": 10,\n      \"selected_min_sequence\": 1,\n      \"selected_max_sequence\": 10,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": [\n        \"candidate_limit\",\n        \"candidate_scan_limit\",\n        \"recent_assertion_limit\"\n      ]\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:061491fa464cd349616fbafac71326f5f1cf121a7466e1e75364b9eba3084704",
+    "from_sequence": 3,
+    "through_sequence": 4,
+    "processed_through_sequence": 2,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "literal_assertions\": 28,\n      \"through_sequence\": 4,\n      \"indexed_through_sequence\": 4,\n      \"selected_min_sequence\": 1,\n      \"selected_max_sequence\": 4,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": [\n        \"candidate_limit\",\n        \"recent_assertion_limit\"\n      ]\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:40021a118f0869f26dc8afac1b9059e217f66944934cbf9403c03e5d70cc3927",
+    "from_sequence": 7,
+    "through_sequence": 7,
+    "processed_through_sequence": 6,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "  \"assertion_count\": 3,\n      \"episode_count\": 0,\n      \"redundant_literal_assertions\": 10,\n      \"through_sequence\": 7,\n      \"indexed_through_sequence\": 7,\n      \"selected_min_sequence\": 1,\n      \"selected_max_sequence\": 7,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:884cc378483d88669ec89375795a2669c1ce9ffd809745a8b554107571a60d43",
+    "from_sequence": 9,
+    "through_sequence": 10,
+    "processed_through_sequence": 8,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ough_sequence\": 10,\n      \"indexed_through_sequence\": 10,\n      \"selected_min_sequence\": 1,\n      \"selected_max_sequence\": 10,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": [\n        \"candidate_limit\",\n        \"candidate_scan_limit\",\n        \"recent_assertion_limit\"\n      ]\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:cee45200785ef91985fcd6c329d62acc48bca9d5ede342efa3eb5dd82ed508c0",
+    "from_sequence": 9,
+    "through_sequence": 10,
+    "processed_through_sequence": 8,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:75a43d5ab6edb90d7ba39f2c5aee2b74ce62ca182e9742f9a05b837974a5f4e2",
+    "from_sequence": 15,
+    "through_sequence": 16,
+    "processed_through_sequence": 14,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:9a7312791b32da5e9836a230e0727eaa86e25087ed0ad6ec8158d6505e0fc37c",
+    "from_sequence": 18,
+    "through_sequence": 18,
+    "processed_through_sequence": 17,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "manual": "cancel_and_resend",
+   "session": "s04-work-email",
+   "turn": 0,
+   "reason": "503 then lease_conflict then context_stale retryable=false; turn permanently stuck",
+   "at": "17:36:38"
+  },
+  {
+   "job": {
+    "job_id": "integrate:7d14b879f925dfbd06e05bdf64cc72b9dded6808e236dd250010e47c48f64980",
+    "from_sequence": 19,
+    "through_sequence": 19,
+    "processed_through_sequence": 18,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:6cb23f96895babf762404cef69be2bfacd2ea6d4c8dbb72967f3b8e55a6ac783",
+    "from_sequence": 20,
+    "through_sequence": 20,
+    "processed_through_sequence": 19,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 1,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 20,\n      \"indexed_through_sequence\": 20,\n      \"selected_min_sequence\": 20,\n      \"selected_max_sequence\": 20,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:c118e62c6b88de81462a825263373bf4c3ea2dbd90c7202ef563ddfadccb95ca",
+    "from_sequence": 22,
+    "through_sequence": 23,
+    "processed_through_sequence": 21,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 2,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 23,\n      \"indexed_through_sequence\": 23,\n      \"selected_min_sequence\": 22,\n      \"selected_max_sequence\": 23,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:f7d73eb8d0f4a0471bfd179f88cdbc38632a8acd31b36a0401e8f4e8217ed5ed",
+    "from_sequence": 20,
+    "through_sequence": 20,
+    "processed_through_sequence": 19,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 1,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 20,\n      \"indexed_through_sequence\": 20,\n      \"selected_min_sequence\": 20,\n      \"selected_max_sequence\": 20,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:9b0ad6591dce049c63405e870d028b1554d08d461e23b62d1bc54515ad5a9772",
+    "from_sequence": 22,
+    "through_sequence": 23,
+    "processed_through_sequence": 21,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 2,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 23,\n      \"indexed_through_sequence\": 23,\n      \"selected_min_sequence\": 22,\n      \"selected_max_sequence\": 23,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:784d4dccf352842170d6db01597069ee8f45ba942e2cbdf9679fd726a4f2641d",
+    "from_sequence": 25,
+    "through_sequence": 25,
+    "processed_through_sequence": 24,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:f9a08152c4a462d9f20adae39395667a4fc8d24a7b60f45ed7b9456c74ae3020",
+    "from_sequence": 20,
+    "through_sequence": 20,
+    "processed_through_sequence": 19,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:de62c87eb7016671833bf040199c6c396a1568c3d08d53d224f3fc4dcbe2bf51",
+    "from_sequence": 22,
+    "through_sequence": 23,
+    "processed_through_sequence": 21,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:878936ce24562e43c8e9da31772208fd55de83a37e082cd3d7c556ddd6749853",
+    "from_sequence": 26,
+    "through_sequence": 26,
+    "processed_through_sequence": 25,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:4b8c0bd7c6080216b8e76927e4a01072c6220228b1f23ad89b470e6e01523376",
+    "from_sequence": 28,
+    "through_sequence": 29,
+    "processed_through_sequence": 27,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:76eb82ea5e9b53943f372a9a55a1c2a693b22bda5f5f148db7ad677d455dac37",
+    "from_sequence": 22,
+    "through_sequence": 23,
+    "processed_through_sequence": 21,
+    "fence": 1,
+    "reason": "history_integration_unassessed",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "comparison-attention-v1\",\n      \"limit\": 3,\n      \"candidate_count\": 32,\n      \"admitted_count\": 3,\n      \"not_selected_count\": 29,\n      \"focus_count\": 2,\n      \"exploration_count\": 1,\n      \"source_origin_count\": 10,\n      \"retrieval_truncated\": true,\n      \"search_exhaustive\": false,\n      \"discovery_limitations\": [\n        \"candidate_limit\",\n        \"candidate_scan_limit\"\n      ]\n    },\n    \"history_integration_job_id\": \"consolidate:bde22f42c6deb0e64a696365b33f7906cbcc2080d753ee2a543fc2de73ef007b\",\n    \"history_integration_state\": \"unknown\",\n    \"history_integration_resolved\": false\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:24d8e6d5b7555057a57a5b74235578de9f27c3fb6c621ebba3bdc45bd2b99261",
+    "from_sequence": 31,
+    "through_sequence": 31,
+    "processed_through_sequence": 30,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:24d8e6d5b7555057a57a5b74235578de9f27c3fb6c621ebba3bdc45bd2b99261",
+    "from_sequence": 31,
+    "through_sequence": 31,
+    "processed_through_sequence": 30,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:e0310d5335a8f566268f00b8f9da096cb2079f2b1e7d9190bf703743a0c3d236",
+    "from_sequence": 34,
+    "through_sequence": 35,
+    "processed_through_sequence": 33,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:790198d422c41f26c8352efebf3c936686a02eae6d79f06da1428961a3858f61",
+    "from_sequence": 28,
+    "through_sequence": 29,
+    "processed_through_sequence": 27,
+    "fence": 1,
+    "reason": "history_integration_unassessed",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "comparison-attention-v1\",\n      \"limit\": 3,\n      \"candidate_count\": 32,\n      \"admitted_count\": 3,\n      \"not_selected_count\": 29,\n      \"focus_count\": 2,\n      \"exploration_count\": 1,\n      \"source_origin_count\": 10,\n      \"retrieval_truncated\": true,\n      \"search_exhaustive\": false,\n      \"discovery_limitations\": [\n        \"candidate_limit\",\n        \"candidate_scan_limit\"\n      ]\n    },\n    \"history_integration_job_id\": \"consolidate:62125c63dc0143fc39a3c2ce50206916384ba24d879446cbfff6c3e225cfeea3\",\n    \"history_integration_state\": \"unknown\",\n    \"history_integration_resolved\": false\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:cd6fe37f04b20bf765b86ea332ded20b31ac483724bc68fc9a4b85368d9c649d",
+    "from_sequence": 37,
+    "through_sequence": 37,
+    "processed_through_sequence": 36,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:8a065b869540c65ef0e190b959b5359d27f46647c93b362b0894dadd8c6cdd53",
+    "from_sequence": 28,
+    "through_sequence": 29,
+    "processed_through_sequence": 27,
+    "fence": 1,
+    "reason": "history_integration_unassessed",
+    "last_error": "invalid_proposal"
+   },
+   "returncode": 0,
+   "stdout": "loration_count\": 1,\n      \"source_origin_count\": 10,\n      \"retrieval_truncated\": true,\n      \"search_exhaustive\": false,\n      \"discovery_limitations\": [\n        \"candidate_limit\",\n        \"candidate_scan_limit\"\n      ]\n    },\n    \"history_integration_job_id\": \"consolidate:90018537cb75a61fe2d0ae660000a8df9dbaec37195d4a3805027f94046e72fe\",\n    \"history_integration_state\": \"unknown\",\n    \"history_integration_resolved\": false,\n    \"history_integration\": {\n      \"version\": \"bounded-history-manifest-v1\",\n      \"objective_count\": 3,\n      \"assessed_count\": 0,\n      \"published_count\": 0\n    }\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:cd6fe37f04b20bf765b86ea332ded20b31ac483724bc68fc9a4b85368d9c649d",
+    "from_sequence": 37,
+    "through_sequence": 37,
+    "processed_through_sequence": 36,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:338ebb721b475edbf082701edf2bd5c92f356d348130577e2f4342b55221edb4",
+    "from_sequence": 38,
+    "through_sequence": 38,
+    "processed_through_sequence": 37,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:edf87c199846ca357584f57180e754eb447acb6ec1e7060d535447a8c6a93db2",
+    "from_sequence": 40,
+    "through_sequence": 41,
+    "processed_through_sequence": 39,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 2,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 41,\n      \"indexed_through_sequence\": 41,\n      \"selected_min_sequence\": 40,\n      \"selected_max_sequence\": 41,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:7172d69c649a1c6fc30a0478f1dcc4e4b0e03cff53b016b24175daf8e3375699",
+    "from_sequence": 40,
+    "through_sequence": 41,
+    "processed_through_sequence": 39,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 2,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 41,\n      \"indexed_through_sequence\": 41,\n      \"selected_min_sequence\": 40,\n      \"selected_max_sequence\": 41,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:16cfcd29278c0c5adde410c39b9b8e998197af3835ab26c0f1a46752e48777d9",
+    "from_sequence": 43,
+    "through_sequence": 43,
+    "processed_through_sequence": 42,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:bcbeca8a8fd54da132abb9480f38a9e528f3a9a22040bdeec9e61fce8cca2408",
+    "from_sequence": 40,
+    "through_sequence": 41,
+    "processed_through_sequence": 39,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:53415c751454bad8ca486bfa8e75e16b6a3a94375cf521bf20995af67fcd3176",
+    "from_sequence": 38,
+    "through_sequence": 38,
+    "processed_through_sequence": 37,
+    "fence": 1,
+    "reason": "history_integration_unassessed",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "comparison-attention-v1\",\n      \"limit\": 3,\n      \"candidate_count\": 32,\n      \"admitted_count\": 3,\n      \"not_selected_count\": 29,\n      \"focus_count\": 2,\n      \"exploration_count\": 1,\n      \"source_origin_count\": 11,\n      \"retrieval_truncated\": true,\n      \"search_exhaustive\": false,\n      \"discovery_limitations\": [\n        \"candidate_limit\",\n        \"candidate_scan_limit\"\n      ]\n    },\n    \"history_integration_job_id\": \"consolidate:a8813c53a01622c5eb14c60715098701bbb2101da81fdac54c905a5678ff463e\",\n    \"history_integration_state\": \"unknown\",\n    \"history_integration_resolved\": false\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:1c94576ad89ca979171e247bc0e6742844903b111f165c51afa11c45138f87c2",
+    "from_sequence": 44,
+    "through_sequence": 44,
+    "processed_through_sequence": 43,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:fee97e4894a9394f83212a2963f16bd8dfc2c68d7903d826e32f287a042f47cc",
+    "from_sequence": 46,
+    "through_sequence": 47,
+    "processed_through_sequence": 45,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 2,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 47,\n      \"indexed_through_sequence\": 47,\n      \"selected_min_sequence\": 46,\n      \"selected_max_sequence\": 47,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:05e2cc29ccc19ea13caa137a708e422a0f85843b1b572bae96a7807a395b5332",
+    "from_sequence": 46,
+    "through_sequence": 47,
+    "processed_through_sequence": 45,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 2,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 47,\n      \"indexed_through_sequence\": 47,\n      \"selected_min_sequence\": 46,\n      \"selected_max_sequence\": 47,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:14fcea37f94a0e268ebd3ed78ad7324a48bf2bb78aed43bf87b5876e700a6c98",
+    "from_sequence": 49,
+    "through_sequence": 49,
+    "processed_through_sequence": 48,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:ee8905d54452be72d17a02184d5a7ac7110e560fc049a4062e6b230663e78fda",
+    "from_sequence": 38,
+    "through_sequence": 38,
+    "processed_through_sequence": 37,
+    "fence": 1,
+    "reason": "history_integration_unassessed",
+    "last_error": null
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:63b264b0a2a5f4f972a6ea90f6a2294e3eeb11470acfbf12e7051e4d7965cf04",
+    "from_sequence": 46,
+    "through_sequence": 47,
+    "processed_through_sequence": 45,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:ee8905d54452be72d17a02184d5a7ac7110e560fc049a4062e6b230663e78fda",
+    "from_sequence": 38,
+    "through_sequence": 38,
+    "processed_through_sequence": 37,
+    "fence": 1,
+    "reason": "history_integration_unassessed",
+    "last_error": null
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:1c94576ad89ca979171e247bc0e6742844903b111f165c51afa11c45138f87c2",
+    "from_sequence": 44,
+    "through_sequence": 44,
+    "processed_through_sequence": 43,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:63b264b0a2a5f4f972a6ea90f6a2294e3eeb11470acfbf12e7051e4d7965cf04",
+    "from_sequence": 46,
+    "through_sequence": 47,
+    "processed_through_sequence": 45,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The database or configured learning provider is unavailable. Check desktop status.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:14fcea37f94a0e268ebd3ed78ad7324a48bf2bb78aed43bf87b5876e700a6c98",
+    "from_sequence": 49,
+    "through_sequence": 49,
+    "processed_through_sequence": 48,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:f35edd78ea8d38ac761c5291cf05403ba59abb8d4efafb851284ae0535be0dea",
+    "from_sequence": 50,
+    "through_sequence": 50,
+    "processed_through_sequence": 49,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 1,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 50,\n      \"indexed_through_sequence\": 50,\n      \"selected_min_sequence\": 50,\n      \"selected_max_sequence\": 50,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:ee4bb3e23c91fc1c1f3def4147e8f293f9cc4591f0f85f5e2d044ea50c01b722",
+    "from_sequence": 52,
+    "through_sequence": 53,
+    "processed_through_sequence": 51,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "consolidate:921c154a0d16819beba726888f1f3df72e0fde6044218a8e7636c3091f190907",
+    "from_sequence": 50,
+    "through_sequence": 50,
+    "processed_through_sequence": 49,
+    "fence": 1,
+    "reason": "context_stale",
+    "last_error": "context_stale"
+   },
+   "returncode": 0,
+   "stdout": "ges\": 0,\n      \"source_count\": 1,\n      \"assertion_count\": 0,\n      \"episode_count\": 0,\n      \"through_sequence\": 50,\n      \"indexed_through_sequence\": 50,\n      \"selected_min_sequence\": 50,\n      \"selected_max_sequence\": 50,\n      \"search_exhaustive\": false,\n      \"publication_restricted\": false,\n      \"limits\": {\n        \"sources\": 32,\n        \"assertions\": 32,\n        \"episodes\": 16\n      },\n      \"limitations\": []\n    },\n    \"rejection_reason_counts\": {},\n    \"learning_contract_version\": \"encoding-integration-v1\",\n    \"learning_phase\": \"encoding\",\n    \"phase_metadata_complete\": true\n  }\n}\n",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:c487f0020d4c0c6b7d29d0277a8fd966dc0ea368cff8f8da30e74648602307bb",
+    "from_sequence": 55,
+    "through_sequence": 55,
+    "processed_through_sequence": 54,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "job": {
+    "job_id": "integrate:cf9caa1862c8768fc259be61ffb60d7d0092b4d238dd23fb31fb9ac2479e278c",
+    "from_sequence": 50,
+    "through_sequence": 50,
+    "processed_through_sequence": 49,
+    "fence": 0,
+    "reason": "history_integration_deferred",
+    "last_error": "internal_error"
+   },
+   "returncode": 1,
+   "stdout": "",
+   "stderr": "warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.\nlearning_request_rejected: The job state changed or recovery already exists. Inspect learning-status before retrying.\n"
+  },
+  {
+   "manual": "experimenter_restart",
+   "reason": "plugin development changed BUILD_ID while the arm was running; memory core unchanged",
+   "at": "18:47:32"
+  },
+  {
+   "manual": "cancel_and_resend",
+   "session": "s10-after",
+   "turn": 0,
+   "reason": "lease_conflict fenced (retryable=false) on orient",
+   "at": "18:47:32"
+  },
+  {
+   "manual": "cancel_and_resend",
+   "session": "s10-after",
+   "turn": 0,
+   "reason": "resend r1 fenced again after renew 503 while learning was busy; waited for idle learning",
+   "at": "18:51:04"
+  },
+  {
+   "manual": "auto_cancel_and_resend",
+   "session": "s10-after",
+   "turn": 1,
+   "cancelled_turn": null,
+   "attempt": 1,
+   "reason": "non-retryable 409 (lease/orientation fenced)"
+  },
+  {
+   "manual": "remove_stale_local_pending",
+   "session": "s10-after",
+   "turn": 1,
+   "reason": "server turn cancelled but agent_session pending.json still pointed to it; respond() kept resuming the cancelled turn"
+  },
+  {
+   "manual": "auto_cancel_and_resend",
+   "session": "s10-after",
+   "turn": 1,
+   "cancelled_turn": "turn-44e74d6c813aeb2a3094a2fac768d8974e1e5b3e",
+   "attempt": 2,
+   "reason": "non-retryable 409 (lease/orientation fenced)"
+  },
+  {
+   "manual": "experimenter_restart",
+   "reason": "credential-redaction fix changed BUILD_ID; memory core unchanged"
+  },
+  {
+   "manual": "auto_cancel_and_resend",
+   "session": "s10-after",
+   "turn": 1,
+   "cancelled_turn": "turn-6d1559d972130654a8ff48a67c226efb4656e000",
+   "attempt": 3,
+   "reason": "non-retryable 409 (lease/orientation fenced)"
+  },
+  {
+   "manual": "auto_cancel_and_resend",
+   "session": "s10-after",
+   "turn": 1,
+   "cancelled_turn": "turn-7313f199b5d2d1fa49a28735b2cc67a82aa85711",
+   "attempt": 4,
+   "reason": "non-retryable 409 (lease/orientation fenced)"
+  }
+ ],
+ "first_attempt_discarded": {
+  "reason": "cognition provider could not verify TLS through the sandbox proxy (trust_env=False); every learning job failed with provider_failed, so the arm was restarted on a fresh brain through a loopback relay",
+  "turns_completed": 2
+ },
+ "diagnosis": "Most M failures were retrieval misses: vegetarian (stored in English, asked in Chinese), the race date change to December 7, the wedding date and groom, and the consecutive-days rule did not reach the host prompt in the failing turns. Background learning published 48 claims and 28 episode versions but did not close those gaps.",
+ "limits": [
+  "Twenty inputs fit easily in a full-history prompt; F becomes infeasible or costly at much larger histories, which this run does not test.",
+  "Single scenario and single reviewer; not a statistical result.",
+  "M ran with learning waits after every session, which favours M relative to real use.",
+  "Experimenter-caused service restarts occurred because plugin development changed the runtime build while M ran."
+ ],
+ "replies": {
+  "M": {
+   "s01-run-plan:0": {
+    "input": "Hi, I'm Priya. I've signed up for the Riverside Half Marathon on November 30 - my first half. My physio says my left knee can't handle running on two consecutive days, so never back-to-back run days. I work 8:30 to 5, so weekday runs have to happen before 7am. I'm comfortable at about 8 km right now. Can you sketch a weekly structure for the next month?",
+    "reply": "Happy to, Priya. Here’s a four-week sketch that protects your left knee and works with your work hours.\n\n**Weekly structure**\n\n| Day | Type | Notes |\n|---|---|---|\n| Monday | Rest / mobility | No run; physio exercises, stretching |\n| Tuesday | Easy run | 5–6 km easy, out the door by ~6:00–6:10 so you’re done before 7 |\n| Wednesday | Cross-train / rest | Bike, swim, or strength—no running |\n| Thursday | Run workout | 5–7 km total with warm-up/cool-down; tempo or short intervals |\n| Friday | Rest | Mobility, physio exercises |\n| Saturday | Long run | Start around 8–9 km; build gradually |\n| Sunday | Active recovery | Walk, stretch, optional easy cross-train—no running |\n\nThis gives you **three run days per week** with no back-to-back run days: Tuesday, Thursday, Saturday.\n\n**Long-run progression for the month**\n\n- Week 1: 9 km  \n- Week 2: 10 km  \n- Week 3: 11 km  \n- Week 4: 12 km  \n\nIf your knee feels cranky in any week, repeat the previous week’s long run instead of adding distance.\n\n**Extra guardrails**\n\n- Keep easy runs conversational pace.\n- Keep the long run easy to moderate—not race pace.\n- If Thursday’s workout causes knee discomfort, swap it for an easy run or rest day.\n- Continue your physio exercises 2–3 times per week.\n\nThis is a conservative base-building month because of your knee. Want me to adjust it around a different long-run day or add a specific strength routine?",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2826,
+     "completion_tokens": 3036,
+     "total_tokens": 5862,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 2676
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1290
+    },
+    "host_seconds": 40.18
+   },
+   "s01-run-plan:1": {
+    "input": "Looks good. Keep the long run on Sundays please. Can you summarise the plan in four bullet points?",
+    "reply": "Here’s the plan at a glance:\n\n- **Race:** Riverside Half Marathon on 30 November — your first half marathon.\n- **Long run:** locked in for Sundays.\n- **Run days:** spaced out so you never run two days in a row, per your physio’s knee guidance.\n- **Focus:** build up safely and consistently toward race day.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2853,
+     "completion_tokens": 1061,
+     "total_tokens": 3914,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 985
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1317
+    },
+    "host_seconds": 13.45
+   },
+   "s02-toast:0": {
+    "input": "Different project: my sister Anika is getting married on December 14 to Tomás, and I'm her maid of honour. I have to give a toast, three minutes max, and I genuinely dread public speaking. The story I want to use: when we were kids Anika taught me to ride a bike by pretending she was still holding the seat - she'd let go ages before and I only found out when I turned around. Can you help me with a structure?",
+    "reply": "Happy to help with the toast—congratulations to Anika and Tomás. Since you’re nervous and the limit is three minutes, use a simple shape: **one story, one turn, one toast**.\n\n## Structure: roughly 350–400 spoken words\n\n### 1. Opening — about 20 seconds\nKeep it warm and brief.\n\n- “For anyone who doesn’t know me, I’m Priya, Anika’s sister and maid of honour.”\n- One sentence about how happy you are to be there.\n\n### 2. The bike story — about 60 seconds\nThis is the heart of it.\n\n- Set it up: “When we were kids, Anika taught me to ride a bike.”\n- Give the key moment: “She promised she’d hold onto the seat. But she’d let go ages before. I only found out when I turned around.”\n- Pivot to her character: “That’s Anika: she gives you the confidence to keep going, and she never needs to take the credit.”\n\n### 3. Turn it toward marriage — about 60 seconds\nConnect the story to Tomás and the day.\n\n- Something like: “A good marriage needs that same combination: someone who makes you feel supported, and someone who trusts you enough to let you ride on your own.”\n- Then include one specific thing you love about Tomás or about them together. I’ve left this as a blank below because you know it best:\n\n> “[One real moment or quality about Tomás / Anika and Tomás together]”\n\nKeep it true and short—one or two sentences is enough.\n\n### 4. Close the toast — about 20 seconds\n- “So please join me in raising a glass: To Anika and Tomás—may you always be each other’s steady hand, and may you always trust each other to ride.”\n\n---\n\n### If public speaking worries you\n- Put the four sections on a single notecard as bullet points, not a full script.\n- Practise the bike story out loud twice before the wedding—that’s the one you’ll tell most naturally.\n- Aim to finish under three minutes, so even if you slow down from nerves you won’t run long.\n\nIf you tell me the Tomás detail you want to include, I can turn this into a full three-minute draft.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2009,
+     "completion_tokens": 2389,
+     "total_tokens": 4398,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1898
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 473
+    },
+    "host_seconds": 36.67
+   },
+   "s02-toast:1": {
+    "input": "I like it. Give me two possible opening lines.",
+    "reply": "Sure — here are two possible opening lines:\n\n1. **Story-first, warm:** “When we were kids, Anika taught me to ride a bike by pretending she was still holding the seat. She’d let go long before I realized — I only found out when I turned around.”\n\n2. **Self-deprecating, nervous-energy:** “I’m Anika’s sister and maid of honour, and I’d genuinely rather be back on that bike thinking Anika was still holding the seat than standing up here giving a toast.”\n\nOption 1 sets up the story cleanly; option 2 gets a little laugh and makes your nerves part of the opening. Want me to draft the next two or three lines after whichever one feels more like you?",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2538,
+     "completion_tokens": 3054,
+     "total_tokens": 5592,
+     "prompt_tokens_details": {
+      "cached_tokens": 1664
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 2898
+     },
+     "prompt_cache_hit_tokens": 1664,
+     "prompt_cache_miss_tokens": 874
+    },
+    "host_seconds": 41.16
+   },
+   "s03-travel-week:0": {
+    "input": "Quick update, it's Friday October 3: last Sunday's long run was 12 km and the knee felt fine. Next week I'm in Lisbon for work Monday to Thursday and the hotel only has a treadmill. How should I adjust that week? Also, I'm vegetarian, in case that matters for fuelling.",
+    "reply": "Priya, good sign that the knee handled 12 km. For next week, I’d treat it as a maintenance week rather than trying to build mileage while you’re away.\n\n**Adjusted week**\n- **Mon:** 25–30 min easy on the treadmill, or rest if travel is messy.\n- **Tue:** rest.\n- **Wed:** 35–40 min easy on the treadmill, conversational pace.\n- **Thu:** rest / mobility.\n- **Fri:** easy 5–6 km outdoors if you’re back and feeling fresh.\n- **Sat:** rest or easy cross-training.\n- **Sun:** long run — hold at **12 km easy**; maybe 13 km only if everything feels genuinely good.\n\nKeep the treadmill flat or 1% incline, and don’t chase pace while travelling. No back-to-back run days.\n\n**Vegetarian fuelling**\n- Runs under ~60 min: no special fuelling needed.\n- Sunday long run: carb-based meal 2–3 hours before — oatmeal with banana/nut butter, or toast with peanut butter.\n- If you’re out 75+ min, consider a gel, chews, or dates during.\n- Recovery: carbs + protein within 30–60 min — Greek/soy yogurt with fruit, eggs on toast, tofu scramble, lentils/beans, or milk/soy milk.\n\nWith increased training, keep an eye on iron, B12, and protein; if energy dips, that’s a good place to check first.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2700,
+     "completion_tokens": 6019,
+     "total_tokens": 8719,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 5703
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1164
+    },
+    "host_seconds": 72.36
+   },
+   "s03-travel-week:1": {
+    "input": "I fly back Thursday night. Should I run on Friday and Saturday to catch up before Sunday?",
+    "reply": "Short answer: I wouldn’t do both if Sunday is a key run. You’ll be coming off travel Thursday night, and Friday/Saturday back-to-back before Sunday could leave your legs flat for the run that actually matters.\n\nA better setup:\n\n- **Friday:** easy 30–40 min, only if you feel okay after travel  \n- **Saturday:** rest or very easy 20–30 min  \n- **Sunday:** run as planned  \n\nThat gets you moving without “catching up” by cramming. Two days won’t really recover the missed trip mileage, but they can hurt Sunday’s quality. If Sunday is just an easy day, then two light runs are more fine—but I’d still keep the effort easy. Given your knee felt fine after last Sunday’s 12 km, that’s a good sign; just don’t test it with three consecutive harder days.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2829,
+     "completion_tokens": 2329,
+     "total_tokens": 5158,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 2142
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1293
+    },
+    "host_seconds": 30.07
+   },
+   "s04-work-email:0": {
+    "input": "Can you help me write a short email to my manager Daniel asking to move the Q4 vendor report deadline from Friday October 17 to Tuesday October 21? My colleague Tom has agreed to cover the data pull in the meantime.",
+    "reply": "Here’s a short draft:\n\n---\n\n**Subject:** Q4 vendor report deadline\n\nHi Daniel,\n\nWould it be possible to move the Q4 vendor report deadline from Friday, October 17 to Tuesday, October 21? Tom has agreed to cover the data pull in the meantime.\n\nThanks,\n\n[Your name]\n\n---\n\nWant me to add a brief reason for the request, or keep it as is?",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2674,
+     "completion_tokens": 319,
+     "total_tokens": 2993,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 237
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1138
+    },
+    "host_seconds": 4.49
+   },
+   "s04-work-email:1": {
+    "input": "Make it a bit more formal, and keep it under 120 words.",
+    "reply": "Here’s a more formal version:\n\n---\n\n**Subject:** Q4 vendor report deadline\n\nDear Daniel,\n\nI am writing to request a change to the Q4 vendor report deadline from Friday, October 17 to Tuesday, October 21. Tom has agreed to cover the data pull in the meantime.\n\nPlease let me know if this revised deadline is acceptable.\n\nBest regards,\n\n[Your name]",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2659,
+     "completion_tokens": 652,
+     "total_tokens": 3311,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 573
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1123
+    },
+    "host_seconds": 7.48
+   },
+   "s05-toast-draft:0": {
+    "input": "Toast progress! I've drafted the opening: 'For those who don't know me, I'm Priya, the little sister Anika has been looking after since before I could walk.' I'm planning to ask Mum for an old photo of us with the bike to show during the speech, but I haven't asked her yet. Does the opening work?",
+    "reply": "Yes, that works well. It introduces you, your relationship, and the theme—Anika looking after you—right away, which sets up the bike story perfectly.\n\nOne small optional smoothing:\n\n“For those who don’t know me, I’m Priya, Anika’s little sister—and she’s been looking after me since before I could walk.”\n\nThat version is a little easier to follow and gives the line a cleaner rhythm. Your version is fine too.\n\nOn the photo: ask Mum early so you have time to find it or make a backup plan. If you do get it, I’d save showing it for the moment in the story where you turn around and realise she’s not holding the seat—that’s where it’ll land hardest.\n\nWant help with the bridge from this opening into the bike story?",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2815,
+     "completion_tokens": 1671,
+     "total_tokens": 4486,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1497
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1279
+    },
+    "host_seconds": 19.11
+   },
+   "s05-toast-draft:1": {
+    "input": "Also, a change on the running side: the organisers moved the Riverside Half to December 7 because of a city event on the 30th. Nothing else about the race changed.",
+    "reply": "Got it — thanks for letting me know. So the Riverside Half is now 7 December, moved because of the city event on the 30th, and nothing else changed.\n\nWant me to help adjust anything around the new date, or are we back to the toast opening?",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2665,
+     "completion_tokens": 1860,
+     "total_tokens": 4525,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1803
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1129
+    },
+    "host_seconds": 22.48
+   },
+   "s06-zh-fuelling:0": {
+    "input": "我想提前规划一下比赛前一周的饮食，你能帮我列一个大概的安排吗？",
+    "reply": "可以，先给你一个**大致通用安排**，具体可以根据比赛项目再调整：\n\n### 比赛前一周饮食安排\n\n- **赛前 7—5 天**  \n  正常均衡饮食：主食、蛋白质、蔬菜都吃够。  \n  开始有意识地补水，每天约 2—2.5 升。  \n  不尝试没吃过的食物，避免肠胃不适。\n\n- **赛前 4—3 天**  \n  逐步提高主食比例，比如米饭、面条、燕麦、红薯、全麦面包等。  \n  蛋白质适量：鸡蛋、鸡胸肉、鱼、豆制品。  \n  减少太油、太辣、容易胀气的食物。\n\n- **赛前 2 天**  \n  主食占每餐一半以上，帮助身体储备糖原。  \n  搭配少量优质蛋白和易消化蔬菜。  \n  少食多餐，避免一次吃太撑。\n\n- **赛前 1 天**  \n  以碳水为主，清淡少油。  \n  晚餐不要吃太晚、太饱。  \n  避免生冷食物、酒精和过量咖啡因。\n\n- **比赛当天**  \n  赛前 2—3 小时吃易消化的一餐，比如：白粥、面包、香蕉、少量鸡蛋。  \n  赛前 1 小时左右可以补充一点碳水，比如半根香蕉、一小块能量棒。  \n  全程小口补水，不要一次性大量喝。\n\n### 几个原则\n- 不突然改变饮食习惯。  \n- 不尝试新食物、新补剂。  \n- 保证睡眠，饮食只是辅助。  \n- 补水要提前做，不要等到比赛当天才猛喝。\n\n如果你能告诉我：**是什么项目、比赛具体几点、有没有体重控制或肠胃敏感**，我可以帮你把这份安排细化到每餐。",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 1871,
+     "completion_tokens": 1021,
+     "total_tokens": 2892,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 635
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 335
+    },
+    "host_seconds": 12.82
+   },
+   "s06-zh-fuelling:1": {
+    "input": "比赛前一晚具体吃什么比较好？",
+    "reply": "比赛前一晚的饮食核心是：**补足碳水、好消化、不尝新、不影响睡眠**。\n\n你可以按这个思路吃：\n\n**主食（重点）**\n- 米饭、面条、馒头、土豆、红薯等易消化碳水\n- 如果第二天是耐力类项目（跑步、足球、游泳等），主食量可以比平时多一点\n\n**蛋白质（适量）**\n- 清蒸鱼、鸡胸肉、鸡蛋、豆腐\n- 不要吃太肥、太油腻的肉\n\n**蔬菜（选熟的）**\n- 胡萝卜、菠菜、冬瓜等\n- 少吃容易胀气的：豆类、西兰花、洋葱、生冷蔬菜\n\n**水果**\n- 香蕉、苹果等比较稳妥\n- 如果肠胃敏感，不要吃太多生冷水果\n\n**饮品**\n- 白水、淡电解质水\n- 不喝酒，少喝含咖啡因饮料，避免影响睡眠\n\n**时间安排**\n- 睡前 2～3 小时吃完\n- 七八分饱就好，不要吃撑\n\n**一个例子**\n> 白米饭/意面 + 清蒸鱼/鸡胸肉 + 少量熟蔬菜 + 香蕉  \n> 喝白水或淡电解质水\n\n**特别注意**\n- 不要吃平时没吃过的食物\n- 避免油炸、重辣、重油、大量乳制品\n- 睡前不要大量喝水，以免起夜影响休息\n\n如果你告诉我具体是什么比赛、几点开始、平时肠胃怎么样，我可以帮你再细化一份。",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2077,
+     "completion_tokens": 706,
+     "total_tokens": 2783,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 385
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 541
+    },
+    "host_seconds": 9.15
+   },
+   "s07-knee:0": {
+    "input": "Ugh. Today is Wednesday, November 5. I ran yesterday and again this morning to make up for a missed session, and now my knee is sore. What should I do for the rest of this week?",
+    "reply": "Sorry to hear it — that soreness is pretty expected after running two days in a row, given your physio’s no-back-to-back rule. This week is about calming the knee down, not catching up.\n\n- **Thu:** No running. Rest, or gentle non-impact cross-training like cycling/swimming only if the knee feels okay.\n- **Fri:** No running. Walking is fine if it feels normal.\n- **Sat:** Only if you’ve been pain-free walking/stairs for 24–48 hours, try a short, easy 3–4 km. Any soreness → stop or skip.\n- **Sun:** If Saturday felt completely normal and no soreness afterward, you can do an easy run — maybe 8–10 km, not pushing pace. If sore, replace it with cross-training or rest.\n\nDon’t try to make up missed sessions with back-to-back days — one skipped run matters much less than a knee flare-up. If the pain is sharp, swollen, or still hanging around by Friday, check with your physio before running again.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2789,
+     "completion_tokens": 1989,
+     "total_tokens": 4778,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1767
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1253
+    },
+    "host_seconds": 25.27
+   },
+   "s07-knee:1": {
+    "input": "How many weeks do I have left until race day?",
+    "reply": "I don’t have your race date available, so I can’t calculate the weeks yet. You mentioned today is Wednesday, November 5 — tell me the race date and I’ll figure out how many weeks are left.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2743,
+     "completion_tokens": 679,
+     "total_tokens": 3422,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 631
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1207
+    },
+    "host_seconds": 8.61
+   },
+   "s08-toast-check:0": {
+    "input": "Working on the toast again tonight. Remind me - did I already sort out the photo for the speech? And what was the bike story exactly? I want the details right.",
+    "reply": "From what you’d told me, no — the photo wasn’t sorted yet. You were planning to ask your mum for an old photo of the two of you with the bike, but you hadn’t asked her yet. I don’t have any later update saying it’s done.\n\nThe bike story you gave me was: when you were kids, Anika taught you to ride by pretending she was still holding the seat — but she had let go ages before, and you only found out when you turned around.\n\nWant help fitting that into the toast now?",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2765,
+     "completion_tokens": 1210,
+     "total_tokens": 3975,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1093
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1229
+    },
+    "host_seconds": 12.05
+   },
+   "s08-toast-check:1": {
+    "input": "What else do you know about the wedding that I could mention in the toast?",
+    "reply": "From our earlier conversation, here’s what I know:\n\n- You’re **Priya**, Anika’s little sister.\n- Your opening line was: *“For those who don’t know me, I’m Priya, the little sister Anika has been looking after since before I could walk.”*\n- You were **planning to ask Mum for an old photo of you and Anika with the bike** to show during the speech.\n- As of your last update, you **hadn’t asked Mum yet**, so the photo isn’t sorted/confirmed.\n\nI don’t have the exact bike story details saved — only that it involves an old photo of the two of you with the bike.\n\nSo a natural angle for the toast is to expand the theme *“Anika has looked after me my whole life”* and use the bike memory as the concrete story behind it. If you tell me what actually happened with the bike, I can help you phrase it accurately and make it land well in the speech.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2676,
+     "completion_tokens": 2096,
+     "total_tokens": 4772,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1882
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1140
+    },
+    "host_seconds": 19.59
+   },
+   "s09-race-week:0": {
+    "input": "Today's Monday, December 1. Help me lay out this week: training, a final toast rehearsal, and staying sane at work.",
+    "reply": "Here’s a first-pass week that balances training, toast rehearsal, and keeping work contained. I’m working from what you mentioned before, but I don’t know how your knee has been since early November — so if it’s still grumbling, drop the runs to low-impact cross-training.\n\n**Mon Dec 1 — Reset**  \n- Training: rest or easy 20–30 min walk/spin  \n- Toast: distill the bike story into 4 cue cards  \n- Work: pick top 3 priorities only; skip email for the first hour if possible  \n\n**Tue Dec 2 — Rehearse the opening**  \n- Training: easy 30–40 min run + light strength, if knee feels fine  \n- Toast: say the opening and bike story aloud twice  \n- Work: one protected deep-work block; 10-min walk at lunch  \n\n**Wed Dec 3 — First full timed toast**  \n- Training: short easy run or cross-train  \n- Toast: full run-through, timed, aimed under 2:45; record it on your phone  \n- Work: no late catch-up if you can avoid it  \n\n**Thu Dec 4 — Trim and recover**  \n- Training: rest or mobility/stretching  \n- Toast: second full run-through standing up; cut filler and tighten transitions  \n- Work: delegate or park one non-essential task  \n\n**Fri Dec 5 — Light day**  \n- Training: easy 25–35 min run or cross-train  \n- Toast: cue-card review only, no pressure  \n- Work: close out the week; set Monday’s top three so you can switch off  \n\n**Sat Dec 6 — Dress rehearsal + long run**  \n- Training: long run, easy pace; keep it conservative if the knee is at all off  \n- Toast: full dress rehearsal with timer — ideally in front of a friend or on video  \n- Work: off  \n\n**Sun Dec 7 — Recover, then stop rehearsing**  \n- Training: rest/mobility  \n- Toast: one relaxed final pass, then put it away for the night  \n- Work: off  \n\nFor fuelling, keep post-run meals with a solid plant protein source — lentils, beans, tofu, plus eggs/yogurt if you include those — and extra carbs on long-run day.\n\nThe sanity part is mostly protecting the boundaries: keep two or three work priorities a day, rehearse in short daily chunks rather than marathons, and protect sleep.\n\nWant me to turn the bike story into cue cards or a tighter toast structure next? Also, tell me your current weekly running volume and whether the knee is fully settled, and I’ll make the training side more specific.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2705,
+     "completion_tokens": 3034,
+     "total_tokens": 5739,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 2474
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1169
+    },
+    "host_seconds": 36.5
+   },
+   "s09-race-week:1": {
+    "input": "Should I run the day before the race?",
+    "reply": "Not a real run, no. The day before the half, the goal is just to feel loose.\n\nFor Saturday, December 6, I’d do one of these:\n\n- **Rest completely**, or\n- **15–20 minutes very easy**, plus a few gentle strides if your knee feels 100%.\n\nGiven your knee history, I’d lean toward **rest or a short easy shakeout only if the knee feels completely normal** — and skip the strides if anything feels off. No hard running, no long time on feet.\n\nThe work is already done by then; Saturday is about arriving fresh.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2725,
+     "completion_tokens": 684,
+     "total_tokens": 3409,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 559
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1189
+    },
+    "host_seconds": 8.62
+   },
+   "s10-after:0": {
+    "input": "Race done in 2:04! Separate question: what did my physio tell me about my right ankle? I can't remember.",
+    "reply": "Congrats on the 2:04 finish!\n\nOn the right ankle: I don’t have anything from your physio about it in what you’ve shared with me. The only physio note I have is about your **left knee**: no back-to-back run days.\n\nIf the physio did mention something about your right ankle, feel free to tell me what you remember and I can help you keep track of it.",
+    "stage": "completed",
+    "usage": {
+     "prompt_tokens": 2629,
+     "completion_tokens": 1121,
+     "total_tokens": 3750,
+     "prompt_tokens_details": {
+      "cached_tokens": 1536
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1033
+     },
+     "prompt_cache_hit_tokens": 1536,
+     "prompt_cache_miss_tokens": 1093
+    },
+    "host_seconds": 12.07
+   },
+   "s10-after:1": {
+    "input": "My aunt keeps mixing up Tom and Tomás. Who's who again?",
+    "reply": null,
+    "stage": "failed_after_retries",
+    "usage": {},
+    "host_seconds": 0
+   }
+  },
+  "N": {
+   "s01-run-plan:0": {
+    "input": "Hi, I'm Priya. I've signed up for the Riverside Half Marathon on November 30 - my first half. My physio says my left knee can't handle running on two consecutive days, so never back-to-back run days. I work 8:30 to 5, so weekday runs have to happen before 7am. I'm comfortable at about 8 km right now. Can you sketch a weekly structure for the next month?",
+    "reply": "Hi Priya! Great that you’re planning early and protecting the knee. For the next month, I’d keep it conservative: **3 run days/week, no back-to-back runs**, plus cross-training/mobility.\n\n## Weekly structure\n\n| Day | Plan |\n|---|---|\n| Monday | Rest or light upper-body strength |\n| Tuesday | Easy run **before 7am** |\n| Wednesday | Physio exercises / cross-train 20–30 min |\n| Thursday | Easy run **before 7am** + optional short strides |\n| Friday | Rest |\n| Saturday | Long run |\n| Sunday | Mobility, core/glute strength, or walk |\n\n## Next 4 weeks progression\n\nAssuming the plan starts the week of **Monday 11 May**:\n\n| Week | Tuesday easy | Thursday easy | Saturday long |\n|---|---:|---:|---:|\n| Week 1 | 5 km | 6 km | 9 km |\n| Week 2 | 5 km | 6 km + 4×20 sec strides | 10 km |\n| Week 3 | 6 km | 7 km | 10–11 km |\n| Week 4 | 6 km | 7 km | 11–12 km, or 10 km cutback if knee feels off |\n\nThat keeps weekly volume around **20–25 km**, which is a reasonable starting base since you’re currently comfortable around 8 km.\n\n## Key rules\n\n- **No running on back-to-back days**, even if the knee feels fine.\n- Keep most running **easy/conversational** — you should be able to talk while running.\n- For weekday runs, aim to be out the door around **5:50–6:10 am** so you’re done before 7:00.\n- Do your physio’s knee/hip exercises **2–3 times per week**.\n- Good cross-training: cycling, swimming, elliptical, or pool running.\n- If the knee gives more than mild discomfort, stop and swap that run for cross-training or rest.\n\nThe half on 30 November is far enough away that this month can just be about building consistency without rushing. Later we can add more distance or a fourth run only if the knee tolerates it.\n\nWant me to turn this into a day-by-day calendar for May–early June?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 235,
+     "completion_tokens": 5258,
+     "total_tokens": 5493,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 4776
+     },
+     "prompt_cache_hit_tokens": 0,
+     "prompt_cache_miss_tokens": 235
+    },
+    "host_seconds": 72.24
+   },
+   "s01-run-plan:1": {
+    "input": "Looks good. Keep the long run on Sundays please. Can you summarise the plan in four bullet points?",
+    "reply": "- **Run 3 days/week:** easy runs Tuesday and Thursday before 7am, long run Sunday — never on back-to-back days.  \n- **Start conservative:** ~5–6 km on weekday runs and ~9 km Sunday long, building to 6–7 km weekdays and 11–12 km long by week 4.  \n- **Use non-run days** for rest, physio exercises, core/glute strength, or low-impact cross-training like cycling/swimming.  \n- **Protect the left knee:** keep runs conversational, do physio 2–3× weekly, and swap any run for cross-training if knee discomfort is more than mild.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 742,
+     "completion_tokens": 441,
+     "total_tokens": 1183,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 300
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 614
+    },
+    "host_seconds": 7.26
+   },
+   "s02-toast:0": {
+    "input": "Different project: my sister Anika is getting married on December 14 to Tomás, and I'm her maid of honour. I have to give a toast, three minutes max, and I genuinely dread public speaking. The story I want to use: when we were kids Anika taught me to ride a bike by pretending she was still holding the seat - she'd let go ages before and I only found out when I turned around. Can you help me with a structure?",
+    "reply": "That bike story is perfect—it’s specific, warm, and gives you a natural metaphor without being forced.\n\n## Structure for a 3-minute toast\n\n**1. Opening — 15–20 sec**\n- Introduce yourself briefly.\n- Thank everyone for being there.\n- Acknowledge Anika and Tomás.\n\n> “For anyone who doesn’t know me, I’m [name], Anika’s sister and maid of honour.”\n\n**2. The bike story — 45–60 sec**\n- Set it up quickly: you were scared, she taught you.\n- Pause before the reveal.\n- Give the image: she let go ages before, and you only found out when you turned around.\n\n> “She knew I didn’t need her hands on the seat. I just needed to believe they were there.”\n\n**3. Pivot to Anika and Tomás — 30–45 sec**\n- Connect the story to who Anika is now.\n- Bring Tomás in.\n- Optional line: *“Marriage is a bit like learning to ride: sometimes you don’t know you’re ready until you’re already doing it.”*\n\n**4. Close and toast — 15–20 sec**\n- Raise your glass.\n- Keep the last line simple.\n\n> “To Anika and Tomás—may you always enjoy the ride.”\n\n---\n\n## Short draft you can adapt\n\nFor anyone who doesn’t know me, I’m [name], Anika’s sister and maid of honour. I’m so happy to be here celebrating Anika and Tomás.\n\nWhen we were kids, Anika taught me to ride a bike. I was terrified, so she ran alongside me holding the seat and promised she wouldn’t let go. Then I turned around and saw her standing far behind me, cheering. She’d let go ages before. She knew I didn’t need her hands on the seat—I just needed to believe they were there.\n\nThat’s Anika. She makes people feel safe enough to try, and then she celebrates you like you did it all yourself. Tomás, you’re the person she has chosen to ride through life with. Thank you for making her brave.\n\nPlease join me in raising a glass. To Anika and Tomás—may you always enjoy the ride.\n\n---\n\nThat draft is intentionally under two minutes, which is good. If you want to fill it out closer to three minutes, add one more small specific detail about Anika or one short sentence about Tomás.\n\nFor nerves: mark two pauses in your notes, practice out loud three times, and look at Anika when you feel shaky—emotion is completely fine in a wedding toast.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 239,
+     "completion_tokens": 2959,
+     "total_tokens": 3198,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 2398
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 111
+    },
+    "host_seconds": 41.3
+   },
+   "s02-toast:1": {
+    "input": "I like it. Give me two possible opening lines.",
+    "reply": "Here are two possible opening lines:\n\n**Option A — warm and direct**\n> “For anyone who doesn’t know me, I’m [name], Anika’s sister and maid of honour—and I’ve been looking up to her since before I could ride a bike.”\n\n**Option B — story-first and a little lighter**\n> “I’m [name], Anika’s sister, and I’m going to start with a confession: I only learned to ride a bike because Anika lied to me in the kindest possible way.”",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 814,
+     "completion_tokens": 540,
+     "total_tokens": 1354,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 424
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 686
+    },
+    "host_seconds": 8.82
+   },
+   "s03-travel-week:0": {
+    "input": "Quick update, it's Friday October 3: last Sunday's long run was 12 km and the knee felt fine. Next week I'm in Lisbon for work Monday to Thursday and the hotel only has a treadmill. How should I adjust that week? Also, I'm vegetarian, in case that matters for fuelling.",
+    "reply": "Great update — 12 km with a happy knee is a good sign. For next week, I’d treat Lisbon as an **adaptation week**, not a week to force progression. Treadmill running is fine, but it changes mechanics a little, so keep most of it easy and controlled.\n\n**How I’d adjust next week**\n\n- **Mon:** travel day — rest or 20 min easy if you have time/energy  \n- **Tue:** 30–40 min easy treadmill  \n- **Wed:** 40 min easy, or if knee feels 100%: 10 min easy + 20 min steady/moderate + 10 min easy  \n- **Thu:** 20–30 min very easy, or rest if travel/early flight makes it awkward  \n- **Fri:** 30–40 min easy outside once you’re back  \n- **Sat:** rest or 30 min easy  \n- **Sun:** long run — aim for **13 km**, but repeat 12 km if you’re tired from travel or the knee feels off  \n\nIf your plan had a harder workout scheduled that week, move it to **Friday or Saturday** and keep Mon–Thu easy.\n\n**Treadmill tips**\n- Use **0.5–1% incline** to better mimic outdoor running.\n- Go by **time/effort**, not treadmill pace — hotel treadmills can be inaccurate.\n- Keep stride short and don’t overstride; treadmill encourages it.\n- Add 10 min of glute/quad/calf strength after treadmill runs if possible.\n\n**Vegetarian fuelling for Lisbon**\n- Hotel breakfast: eggs, Greek yogurt, cheese, beans, oats, bread, fruit — all good pre-run/post-run options.\n- Bring: protein bars or powder, nuts/nut butter packets, instant oats, electrolyte tabs.\n- Eating out: Italian, Indian, Middle Eastern and some Portuguese options are easiest. Good choices: omelettes, bean/rice dishes, vegetable soup — but ask, because **caldo verde often has chouriço** — cheese, eggs, pasta, pizza, falafel, dal.\n- Post-run: get **carbs + 20–30 g protein** within 30–60 min, especially after the long run.\n- Iron matters for vegetarian runners: lentils, beans, eggs, spinach, tofu. Pair with vitamin C — orange juice, tomato, peppers — and avoid tea/coffee right after meals.\n\nIf you send me the exact week your plan had, I can slot the sessions in more precisely.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 208,
+     "completion_tokens": 3485,
+     "total_tokens": 3693,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 2957
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 80
+    },
+    "host_seconds": 56.14
+   },
+   "s03-travel-week:1": {
+    "input": "I fly back Thursday night. Should I run on Friday and Saturday to catch up before Sunday?",
+    "reply": "No — I wouldn’t use Friday and Saturday to “catch up.” That usually just leaves you tired for Sunday’s long run, especially after a travel week.\n\n**Better approach:**\n\n- **Friday:** 30–40 min easy outside, only if you feel decent after flying back Thursday night. If you’re flat or sleep was poor, make it 20–30 min easy or take a rest day.\n- **Saturday:** rest or 20–30 min very easy. This is not a catch-up run — it’s just a shakeout if you want one.\n- **Sunday:** long run, 13 km if you feel fresh, or repeat 12 km if the week left you tired.\n\nThe Lisbon week is an adaptation week. Missing a midweek run or two won’t hurt your fitness, but cramming two runs before a long run can hurt the quality of the long run and add unnecessary load to the knee.\n\nIf you feel really good Friday, you could add a few gentle strides after the run — but I wouldn’t add another proper run Saturday if Sunday is the priority.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 758,
+     "completion_tokens": 968,
+     "total_tokens": 1726,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 740
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 630
+    },
+    "host_seconds": 15.86
+   },
+   "s04-work-email:0": {
+    "input": "Can you help me write a short email to my manager Daniel asking to move the Q4 vendor report deadline from Friday October 17 to Tuesday October 21? My colleague Tom has agreed to cover the data pull in the meantime.",
+    "reply": "Here’s a short draft:\n\n---\n\n**Subject:** Q4 vendor report deadline\n\nHi Daniel,\n\nCould I move the Q4 vendor report deadline from Friday, October 17 to Tuesday, October 21? Tom has agreed to cover the data pull in the meantime.\n\nPlease let me know if that works for you.\n\nThanks,  \n[Your Name]",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 189,
+     "completion_tokens": 434,
+     "total_tokens": 623,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 362
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 61
+    },
+    "host_seconds": 6.83
+   },
+   "s04-work-email:1": {
+    "input": "Make it a bit more formal, and keep it under 120 words.",
+    "reply": "Subject: Request to Extend Q4 Vendor Report Deadline\n\nDear Daniel,\n\nI am writing to request an extension for the Q4 vendor report deadline from Friday, October 17, to Tuesday, October 21. Tom has agreed to cover the data pull in the interim.\n\nPlease let me know if this adjustment is acceptable.\n\nBest regards,\n[Your Name]",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 279,
+     "completion_tokens": 458,
+     "total_tokens": 737,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 385
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 151
+    },
+    "host_seconds": 5.66
+   },
+   "s05-toast-draft:0": {
+    "input": "Toast progress! I've drafted the opening: 'For those who don't know me, I'm Priya, the little sister Anika has been looking after since before I could walk.' I'm planning to ask Mum for an old photo of us with the bike to show during the speech, but I haven't asked her yet. Does the opening work?",
+    "reply": "Yes, the opening works. It’s warm, personal, and instantly gives the audience context without over-explaining.\n\nOne tiny tweak you could consider:\n\n> “For those who don’t know me, I’m Priya — Anika’s little sister. She’s been looking after me since before I could walk.”\n\nThat version lands a little cleaner and keeps the focus on Anika’s care right away.\n\nThe photo idea is lovely too. Ask Mum early so you have time to find it, scan it if needed, and have a backup plan in case she can’t locate it.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 215,
+     "completion_tokens": 584,
+     "total_tokens": 799,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 458
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 87
+    },
+    "host_seconds": 8.66
+   },
+   "s05-toast-draft:1": {
+    "input": "Also, a change on the running side: the organisers moved the Riverside Half to December 7 because of a city event on the 30th. Nothing else about the race changed.",
+    "reply": "Thanks for the update. Noted: the Riverside Half is now **7 December** instead of **30 November**, with no other changes.\n\nThat extra week could be useful for training or tapering. Want me to help adjust your plan, or leave it as is for now?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 382,
+     "completion_tokens": 1063,
+     "total_tokens": 1445,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1006
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 254
+    },
+    "host_seconds": 15.54
+   },
+   "s06-zh-fuelling:0": {
+    "input": "我想提前规划一下比赛前一周的饮食，你能帮我列一个大概的安排吗？",
+    "reply": "可以帮你列一个通用框架。不过饮食安排和比赛类型、时长、体重、消化习惯关系很大，下面先按“耐力型比赛（如马拉松、长距离骑行、足球、长跑等）”来做一个赛前一周的大概安排。如果你告诉我具体项目、体重、比赛时间，我可以再帮你细化到每餐份量。\n\n## 比赛前一周饮食原则\n\n- **前 3～4 天**：正常均衡吃，不刻意少吃，维持训练消耗。\n- **后 3 天**：逐步增加碳水，减少高纤维、高脂食物，避免肠胃负担。\n- **比赛前 1 天**：高碳水、易消化、低油低纤维。\n- **比赛当天**：赛前 2～3 小时吃轻碳水，不尝新食物。\n- **全程多喝水**，每天约 2～3 升，观察尿色呈淡黄即可。\n\n---\n\n## 每日大概安排\n\n### 周一～周三：正常均衡期\n重点：正常三餐，蛋白质、碳水、蔬菜都要有。\n\n- **早餐**：燕麦/全麦面包 + 鸡蛋 + 牛奶/豆浆 + 香蕉\n- **午餐**：米饭/杂粮饭 + 鸡胸肉/瘦牛肉/鱼 + 蔬菜\n- **晚餐**：红薯/米饭 + 鱼/豆腐 + 绿叶菜\n- **加餐**：水果、酸奶、少量坚果\n\n---\n\n### 周四：开始增加碳水\n重点：主食比例提高，蔬菜可以稍减少粗纤维。\n\n- **早餐**：白粥/燕麦 + 鸡蛋 + 面包 + 蜂蜜水\n- **午餐**：白米饭/意面 + 鸡肉/鱼 + 少量蔬菜\n- **晚餐**：土豆/米饭 + 蛋/瘦肉 + 易消化蔬菜\n- **加餐**：香蕉、面包、运动饮料\n\n---\n\n### 周五：高碳水加载\n重点：主食量继续增加，脂肪和粗纤维减少。\n\n- **早餐**：面包/馒头 + 鸡蛋 + 香蕉 + 果汁\n- **午餐**：白米饭/意面 + 瘦鸡肉/鱼肉 + 少量瓜类蔬菜\n- **晚餐**：白米饭/面条 + 少量蛋白质 + 清汤\n- **加餐**：香蕉、白面包、米糕、运动饮料\n\n---\n\n### 周六：赛前一天\n重点：高碳水、易消化、少油少纤维、不要吃撑。\n\n- **早餐**：白面包/馒头 + 花生酱少量 + 香蕉 + 蜂蜜水\n- **午餐**：白米饭/意面 + 鸡胸肉/鱼肉 + 去皮瓜类蔬菜\n- **晚餐**：白米饭/面条 + 少量蛋白质，尽量早吃，18:30 前吃完\n- **加餐**：香蕉、白面包、运动饮料、米粥\n- **避免**：豆类、生冷沙拉、辛辣、油炸、酒精、大量牛奶\n\n---\n\n### 周日：比赛日\n重点：赛前轻碳水，赛中按计划补，赛后及时恢复。\n\n- **赛前 2～3 小时**：白面包/馒头 + 香蕉 + 少量蜂蜜/果酱，或白粥 + 面包\n- **赛前 1 小时**：只喝少量水或运动饮料，不大量进食\n- **赛后 30～60 分钟**：碳水 + 蛋白质，如香蕉 + 牛奶/酸奶、三明治、运动恢复饮料\n- **赛后正餐**：正常均衡餐，补充蛋白质和碳水\n\n---\n\n## 几个关键提醒\n\n- **不要尝试没吃过的食物**，尤其是赛前 3 天。\n- **碳水加载不是无限吃撑**，而是把主食比例提高，同时减少脂肪和纤维。\n- **体重可能会因储水略微上升**，这是正常糖原储水，不用紧张。\n- 如果你容易肠胃不适，赛前 2 天尽量吃白米饭、白面包、香蕉、土豆这类低渣食物。\n\n你具体是什么比赛？如果是力量型、球类或者短距离爆发项目，饮食侧重点会不太一样，我可以再帮你调整。",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 161,
+     "completion_tokens": 1547,
+     "total_tokens": 1708,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 663
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 33
+    },
+    "host_seconds": 21.06
+   },
+   "s06-zh-fuelling:1": {
+    "input": "比赛前一晚具体吃什么比较好？",
+    "reply": "赛前一晚的核心是：**高碳水、易消化、低油低纤维、适量蛋白质、别吃撑**。\n\n可以这样搭配：\n\n## 推荐搭配\n\n**主食（占盘子一半以上）**\n- 白米饭\n- 白面条\n- 白粥/小米粥\n- 土豆泥\n- 白馒头/白面包\n\n**蛋白质（少量，好消化）**\n- 鸡胸肉\n- 清蒸鱼\n- 鸡蛋\n- 少量瘦猪肉\n\n**蔬菜（选低纤维、瓜类）**\n- 冬瓜\n- 西葫芦\n- 去皮黄瓜\n- 胡萝卜\n- 少量番茄\n\n**汤水**\n- 清汤、蔬菜清汤\n- 紫菜蛋花汤\n- 少量运动饮料补水\n\n---\n\n## 具体菜单示例\n\n**方案 A**\n- 白米饭 1.5～2 碗\n- 清蒸鲈鱼/鸡胸肉一小块\n- 炒西葫芦或冬瓜\n- 紫菜蛋花汤\n\n**方案 B**\n- 鸡丝汤面/清汤面，面多料少\n- 加一个水煮蛋\n- 少量烫青菜（选瓜类）\n\n**方案 C**\n- 白粥/小米粥 + 白馒头\n- 蒸蛋/水煮蛋\n- 少量土豆泥\n\n---\n\n## 赛前一晚要避免\n\n- 豆类、洋葱、韭菜、西兰花等容易胀气\n- 生冷沙拉、粗粮、大量蔬菜\n- 油炸、辛辣、红烧、奶油酱\n- 大量红肉、肥肉\n- 牛奶、酸奶（如果平时喝了容易肠胃不适）\n- 酒精、咖啡因要谨慎\n\n---\n\n## 时间和分量\n\n- **最好在睡前 3 小时左右吃完**，比如 19:00 前吃完，给肠胃足够时间。\n- **吃到七八分饱**，不要撑着睡。\n- 如果睡前有点饿，可以喝小半碗白粥、吃半根香蕉或一小片白面包，不要吃多。\n\n如果你愿意告诉我明天比赛的具体时间，我还可以帮你把“前一晚睡前加餐”和“比赛当天早餐”衔接得更准。",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 1055,
+     "completion_tokens": 703,
+     "total_tokens": 1758,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 229
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 927
+    },
+    "host_seconds": 9.76
+   },
+   "s07-knee:0": {
+    "input": "Ugh. Today is Wednesday, November 5. I ran yesterday and again this morning to make up for a missed session, and now my knee is sore. What should I do for the rest of this week?",
+    "reply": "That sounds like an overload response—running back-to-back to “make up” a missed session likely increased your knee’s workload too quickly. For the rest of this week, I’d err on the side of letting it settle.\n\n**General plan if it’s mild soreness/stiffness, not sharp pain:**\n\n- **Today (Wednesday):** Stop running. Ice if there’s any swelling, elevate when you can, and avoid things that irritate it like deep squats, lunges, or lots of stairs.\n- **Thursday:** Rest from running. You can do upper-body/core work, or low-impact cardio like swimming/cycling only if it feels completely pain-free.\n- **Friday:** Test it. If walking is pain-free, no swelling, and it feels normal, try an easy 15–20 minute flat run. If anything feels off, stop and skip the weekend run.\n- **Saturday/Sunday:** Only run if Friday’s test went well and your knee feels normal afterward. Otherwise, cross-train or rest.\n\n**Don’t double up to catch up.** Missing one session is much less risky than creating knee pain that sidelines you for weeks.\n\nIf the pain is sharp, swollen, catching/locking, or doesn’t improve after a few days of rest, see a physio or doctor.\n\nWhere exactly is the soreness—around the kneecap, inside, outside, or more general?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 187,
+     "completion_tokens": 997,
+     "total_tokens": 1184,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 702
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 59
+    },
+    "host_seconds": 16.36
+   },
+   "s07-knee:1": {
+    "input": "How many weeks do I have left until race day?",
+    "reply": "I don’t have your race date in our current chat—what day is the race? I’ll calculate the weeks from today, Wednesday, November 5.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 496,
+     "completion_tokens": 720,
+     "total_tokens": 1216,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 685
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 368
+    },
+    "host_seconds": 9.67
+   },
+   "s08-toast-check:0": {
+    "input": "Working on the toast again tonight. Remind me - did I already sort out the photo for the speech? And what was the bike story exactly? I want the details right.",
+    "reply": "I don’t have the earlier toast details saved in this session, so I don’t want to guess and give you wrong material.\n\nCan you remind me:\n\n1. **Photo for the speech** — did you already choose/confirm it, or is it still pending?\n2. **Bike story** — what are the key details as you remember them?\n\nOnce you give me the rough version, I’ll help you get the wording and details right.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 179,
+     "completion_tokens": 474,
+     "total_tokens": 653,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 379
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 51
+    },
+    "host_seconds": 7.05
+   },
+   "s08-toast-check:1": {
+    "input": "What else do you know about the wedding that I could mention in the toast?",
+    "reply": "I don’t have any additional saved details about the wedding from earlier — so I don’t know the couple, venue, your relationship to them, or any other stories yet.\n\nIf you tell me a few basics, I can help you brainstorm toast material:\n\n- Who’s getting married and how you know them\n- The vibe/setting of the wedding\n- Any funny or sweet moments you already have in mind\n- How long you’ve known one or both of them\n\nFrom there, I can suggest themes, structure, or lines that fit.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 293,
+     "completion_tokens": 573,
+     "total_tokens": 866,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 458
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 165
+    },
+    "host_seconds": 8.01
+   },
+   "s09-race-week:0": {
+    "input": "Today's Monday, December 1. Help me lay out this week: training, a final toast rehearsal, and staying sane at work.",
+    "reply": "Here’s a workable skeleton for the week of **Monday, Dec 1 – Sunday, Dec 7**. I assumed training happens outside work hours and the toast is coming up this weekend. Adjust to your actual schedule.\n\n### Weekly layout\n\n| Day | Training | Toast rehearsal | Staying sane at work |\n|---|---|---|---|\n| **Mon 12/1** | Light/easy: 30–45 min or mobility | Read it aloud once; mark natural pauses | Set top 3 priorities; block 2 focus hours |\n| **Tue 12/2** | Main session: 45–60 min | Record yourself on phone; listen back once | Take a real lunch break; no late meetings |\n| **Wed 12/3** | Short recovery or easy movement | Time it; trim to 2–3 min if needed | No-meeting morning if possible; batch email |\n| **Thu 12/4** | Moderate session if planned | **Final full rehearsal**: stand, speak aloud, use note card | Light day; walk at lunch; leave on time |\n| **Fri 12/5** | Light or rest day | One calm read-through only, then stop | Wrap up by 4–5pm; set Monday’s list |\n| **Sat 12/6** | Scheduled session or active recovery | Optional low-pressure run-through in the morning | No work |\n| **Sun 12/7** | Rest or long walk | Visualize the room; early night | No work; prep clothes/notes for toast day |\n\n### Non-negotiables for sanity\n- Sleep 7+ hours.\n- No work after 7pm.\n- 10-minute reset between work and training.\n- Keep the toast to **one small practice block per day** so you don’t over-rehearse.\n\nTell me your actual training days/times and the toast date, and I can tighten this into a more precise hour-by-hour plan.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 171,
+     "completion_tokens": 2011,
+     "total_tokens": 2182,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1607
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 43
+    },
+    "host_seconds": 26.12
+   },
+   "s09-race-week:1": {
+    "input": "Should I run the day before the race?",
+    "reply": "Yes—for most runners, a **short, easy run the day before a race** is a good idea.\n\n### Recommended day-before run\n- **15–20 minutes** at an easy, conversational pace\n- Optional: **3–4 × 20-second strides** at race pace or slightly faster to keep your legs feeling snappy\n- Keep it flat or on familiar terrain\n- No new shoes, no hard effort, no long run\n\n### Why it helps\n- Keeps your legs from feeling stale or heavy\n- Calms nerves and helps sleep\n- Maintains normal rhythm without adding fatigue\n\n### When to skip it\n- You’re feeling unusually tired, sore, or run-down\n- The race is very long and you’d rather rest\n- You’re new to running and more comfortable taking a full rest day\n\nIf your race is **this Sunday**, I’d treat **Saturday** as an easy 15–20 minute shakeout instead of a harder training session.\n\nWhat distance is the race? I can tailor the day-before and race-week plan more precisely.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 587,
+     "completion_tokens": 980,
+     "total_tokens": 1567,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 752
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 459
+    },
+    "host_seconds": 13.86
+   },
+   "s10-after:0": {
+    "input": "Race done in 2:04! Separate question: what did my physio tell me about my right ankle? I can't remember.",
+    "reply": "Congrats on the 2:04 — that’s a strong result!\n\nI don’t have the physio’s right-ankle notes saved on my end. If you can tell me what you remember or what you’re trying to recall, I can help you piece it together or keep track of it.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 171,
+     "completion_tokens": 398,
+     "total_tokens": 569,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 331
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 43
+    },
+    "host_seconds": 5.96
+   },
+   "s10-after:1": {
+    "input": "My aunt keeps mixing up Tom and Tomás. Who's who again?",
+    "reply": "I don’t have the Tom vs. Tomás distinction saved, so I don’t want to guess and mix them up too.\n\nCan you remind me: which one is which? For example, is one a friend vs. cousin, or do they have different last names/contexts? I’ll remember it going forward.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 256,
+     "completion_tokens": 242,
+     "total_tokens": 498,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 173
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 128
+    },
+    "host_seconds": 3.83
+   }
+  },
+  "F": {
+   "s01-run-plan:0": {
+    "input": "Hi, I'm Priya. I've signed up for the Riverside Half Marathon on November 30 - my first half. My physio says my left knee can't handle running on two consecutive days, so never back-to-back run days. I work 8:30 to 5, so weekday runs have to happen before 7am. I'm comfortable at about 8 km right now. Can you sketch a weekly structure for the next month?",
+    "reply": "Here’s a safe base-building structure for the next month, Priya. Since you’re already comfortable around 8K, this keeps that as your weekend long-run starting point and builds slowly without violating the “no back-to-back run days” rule.\n\n### Weekly skeleton\n\n| Day | Plan |\n|---|---|\n| Monday | Rest or light cross-train: bike, swim, elliptical, walk |\n| Tuesday | Easy run before 7am |\n| Wednesday | Strength/mobility or rest |\n| Thursday | Easy run before 7am |\n| Friday | Rest or light cross-train |\n| Saturday | Long run |\n| Sunday | Rest |\n\n### 4-week progression\n\n| Week | Tuesday | Thursday | Saturday long run |\n|---|---|---|---|\n| Week 1 | 5K easy | 6K easy | 8K |\n| Week 2 | 5K easy | 6K easy | 9K |\n| Week 3 | 6K easy | 7K easy | 10K |\n| Week 4 | 5K easy | 6K easy | 8K recovery week |\n\n### Things to keep in mind\n\n- Keep all runs conversational pace for now. Walk breaks are fine.\n- Add 15–20 minutes of knee-focused strength/mobility twice a week: glutes, quads, core, calves, single-leg balance.\n- If your knee feels grumpy, swap a run for cycling/swimming/elliptical and check with your physio.\n- Weekday runs should be easy enough that you’re not rushed or wrecked before work.\n\nYou have plenty of time before November 30, so the next month is really about consistency and keeping the knee happy. Want me to turn this into dated weeks or add a plan for the next block after this?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 235,
+     "completion_tokens": 3806,
+     "total_tokens": 4041,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 3434
+     },
+     "prompt_cache_hit_tokens": 0,
+     "prompt_cache_miss_tokens": 235
+    },
+    "host_seconds": 53.4
+   },
+   "s01-run-plan:1": {
+    "input": "Looks good. Keep the long run on Sundays please. Can you summarise the plan in four bullet points?",
+    "reply": "Here’s the updated summary with the long run moved to Sunday:\n\n- Weekday runs stay on **Tuesday and Thursday before 7am**, with the long run on **Sunday**.\n- Use the other days—Monday, Wednesday, Friday, Saturday—for rest, light cross-training, or strength/mobility work so you never run on back-to-back days.\n- Build the Sunday long run over the month: **8K → 9K → 10K → 8K recovery week**, with weekday runs around **5–7K**.\n- Keep all runs easy and conversational, and include knee-focused strength/mobility twice a week; switch to cross-training if your knee feels off.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 632,
+     "completion_tokens": 721,
+     "total_tokens": 1353,
+     "prompt_tokens_details": {
+      "cached_tokens": 128
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 578
+     },
+     "prompt_cache_hit_tokens": 128,
+     "prompt_cache_miss_tokens": 504
+    },
+    "host_seconds": 9.92
+   },
+   "s02-toast:0": {
+    "input": "Different project: my sister Anika is getting married on December 14 to Tomás, and I'm her maid of honour. I have to give a toast, three minutes max, and I genuinely dread public speaking. The story I want to use: when we were kids Anika taught me to ride a bike by pretending she was still holding the seat - she'd let go ages before and I only found out when I turned around. Can you help me with a structure?",
+    "reply": "Here’s a structure that keeps you under three minutes and uses the bike story as the emotional core.\n\n### 1. Opening — about 20–30 seconds\n- “Hi, I’m Priya, Anika’s sister and maid of honour.”\n- Thank everyone for coming, and briefly acknowledge both families.\n- One warm line about how lovely the day is.\n\n### 2. The bike story — about 60–90 seconds\n- Set the scene: “When we were kids, Anika taught me to ride a bike.”\n- Describe the promise: she said she’d hold the seat.\n- Build the moment: you pedalled, felt safe, believed she was right behind you.\n- Reveal: you turned around and she was way back, grinning.\n- Pivot: “That’s Anika. She gives you the confidence to go, lets you find your own balance, but never actually leaves you.”\n\n### 3. Connect it to Tomás and marriage — about 30–45 seconds\n- “Tomás, you’re getting someone who will believe in you even when you don’t believe in yourself.”\n- “Marriage is a bit like that too: holding on, letting go, and trusting the other person will still be there when you turn around.”\n\n### 4. Toast — about 15–20 seconds\n- Raise your glass and finish with something like:  \n  “To Anika and Tomás — may you always know when to hold on, and when to let go. And may you always turn around and find each other there.”\n- “To the couple!”\n\n---\n\nA few delivery tips since you dread public speaking:\n\n- Write the story in your own words, but memorise only the first and last lines.\n- Practise aloud three to five times so the timing feels natural.\n- Look mostly at Anika and Tomás, not the whole room.\n- Pause after the bike story — it gives the line time to land and helps you breathe.\n\nWant me to turn this into a full toast draft in your voice?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 874,
+     "completion_tokens": 1386,
+     "total_tokens": 2260,
+     "prompt_tokens_details": {
+      "cached_tokens": 512
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 959
+     },
+     "prompt_cache_hit_tokens": 512,
+     "prompt_cache_miss_tokens": 362
+    },
+    "host_seconds": 20.89
+   },
+   "s02-toast:1": {
+    "input": "I like it. Give me two possible opening lines.",
+    "reply": "Here are two options:\n\n1. “Hi everyone — I’m Priya, Anika’s very proud sister and maid of honour.”\n\n2. “For those who don’t know me, I’m Priya — Anika’s little sister, and apparently the reason she’s so good at letting go of bike seats.”",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 1315,
+     "completion_tokens": 129,
+     "total_tokens": 1444,
+     "prompt_tokens_details": {
+      "cached_tokens": 768
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 58
+     },
+     "prompt_cache_hit_tokens": 768,
+     "prompt_cache_miss_tokens": 547
+    },
+    "host_seconds": 2.52
+   },
+   "s03-travel-week:0": {
+    "input": "Quick update, it's Friday October 3: last Sunday's long run was 12 km and the knee felt fine. Next week I'm in Lisbon for work Monday to Thursday and the hotel only has a treadmill. How should I adjust that week? Also, I'm vegetarian, in case that matters for fuelling.",
+    "reply": "Great update — 12K with a happy knee is a really good sign.\n\nSince next week is a travel week, treat it as a **consolidation week**, not a push week.\n\n### Adjusted Lisbon week\n\n| Day | Plan |\n|---|---|\n| Monday | Travel / rest / mobility |\n| Tuesday | Treadmill easy run: 5–6K before the workday |\n| Wednesday | Rest or light strength/mobility |\n| Thursday | Treadmill easy run: 6–7K |\n| Friday | Travel / rest |\n| Saturday | Rest or easy walk |\n| Sunday | Long run: **12K repeat**, or 13K only if travel didn’t drain you |\n\nThis keeps your runs on **Tuesday, Thursday, Sunday** — still no back-to-back days.\n\n### Treadmill notes\n\n- Keep it easy and effort-based; the treadmill pace may feel different than outside.\n- Use **0.5–1% incline only if your knee tolerates it**. If not, keep it flat.\n- Don’t force the exact outdoor pace — aim for conversational effort.\n- A short warm-up walk and cool-down walk around it can help the knee.\n\n### Vegetarian fuelling basics\n\n- **Before weekday runs:** a small carb snack if needed — banana, toast with jam, or a small bowl of oats.\n- **After runs:** carbs + protein, e.g. Greek yogurt with fruit, eggs on toast, tofu scramble, or lentils with rice.\n- **Long runs over ~75–90 minutes:** start practising taking in **30–60g carbs per hour**, like dates, sports beans, a sports drink, or vegetarian gels.\n- **Iron and B12:** worth paying attention to as a vegetarian runner. Include lentils, beans, tofu, fortified cereals/nutritional yeast, and pair plant iron with vitamin C when you can.\n\nWant me to draft the actual treadmill sessions with pace/effort targets?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 1454,
+     "completion_tokens": 1783,
+     "total_tokens": 3237,
+     "prompt_tokens_details": {
+      "cached_tokens": 1280
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1382
+     },
+     "prompt_cache_hit_tokens": 1280,
+     "prompt_cache_miss_tokens": 174
+    },
+    "host_seconds": 28.13
+   },
+   "s03-travel-week:1": {
+    "input": "I fly back Thursday night. Should I run on Friday and Saturday to catch up before Sunday?",
+    "reply": "No, I wouldn’t run Friday and Saturday to catch up.\n\nThat would create back-to-back run days — and potentially three consecutive days if you also run Sunday — which is exactly what your physio warned against.\n\nFlying back Thursday night adds fatigue too, so treat Friday as a recovery day.\n\n### Better plan: Friday–Sunday\n\n| Day | Plan |\n|---|---|\n| Friday | Rest, walk, mobility — no running |\n| Saturday | Optional light cross-training or walk, but no running |\n| Sunday | Long run: 12K repeat, or 13K only if you feel genuinely fresh |\n\nMissing a run or two won’t hurt your half-marathon progress. The Sunday long run is the key session, and keeping your knee healthy matters more than making up kilometres.\n\nWant me to adjust Sunday’s long run based on how you feel after travel?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 1877,
+     "completion_tokens": 723,
+     "total_tokens": 2600,
+     "prompt_tokens_details": {
+      "cached_tokens": 1408
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 544
+     },
+     "prompt_cache_hit_tokens": 1408,
+     "prompt_cache_miss_tokens": 469
+    },
+    "host_seconds": 12.26
+   },
+   "s04-work-email:0": {
+    "input": "Can you help me write a short email to my manager Daniel asking to move the Q4 vendor report deadline from Friday October 17 to Tuesday October 21? My colleague Tom has agreed to cover the data pull in the meantime.",
+    "reply": "Here’s a short draft:\n\n---\n\n**Subject:** Q4 vendor report deadline\n\nHi Daniel,\n\nCould we move the Q4 vendor report deadline from Friday, October 17 to Tuesday, October 21? Tom has agreed to cover the data pull in the meantime, so that part will stay on track.\n\nThis would give me enough time to [add reason here].\n\nHappy to discuss if you’d prefer to handle it differently.\n\nBest,\nPriya\n\n---\n\nIf you tell me the reason for the extension, I can make it sound more specific without over-explaining.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 2105,
+     "completion_tokens": 919,
+     "total_tokens": 3024,
+     "prompt_tokens_details": {
+      "cached_tokens": 1792
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 803
+     },
+     "prompt_cache_hit_tokens": 1792,
+     "prompt_cache_miss_tokens": 313
+    },
+    "host_seconds": 13.7
+   },
+   "s04-work-email:1": {
+    "input": "Make it a bit more formal, and keep it under 120 words.",
+    "reply": "Subject: Request to Reschedule Q4 Vendor Report Deadline\n\nDear Daniel,\n\nI am writing to request that the Q4 vendor report deadline be moved from Friday, October 17, to Tuesday, October 21. Tom has agreed to cover the data pull in the interim, so this component will remain on schedule.\n\nThis adjustment would allow me to complete the report to the required standard. Please let me know if you would like to discuss this.\n\nKind regards,\nPriya",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 2239,
+     "completion_tokens": 1637,
+     "total_tokens": 3876,
+     "prompt_tokens_details": {
+      "cached_tokens": 2048
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1542
+     },
+     "prompt_cache_hit_tokens": 2048,
+     "prompt_cache_miss_tokens": 191
+    },
+    "host_seconds": 17.51
+   },
+   "s05-toast-draft:0": {
+    "input": "Toast progress! I've drafted the opening: 'For those who don't know me, I'm Priya, the little sister Anika has been looking after since before I could walk.' I'm planning to ask Mum for an old photo of us with the bike to show during the speech, but I haven't asked her yet. Does the opening work?",
+    "reply": "Yes, it works — it’s warm, personal, and sets up the bike story perfectly without giving it away.\n\nA tiny polish to help it flow:\n\n> “For those who don’t know me, I’m Priya — Anika’s little sister, and the one she’s been looking after since before I could walk.”\n\nThat version feels a bit more toasty and confident.\n\nA natural bridge into the bike story could be:\n\n> “One of my earliest memories of that was when she taught me to ride a bike…”\n\nOn the photo idea: it’s lovely, but don’t let the speech depend on it. Ask your mum soon, and if the exact bike photo doesn’t exist, any childhood photo of the two of you will still work. If you use one, hold it up after the opening or just before the bike story, pause, and let the room see it before you speak.\n\nWant me to revise the full toast draft with this opening worked in?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 2409,
+     "completion_tokens": 1118,
+     "total_tokens": 3527,
+     "prompt_tokens_details": {
+      "cached_tokens": 2176
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 913
+     },
+     "prompt_cache_hit_tokens": 2176,
+     "prompt_cache_miss_tokens": 233
+    },
+    "host_seconds": 18.15
+   },
+   "s05-toast-draft:1": {
+    "input": "Also, a change on the running side: the organisers moved the Riverside Half to December 7 because of a city event on the 30th. Nothing else about the race changed.",
+    "reply": "That works in your favour, Priya. The race now stays on a Sunday, which matches your usual long-run day, and you get an extra week before December 7.\n\nI’d keep next week’s Lisbon plan exactly as is: Tuesday and Thursday easy treadmill runs, Sunday long run. The extra week is best used as a buffer — not for cramming miles — especially with the knee in mind.\n\nWant me to map out the Sunday long-run progression from now to December 7?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 2655,
+     "completion_tokens": 1171,
+     "total_tokens": 3826,
+     "prompt_tokens_details": {
+      "cached_tokens": 2304
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1069
+     },
+     "prompt_cache_hit_tokens": 2304,
+     "prompt_cache_miss_tokens": 351
+    },
+    "host_seconds": 16.34
+   },
+   "s06-zh-fuelling:0": {
+    "input": "我想提前规划一下比赛前一周的饮食，你能帮我列一个大概的安排吗？",
+    "reply": "当然可以，Priya。以下是比赛前一周（12月1日–6日）的素食饮食框架，重点是让身体存够碳水、保持水分，同时避免肠胃不适。\n\n### 周一至周三：正常均衡吃\n- 每餐都包含主食、蛋白质和蔬菜。\n- 继续吃够碳水，不要为了“减重”而少吃主食。\n- 蛋白质可选：鸡蛋、希腊酸奶、豆腐、豆类、藜麦、植物蛋白粉。\n- 注意铁和维生素C一起吃：比如豆类配番茄、青椒，菠菜配橙子。\n- 每天喝足水，观察尿色保持淡黄。\n\n### 周四至周五：开始增加碳水\n- 提高主食比例，比如白米饭、面条、馒头、面包、土豆、燕麦。\n- 蛋白质适量即可，不要吃太撑。\n- 慢慢减少高纤维食物：整粒豆子、大量生蔬菜、西兰花、卷心菜等。\n- 避免油腻、辛辣和没吃过的食物。\n- 可以开始喝一点电解质饮料，尤其如果你容易出汗。\n\n### 周六：高碳水、低纤维、易消化\n- 早餐：白面包/贝果 + 香蕉 + 少量花生酱。\n- 午餐：白米饭或意面 + 豆腐/鸡蛋 + 少量熟蔬菜。\n- 晚餐：早一点吃，简单清淡，比如面条汤、白粥配蛋、米饭配少量蒸蔬菜。\n- 避开产气食物：豆类、洋葱、大量生菜、碳酸饮料。\n- 全天少量多次喝水，可以加电解质。\n\n### 周日比赛日：12月7日\n- 赛前2.5–3小时吃早餐：白面包/贝果 + 香蕉 + 少量蜂蜜或花生酱，或者燕麦粥 + 香蕉。\n- 赛前1小时如果饿，可以吃半根香蕉或一小块白面包。\n- 比赛中按计划补碳水：每小时约30–60克，比如运动饮料、能量胶或软糖。\n- 赛后30–60分钟内补碳水+蛋白质：巧克力牛奶、希腊酸奶+水果，或豆腐饭团。\n\n### 重要提醒\n- 比赛周不要尝试任何新食物、新能量胶或新运动饮料。\n- 如果你平时不喝咖啡，比赛日也不要突然喝。\n- 素食者赛前几天不必大补铁，但保证每餐有蛋白质和主食就好。\n\n如果你愿意，我可以帮你把赛前三天列成更具体的一日三餐菜单。",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 2778,
+     "completion_tokens": 1556,
+     "total_tokens": 4334,
+     "prompt_tokens_details": {
+      "cached_tokens": 2560
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1025
+     },
+     "prompt_cache_hit_tokens": 2560,
+     "prompt_cache_miss_tokens": 218
+    },
+    "host_seconds": 24.98
+   },
+   "s06-zh-fuelling:1": {
+    "input": "比赛前一晚具体吃什么比较好？",
+    "reply": "比赛前一晚（12月6日）晚餐的关键是：**高碳水、低纤维、低脂肪、好消化、不要吃撑**，而且一定是你平时吃过的食物。\n\n### 推荐晚餐（三选一）\n\n1. **白米饭 + 炒蛋/蒸蛋 + 少量熟胡萝卜或西葫芦**  \n   经典安全，蛋白质和碳水都够。\n\n2. **白意面 + 番茄酱 + 少量帕玛森奶酪**  \n   碳水充足，避免奶油酱和大量芝士。\n\n3. **清汤米粉或面条 + 豆腐 + 煮软的小白菜**  \n   如果你平时吃豆腐没问题，这个很温和；如果不确定，鸡蛋更稳妥。\n\n### 时间和分量\n\n- 尽量在 **18:30–19:30** 前吃完，给肠胃留足消化时间。\n- 吃到 **七八分饱** 即可，不要因为“明天要跑”就吃撑。\n- 晚餐后可以少量喝水或电解质饮料，但睡前不要猛灌。\n\n### 比赛前一晚避免\n\n- 豆类、大量生蔬菜、西兰花、卷心菜、洋葱\n- 油腻、辛辣、油炸食物\n- 碳酸饮料、酒精\n- 任何没吃过的食物或酱料\n\n如果你愿意，我也可以帮你把比赛当天早上的早餐具体列出来。",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 3319,
+     "completion_tokens": 777,
+     "total_tokens": 4096,
+     "prompt_tokens_details": {
+      "cached_tokens": 2688
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 493
+     },
+     "prompt_cache_hit_tokens": 2688,
+     "prompt_cache_miss_tokens": 631
+    },
+    "host_seconds": 12.37
+   },
+   "s07-knee:0": {
+    "input": "Ugh. Today is Wednesday, November 5. I ran yesterday and again this morning to make up for a missed session, and now my knee is sore. What should I do for the rest of this week?",
+    "reply": "Don’t panic — you’re still fine for December 7 if you reset now. But the priority is your knee, not mileage.\n\n### Rest of this week\n\n| Day | Plan |\n|---|---|\n| Wednesday | No more running. Rest. Ice 15–20 min if it feels sore/angry. |\n| Thursday | No running. If walking is pain-free, you can try easy cycling/swimming. If not, rest. |\n| Friday | Rest or gentle upper-body/core work. No lower-body impact. |\n| Saturday | Rest, or easy walk only if pain-free. |\n| Sunday | Only if your knee feels 100% normal: very easy flat 5–6K with walk breaks if needed. If there’s any soreness, skip it and cross-train or rest. |\n\n### Important\n\n- Do not run Friday and Saturday to “make up” anything.\n- No more back-to-back run days, even for missed sessions.\n- If soreness lasts more than 48–72 hours, or you have swelling, limping, sharp pain, or pain at rest, check with your physio before running again.\n- A missed long run now costs far less than an aggravated knee four weeks out.\n\nYou caught it early. Be conservative this week, and you should be back on track next week.\n\nWant me to sketch a gentle return-to-running plan for next week?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 3650,
+     "completion_tokens": 1263,
+     "total_tokens": 4913,
+     "prompt_tokens_details": {
+      "cached_tokens": 3200
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 974
+     },
+     "prompt_cache_hit_tokens": 3200,
+     "prompt_cache_miss_tokens": 450
+    },
+    "host_seconds": 20.14
+   },
+   "s07-knee:1": {
+    "input": "How many weeks do I have left until race day?",
+    "reply": "You’re **4 weeks and 4 days out** from race day, Priya — so just under 5 weeks.\n\nThere are **four more Sundays** before the race:\n\n- Sunday, November 9\n- Sunday, November 16\n- Sunday, November 23\n- Sunday, November 30  \n- **Race day: Sunday, December 7**\n\nThat’s still enough time, but this week should be about letting the knee settle, not making up missed sessions. Want me to map out a conservative plan from Sunday to race day?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 3953,
+     "completion_tokens": 727,
+     "total_tokens": 4680,
+     "prompt_tokens_details": {
+      "cached_tokens": 3584
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 612
+     },
+     "prompt_cache_hit_tokens": 3584,
+     "prompt_cache_miss_tokens": 369
+    },
+    "host_seconds": 8.97
+   },
+   "s08-toast-check:0": {
+    "input": "Working on the toast again tonight. Remind me - did I already sort out the photo for the speech? And what was the bike story exactly? I want the details right.",
+    "reply": "**Photo status:** Not sorted yet, as far as I know. You said you were planning to ask your mum for an old photo of the two of you with the bike, but you haven’t confirmed to me that you asked or got one yet.\n\n**Bike story, as you told it:**\n\n- When you were kids, Anika taught you to ride a bike.\n- She promised she’d keep holding the seat.\n- You pedalled, feeling safe, believing she was right behind you.\n- Eventually you turned around and saw she’d let go ages before.\n- That’s how you learned you could ride on your own.\n\n**Suggested pivot line from earlier:**\n\n> “That’s Anika. She gives you the confidence to go, lets you find your own balance, but never actually leaves you.”\n\nWant me to weave the photo and bike story into a full toast draft with your opening line?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 4107,
+     "completion_tokens": 655,
+     "total_tokens": 4762,
+     "prompt_tokens_details": {
+      "cached_tokens": 3840
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 467
+     },
+     "prompt_cache_hit_tokens": 3840,
+     "prompt_cache_miss_tokens": 267
+    },
+    "host_seconds": 8.64
+   },
+   "s08-toast-check:1": {
+    "input": "What else do you know about the wedding that I could mention in the toast?",
+    "reply": "I only know a few concrete details so far:\n\n- **Anika** is marrying **Tomás** on **December 14**.\n- You’re her **maid of honour**.\n- The toast is **three minutes max**.\n\nThat means the safest things to mention are their names, your role as Anika’s sister and maid of honour, and the bike story as your personal memory of her.\n\nI don’t know anything else yet — like how they met, where the wedding is, Tomás’s job, or any details about their relationship — so I’d avoid making those up.\n\nIf you tell me one or two things about Tomás or them as a couple, I can help you work them into the toast. What do you like most about them together?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 4314,
+     "completion_tokens": 416,
+     "total_tokens": 4730,
+     "prompt_tokens_details": {
+      "cached_tokens": 4096
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 254
+     },
+     "prompt_cache_hit_tokens": 4096,
+     "prompt_cache_miss_tokens": 218
+    },
+    "host_seconds": 7.03
+   },
+   "s09-race-week:0": {
+    "input": "Today's Monday, December 1. Help me lay out this week: training, a final toast rehearsal, and staying sane at work.",
+    "reply": "Assuming your knee has settled down since early November, here’s a race-week plan that respects the **no back-to-back run days** rule.\n\n### Week of Monday, December 1\n\n| Day | Training | Toast / wedding | Work sanity |\n|---|---|---|---|\n| **Mon Dec 1** | Rest, mobility, light walk | Read the toast through once | Triage the week; protect Tuesday/Thursday sleep |\n| **Tue Dec 2** | Easy **4–5K** before 7am, conversational | Practise opening + bike story aloud once | No meetings before 10am if possible |\n| **Wed Dec 3** | Rest or light cross-train: bike/swim/walk | 10 min: work on the pivot line | Normal workday, but skip overtime |\n| **Thu Dec 4** | Easy **3–4K**, last short run before Sunday | 10 min run-through | Leave on time; avoid late meetings |\n| **Fri Dec 5** | Rest, foam roll, hydrate | Confirm photo with Mum if still pending | Keep workload light; no new big tasks |\n| **Sat Dec 6** | **No running.** Walk/mobility only, pick up race pack | Final full toast rehearsal, timed, ideally in front of one person | Rest. Lay out race kit: bib, shoes, fuel, watch, layers |\n| **Sun Dec 7** | **Race day** — warm up with walking, start conservatively | Don’t think about the toast today | Off |\n\n### Important race-week notes\n\n- **Don’t run Saturday** — even a short shakeout would be back-to-back with Sunday.\n- **Thursday–Saturday:** follow the vegetarian carb-load plan we discussed: white rice, pasta, bread, bananas, potatoes. Avoid heavy beans/raw veg by Friday.\n- **Hydrate with electrolytes** Thursday onward, but don’t force huge amounts Saturday night.\n- **No new shoes, clothes, gels, or drinks on race day.**\n- If the knee is at all grumpy, replace Tuesday/Thursday runs with cycling or pool time. You won’t lose fitness in race week.\n\nWant me to build a simple race-day timeline for Sunday morning?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 4507,
+     "completion_tokens": 2166,
+     "total_tokens": 6673,
+     "prompt_tokens_details": {
+      "cached_tokens": 4224
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 1703
+     },
+     "prompt_cache_hit_tokens": 4224,
+     "prompt_cache_miss_tokens": 283
+    },
+    "host_seconds": 32.38
+   },
+   "s09-race-week:1": {
+    "input": "Should I run the day before the race?",
+    "reply": "No — I wouldn’t run the day before the race.\n\nYou already have a strict **no back-to-back run days** rule for your knee, and running Saturday would mean running again on Sunday. That’s exactly what your physio told you to avoid.\n\nOn Saturday December 6, keep it to:\n\n- Rest\n- Easy walking only if it feels fine\n- Mobility/foam rolling\n- Picking up your race pack\n- Laying out your kit and fuel\n\nYou won’t lose anything by not running the day before. The race-week work is already done by Thursday.",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 4982,
+     "completion_tokens": 250,
+     "total_tokens": 5232,
+     "prompt_tokens_details": {
+      "cached_tokens": 4480
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 126
+     },
+     "prompt_cache_hit_tokens": 4480,
+     "prompt_cache_miss_tokens": 502
+    },
+    "host_seconds": 4.33
+   },
+   "s10-after:0": {
+    "input": "Race done in 2:04! Separate question: what did my physio tell me about my right ankle? I can't remember.",
+    "reply": "Congrats on the race, Priya — **2:04 for your first half is brilliant!**\n\nOn your question: I don’t have any record of your physio saying anything about your **right ankle**. The only physio note from our conversation is:\n\n> Your **left knee** can’t handle running on two consecutive days — so no back-to-back run days.\n\nIf your right ankle is sore or you’re trying to remember a specific instruction, it’s worth checking with your physio. Want me to note anything new about it now?",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 5137,
+     "completion_tokens": 355,
+     "total_tokens": 5492,
+     "prompt_tokens_details": {
+      "cached_tokens": 4864
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 239
+     },
+     "prompt_cache_hit_tokens": 4864,
+     "prompt_cache_miss_tokens": 273
+    },
+    "host_seconds": 5.38
+   },
+   "s10-after:1": {
+    "input": "My aunt keeps mixing up Tom and Tomás. Who's who again?",
+    "reply": "Tom is your **work colleague** — the one who agreed to cover the data pull for the Q4 vendor report.\n\nTomás is **Anika’s fiancé** — the one you’re toasting at the wedding on December 14.\n\nSo for your aunt: **Tomás is the groom. Tom is just from work.**",
+    "stage": null,
+    "usage": {
+     "prompt_tokens": 5271,
+     "completion_tokens": 260,
+     "total_tokens": 5531,
+     "prompt_tokens_details": {
+      "cached_tokens": 5120
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 190
+     },
+     "prompt_cache_hit_tokens": 5120,
+     "prompt_cache_miss_tokens": 151
+    },
+    "host_seconds": 3.76
+   }
+  }
+ }
+}
