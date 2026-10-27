@@ -463,3 +463,13 @@ def test_follow_up_prompts_carry_the_previous_prompt_as_a_cue(tmp_path, monkeypa
     plugin.user_prompt({"session_id": "s2", "prompt_id": "1", "prompt": "Mom fell and we're going to urgent care."}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "2", "prompt": "What do I tell the front desk?"}, tmp_path)
     assert cues == [[], ["Mom fell and we're going to urgent care."]]
+
+
+def test_session_context_stays_within_the_host_limit(tmp_path, monkeypatch):
+    notes = {"complete": True, "items": [{"event_id": f"n{index}", "recorded_at": "2026-04-02T00:00:00Z",
+                                          "text": "Durable fact " + "y" * 250} for index in range(13)]}
+    history = {"complete": True, "items": [{"text": f"Message {index} " + "z" * 280,
+                                            "recorded_at": "2026-04-03T00:00:00Z"} for index in range(80)]}
+    monkeypatch.setattr(plugin, "_ready_client", lambda directory: _ReadyClient(history, notes=notes))
+    context = plugin.session_start({"session_id": "s2"}, tmp_path)
+    assert "<membrain-history>" in context and len(context) <= plugin.SESSION_CONTEXT_CHARACTERS

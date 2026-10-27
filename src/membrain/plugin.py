@@ -25,6 +25,8 @@ CUE_CHARACTERS = 500
 MESSAGE_CHARACTERS = 700
 # Hosts cap one injected context field at 10,000 characters; the notice uses the rest.
 HISTORY_CHARACTERS = 8500
+SESSION_CONTEXT_CHARACTERS = 9500  # Claude Code keeps at most 10,000 characters of hook context.
+HISTORY_LINE_OVERHEAD = 16  # "- [YYYY-MM-DD] " and a newline
 HISTORY_ITEM_CHARACTERS = 300
 DOWNLOAD_STALE_SECONDS = 3600
 SESSION_MARKER_SECONDS = 14 * 24 * 3600
@@ -583,10 +585,10 @@ def _history(client, session: str, budget: int) -> tuple[str | None, bool]:
             text = " ".join(text.split())
             if item_limit and len(text) > item_limit:
                 text, complete = text[:item_limit - 1] + "…", False
-            if used + len(text) > budget:
+            if used + len(text) + HISTORY_LINE_OVERHEAD > budget:
                 complete = False
                 break
-            used += len(text)
+            used += len(text) + HISTORY_LINE_OVERHEAD
             items.append({**item, "text": text})
         if complete or len(items) == len(response.get("items", [])):
             break
@@ -610,7 +612,9 @@ def session_start(payload: dict, directory: Path) -> str | None:
             except Exception as error:
                 _log(directory, f"notes failed: {type(error).__name__}")
             try:
-                history, complete = _history(client, session, HISTORY_CHARACTERS - len(notes or ""))
+                # Notice and history header take about 1,000 characters of the host's limit.
+                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - 1000) - len(notes or "")
+                history, complete = _history(client, session, budget)
             except Exception as error:
                 _log(directory, f"timeline failed: {type(error).__name__}")
     _mark_history(directory, session, complete and history is not None)

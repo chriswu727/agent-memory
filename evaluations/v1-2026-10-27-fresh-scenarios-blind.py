@@ -8,7 +8,8 @@ import secrets
 import sys
 from pathlib import Path
 
-name, variant, arms_text = sys.argv[1], sys.argv[2], sys.argv[3]
+name, variant = sys.argv[1], sys.argv[2]
+arms_text = sys.argv[3].split(",") if "," in sys.argv[3] else list(sys.argv[3])
 CASES = importlib.import_module(name).CASES
 HERE = Path(__file__).resolve().parent
 scenario = f"{name}_{variant}"
