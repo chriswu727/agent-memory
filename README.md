@@ -10,7 +10,7 @@ Help your agent carry useful memories across conversations—with layered recall
 
 memBrain runs as a local service. Connect your agent's conversation lifecycle once, and the runtime captures messages, prepares relevant memory before replies, and learns in the background. The agent keeps the same brain across process restarts and changes to its configured reply model.
 
-[Claude Code plugin](#claude-code-plugin) · [Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
+[Claude Code plugin](#claude-code-plugin) · [Why memBrain](#why-membrain) · [Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
 
 > **Pre-release.** The synchronous text runtime is implemented; long-term memory quality is still being validated. The Claude Code plugin and the Docker-free embedded database are new and verified on Linux x86_64 only. Desktop installation with Docker is verified on macOS. See [supported scope and known limits](#status-and-verification).
 
@@ -33,6 +33,16 @@ From the next session on, the plugin:
 The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches words in the current message, and Claude is instructed to search with concrete keywords when personal context matters. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
 
 Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
+
+<a id="why-membrain"></a>
+
+## Why memBrain
+
+- **Traceable, not rewritten.** Every memory keeps who said it and when. Recalled context is labelled as historical data, so a model can tell what you said from what it once suggested.
+- **Local and private.** One command installs an embedded database on your machine. There is no Docker, cloud account or extra model key; the host model you already use does the interpretation.
+- **Never in the way.** Hooks fail open: if memory is unavailable, your agent answers as usual and records are queued until it recovers.
+- **Forgetting you can audit.** Erasure is recorded and survives restoring an older backup.
+- **Measured in the open.** Evaluations, including failed ones, are published with their method and cost. Personality and emotion modelling are planned research, not current features.
 
 <a id="desktop-setup"></a>
 

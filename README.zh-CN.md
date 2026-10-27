@@ -10,7 +10,7 @@ memBrain 原名 Agent Memory。已有的安装、数据目录和 `agent_memory` 
 
 memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后，运行时会自动捕获消息，在回复前准备相关记忆，并在后台学习。进程重启或切换已配置的回复模型后，Agent 仍使用同一个大脑。
 
-[Claude Code 插件](#claude-code-plugin) · [快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
+[Claude Code 插件](#claude-code-plugin) · [为什么选择 memBrain](#why-membrain) · [快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
 
 > **预发布阶段。** 同步文本运行时已实现，长期记忆质量仍在验证中。Claude Code 插件和无需 Docker 的嵌入式数据库是新增功能，目前仅在 Linux x86_64 上验证。使用 Docker 的桌面安装已在 macOS 上验证。详见[支持范围与已知限制](#status-and-verification)。
 
@@ -33,6 +33,16 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按当前消息中的词语匹配；当问题涉及个人背景时，Claude 会被引导用具体关键词主动检索。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
 
 其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
+
+<a id="why-membrain"></a>
+
+## 为什么选择 memBrain
+
+- **可追溯，不改写。** 每条记忆都保留是谁说的、什么时候说的。召回的内容会标明是历史数据，模型能区分“你说过的话”和“它曾经的建议”。
+- **本地、私有。** 一条命令即可在本机安装嵌入式数据库；无需 Docker、云账号或额外的模型 key，由你正在使用的宿主模型负责理解。
+- **不打扰宿主。** 钩子出错时直接放行：记忆不可用时，Agent 照常回复，记录会先排队，恢复后再写入。
+- **可审计的遗忘。** 删除会被登记，从旧备份恢复后也不会“复活”。
+- **公开评测。** 评测结果（包括失败的）连同方法和成本一并公开。人格与情绪建模属于规划中的研究，目前尚未实现。
 
 <a id="desktop-setup"></a>
 <a id="quickstart"></a>
