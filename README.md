@@ -27,7 +27,8 @@ Inside a Claude Code session you can also run `/plugin install membrain --market
 From the next session on, the plugin:
 
 - records each message and Claude's final reply locally;
-- starts each session with the user's complete earlier history while it is small, and switches to recalling matching records before each reply once it grows;
+- lets Claude keep short notes of lasting facts (health limits, people, dates, budgets, preferences) and starts every session with those notes and the user's recent messages;
+- recalls related earlier messages before each reply, by keywords and, once the local model is installed, by meaning across languages;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 
 The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches the current message by keywords and, once a local multilingual model (about 135 MB, no API key) has downloaded in the background, by meaning across languages. Claude is also instructed to search memory deliberately when personal context matters. Set `HF_ENDPOINT` to download the model from a Hugging Face mirror. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.

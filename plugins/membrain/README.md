@@ -13,11 +13,11 @@ Requires [uv](https://docs.astral.sh/uv/). No Docker, setup wizard or extra mode
 | Hook | Behaviour |
 | --- | --- |
 | `SessionStart` (asynchronous) | Installs or updates the runtime with `uv tool install` and starts the local service with an embedded PostgreSQL database. |
-| `SessionStart` | Adds one line telling Claude that memory is active. |
-| `UserPromptSubmit` | Recalls related records from earlier sessions by keywords and meaning, in any language, adds them as dated, attributed lines, then records the message. |
+| `SessionStart` | Adds Claude's saved notes about you and your recent messages from other sessions. |
+| `UserPromptSubmit` | Recalls related earlier messages by keywords and meaning, in any language, adds them as dated, attributed messages, then records the message. |
 | `Stop` | Records Claude's final reply. |
 
-Every hook fails open: if memory is unavailable the prompt and reply proceed unchanged, and records are queued locally until the service is ready. The bundled MCP server adds `memory_recall`, `memory_inspect`, `memory_observe` and `memory_forget`; the skill tells Claude when to use them.
+Every hook fails open: if memory is unavailable the prompt and reply proceed unchanged, and records are queued locally until the service is ready. The bundled MCP server adds `memory_note` (Claude saves short lasting facts, such as health limits, people and dates, and replaces them when they change), `memory_recall`, `memory_inspect`, `memory_observe` and `memory_forget`; the skill tells Claude when to use them. Claude Code may ask you once to allow these tools.
 
 ## Data and control
 
