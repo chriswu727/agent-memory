@@ -19,6 +19,13 @@ def _memory(statement, conversation="earlier", recorded="2026-10-03T08:00:00Z", 
                        "system_time": {"recorded_at": recorded}, "world": world}}
 
 
+def _source(statement, event_id, *, conversation="earlier", methods=("keyword",), score=0.01, start=0):
+    item = _memory(statement, conversation)
+    item["memory"]["evidence_refs"] = [{"relationship": "supports", "event_id": event_id, "span": {"start": start}}]
+    item["rank_signals"] = [{"method": method, "score": score} for method in methods]
+    return item
+
+
 def _response(*items, conflicts=()):
     return {"result": {"items": list(items), "conflicts": list(conflicts)}}
 
@@ -209,9 +216,9 @@ def test_history_is_rendered_oldest_first_and_states_completeness():
 
 
 class _ReadyClient:
-    def __init__(self, timeline, recalled=None):
+    def __init__(self, timeline, recalled=None, notes=None, messages=()):
         self.timeline_response, self.recalled, self.observed, self.recalls = timeline, recalled, [], 0
-        self.timeline_calls = []
+        self.notes, self.messages, self.timeline_calls = notes or {"items": [], "complete": True}, list(messages), []
 
     def __enter__(self):
         return self
@@ -220,6 +227,10 @@ class _ReadyClient:
         return False
 
     def timeline(self, **options):
+        if options.get("conversation_id") == "membrain-notes":
+            return self.notes
+        if options.get("event_ids"):
+            return {"items": [item for item in self.messages if item["event_id"] in options["event_ids"]]}
         assert options["exclude_conversation"] == "s2"
         self.timeline_calls.append(options)
         return self.timeline_response
@@ -243,15 +254,16 @@ def test_complete_history_is_injected_once_and_replaces_per_message_recall(tmp_p
 
 
 def test_partial_history_keeps_per_message_recall(tmp_path, monkeypatch):
-    recalled = _response(_memory("user user (direct_statement): The wedding is on December 14."))
+    recalled = _response(_source("user user (direct_statement): The wedding is on December 14.", "e1"))
+    message = {"event_id": "e1", "conversation_id": "earlier", "actor_role": "user",
+               "recorded_at": "2026-10-03T08:00:00Z", "text": "Big news. The wedding is on December 14 in Porto."}
     client = _ReadyClient({"complete": False, "items": [{"text": "latest", "recorded_at": "2026-12-01T00:00:00Z"}]},
-                          recalled)
+                          recalled, messages=[message])
     monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
-    assert "Older messages are not shown" in context and "Matching records" in context
-    assert [call.get("max_item_characters") for call in client.timeline_calls] == [None, plugin.HISTORY_ITEM_CHARACTERS]
+    assert "Older messages are not shown" in context and "memory_note" in context
     recall = plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "When is the wedding?"}, tmp_path)
-    assert client.recalls == 1 and "December 14" in recall
+    assert client.recalls == 1 and "- [2026-10-03 · user said] Big news. The wedding is on December 14 in Porto." in recall
 
 
 @pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
@@ -351,7 +363,7 @@ def test_recall_falls_back_to_keywords_when_the_query_embedding_fails():
         def __init__(self):
             self.budgets = []
 
-        def recall(self, query, *, budget, evidence_cutoff):
+        def recall(self, query, *, budget, evidence_cutoff, additional_cues=()):
             self.budgets.append(budget["max_embedding_calls"])
             if budget["max_embedding_calls"]:
                 raise MemoryActionError({"outcome": "failed", "error": {"code": "dependency_unavailable",
@@ -361,3 +373,103 @@ def test_recall_falls_back_to_keywords_when_the_query_embedding_fails():
     client = Client()
     assert plugin.recall(client, "what do I eat?") == {"result": {"items": []}}
     assert client.budgets == [1, 0]
+
+
+def test_recalled_statements_are_shown_as_their_source_messages_oldest_first():
+    messages = {
+        "old": {"event_id": "old", "conversation_id": "a", "actor_role": "user", "recorded_at": "2026-03-01T00:00:00Z",
+                "text": "Mom has type 2 diabetes. " + "Filler words about the trip. " * 40 + "She also uses a walker."},
+        "new": {"event_id": "new", "conversation_id": "b", "actor_role": "user", "recorded_at": "2026-04-01T00:00:00Z",
+                "text": "The dinner moved to Sunday, May 17."},
+        "csv": {"event_id": "csv", "conversation_id": "c", "actor_role": "user", "recorded_at": "2026-04-02T00:00:00Z",
+                "text": "rows"},
+    }
+    walker = messages["old"]["text"].index("She also uses a walker.")
+    response = _response(
+        _source("user user (direct_statement): The dinner moved to Sunday, May 17.", "new"),
+        _source("user user (direct_statement): She also uses a walker.", "old", start=walker),
+        _source("user user (direct_statement): Mom has type 2 diabetes.", "old"),
+        _source("user user (direct_statement): 100253,2026-03-30,East,C0999,SKU-2204,1,149.00", "csv"),
+        _source("user user (direct_statement): Today is Monday.", "assoc", methods=("association",)),
+        _source("user user (direct_statement): Visible already.", "here", conversation="current"),
+    )
+
+    class Client:
+        def recall(self, query, **options):
+            return response
+
+        def timeline(self, **options):
+            self.requested = options["event_ids"]
+            return {"items": [messages[key] for key in options["event_ids"] if key in messages]}
+
+    client = Client()
+    context = plugin.recall_context(client, "what about mom?", current_conversation="current")
+    assert client.requested == ["new", "old"]
+    lines = context.splitlines()[2:-1]
+    assert lines[0].startswith("- [2026-03-01 · user said] …") and "She also uses a walker." in lines[0]
+    assert len(lines[0]) < plugin.MESSAGE_CHARACTERS + 60
+    assert lines[1] == "- [2026-04-01 · user said] The dinner moved to Sunday, May 17."
+
+
+def test_meaning_only_matches_are_capped_and_timeline_failure_falls_back_to_statements():
+    items = [_source(f"user user (direct_statement): Vector match number {index} here.", f"v{index}",
+                     methods=("vector",), score=0.01 - index * 0.001) for index in range(6)]
+
+    class Client:
+        def recall(self, query, **options):
+            return _response(*items)
+
+        def timeline(self, **options):
+            raise RuntimeError("down")
+
+    assert [event for event, _ in plugin._sources(_response(*items), None)] == ["v0", "v1", "v2"]
+    assert "Vector match number 0 here." in plugin.recall_context(Client(), "q")
+
+
+def test_pasted_blocks_are_compacted_but_short_lines_are_kept():
+    text = "My app crashes on start, why?\n" + "\n".join(f"web-1 | {i:02d}:00 error=refused id={i}" for i in range(5))
+    assert plugin.compact_message(text) == "My app crashes on start, why?\n[5 pasted lines omitted]"
+    for kept in ("Thanks!", "还有件事。", "Budget: $24,000 ceiling.", "x = 1"):
+        assert plugin.compact_message(kept) == kept
+
+
+def test_session_start_shows_notes_first_and_fills_the_rest_with_compacted_history(tmp_path, monkeypatch):
+    notes = {"complete": True, "items": [
+        {"event_id": "n2", "recorded_at": "2026-04-02T00:00:00Z", "text": "Mom: likely shellfish allergy."},
+        {"event_id": "n1", "recorded_at": "2026-03-19T00:00:00Z", "text": "Mom uses a walker; no stairs."}]}
+    history = {"complete": True, "items": [
+        {"text": "x" * 9000, "recorded_at": "2026-04-03T00:00:00Z"},
+        {"text": "Short earlier message.", "recorded_at": "2026-03-01T00:00:00Z"}]}
+    client = _ReadyClient(history, notes=notes)
+    monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
+    context = plugin.session_start({"session_id": "s2"}, tmp_path)
+    assert context.index("<membrain-notes>") < context.index("<membrain-history>")
+    assert context.index("Mom uses a walker; no stairs. (id: n1)") < context.index("Mom: likely shellfish allergy.")
+    assert "Short earlier message." in context and "x" * 400 not in context
+    assert not plugin._history_complete(tmp_path, "s2")
+
+
+def test_follow_up_prompts_carry_the_previous_prompt_as_a_cue(tmp_path, monkeypatch):
+    cues = []
+
+    class Client(_ReadyClient):
+        def recall(self, query, **options):
+            cues.append(options.get("additional_cues"))
+            return {"result": {"items": []}}
+
+    client = Client({"complete": False, "items": []})
+    monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
+    plugin.session_start({"session_id": "s2"}, tmp_path)
+    plugin.user_prompt({"session_id": "s2", "prompt_id": "1", "prompt": "Mom fell and we're going to urgent care."}, tmp_path)
+    plugin.user_prompt({"session_id": "s2", "prompt_id": "2", "prompt": "What do I tell the front desk?"}, tmp_path)
+    assert cues == [[], ["Mom fell and we're going to urgent care."]]
+
+
+def test_session_context_stays_within_the_host_limit(tmp_path, monkeypatch):
+    notes = {"complete": True, "items": [{"event_id": f"n{index}", "recorded_at": "2026-04-02T00:00:00Z",
+                                          "text": "Durable fact " + "y" * 250} for index in range(13)]}
+    history = {"complete": True, "items": [{"text": f"Message {index} " + "z" * 280,
+                                            "recorded_at": "2026-04-03T00:00:00Z"} for index in range(80)]}
+    monkeypatch.setattr(plugin, "_ready_client", lambda directory: _ReadyClient(history, notes=notes))
+    context = plugin.session_start({"session_id": "s2"}, tmp_path)
+    assert "<membrain-history>" in context and len(context) <= plugin.SESSION_CONTEXT_CHARACTERS

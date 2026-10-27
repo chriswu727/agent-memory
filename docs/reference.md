@@ -543,13 +543,20 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 
 | Command | Purpose |
 | --- | --- |
-| `plugin hook session-start\|user-prompt\|stop` | Reads the host's hook JSON on stdin. `user-prompt` recalls matching records from other conversations and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
+| `plugin hook session-start\|user-prompt\|stop` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
-| `plugin mcp` | Runs the MCP stdio bridge on the same installation. |
+| `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
 | `plugin fetch-model` | Downloads the local embedding model and restarts a running service so it is used. `plugin start` runs it in the background when the model is missing. |
 
-At session start the plugin requests `GET /v1/brains/{brain_id}/timeline?role=user&max_characters=8500&exclude_conversation=<session>`. The endpoint returns current, non-deleted, non-suppressed messages newest first, each clipped to `max_item_characters`, and `complete: true` only when nothing was omitted. When complete, the hook injects the whole history and later prompts in that session skip recall; otherwise it injects the recent part and keeps per-message recall. The Python and TypeScript clients expose this as `timeline()`.
+`GET /v1/brains/{brain_id}/timeline` returns current, non-deleted, non-suppressed messages newest first, each clipped to `max_item_characters`, with `complete: true` only when nothing was omitted. Optional filters: `role` (repeatable), `exclude_conversation`, `conversation_id`, and `event_id` (repeatable, up to 100). The Python and TypeScript clients expose this as `timeline()`.
+
+At session start the plugin injects, in this order and within about 8,500 characters:
+
+1. `<membrain-notes>`: notes saved by the host model with the `memory_note` MCP tool, oldest first, each with its ID. Notes are short durable facts (health limits, people, dates, budgets, preferences, unconfirmed plans); a note that replaces another suppresses it. They are stored as assistant-authored events in the reserved `membrain-notes` conversation, so attribution, deletion and backup apply as usual.
+2. `<membrain-history>`: the user's messages from other sessions, newest first within the remaining budget, with runs of pasted code or log lines replaced by `[N pasted lines omitted]` and, if needed, each message cut to 300 characters. When everything fits unchanged, later prompts in the session skip recall.
+
+Before each reply, `user-prompt` recalls up to about thirty ranked statements (keywords, plus meaning when the local model is installed; only the three closest meaning-only matches are kept) and shows the up to eight messages they came from, oldest first, each as a window of about 700 characters around the match.
 
 **Semantic recall without a key.** With the `semantic` extra (ONNX Runtime, `tokenizers`, NumPy), `plugin start` downloads `multilingual-e5-small` (int8 ONNX export of `intfloat/multilingual-e5-small`, MIT licence, about 135 MB) into `models/` in the profile directory, pinned to a revision and verified by SHA-256. `HF_ENDPOINT` selects a Hugging Face mirror; `MEMBRAIN_SEMANTIC=0` disables the download. Once the files are present the desktop service sets `MEMORY_EMBEDDING_LOCAL_DIRECTORY` internally, embeds every current memory (memories written earlier are backfilled when the worker is idle) and embeds each recall query in the same process, about 4 ms per short text on a laptop-class CPU. Hook and MCP recall request one query embedding (`max_embedding_calls: 1`); keyword and vector rankings are fused. Without the extra or before the download finishes, recall stays lexical. Server deployments can set `MEMORY_EMBEDDING_LOCAL_DIRECTORY` to an installation directory containing the model; it cannot be combined with `MEMORY_EMBEDDING_BASE_URL`.
 

@@ -99,6 +99,16 @@ def create_server(client: MemoryClient) -> FastMCP:
             delivery_state="unknown", interpretation_hint="unknown",
         )
 
+    @server.tool(annotations=WRITE)
+    async def memory_note(text: str, replaces: list[str] | None = None) -> dict[str, Any]:
+        """Save one short, lasting fact about the user (health, people, dates, places, preferences, decisions,
+        constraints, plans and their changes) so it is shown at the start of every later session. One fact per
+        note, under 300 characters, with dates when they matter. When a fact changes, pass the old note's id in
+        replaces. Do not save routine requests, one-off tasks or anything the user asked you not to keep."""
+        from membrain.notes import save_note
+
+        return await asyncio.to_thread(save_note, client, text, replaces=replaces or ())
+
     @server.tool(annotations=READ_ONLY)
     async def memory_prepare(
         turn_id: str, conversation_id: str, branch_id: str,

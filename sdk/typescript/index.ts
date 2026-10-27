@@ -483,7 +483,7 @@ export class MemoryClient {
   /** Original messages, newest first, within a character budget; `complete` means nothing was left out. */
   timeline(options: {
     roles?: readonly string[]; maxCharacters?: number; maxItemCharacters?: number; limit?: number;
-    excludeConversation?: string; brainId?: string;
+    excludeConversation?: string; eventIds?: readonly string[]; conversationId?: string; brainId?: string;
   } = {}): Promise<JsonObject> {
     const brain = encodeURIComponent(this.#scope(options).brain_ref);
     const query = new URLSearchParams();
@@ -492,6 +492,8 @@ export class MemoryClient {
     if (options.maxItemCharacters !== undefined) query.set("max_item_characters", String(options.maxItemCharacters));
     if (options.limit !== undefined) query.set("limit", String(options.limit));
     if (options.excludeConversation !== undefined) query.set("exclude_conversation", options.excludeConversation);
+    for (const eventId of options.eventIds ?? []) query.append("event_id", eventId);
+    if (options.conversationId !== undefined) query.set("conversation_id", options.conversationId);
     return this.#request("GET", `v1/brains/${brain}/timeline?${query}`);
   }
   work(brainId?: string): Promise<JsonObject> {

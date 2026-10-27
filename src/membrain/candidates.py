@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 
 from . import cognition
 from .context_views import assistant_speech
@@ -8,6 +9,21 @@ from .dynamics import access_state, rank_weight
 from .embeddings import EmbeddingResult
 from .helpers import DomainError, digest, now
 from .retrieval import RANK_METHODS, fuse_rankings, resolve_dependency_closure
+
+_CJK = re.compile("[\u3400-\u9fff]")
+CROSS_SCRIPT_CANDIDATES = 16
+
+
+def _interleave(primary, other, every=3):
+    """Insert one other-script candidate after every ``every`` primary ones, without duplicates."""
+    seen = {(row["document"]["memory_id"], row["document"]["revision"]) for row in primary}
+    extra = [row for row in other if (row["document"]["memory_id"], row["document"]["revision"]) not in seen]
+    merged = []
+    for index, row in enumerate(primary):
+        merged.append(row)
+        if extra and (index + 1) % every == 0:
+            merged.append(extra.pop(0))
+    return merged + extra
 
 
 def _scope_clause(alias, target):
@@ -156,20 +172,34 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
             if service.embedding_provider and service.embedding_provider.space != space:
                 raise DomainError("validation_failed", "Query embedding space differs from the configured space.")
             vector = "[" + ",".join(str(value) for value in query_embedding.vectors[0]) + "]"
-            rows = conn.execute(
-                "SELECT a.document,v.content_hash,(v.embedding <=> %s::vector) AS distance "
-                "FROM memory_assertions a JOIN memory_embeddings v ON v.tenant_id=a.tenant_id "
-                "AND v.owner_id=a.owner_id AND v.brain_id=a.brain_id AND v.memory_id=a.id "
-                "AND v.memory_revision=a.revision WHERE " + _eligible() + scope_sql
-                + "AND v.model=%s AND v.model_version=%s AND v.dimensions=%s "
-                "ORDER BY distance,a.id LIMIT %s",
-                (vector, *params, *scope_params, space.model, space.model_version, space.dimensions, scan_limit + 1),
-            ).fetchall()
-            truncated = truncated or len(rows) > scan_limit
-            rows = [row for row in rows[:scan_limit] if row["distance"] is not None and math.isfinite(row["distance"])
-                    and row["distance"] < 1 and row["content_hash"] == digest(row["document"]["statement"])]
+            speech = cognition.speech_requested({**query, "query": text})
+
+            def nearest(script_clause, script_params, limit):
+                found = conn.execute(
+                    "SELECT a.document,v.content_hash,(v.embedding <=> %s::vector) AS distance "
+                    "FROM memory_assertions a JOIN memory_embeddings v ON v.tenant_id=a.tenant_id "
+                    "AND v.owner_id=a.owner_id AND v.brain_id=a.brain_id AND v.memory_id=a.id "
+                    "AND v.memory_revision=a.revision WHERE " + _eligible() + scope_sql
+                    + "AND v.model=%s AND v.model_version=%s AND v.dimensions=%s " + script_clause
+                    + "ORDER BY distance,a.id LIMIT %s",
+                    (vector, *params, *scope_params, space.model, space.model_version, space.dimensions,
+                     *script_params, limit + 1),
+                ).fetchall()
+                usable = [row for row in found[:limit] if row["distance"] is not None
+                          and math.isfinite(row["distance"]) and row["distance"] < 1
+                          and row["content_hash"] == digest(row["document"]["statement"])
+                          and (speech or not assistant_speech(row["document"]))]
+                return usable, len(found) > limit
+
+            rows, more = nearest("", (), scan_limit)
+            truncated = truncated or more
+            # Small multilingual models score same-language text higher, so a fact stated in another script can
+            # rank below many loosely related sentences. Interleave the closest other-script memories.
+            other, _ = nearest("AND a.search_text " + ("!~" if _CJK.search(text) else "~") + " %s ",
+                               (_CJK.pattern,), CROSS_SCRIPT_CANDIDATES)
+            rows = _interleave(rows, other)
             rankings["vector"] = remember(rows)
-            versions["vector"] = "embedding-space:" + space.fingerprint
+            versions["vector"] = "embedding-space:" + space.fingerprint + ":script-balanced-v1"
         direct_ranked = _direct_candidates(rankings, versions, lexical_scores, limit=512)
         seeds = source_unit_candidates(direct_ranked, documents, limit=candidate_limit)
         seed_ids = [item["memory_id"] for item in seeds]
