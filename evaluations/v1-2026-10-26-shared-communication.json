@@ -1,5 +1,5 @@
 {
-  "status": "local_repair_verified_real_model_acceptance_pending",
+  "status": "real_model_campaign_closed_failed_final_recall",
   "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
   "input_contract": "source-composition-v4",
   "source_views": "Retains version3 exact assistant communication and mixed-episode views and publication recomputation.",
@@ -68,8 +68,8 @@
     "warning": "Starlette httpx TestClient deprecation",
     "log": "installed-delivery.log"
   },
-  "new_paid_calls": 0,
-  "acceptance": "No current real-model pass. Predecessor failed required encoding; original journal and known usage remain closed and unchanged.",
+  "new_paid_calls": 116,
+  "acceptance": "Seventeen frozen whole-answer cases passed; last-map-label failed. All26inputs delivered,25wholelearningcycles,13complete sessions; finalencoding settled before graceful stop. G4 remains failed. Four conditional age diagnostics unexecuted. No retry or automatic further campaign.",
   "local_checks": {
     "passed": true,
     "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
@@ -164,7 +164,7 @@
       "scope": "Deterministic control-flow check with synthetic proposal/verifier; not semantic behavioral evidence."
     },
     "paid_provider_calls_in_local_checks": 0,
-    "behavioral_acceptance": "Not passed; earlier fe52 primary stopped and closed, current6037 primary not started.",
+    "behavioral_acceptance": "Seventeen frozen whole-answer cases passed; last-map-label failed. All26inputs delivered,25wholelearningcycles,13complete sessions; finalencoding settled before graceful stop. G4 remains failed. Four conditional age diagnostics unexecuted. No retry or automatic further campaign.",
     "performance": {
       "retrieval": {
         "passed": true,
@@ -472,5 +472,21 @@
     "metadata_bytes": 13400,
     "provider_calls": 0,
     "embedding_calls": 0
-  }
+  },
+  "longitudinal_report": "v1-2026-10-26-shared-communication-longitudinal.json",
+  "real_model_usage": {
+    "completed_calls": 116,
+    "reserved_calls": 116,
+    "reserved_output_tokens": 1710080,
+    "usage_confirmed_calls": 116,
+    "usage_totals": {
+      "completion_tokens": 428765,
+      "prompt_cache_hit_tokens": 289152,
+      "prompt_cache_miss_tokens": 511148,
+      "prompt_tokens": 800300,
+      "total_tokens": 1229065
+    },
+    "usage_unknown_calls": 0
+  },
+  "source_commit": "9778420dde4d78f6bdf5ea13db6d4f763533c609"
 }

@@ -1,0 +1,138 @@
+{
+  "status": "local_repair_verified_behavioral_confirmation_pending",
+  "source_commit": "4f2ca3f84b75fca0e4d9f47ea2f24cba95c310a7",
+  "source_parent": "9778420dde4d78f6bdf5ea13db6d4f763533c609",
+  "runtime_build": "5189617c5b9328d9e458a3406db65dcd5b47fa6b4cf76154526ef5264a3c4373",
+  "tested_source_patch_sha256": "49d5e0f3606501001d67a8fcd1e10fc979ab0e9aa741533f238702004f70bbb5",
+  "rank_version": "belief-neighborhood-v2",
+  "semantic_input_contract": "source-composition-v4 unchanged",
+  "change": "Newly introduced belief endpoints inherit strongest original recognized query-route score in their own loaded connected component. Existing signals, exact versions, explicit selected plans, evidence guards and spending bounds remain unchanged. Unmatched/recency-only components do not create relevance roots.",
+  "cause": {
+    "old_endpoint_score": 0.01639344262295082,
+    "actual_seed_score": 8.561275623485864e-05,
+    "amplification_factor": 191.4836450070505,
+    "finding": "A weakly matched shelf-plan seed introduced an endpoint with a fixed much higher score; atomic conflict context displaced the original map source. Map clauses were present in candidate-hit traces and the stored original remained current."
+  },
+  "zero_model_sql": {
+    "scope": "Post-stop same-brain SQL diagnostic with original prepared request, original access timestamp and frozen brain sequence/index/generation. Final extra rows remain in underlying projections; not an exact historical database replay. Original failed delivery and journal unchanged. Runs the actual production candidate; no rank monkeypatch. Original failed transport and its exact source-sharing baseline are preserved.",
+    "unchanged_installed_runtime": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
+    "baseline_context_exactly_matches_failed_delivery": true,
+    "baseline_bytes": 7364,
+    "candidate_bytes": 7366,
+    "same_budget_bytes": 7599,
+    "restored": [
+      "original participant/action assignments",
+      "torn corner and two clear tape strips",
+      "expressed feeling of capability"
+    ],
+    "all_brain_tables_unchanged_after_rollback": true,
+    "provider_calls": 0,
+    "embedding_calls": 0,
+    "not_a_model_answer_pass": true
+  },
+  "checks": {
+    "passed": true,
+    "runtime_build": "5189617c5b9328d9e458a3406db65dcd5b47fa6b4cf76154526ef5264a3c4373",
+    "rank_version": "belief-neighborhood-v2",
+    "full_source": {
+      "passed": 5725,
+      "skipped": 4,
+      "failed": 0,
+      "seconds": 536.97,
+      "warning": "Python multithreaded fork deprecation",
+      "log": "full-final.log"
+    },
+    "installed": {
+      "passed": 532,
+      "failed": 0,
+      "seconds": 144.7,
+      "warning": "Starlette httpx TestClient deprecation",
+      "log": "installed-delivery.log"
+    },
+    "desktop": {
+      "passed": 4,
+      "source_skips_executed": 4,
+      "failed": 0,
+      "seconds": 48.74,
+      "warning": "Starlette httpx TestClient deprecation",
+      "log": "desktop-delivery.log"
+    },
+    "typescript": {
+      "passed": 40,
+      "strict_typecheck": "passed",
+      "reused": "SDK, API schema and protocol bytes unchanged since the fe52 SDK run; no TypeScript changes."
+    },
+    "artifacts": {
+      "runtime_files": 122,
+      "source_sdist_wheel_installed_match": true,
+      "metadata_final_rebuild": "Completed after final README/status edits; runtime bytes unchanged from tested installed wheel."
+    },
+    "focused_rank_tests": 8,
+    "paid_provider_calls": 0,
+    "old_campaign": "Stopped failed, unchanged. No repaired host answer or age diagnostics run.",
+    "preflight_attempts": [
+      "No-isolation build could not import hatchling; isolated build succeeded without changing the running test environment. Failed log retained.",
+      "First performance-helper launch was blocked before any database query by its copied old expected-build assertion. It was rebound to the current build and required isolated launch; both subsequent measurements passed."
+    ],
+    "source_commit": "4f2ca3f84b75fca0e4d9f47ea2f24cba95c310a7",
+    "performance": {
+      "retrieval": {
+        "passed": true,
+        "p95_ms": 166.449,
+        "labels_found": 20,
+        "limit_ms": 500
+      },
+      "capabilities": {
+        "passed": true,
+        "median_ms": 66.725125,
+        "limit_ms": 100
+      },
+      "provider_calls": 0,
+      "embedding_calls": 0
+    }
+  },
+  "capability_performance": {
+    "version": "relation-capability-performance-v1",
+    "runtime_build": "5189617c5b9328d9e458a3406db65dcd5b47fa6b4cf76154526ef5264a3c4373",
+    "input_contract": "source-composition-v4",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "endpoint_count": 32,
+    "eligible_pair_count": 496,
+    "samples_ms": [
+      66.900167,
+      66.810875,
+      66.613916,
+      66.725125,
+      66.38575
+    ],
+    "median_ms": 66.725125,
+    "median_limit_ms": 100,
+    "passed": true,
+    "cache_state": "No discarded warmup; five consecutive calls in one process.",
+    "fixture": "Thirty-two independent user-source study reports with complete known semantic endpoint metadata.",
+    "fixture_sha256": "25db1060ff6f65bbfa319ec6c8b46a80192dd18bd280ee1ef27b9ffe7f6aba8b",
+    "metadata_bytes": 13400,
+    "provider_calls": 0,
+    "embedding_calls": 0
+  },
+  "prior_real_model_campaign": {
+    "report": "v1-2026-10-26-shared-communication-longitudinal.json",
+    "result": "stopped closed,17 whole-answer passes,1 fail",
+    "calls": 116,
+    "known_tokens": 1229065,
+    "unknown_usage_calls": 0,
+    "not_retried": true,
+    "original_journal_head": "3e59ef25b224c0795b49d77ea76197e88e109fc33c66510f54a2de36388821a6"
+  },
+  "new_paid_provider_calls": 0,
+  "remaining": [
+    "No repaired real-model host answer has been evaluated under the new rank policy; original last-map-label remains failed.",
+    "Three first-turn named statements have correct full-source facts but selected spans omit identity. Selected-span coverage remains unresolved.",
+    "No relevant model-created user-source personal gist was established; optional short-view count0. Four age queries were conditional on successful primary completion and remain unexecuted.",
+    "Cognitive processing consumed1084449tokens across78calls in the closed campaign, about88.2percent of its total; this rank repair does not claim a reduction in backend calls, token cost or latency."
+  ],
+  "release": "G4 not passed; no stable tag/release or automatic further campaign.",
+  "evidence_manifest": "v1-2026-10-26-belief-inheritance-evidence.json"
+}

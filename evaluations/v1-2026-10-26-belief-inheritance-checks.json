@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "runtime_build": "5189617c5b9328d9e458a3406db65dcd5b47fa6b4cf76154526ef5264a3c4373",
+  "rank_version": "belief-neighborhood-v2",
+  "full_source": {
+    "passed": 5725,
+    "skipped": 4,
+    "failed": 0,
+    "seconds": 536.97,
+    "warning": "Python multithreaded fork deprecation",
+    "log": "full-final.log"
+  },
+  "installed": {
+    "passed": 532,
+    "failed": 0,
+    "seconds": 144.7,
+    "warning": "Starlette httpx TestClient deprecation",
+    "log": "installed-delivery.log"
+  },
+  "desktop": {
+    "passed": 4,
+    "source_skips_executed": 4,
+    "failed": 0,
+    "seconds": 48.74,
+    "warning": "Starlette httpx TestClient deprecation",
+    "log": "desktop-delivery.log"
+  },
+  "typescript": {
+    "passed": 40,
+    "strict_typecheck": "passed",
+    "reused": "SDK, API schema and protocol bytes unchanged since the fe52 SDK run; no TypeScript changes."
+  },
+  "artifacts": {
+    "runtime_files": 122,
+    "source_sdist_wheel_installed_match": true,
+    "metadata_final_rebuild": "Completed after final README/status edits; runtime bytes unchanged from tested installed wheel."
+  },
+  "focused_rank_tests": 8,
+  "paid_provider_calls": 0,
+  "old_campaign": "Stopped failed, unchanged. No repaired host answer or age diagnostics run.",
+  "preflight_attempts": [
+    "No-isolation build could not import hatchling; isolated build succeeded without changing the running test environment. Failed log retained.",
+    "First performance-helper launch was blocked before any database query by its copied old expected-build assertion. It was rebound to the current build and required isolated launch; both subsequent measurements passed."
+  ],
+  "source_commit": "4f2ca3f84b75fca0e4d9f47ea2f24cba95c310a7",
+  "performance": {
+    "retrieval": {
+      "passed": true,
+      "p95_ms": 166.449,
+      "labels_found": 20,
+      "limit_ms": 500
+    },
+    "capabilities": {
+      "passed": true,
+      "median_ms": 66.725125,
+      "limit_ms": 100
+    },
+    "provider_calls": 0,
+    "embedding_calls": 0
+  }
+}

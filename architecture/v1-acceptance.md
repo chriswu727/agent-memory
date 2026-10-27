@@ -83,6 +83,8 @@ The replacement runner and commands are documented in the [implementation status
 
 ## Progress checkpoint
 
+The latest [source-sharing varied campaign](../evaluations/v1-2026-10-26-shared-communication-longitudinal.json) delivered all 26 inputs and passed seventeen of eighteen whole-answer cases. It stopped after the last map label failed to retrieve original scene details into the final context, although candidate-hit traces and the retained source contained them. All 116 calls have known usage; no retry or conditional age diagnostic followed. The [belief-neighborhood repair](../evaluations/v1-2026-10-26-belief-inheritance.json) restores the source within the original budget in zero-model SQL replay. This does not reclassify the original failure or pass G4. Selected-span identity coverage, model-created personal gist formation and cognitive cost remain visible concerns.
+
 The [source-preserving recall resolution batch](../evaluations/v1-2026-10-26-recall-resolution.md) implements verified optional short expressions, cue expansion, prompt-aware context allocation and local encoding reductions. Its real-model diagnostic retains a failed encoding, an episode-actor ambiguity and one unsupported autobiographical draft; no new full varied campaign ran. G4 remains unpassed. Original sources are retained, and no closed allowance authorizes further calls.
 
 The [source and recall repair follow-up](../evaluations/v1-2026-10-26-longitudinal-repairs.md) addresses the diagnosed source-act, lexical, context/attribution and database-query paths while preserving old evidence. Its scoped checks and isolated probes do not replace another source-reviewed varied campaign after the remaining release blockers are resolved. G4 remains unpassed.

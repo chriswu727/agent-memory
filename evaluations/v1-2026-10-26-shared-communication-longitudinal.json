@@ -1,0 +1,265 @@
+{
+  "status": "stopped_closed_behavioral_acceptance_failed",
+  "source_commit": "9778420dde4d78f6bdf5ea13db6d4f763533c609",
+  "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
+  "plan_sha256": "0b5777ba6cf8d3b6c7601fe482a530628757dd2524ac76bcb2b019fa2f7cb6a6",
+  "source_head_sha256": "3e59ef25b224c0795b49d77ea76197e88e109fc33c66510f54a2de36388821a6",
+  "reviewer": "Implementing Codex, separate from evaluated DeepSeek, not blinded. No paid judge or corrective host retry.",
+  "sessions_started": 14,
+  "sessions_completed": 13,
+  "inputs_attempted": 26,
+  "replies_delivered": 26,
+  "encoding_cycles_completed": 26,
+  "whole_learning_cycles_completed": 25,
+  "final_history": "One queued never-attempted comparison retained; no resume, retry, recovery or future allowance under the closed plan.",
+  "case_results": [
+    {
+      "id": "release-zine-outline",
+      "turn_id": "zine-outline",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-sam-work",
+      "turn_id": "sam-work",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-sam-family",
+      "turn_id": "sam-family",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-one-week-only",
+      "turn_id": "one-week-only",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-first-caption",
+      "turn_id": "first-caption",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-caption-tone",
+      "turn_id": "caption-tone",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-level-correction",
+      "turn_id": "level-correction",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-regular-week",
+      "turn_id": "regular-week",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-class-moved-again",
+      "turn_id": "class-moved-again",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-booklet-status",
+      "turn_id": "booklet-status",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-mara-card",
+      "turn_id": "mara-card",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-mara-shorter",
+      "turn_id": "mara-shorter",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-unsupported-premise",
+      "turn_id": "unsupported-premise",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-unknown-park",
+      "turn_id": "unknown-park",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-shelf-outcome",
+      "turn_id": "shelf-outcome",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-fiction-return",
+      "turn_id": "fiction-return",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-late-progress",
+      "turn_id": "late-progress",
+      "branch": "ordinary",
+      "result": "pass",
+      "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+    },
+    {
+      "id": "release-last-map-label",
+      "turn_id": "last-map-label",
+      "branch": "ordinary",
+      "result": "fail",
+      "reason": "Fails original roles and physical detail; asks user to re-teach sources that were stored and in retrieved candidates."
+    }
+  ],
+  "case_counts": {
+    "pass": 17,
+    "fail": 1,
+    "unexecuted": 0
+  },
+  "assistance": {
+    "ordinary": 23,
+    "assisted": 1,
+    "correction": 2
+  },
+  "timing": {
+    "actual_elapsed_seconds": 6240.495653,
+    "completed_invocation_seconds": 5608.553158874856,
+    "between_invocation_seconds": [
+      380.751311,
+      75.989965,
+      94.631783,
+      80.603691
+    ],
+    "fictional_span_days": 70,
+    "actual_time_is_not_fictional_time": true
+  },
+  "usage": {
+    "completed_calls": 116,
+    "reserved_calls": 116,
+    "reserved_output_tokens": 1710080,
+    "usage_confirmed_calls": 116,
+    "usage_totals": {
+      "completion_tokens": 428765,
+      "prompt_cache_hit_tokens": 289152,
+      "prompt_cache_miss_tokens": 511148,
+      "prompt_tokens": 800300,
+      "total_tokens": 1229065
+    },
+    "usage_unknown_calls": 0
+  },
+  "provider_roles": {
+    "host": {
+      "completed": 26,
+      "tokens": {
+        "completion_tokens": 34102,
+        "prompt_cache_hit_tokens": 42880,
+        "prompt_cache_miss_tokens": 51405,
+        "prompt_tokens": 94285,
+        "total_tokens": 128387
+      },
+      "sum_seconds": 477.65318154287525,
+      "median_seconds": 12.858651270507835,
+      "max_seconds": 44.49513683398254
+    },
+    "cognition": {
+      "completed": 78,
+      "tokens": {
+        "completion_tokens": 394547,
+        "prompt_cache_hit_tokens": 244224,
+        "prompt_cache_miss_tokens": 445678,
+        "prompt_tokens": 689902,
+        "total_tokens": 1084449
+      },
+      "sum_seconds": 4834.416395125678,
+      "median_seconds": 61.965495395474136,
+      "max_seconds": 122.46865358401556
+    },
+    "user": {
+      "completed": 12,
+      "tokens": {
+        "completion_tokens": 116,
+        "prompt_cache_hit_tokens": 2048,
+        "prompt_cache_miss_tokens": 14065,
+        "prompt_tokens": 16113,
+        "total_tokens": 16229
+      },
+      "sum_seconds": 14.605390082113445,
+      "median_seconds": 1.1962371244444512,
+      "max_seconds": 1.590966707910411
+    }
+  },
+  "critical_failure": "Last-map-label source retrieval selected the original map memories as candidates but context admission retained unrelated shelf-plan conflict and only the later map question. Safe refusal to invent does not satisfy useful-memory acceptance.",
+  "published_memory_review": {
+    "mechanical_audit": {
+      "source_head_sha256": "3e59ef25b224c0795b49d77ea76197e88e109fc33c66510f54a2de36388821a6",
+      "plan_sha256": "0b5777ba6cf8d3b6c7601fe482a530628757dd2524ac76bcb2b019fa2f7cb6a6",
+      "campaign_state": "stopped",
+      "source_versions": 52,
+      "stored_memory_versions_checked": 316,
+      "derived_versions": 88,
+      "exact_speech_quotes_recomputed": 46,
+      "episodes_recomputed": 26,
+      "stored_relations": 1,
+      "reference_hash_and_span_checks": 333,
+      "accepted_participant_verdicts_checked": 89,
+      "optional_short_views": 0,
+      "final_turn_encoding_settled": true,
+      "unfinished_history_jobs": 1,
+      "unknown_provider_usage": 0,
+      "mechanical_checks": "passed",
+      "semantic_citation_coverage": "Not passed: three first-turn named statements omit the self-introduction from their selected spans; facts are present in the same complete source.",
+      "behavioral_acceptance": "failed last-map-label; mechanical source integrity is not useful-memory acceptance.",
+      "source_original_unchanged": true
+    },
+    "source_prefix_factual_review": "All derived statements and episode organizations reviewed, including one assistant quote published before unfinished final history. No new personal scene or actor swap found. Three named statements remain unsupported by their selected identity spans; do not equate full-source factual support with selected-span coverage.",
+    "minor_reply_issues": [
+      "Initial proposed Tuesday evening conflicts with final question about Tuesday mornings.",
+      "zine-progress asks unnecessary follow-up instead of taking the next practical step.",
+      "Three-sentence birthday note has a long middle sentence."
+    ],
+    "simulator_limitations": "Two unnecessary correction selections and one unnecessary assistance selection followed already correct replies. Counts retained, branches not retaken; assisted outputs are not independent unaided success."
+  },
+  "gist": {
+    "optional_short_views": 0,
+    "original_map_user_proposals_rejected": 11,
+    "finding": "Map source remains intact but no user-source personal semantic gist was established; original unqualified proposals were rejected for coverage. Do not count assistant-quote semantic anchors as user autobiography."
+  },
+  "age_diagnostic": {
+    "executed": false,
+    "provider_calls": 0,
+    "reason": "Prospectively allowed only after successful fourteen-session completion. Critical last-answer failure closed this campaign; four planned zero-model queries remain unexecuted."
+  },
+  "continuity": "Four clean process checkpoint resumes verified cached delivery with forbidden generation/delivery callbacks. Alternate callback after session7 uses the SAME DeepSeek provider/model, not a cross-model test.",
+  "earlier_campaigns": "All closed failures and original ledgers remain unchanged. This ledger does not include predecessor calls.",
+  "diagnosis": "ranking-diagnostic.json: unchanged installed SQL baseline reproduces delivered failed context byte-for-byte; experimental seed inheritance restores complete original scene/detail/meaning at7366/7599bytes. This is post-stop same-brain SQL with frozen sequence/access parameters, not exact historical database reconstruction or model-answer recovery. All brain tables unchanged after rollback.",
+  "release": "G4 failed; G3 selected-span identity coverage remains unresolved. No stable tag or release."
+}

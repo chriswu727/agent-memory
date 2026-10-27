@@ -1,0 +1,371 @@
+{
+  "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
+  "source_commit": "9778420dde4d78f6bdf5ea13db6d4f763533c609",
+  "bundle": "evaluations/artifacts/v1-2026-10-26-shared-communication-evidence.tar.gz",
+  "sha256": "d88fa5557e4a611afa03a8266c4a45459d56855d57a38290e9872424ca2bc8e1",
+  "bytes": 4159973,
+  "files": {
+    "campaign/calls.jsonl": "6871304d25a07b632e938928f0d4a8291ebbe52ac7bf4d37556992132ff84072",
+    "campaign/head.json": "0b343282b47ec59aea4c1c4163b9a90457a40c89e3406deec20015c1abdf4b1b",
+    "campaign/journal.jsonl": "fa90dee9baed22a1bba975c39b8e342347581b0450b93faef45f6bce3e853eec",
+    "campaign/plan.json": "7d0e77ec429f0659fcd9a737994f1fec8bbdbb94b0e16f071e4cbbc589d1139e",
+    "tested-source.patch": "3b0ab2e4820356a535be8aadc8faadf23db3fabc82830af61b1b012887108285",
+    "work/access_age.py": "c64c6a96c4a82df0090aae70aa2bd1092cda4cfc44f3c2cae3ecc8b5657de51d",
+    "work/age-diagnostic-plan.json": "dfaa42a12a330d68cc0f0413aa2463e268ec7f802109e078abd10dc49eb815d3",
+    "work/analyze_usage.py": "123e8a73eaeeaceb948a8f7ed1a2c6429c3a0ee23146d9123279991ba79dc0df",
+    "work/artifacts.json": "d1b5a4c619ace8763a756b23977d606cecec760d7f7fc7d794ed823b788261e8",
+    "work/artifacts_check.py": "5ccb130807b31c00b8f19722793ffe29b250e9bd909eef180b88468d585930d2",
+    "work/audit_closed.py": "95d6cf1e04de72227e315a8fc49d9bf7f81143640a7b84b33f21328d269877a9",
+    "work/build-final.log": "e8032e17e09f56be2e6662c0c6a68e0590bc10e99156681816d4d08217315e44",
+    "work/build.log": "e8032e17e09f56be2e6662c0c6a68e0590bc10e99156681816d4d08217315e44",
+    "work/capability-performance.json": "cad4ff406a43a0aa5cf4cf0cb9f42bdda69eca800bc0443f8c866e06f5d42344",
+    "work/check_controls.py": "8589a6724c4e3e108fee5e5933bbc325efd2358a42524309cbd64091f368b315",
+    "work/checks.json": "94386aacdf09dd7398a67c47ec16cffe50a653cb7b678fde3573fa0ead305a97",
+    "work/closed-audit.json": "f26436a6217cb12ee010c8f7f82298aad0d6e5f8af74b18cab6dd40a21df705f",
+    "work/control-check.json": "0ce0fdc7e612807a106f7263d88868704b5f27dc9cb330b584ffad2aeaac0a84",
+    "work/control-check.log": "abd9a7b2c3b9c0631dae377a94ee397b3f5f78692e4a39185380ab2adc8200fa",
+    "work/coverage-focused.log": "047feeaca8f858681b2c0049d624567d1ac1d449e8442234cfac3ba60664d089",
+    "work/critical-last-map-label.json": "d4d15a96d76c5b68cec0811b900b101ffe3eb8a0b2e26e11c8ec2e900902eeab",
+    "work/desktop-delivery.log": "84c27fdf6bc6b6d11b53a08a65e30b20ca533dbfbe2908f475a720a7263e1d1e",
+    "work/desktop-runner.log": "f740964066cb8cca643442217afbdac1dfbd409955453444c7427aeec0cce600",
+    "work/diagnose_ranking.py": "ad149645c3d7e2d878e4da3b54b34ce1bcbdb33112f00678477a719f334fd748",
+    "work/episode-followup.log": "72c36a834d11b336751edb764d841a60ba4684fe70bef44cda304f7370945d02",
+    "work/failed-host-request.json": "2f58d90cf88be7582e99bdebd3dab3e432e1476208f75a0c947bdbe985f3f811",
+    "work/failed-retrieval-snapshot.json": "d94dbc11b942d8f790cbd40beac106c1c4fc7a96df4379ad48129b0f994e0dad",
+    "work/failed-runtime-context.json": "310e1986a9d3f5440115523f3b8c497211707518369df74ae74d631bceda4fd0",
+    "work/final-digest.txt": "8a9f6feed3e009d92fc4716f5262b4a57aa4cc133ef3254456c5ab6c65e8ef81",
+    "work/final-inspection.txt": "01a245087d27b48e430eb70b613e9edee6ac862cf61f840f1e35f7887f0625c9",
+    "work/final-review.json": "51587720d590bd6023d483893c69bf83cfae925867bb68b7939278495afb2c3b",
+    "work/focused.log": "ac08a9935b3a44c232133011a74502170a13fed7531240280ba3998055c6ca52",
+    "work/frozen-plan.json": "7b9274a423b2a800dabf02ccb2dbc31e8ff1a3ea8411a31569f7e5fdafa0617f",
+    "work/full-final-result.json": "0d3f2d06ac244a7f37455a310fe7093e97969abcab0010a2f7993e1fd2c62ae4",
+    "work/full-final-result.json.before-coverage-fixture-update": "b10f7867afd686e8b94442fce2f4484e006307f310250ceffa1feaad443554d1",
+    "work/full-final-result.json.before-episode-fixture-update": "bf83f01c431e171df52a141bdee9f4443e3159f326cdaba7bc4aadff9346edc2",
+    "work/full-final.log": "eff4f5a43bbdf69f2cd6d273c0c070f29bca41df463ec5251a1b89a3aee8643b",
+    "work/full-final.log.before-coverage-fixture-update": "d2ee0154caa43949888a0f8be20606600fdced3e783e86267262325a949037ab",
+    "work/full-final.log.before-episode-fixture-update": "5995d1a0935e694e73545a98f2e738e9212948715bea4c7e09021f3b7f57934e",
+    "work/inspect_failure.py": "62ad706dcec6eb45918fc191d933af4aa0c8121357fc95d330ca77c9d6629a8d",
+    "work/inspect_stage.py": "e330dfb47fac779f75b0237dfe9a19ad6adc990c015d9e2c5b3ac97e09fd576b",
+    "work/install-final.log": "1951ce21c857b228ee2d6e7a097c28a48ad6c61f893b24258728a78e9a4df893",
+    "work/install.log": "39e1eb0751d2a2b4fc0e5b48522ec5f26736e87941f7f49ee30d655b87a40b13",
+    "work/installed-delivery.log": "61c3e4587692d05ad8572110bc23abd98fc8a65ac199d3be85ecdb3ea4ae62be",
+    "work/installed-runner-final.log": "3160344089995d2cb99178d97f561daa0afdf72e8eacb013796c5602eac4a981",
+    "work/installed-runner.log": "3160344089995d2cb99178d97f561daa0afdf72e8eacb013796c5602eac4a981",
+    "work/installed_check.py": "3fa62f36d5711e2c7d8ae54cf980ff85297aa3827804d422b4ff0e7c17557a2f",
+    "work/measure-capabilities.py": "ef530e27f3e4659f251dadfc972cf5a31cc24326d26cf9b8fd20e0f18755e1dc",
+    "work/measure-capabilities.py.log": "12dc8a491448696913ea15aa368e657845f7196eb380f15c7d98a962737956ef",
+    "work/measure-fixed-retrieval.py": "c282f5c936cd4d44ba8fe828545aee41e19138110382eea82ef729d0fb2992c9",
+    "work/measure-fixed-retrieval.py.log": "8651e70986b47f75f6b631ebd8655010a68f409d94afbfd78a2d80ddca30e9b5",
+    "work/pre-execution-review.json": "9873aec8b8ad23517247fd3ae56ef0ae6288f3d1e69d9958163d13d18f4b94e0",
+    "work/progress.py": "20661fbe19cfa283041aac85789a149826c59dc520043b4eae5df23334acc716",
+    "work/publish_evidence.py": "afd568dc354059cf1dd7ce20382ab7de9778e50c45c44df91bdeedf3f0c12f43",
+    "work/ranking-diagnostic.json": "cd51626b3a666ffd9916cc72fe7c0397e718c1b3818ff7ac81ff007ddd21d4ff",
+    "work/reproduce.py": "02a1023f071335c1e87f0489ba13e8a1392f24f9181214e974905dcbb06c5b5a",
+    "work/reproduction.json": "a9a12bd8b95bc82bee20d5cec86fb55eeb44fea7177409f30ff396741662177f",
+    "work/reproduction.log": "7faaca7fbb4790cfa19c1c04e679a875ca4501f18251d8dd9c205e6b99c79103",
+    "work/retrieval-performance.json": "e1eb008b8060f93255d77c1099cc468606a9696697950629b1958239ad897d3b",
+    "work/review_checks.py": "753e464dfef4b715e9a5c11fc883bb023e78e5c6a76788aecae2e9dc005cac37",
+    "work/review_digest.py": "d92476b63be7c817440c30f75a07f8e69849b13dddef7200647c6fc61a1a64a8",
+    "work/ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "work/run_age.py": "b4b4ac66012b3d846cc09bc3f4d41c2b2d512f693f64570cd798f00bcfe01a50",
+    "work/run_campaign.py": "c0575e10922857ffe8251b8a7e134a13a9385cf3eb835111fc7ce105133efc81",
+    "work/stage-10-digest.txt": "c40370026c335b60c0ac5c31733ff71a9a2c6adb61a6ad3545936b781e7a8f9f",
+    "work/stage-10-inspection.txt": "61186b53c524ca5809cb7b0c0d4730e210634910b3a24f176d5801058985d9b5",
+    "work/stage-10-mechanical.json": "f489b5534aabc6a919e018708298616c967efdcfe5f163f2e33f8fecf5b5e89b",
+    "work/stage-10-report.json": "1903284f773d5539ab08cf1267dfd40b278c8b03d43c512b2941064f81a178ff",
+    "work/stage-10-review.json": "4a17948ae23b2e520b8ca4fc8197484f9eabe2f68f4b272d2dbb6329c06f612c",
+    "work/stage-10.log": "a5aeaf6e412cf2e1d55f429a4085ce81ec2b5b178819a31c7a90a4e0b4938170",
+    "work/stage-11-inspection.txt": "278f747c9ae2e567cb2113b863fad7ef46d6b93844450fb2e35e4f1102526163",
+    "work/stage-11-mechanical.json": "1bef49578205365ad8d7db9e240cdeff4f352ca7da156111e501b1a75a97dd2a",
+    "work/stage-11-report.json": "4fd4b3b9fc85b9c92d41183099e56bc727c547fed0643cb8a96d324aa23c7c88",
+    "work/stage-11-review.json": "90bde5b33170dd4d633225e9673ec06cce8ef8a38b4d252a24db94e87220e08a",
+    "work/stage-11.log": "234d0184585c120a54d2173d3a95dc6bf2670bd061cd5ff24e061429c0f3e7d3",
+    "work/stage-13-report.json": "bcea55acae17935e5950ae92b37f3809d8964bcdc56500784dbecda34ef0f169",
+    "work/stage-14.log": "9801be4786e203aaf6cd57c38aca9b9b95b940fbaa97faac15882567611800db",
+    "work/stage-4-inspection.txt": "91a9454cf0c97222d983915d31e244eb6fdf9998aa48f0ac2ad23fdf6f842f57",
+    "work/stage-4-mechanical.json": "c4683eb16be18f28ed2e595b36db167eb4828bdb50800ca16e429111ae19ca88",
+    "work/stage-4-report.json": "26b76f97b78d8e6df60be133c4336bf85885c9693787278916fb83d04f82f375",
+    "work/stage-4-review.json": "f0aa0d8b812ab2549d7dab9bed075f6ccef89287c0b18c13e43dccf5c491e621",
+    "work/stage-4.log": "c392aeab0c9508e654607676ab750cd415d223032b9d3dc6ea68b35f321a22a6",
+    "work/stage-7-digest.txt": "e2058c9a1e1decfb8796dc7c18953791874656e46c3bae7451c94c9e786ccd67",
+    "work/stage-7-inspection.txt": "3eedcb484dad7c8db14a099b5d932ac1f51174ed580028b626d8af64e9682e0d",
+    "work/stage-7-mechanical.json": "792cf9650386c9ff4d169a68229e341753a87b5a2f103b05599de42b417d7e81",
+    "work/stage-7-report.json": "db64b85aa6b4f270abd5e17a05f80e2b53c600497e9e2ef93dfb66b462146ca4",
+    "work/stage-7-review.json": "5b3b22a2d9b5cc720051d500a3c8648491f1eb742e491529e73caf3951a5b45d",
+    "work/stage-7.log": "2a2ec2f7664a837aad3c02d3619bdca8742e23e922d11546b71b5e231e972abd",
+    "work/usage-analysis.json": "7b9d203ca0e7118de5a3730eebddd6efb7b48370db5e8e38f4d0b8d548062530",
+    "work/usage-summary.log": "d163f0723569633421dd687cac632a2c2c59db2de73dd41e73caba3b507ab9e9",
+    "work/venv.log": "bf042229b53e5074a4bfad29cfd6153f912e0a7dd572576465e848746586f3b6",
+    "work/verification-request.json": "bfeac022664299e8ab36443b85bb91634e0cc45f9b030d6ff7432f2a31ec4c17",
+    "work/verify.py": "29a2f89087c990ebb5b7e8a5ae8b46149dffd9d43676d40f5d8dc246cc4b7fce"
+  },
+  "configured_secret_and_key_pattern_scan": "passed",
+  "json_hidden_reasoning_field_scan": "passed",
+  "member_bytes_verified": true,
+  "campaign": {
+    "status": "stopped_closed_behavioral_acceptance_failed",
+    "source_commit": "9778420dde4d78f6bdf5ea13db6d4f763533c609",
+    "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
+    "plan_sha256": "0b5777ba6cf8d3b6c7601fe482a530628757dd2524ac76bcb2b019fa2f7cb6a6",
+    "source_head_sha256": "3e59ef25b224c0795b49d77ea76197e88e109fc33c66510f54a2de36388821a6",
+    "reviewer": "Implementing Codex, separate from evaluated DeepSeek, not blinded. No paid judge or corrective host retry.",
+    "sessions_started": 14,
+    "sessions_completed": 13,
+    "inputs_attempted": 26,
+    "replies_delivered": 26,
+    "encoding_cycles_completed": 26,
+    "whole_learning_cycles_completed": 25,
+    "final_history": "One queued never-attempted comparison retained; no resume, retry, recovery or future allowance under the closed plan.",
+    "case_results": [
+      {
+        "id": "release-zine-outline",
+        "turn_id": "zine-outline",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-sam-work",
+        "turn_id": "sam-work",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-sam-family",
+        "turn_id": "sam-family",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-one-week-only",
+        "turn_id": "one-week-only",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-first-caption",
+        "turn_id": "first-caption",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-caption-tone",
+        "turn_id": "caption-tone",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-level-correction",
+        "turn_id": "level-correction",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-regular-week",
+        "turn_id": "regular-week",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-class-moved-again",
+        "turn_id": "class-moved-again",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-booklet-status",
+        "turn_id": "booklet-status",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-mara-card",
+        "turn_id": "mara-card",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-mara-shorter",
+        "turn_id": "mara-shorter",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-unsupported-premise",
+        "turn_id": "unsupported-premise",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-unknown-park",
+        "turn_id": "unknown-park",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-shelf-outcome",
+        "turn_id": "shelf-outcome",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-fiction-return",
+        "turn_id": "fiction-return",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-late-progress",
+        "turn_id": "late-progress",
+        "branch": "ordinary",
+        "result": "pass",
+        "reason": "Whole delivered answer satisfies frozen factual/task constraints against received source prefix."
+      },
+      {
+        "id": "release-last-map-label",
+        "turn_id": "last-map-label",
+        "branch": "ordinary",
+        "result": "fail",
+        "reason": "Fails original roles and physical detail; asks user to re-teach sources that were stored and in retrieved candidates."
+      }
+    ],
+    "case_counts": {
+      "pass": 17,
+      "fail": 1,
+      "unexecuted": 0
+    },
+    "assistance": {
+      "ordinary": 23,
+      "assisted": 1,
+      "correction": 2
+    },
+    "timing": {
+      "actual_elapsed_seconds": 6240.495653,
+      "completed_invocation_seconds": 5608.553158874856,
+      "between_invocation_seconds": [
+        380.751311,
+        75.989965,
+        94.631783,
+        80.603691
+      ],
+      "fictional_span_days": 70,
+      "actual_time_is_not_fictional_time": true
+    },
+    "usage": {
+      "completed_calls": 116,
+      "reserved_calls": 116,
+      "reserved_output_tokens": 1710080,
+      "usage_confirmed_calls": 116,
+      "usage_totals": {
+        "completion_tokens": 428765,
+        "prompt_cache_hit_tokens": 289152,
+        "prompt_cache_miss_tokens": 511148,
+        "prompt_tokens": 800300,
+        "total_tokens": 1229065
+      },
+      "usage_unknown_calls": 0
+    },
+    "provider_roles": {
+      "host": {
+        "completed": 26,
+        "tokens": {
+          "completion_tokens": 34102,
+          "prompt_cache_hit_tokens": 42880,
+          "prompt_cache_miss_tokens": 51405,
+          "prompt_tokens": 94285,
+          "total_tokens": 128387
+        },
+        "sum_seconds": 477.65318154287525,
+        "median_seconds": 12.858651270507835,
+        "max_seconds": 44.49513683398254
+      },
+      "cognition": {
+        "completed": 78,
+        "tokens": {
+          "completion_tokens": 394547,
+          "prompt_cache_hit_tokens": 244224,
+          "prompt_cache_miss_tokens": 445678,
+          "prompt_tokens": 689902,
+          "total_tokens": 1084449
+        },
+        "sum_seconds": 4834.416395125678,
+        "median_seconds": 61.965495395474136,
+        "max_seconds": 122.46865358401556
+      },
+      "user": {
+        "completed": 12,
+        "tokens": {
+          "completion_tokens": 116,
+          "prompt_cache_hit_tokens": 2048,
+          "prompt_cache_miss_tokens": 14065,
+          "prompt_tokens": 16113,
+          "total_tokens": 16229
+        },
+        "sum_seconds": 14.605390082113445,
+        "median_seconds": 1.1962371244444512,
+        "max_seconds": 1.590966707910411
+      }
+    },
+    "critical_failure": "Last-map-label source retrieval selected the original map memories as candidates but context admission retained unrelated shelf-plan conflict and only the later map question. Safe refusal to invent does not satisfy useful-memory acceptance.",
+    "published_memory_review": {
+      "mechanical_audit": {
+        "source_head_sha256": "3e59ef25b224c0795b49d77ea76197e88e109fc33c66510f54a2de36388821a6",
+        "plan_sha256": "0b5777ba6cf8d3b6c7601fe482a530628757dd2524ac76bcb2b019fa2f7cb6a6",
+        "campaign_state": "stopped",
+        "source_versions": 52,
+        "stored_memory_versions_checked": 316,
+        "derived_versions": 88,
+        "exact_speech_quotes_recomputed": 46,
+        "episodes_recomputed": 26,
+        "stored_relations": 1,
+        "reference_hash_and_span_checks": 333,
+        "accepted_participant_verdicts_checked": 89,
+        "optional_short_views": 0,
+        "final_turn_encoding_settled": true,
+        "unfinished_history_jobs": 1,
+        "unknown_provider_usage": 0,
+        "mechanical_checks": "passed",
+        "semantic_citation_coverage": "Not passed: three first-turn named statements omit the self-introduction from their selected spans; facts are present in the same complete source.",
+        "behavioral_acceptance": "failed last-map-label; mechanical source integrity is not useful-memory acceptance.",
+        "source_original_unchanged": true
+      },
+      "source_prefix_factual_review": "All derived statements and episode organizations reviewed, including one assistant quote published before unfinished final history. No new personal scene or actor swap found. Three named statements remain unsupported by their selected identity spans; do not equate full-source factual support with selected-span coverage.",
+      "minor_reply_issues": [
+        "Initial proposed Tuesday evening conflicts with final question about Tuesday mornings.",
+        "zine-progress asks unnecessary follow-up instead of taking the next practical step.",
+        "Three-sentence birthday note has a long middle sentence."
+      ],
+      "simulator_limitations": "Two unnecessary correction selections and one unnecessary assistance selection followed already correct replies. Counts retained, branches not retaken; assisted outputs are not independent unaided success."
+    },
+    "gist": {
+      "optional_short_views": 0,
+      "original_map_user_proposals_rejected": 11,
+      "finding": "Map source remains intact but no user-source personal semantic gist was established; original unqualified proposals were rejected for coverage. Do not count assistant-quote semantic anchors as user autobiography."
+    },
+    "age_diagnostic": {
+      "executed": false,
+      "provider_calls": 0,
+      "reason": "Prospectively allowed only after successful fourteen-session completion. Critical last-answer failure closed this campaign; four planned zero-model queries remain unexecuted."
+    },
+    "continuity": "Four clean process checkpoint resumes verified cached delivery with forbidden generation/delivery callbacks. Alternate callback after session7 uses the SAME DeepSeek provider/model, not a cross-model test.",
+    "earlier_campaigns": "All closed failures and original ledgers remain unchanged. This ledger does not include predecessor calls.",
+    "diagnosis": "ranking-diagnostic.json: unchanged installed SQL baseline reproduces delivered failed context byte-for-byte; experimental seed inheritance restores complete original scene/detail/meaning at7366/7599bytes. This is post-stop same-brain SQL with frozen sequence/access parameters, not exact historical database reconstruction or model-answer recovery. All brain tables unchanged after rollback.",
+    "release": "G4 failed; G3 selected-span identity coverage remains unresolved. No stable tag or release."
+  },
+  "earlier_failed_full_run": "Both earlier source-table test callback failures are included under before-update suffixes; final 5717 source tests passed. Synthetic paired replay is not a paid call or historical operation retry."
+}
