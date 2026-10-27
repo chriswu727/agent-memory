@@ -5,7 +5,9 @@ import json
 
 SOURCE_COMPOSITION_INPUT_VERSION = "source-composition-v1"
 COMPOSITION_V2_INPUT_VERSION = "source-composition-v2"
-SOURCE_COMPOSITION_INPUT_VERSIONS = (SOURCE_COMPOSITION_INPUT_VERSION, COMPOSITION_V2_INPUT_VERSION)
+COMMUNICATION_VIEW_INPUT_VERSION = "source-composition-v3"
+CLAUSE_INPUT_VERSIONS = (COMPOSITION_V2_INPUT_VERSION, COMMUNICATION_VIEW_INPUT_VERSION)
+SOURCE_COMPOSITION_INPUT_VERSIONS = (SOURCE_COMPOSITION_INPUT_VERSION, *CLAUSE_INPUT_VERSIONS)
 PARTICIPANT_ACTIONS = (
     "Preserve the actor of each described action, separately from who reported the account. "
     "For each predicate, check who acted, what they did, to whom or what, and with which qualifiers. "
@@ -57,6 +59,64 @@ COHERENT_ENCODING_INSTRUCTIONS = (
     "Citation event_revision may also be spelled revision under this schema; use exactly one. "
     "Episode members and memory versions retain their own revision fields."
 )
+COMMUNICATION_VIEW_INSTRUCTIONS = (
+    "source-composition-v3: preserve coherent user reports of scene and expressed meaning; select "
+    "retention and useful short views from sources. Citation aliases require exactly one revision "
+    "spelling. Speech claims are rendered as verbatim excerpts before verification, with unresolved "
+    "embedded speakers and no generated short view. Assistant-containing episode labels quote "
+    "complete members or use role counts when overlong. Verify the rendered proposal's qualifications, "
+    "claim kind and grouping; quoted text establishes no external action or commitment."
+)
+
+
+def communication_view(group, item, sources, *, episode_references=()):
+    from . import cognition
+
+    result = copy.deepcopy(item)
+    if group == "claims" and item.get("claim_kind") in {
+        "agent_said", "proposal_offered", "commitment_expressed",
+    }:
+        parts = []
+        for ref in item["evidence_refs"]:
+            source = sources[(ref["event_id"], ref["event_revision"])]
+            observed = source["observed"]
+            if observed["actor_role"] != "assistant":
+                raise ValueError("Communication quote requires assistant provenance")
+            span = ref["span"]
+            text = cognition._content_text(observed["content"])[span["start"]:span["end"]]
+            parts.append(json.dumps(text, ensure_ascii=False))
+        statement = (
+            "Assistant communication, quoted verbatim; embedded speakers are not resolved: "
+            + " | ".join(parts)
+        )
+        if not parts or len(statement) > 2048:
+            raise ValueError("Complete communication quote exceeds the statement limit")
+        result["statement"] = statement
+        result.pop("recall_summary", None)
+    elif group == "episode_actions":
+        members = [sources[(ref["event_id"], ref["event_revision"])] for ref in episode_references]
+        if any(source["observed"]["actor_role"] == "assistant" for source in members):
+            parts = []
+            counts = {}
+            for source in members:
+                observed = source["observed"]
+                role = observed["actor_role"]
+                counts[role] = counts.get(role, 0) + 1
+                text = cognition._content_text(observed["content"])
+                parts.append(role + ": " + json.dumps(text, ensure_ascii=False))
+            statement = (
+                "Interaction group; original contributions quoted verbatim, embedded speakers unresolved: "
+                + " | ".join(parts)
+            )
+            if len(statement) > 2048:
+                statement = (
+                    "Interaction group containing "
+                    + ", ".join(f"{count} {role} source record(s)" for role, count in sorted(counts.items()))
+                    + ". Content and embedded speakers remain in the original member records; "
+                    "external actions and completion are not established."
+                )
+            result["organization_statement"] = statement
+    return result
 
 
 def compatible_reference_schema(base):

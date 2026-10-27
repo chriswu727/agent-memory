@@ -103,13 +103,16 @@ from .recall_resolution import (
     summary_verification_schema,
 )
 from .source_composition import (
+    CLAUSE_INPUT_VERSIONS,
     CLAUSE_VERIFY_INSTRUCTIONS,
     COHERENT_ENCODING_INSTRUCTIONS,
-    COMPOSITION_V2_INPUT_VERSION,
+    COMMUNICATION_VIEW_INPUT_VERSION,
+    COMMUNICATION_VIEW_INSTRUCTIONS,
     PARTICIPANT_ACTIONS,
     PARTICIPANT_VERIFY_INSTRUCTIONS,
     SOURCE_COMPOSITION_INPUT_VERSIONS,
     canonical_references,
+    communication_view,
     compatible_reference_schema,
     participant_verification_schema,
 )
@@ -241,7 +244,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = COMPOSITION_V2_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = COMMUNICATION_VIEW_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -563,7 +566,7 @@ def proposal_schema(mode, *, input_contract_version=None):
             "recall_summary": copy.deepcopy(SUMMARY_SCHEMA),
             "retention_priority": {"type": "number", "minimum": 0, "maximum": 1},
         })
-    if input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+    if input_contract_version in CLAUSE_INPUT_VERSIONS:
         base = compatible_reference_schema(base)
     if mode in BOUNDED_MODES:
         result = bounded_proposal_schema(mode, base, input_contract_version=input_contract_version)
@@ -572,7 +575,7 @@ def proposal_schema(mode, *, input_contract_version=None):
         raise ValueError("Unknown cognitive proposal mode")
     if mode == ORIENT_PROPOSAL_MODE:
         return (compatible_reference_schema(ORIENT_PROPOSAL_SCHEMA)
-                if input_contract_version == COMPOSITION_V2_INPUT_VERSION else ORIENT_PROPOSAL_SCHEMA)
+                if input_contract_version in CLAUSE_INPUT_VERSIONS else ORIENT_PROPOSAL_SCHEMA)
     return base
 
 
@@ -644,11 +647,14 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
             instructions += " " + PARTICIPANT_VERIFY_INSTRUCTIONS
         else:
             instructions += " " + PARTICIPANT_ACTIONS
-    if input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+    if input_contract_version in CLAUSE_INPUT_VERSIONS:
         if phase == "verification":
             instructions += " " + CLAUSE_VERIFY_INSTRUCTIONS
-        elif proposal_mode != ORIENT_PROPOSAL_MODE:
+        elif (proposal_mode != ORIENT_PROPOSAL_MODE
+              and input_contract_version != COMMUNICATION_VIEW_INPUT_VERSION):
             instructions += " " + COHERENT_ENCODING_INSTRUCTIONS
+    if input_contract_version == COMMUNICATION_VIEW_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
+        instructions += " " + COMMUNICATION_VIEW_INSTRUCTIONS
     if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
             and proposal_mode not in BOUNDED_MODES):
         data = shared_verification_sources(data)
@@ -1287,7 +1293,7 @@ class SemanticProcessor:
             try:
                 validator = Draft202012Validator(schema, format_checker=FormatChecker())
                 parsed = _parse(raw, validator, policy.max_response_bytes)
-                if phase == "proposal" and batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+                if phase == "proposal" and batch.input_contract_version in CLAUSE_INPUT_VERSIONS:
                     parsed, count = canonical_references(parsed)
                     if count:
                         logger.info("Canonicalized %s declared citation aliases in batch %s", count, batch.batch_id)
@@ -1391,6 +1397,19 @@ class SemanticProcessor:
                                                      current_input_refs=batch.current_input_refs,
                                                      input_contract_version=batch.input_contract_version,
                                                      abstraction_parents=abstraction_parents.get(item["proposal_id"], ()))
+                if batch.input_contract_version == COMMUNICATION_VIEW_INPUT_VERSION:
+                    rendered = communication_view(group, item, events, episode_references=references)
+                    item.clear()
+                    item.update(rendered)
+                    validate_bounded_proposal(
+                        batch.proposal_mode, group, item, schema=output_schema, events=events,
+                        learning_input_refs=batch.learning_input_refs, links=proposed.get("belief_links", []),
+                    )
+                    self._validate_proposal(
+                        group, item, batch.scope, events, assertions, episodes, proposed_claims,
+                        current_input_refs=batch.current_input_refs, input_contract_version=batch.input_contract_version,
+                        abstraction_parents=abstraction_parents.get(item["proposal_id"], ()),
+                    )
             except (ValueError, DomainError, KeyError, TypeError):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "invalid_proposal"})
                 continue
@@ -1466,7 +1485,7 @@ class SemanticProcessor:
                 for field in ("supporting_evidence_indices", "instance_verdicts", "request_verdict"):
                     properties.pop(field, None)
                 properties["link_verdict"] = {"type": "null"}
-        if batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION:
+        if batch.input_contract_version in CLAUSE_INPUT_VERSIONS:
             verification_schema = participant_verification_schema(
                 verification_schema, [item["proposal_id"] for group, item, _ in eligible if group != "episode_actions"])
         verified, error = invoke("verification", verification_data, verification_schema, self.verify)
@@ -1522,7 +1541,7 @@ class SemanticProcessor:
                     and not citation_coverage_supported(assessment)):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "citation_coverage_unconfirmed"})
                 continue
-            if (group != "episode_actions" and batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION
+            if (group != "episode_actions" and batch.input_contract_version in CLAUSE_INPUT_VERSIONS
                     and assessment.get("participant_actions_verdict") != "supports"):
                 rejected.append({"proposal_id": item["proposal_id"], "reason": "participant_actions_unconfirmed"})
                 continue

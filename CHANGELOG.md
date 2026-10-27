@@ -8,11 +8,13 @@ Agent Memory is a human-inspired memory engine for AI agents. It keeps persisten
 
 - Persistent source-backed memory, working context, background learning, consolidation and cue-guided retrieval.
 - Source-faithful composition instructions for autobiographical drafts, a versioned fifth episode participant-action facet, and required action checks for ordinary claims and their short views during verification and publication.
+- Version-3 source-rendered assistant communication and mixed episode views preserve embedded draft voices as quotations, with publication-time source recomputation and unchanged user-report semantic encoding. Overlong communication remains available in original records instead of being clipped into a derived claim.
 - Bounded original-source context with source integrity, scope, correction, historical and granularity guards; source-origin frequency avoids counting paraphrases as independent experiences.
 - Source-unit candidate admission and version-2 context deduplication keep repeated representations from crowding older useful source material out of recall, with unchanged hard bounds and qualified metadata preserved.
 - A prospective schema-declared citation-version alias, shared citation schemas within unchanged byte limits, and accurate known-malformed-response accounting before evaluation stops.
 - Task-specific cognitive instructions that preserve participant checks without sending unavailable episode operations or host writing procedures to bounded history processing.
 - A varied release fixture with fourteen sessions, twenty-six inputs, source-bounded review, durable continuation and a planned model-callback change.
+- The release fixture reserves 16,384 host output tokens for high-effort reasoning plus answer text after a preserved 4,096-token exhaustion; generic host defaults and old frozen plans remain unchanged.
 - Python lifecycle integration, HTTP API, TypeScript client, optional MCP memory tools and direct API-key terminal chat.
 - Scoped identities, corrections and deletion handling, bounded cognitive spending, and inspectable processing outcomes.
 - Local setup, restart, upgrade, backup and recovery with an independently installed package; the verified desktop target is macOS with uv and Docker.

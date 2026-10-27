@@ -41,7 +41,11 @@ from .semantic import (
     proposal_schema,
     validate_input_contract,
 )
-from .source_composition import COMPOSITION_V2_INPUT_VERSION
+from .source_composition import (
+    CLAUSE_INPUT_VERSIONS,
+    COMMUNICATION_VIEW_INPUT_VERSION,
+    communication_view,
+)
 
 
 def _error():
@@ -239,6 +243,9 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                     current_input_refs=current_input_refs,
                     input_contract_version=batch.input_contract_version,
                 )
+                if (batch.input_contract_version == COMMUNICATION_VIEW_INPUT_VERSION
+                        and communication_view(group, item, snapshot["events"], episode_references=references) != item):
+                    raise ValueError("Communication view differs from its exact sources")
             except (ValueError, KeyError, TypeError) as error:
                 raise DomainError("invalid_evidence", "Cognitive proposal is unsupported") from error
             coverage_required = (batch.input_contract_version in CITATION_COVERAGE_INPUT_VERSIONS
@@ -253,7 +260,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                                if isinstance(entry, dict) and entry.get("proposal_id") == item["proposal_id"]]
                 if coverage_required and (len(assessments) != 1 or not citation_coverage_supported(assessments[0])):
                     raise DomainError("invalid_evidence", "Citation coverage assessment is unsupported")
-                if (group != "episode_actions" and batch.input_contract_version == COMPOSITION_V2_INPUT_VERSION
+                if (group != "episode_actions" and batch.input_contract_version in CLAUSE_INPUT_VERSIONS
                         and (len(assessments) != 1 or assessments[0].get("participant_actions_verdict") != "supports")):
                     raise DomainError("invalid_evidence", "Participant-action assessment is unsupported")
                 evidence = references

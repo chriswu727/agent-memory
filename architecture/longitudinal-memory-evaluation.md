@@ -138,6 +138,8 @@ The release fixture can be selected with `--fixture release` on the same runner.
 
 The release plan freezes a callback change after seven completed sessions, from the evaluation host to the core `ChatCompletionsGenerator`, with the same provider, model and generation settings. This is a callback integration check, not cross-model evidence. Separate invocations reconstruct the service and client on the same durable brain and cumulative ledger; source review occurs at declared session boundaries. `--plan --fixture release` remains offline. Neither the fixture nor this documentation launches a paid run or grants it an acceptance pass. The bound plan, actual execution and review determine its outcome.
 
+New release-fixture plans reserve 16,384 host output tokens per request after an actual high-effort reasoning response exhausted the earlier 4,096-token limit before producing its answer. This ceiling includes reasoning and answer output; it is not the desired reply length or actual usage. The 26 host, 156 cognitive and 12 selector call allocations cap the release fixture at 194 calls and 2,988,032 reserved output tokens. The original fixture and generic chat defaults retain 4,096 host output tokens. Old plans, failures and recorded allowances are never rewritten to acquire the new capacity.
+
 ```sh
 uv run python -m examples.evaluate_longitudinal --plan --fixture release
 uv run python -m examples.evaluate_longitudinal --live --fixture release --sessions 4 --output .local/release-memory

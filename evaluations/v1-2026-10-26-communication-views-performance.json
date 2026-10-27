@@ -1,0 +1,259 @@
+{
+  "version": "v1-fixed-lexical-retrieval-regression-v1",
+  "state": "finished",
+  "measured_at": "2026-10-27T03:31:21.561661+00:00",
+  "build_id": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+  "source": "evaluations/v1-2026-10-25-retrieval-performance.json",
+  "source_sha256": "d9235cf960f546d0a1e0a4bed210e659b41a36797262dd4756078790c8dffcb3",
+  "harness_sha256": "a744f2002b31c65cfbef975b106f737d1ab4ae48e4504c2eedaa76d9a59f86d7",
+  "artifact_manifest": "evaluations/v1-2026-10-26-communication-views-artifacts.json",
+  "fixture_identity": {
+    "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+    "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+    "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+  },
+  "records": 10000,
+  "fixture_preflight": {
+    "counts": {
+      "memory_events": 10000,
+      "memory_assertions": 10000
+    },
+    "durable_sequence": 10000,
+    "indexed_sequence": 10000
+  },
+  "platform": "macOS-15.7.4-arm64-arm-64bit",
+  "processor": "Apple M4",
+  "python": "3.12.13",
+  "execution": "Installed wheel; isolated Python (-I), working directory /tmp.",
+  "cache_state": "Existing previously used fixture. No discarded warmups; OS/database caches were not flushed.",
+  "scope": "Local in-process public lexical recall, cue_recovery intent; no HTTP or provider waiting.",
+  "limitations": [
+    "One ordered pass through the existing 20 literal-label queries; no cold-cache or production SLA claim.",
+    "This cue_recovery benchmark does not exercise the continue_conversation source-neighborhood route.",
+    "No semantic inference, vector provider, relation-fanout, worker-throughput, or model-response benchmark.",
+    "The final integrated source suite had finished; other machine load was not controlled or randomized."
+  ],
+  "full_source_suite_terminal_summary_before_measurement": "5660 passed, 4 skipped, 1 warning in 528.96s (0:08:48)",
+  "full_source_suite_build_id": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+  "query_contract": {
+    "intent": "cue_recovery",
+    "additional_cues": [],
+    "cue_event_ids": [],
+    "budget": {
+      "max_context_tokens": 16000,
+      "max_model_calls": 0,
+      "max_embedding_calls": 0,
+      "max_expansion_steps": 2,
+      "max_wall_time_ms": 5000,
+      "max_cost_microunits": 0,
+      "currency": "USD",
+      "token_counting": "conservative_estimate",
+      "tokenizer_id": null
+    },
+    "read_fence": {
+      "minimum_durable_sequence": 0,
+      "consistency": "read_your_writes",
+      "snapshot_revision": null
+    },
+    "evidence_cutoff": {
+      "mode": "through_sequence",
+      "through_sequence": 10000
+    }
+  },
+  "sample_count_planned": 20,
+  "discarded_warmups": 0,
+  "p95_definition": "Nineteenth sorted observation out of twenty (nearest-rank).",
+  "p95_limit_ms": 500,
+  "samples": [
+    {
+      "query": "zeta00094",
+      "elapsed_ms": 152.206917,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00141",
+      "elapsed_ms": 127.202375,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00188",
+      "elapsed_ms": 104.100875,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00235",
+      "elapsed_ms": 117.314833,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00282",
+      "elapsed_ms": 153.597666,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00329",
+      "elapsed_ms": 135.758041,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00376",
+      "elapsed_ms": 126.100333,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00423",
+      "elapsed_ms": 119.529458,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00470",
+      "elapsed_ms": 123.491583,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00517",
+      "elapsed_ms": 121.798125,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00564",
+      "elapsed_ms": 124.716333,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00611",
+      "elapsed_ms": 120.479167,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00658",
+      "elapsed_ms": 124.692709,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00705",
+      "elapsed_ms": 119.879458,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00752",
+      "elapsed_ms": 122.961208,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00799",
+      "elapsed_ms": 98.692958,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00846",
+      "elapsed_ms": 96.049459,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00893",
+      "elapsed_ms": 107.1795,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00940",
+      "elapsed_ms": 99.133791,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    },
+    {
+      "query": "zeta00987",
+      "elapsed_ms": 108.077084,
+      "outcome": "completed",
+      "recall_status": "partial",
+      "source_found": true,
+      "provider_calls": 0,
+      "embedding_calls": 0
+    }
+  ],
+  "provider_calls": 0,
+  "finished_at": "2026-10-27T03:31:24.000571+00:00",
+  "median_ms": 121.138646,
+  "p95_ms": 152.206917,
+  "max_ms": 153.597666,
+  "expected_labels_found": 20,
+  "all_sources_found": true,
+  "all_requests_completed": true,
+  "embedding_calls": 0,
+  "passed": true
+}

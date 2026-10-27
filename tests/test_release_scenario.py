@@ -36,6 +36,12 @@ def test_release_budget_is_cumulative_and_callback_switch_is_frozen(evaluation):
     turns = [turn for session in value["scenario"]["sessions"] for turn in session["turns"]]
     assert value["allocation"]["host"] == len(turns)
     assert value["max_calls"] == sum(value["allocation"].values())
+    assert value["host_output_tokens"] == 16384
+    assert value["max_reserved_output_tokens"] == (
+        len(turns) * 16384 + value["allocation"]["cognition"] * 16384
+        + value["allocation"]["user"] * value["actor_output_tokens"]
+    )
+    assert evaluation.plan()["host_output_tokens"] == 4096
     assert value["alternate_callback_from_session"] == 7
     assert "release_scenario.py" in value["code_fingerprints"]
     assert value["runtime_policy"] == evaluation.plan()["runtime_policy"]

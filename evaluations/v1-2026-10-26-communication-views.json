@@ -1,0 +1,758 @@
+{
+  "status": "local_repair_verified_fresh_behavioral_acceptance_pending",
+  "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+  "input_contract": "source-composition-v3",
+  "source_quote_projection": "Before independent verification; source versions authenticated first; publication recomputes exact view. Raw response fingerprint unchanged. No narrator classifier or extra model call.",
+  "personal_memory": "User/operator source-backed semantic encoding, optional short views and source storage unchanged.",
+  "tradeoffs": [
+    "Assistant communication can occupy more context than a paraphrase.",
+    "Overlong complete speech quotes are omitted as derived claims, never clipped; originals remain.",
+    "Large mixed episodes have neutral membership labels.",
+    "No universal embedded-narrator resolver or positive-verdict guarantee.",
+    "Existing records are not silently migrated."
+  ],
+  "recorded_regression": "Exact source/wrong-claim/wrong-episode texts match bound prior failure; fake-verifier structural replay only, not real-model acceptance.",
+  "local_checks": {
+    "passed": true,
+    "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+    "full_source": {
+      "passed": 5660,
+      "failed": 0,
+      "skipped": 4,
+      "seconds": 528.96,
+      "warning": "Python multithreaded fork deprecation",
+      "log": "full-final.log"
+    },
+    "installed": {
+      "passed": 497,
+      "seconds": 145.94,
+      "warning": "Starlette httpx TestClient deprecation",
+      "log": "installed-delivery.log"
+    },
+    "desktop": {
+      "passed": 4,
+      "source_skips_executed": 4,
+      "seconds": 49.16,
+      "warning": "Starlette httpx TestClient deprecation",
+      "log": "desktop-delivery.log"
+    },
+    "typescript": {
+      "passed": 40,
+      "strict_typecheck": "passed",
+      "unchanged_sdk_files": true
+    },
+    "artifacts": {
+      "runtime_files": 122,
+      "source_sdist_wheel_installed_match": true
+    },
+    "focused_source": {
+      "passed": 55,
+      "log": "input-reduction-focused.log",
+      "unchanged_two_batch_test_passed": true
+    },
+    "recorded_failure": true,
+    "graceful_stop_and_no_replay_controls": {
+      "graceful_stop_after_current_job": "passed",
+      "both_mock_phase_results_settled_completed": true,
+      "prior_logical_request_rejected_before_provider": "passed",
+      "paid_provider_calls": 0,
+      "scope": "Deterministic control-flow check with synthetic proposal/verifier; not semantic behavioral evidence."
+    },
+    "earlier_full_failure": "Preserved ee0a5 build:5659pass,1failure,4skip. Guidance duplicated input overhead, original two-batch assertion unchanged; current full run includes compact guidance repair.",
+    "paid_provider_calls_in_local_checks": 0,
+    "behavioral_acceptance": "Not passed; fresh real-model campaign not started.",
+    "performance": {
+      "retrieval": {
+        "passed": true,
+        "expected_labels_found": 20,
+        "p95_ms": 152.206917,
+        "limit_ms": 500
+      },
+      "capabilities": {
+        "passed": true,
+        "median_ms": 67.213917,
+        "limit_ms": 100
+      },
+      "provider_calls": 0,
+      "embedding_calls": 0
+    }
+  },
+  "earlier_failures_preserved": {
+    "full_before_input_reduction": {
+      "runtime_build": "ee0a515b4876d31bddc08c357f3f63f18acf47568f8ae63bb332e46219053d88",
+      "passed": 5659,
+      "failed": 1,
+      "skipped": 4,
+      "seconds": 541.01,
+      "cause": "Additional duplicated instructions split a fixed-budget coalesced window into three batches rather than two; guidance compacted and merged without raising limits or altering the test."
+    },
+    "initial_focused": {
+      "passed": 570,
+      "failed": 2,
+      "causes": [
+        "New unmarked-voice fixture used a real-world claim despite the existing source world being quoted; test now retains the original world.",
+        "Synthetic verifier omitted required recall_summary_verdict; fixture now supplies it. No runtime guards removed."
+      ]
+    }
+  },
+  "fresh_plan_sha256": "39e921804f9220bc0c762637f90b64c8000d96207e111ceaf08886ddd542b6db",
+  "fresh_plan_scope": "Unchanged26inputs14sessions18cases,source-bound reviews at4/7/10/11/14 sessions. One finite fresh regression, no automatic retry or replacement.",
+  "host_reasoning_output_budget": "Release fixture16384 instead of4096; actual preceding high-reasoning exhaustion retained. Generic default unchanged.",
+  "G4": "unpassed; current real-model execution not started",
+  "new_paid_calls": 0,
+  "retrieval_performance": {
+    "version": "v1-fixed-lexical-retrieval-regression-v1",
+    "state": "finished",
+    "measured_at": "2026-10-27T03:31:21.561661+00:00",
+    "build_id": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+    "source": "evaluations/v1-2026-10-25-retrieval-performance.json",
+    "source_sha256": "d9235cf960f546d0a1e0a4bed210e659b41a36797262dd4756078790c8dffcb3",
+    "harness_sha256": "a744f2002b31c65cfbef975b106f737d1ab4ae48e4504c2eedaa76d9a59f86d7",
+    "artifact_manifest": "evaluations/v1-2026-10-26-communication-views-artifacts.json",
+    "fixture_identity": {
+      "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+      "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+      "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+    },
+    "records": 10000,
+    "fixture_preflight": {
+      "counts": {
+        "memory_events": 10000,
+        "memory_assertions": 10000
+      },
+      "durable_sequence": 10000,
+      "indexed_sequence": 10000
+    },
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "execution": "Installed wheel; isolated Python (-I), working directory /tmp.",
+    "cache_state": "Existing previously used fixture. No discarded warmups; OS/database caches were not flushed.",
+    "scope": "Local in-process public lexical recall, cue_recovery intent; no HTTP or provider waiting.",
+    "limitations": [
+      "One ordered pass through the existing 20 literal-label queries; no cold-cache or production SLA claim.",
+      "This cue_recovery benchmark does not exercise the continue_conversation source-neighborhood route.",
+      "No semantic inference, vector provider, relation-fanout, worker-throughput, or model-response benchmark.",
+      "The final integrated source suite had finished; other machine load was not controlled or randomized."
+    ],
+    "full_source_suite_terminal_summary_before_measurement": "5660 passed, 4 skipped, 1 warning in 528.96s (0:08:48)",
+    "full_source_suite_build_id": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+    "query_contract": {
+      "intent": "cue_recovery",
+      "additional_cues": [],
+      "cue_event_ids": [],
+      "budget": {
+        "max_context_tokens": 16000,
+        "max_model_calls": 0,
+        "max_embedding_calls": 0,
+        "max_expansion_steps": 2,
+        "max_wall_time_ms": 5000,
+        "max_cost_microunits": 0,
+        "currency": "USD",
+        "token_counting": "conservative_estimate",
+        "tokenizer_id": null
+      },
+      "read_fence": {
+        "minimum_durable_sequence": 0,
+        "consistency": "read_your_writes",
+        "snapshot_revision": null
+      },
+      "evidence_cutoff": {
+        "mode": "through_sequence",
+        "through_sequence": 10000
+      }
+    },
+    "sample_count_planned": 20,
+    "discarded_warmups": 0,
+    "p95_definition": "Nineteenth sorted observation out of twenty (nearest-rank).",
+    "p95_limit_ms": 500,
+    "samples": [
+      {
+        "query": "zeta00094",
+        "elapsed_ms": 152.206917,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00141",
+        "elapsed_ms": 127.202375,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00188",
+        "elapsed_ms": 104.100875,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00235",
+        "elapsed_ms": 117.314833,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00282",
+        "elapsed_ms": 153.597666,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00329",
+        "elapsed_ms": 135.758041,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00376",
+        "elapsed_ms": 126.100333,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00423",
+        "elapsed_ms": 119.529458,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00470",
+        "elapsed_ms": 123.491583,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00517",
+        "elapsed_ms": 121.798125,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00564",
+        "elapsed_ms": 124.716333,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00611",
+        "elapsed_ms": 120.479167,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00658",
+        "elapsed_ms": 124.692709,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00705",
+        "elapsed_ms": 119.879458,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00752",
+        "elapsed_ms": 122.961208,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00799",
+        "elapsed_ms": 98.692958,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00846",
+        "elapsed_ms": 96.049459,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00893",
+        "elapsed_ms": 107.1795,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00940",
+        "elapsed_ms": 99.133791,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00987",
+        "elapsed_ms": 108.077084,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      }
+    ],
+    "provider_calls": 0,
+    "finished_at": "2026-10-27T03:31:24.000571+00:00",
+    "median_ms": 121.138646,
+    "p95_ms": 152.206917,
+    "max_ms": 153.597666,
+    "expected_labels_found": 20,
+    "all_sources_found": true,
+    "all_requests_completed": true,
+    "embedding_calls": 0,
+    "passed": true
+  },
+  "relation_performance": {
+    "version": "relation-capability-performance-v1",
+    "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+    "input_contract": "source-composition-v3",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "endpoint_count": 32,
+    "eligible_pair_count": 496,
+    "samples_ms": [
+      67.865584,
+      81.451542,
+      67.206208,
+      67.213917,
+      66.970458
+    ],
+    "median_ms": 67.213917,
+    "median_limit_ms": 100,
+    "passed": true,
+    "cache_state": "No discarded warmup; five consecutive calls in one process.",
+    "fixture": "Thirty-two independent user-source study reports with complete known semantic endpoint metadata.",
+    "fixture_sha256": "25db1060ff6f65bbfa319ec6c8b46a80192dd18bd280ee1ef27b9ffe7f6aba8b",
+    "metadata_bytes": 13400,
+    "provider_calls": 0,
+    "embedding_calls": 0
+  },
+  "recorded_failure_replay": {
+    "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+    "source_head_sha256": "62a00579d71f6b1c61eb54264292ed7cbec21bd1a709fd067dbf0cf554d7321a",
+    "source_plan_sha256": "566d2d586d137e731a76de83c8ee74e1860a6d383bb74de8ab02984aec999d4d",
+    "recorded_source_content_sha256": "a7a34ae92e084123ab0fc249dc726c7afce871bcfc2f9d75c6422f64987ba18a",
+    "recorded_bad_claim_sha256": "b7278988b1548a67aa1902435e7226c801cbf727658c38bd6129260d2985f867",
+    "recorded_bad_episode_sha256": "d1499cb85f7a33905482a389700fb0fa37b9d488c5edbd597f4a10a0c817978c",
+    "fixture_texts_match_recorded_failure": true,
+    "original_journal_and_ledger_unchanged": true,
+    "scope": "Synthetic IDs/scope rebind exact recorded source and wrong proposal texts to the current processor with an always-supports fake verifier. Structural regression, not real-model acceptance, historical operation recovery or source migration.",
+    "provider_calls": 0,
+    "synthetic_processor_phases": [
+      "proposal",
+      "verification"
+    ],
+    "raw_response_fingerprint_preserved": true,
+    "verification_received_rendered_proposals": [
+      {
+        "citation_scope": {
+          "context_authority": "qualifications_and_counterevidence_except_listed_provenance",
+          "coverage_target": "entire_proposal",
+          "other_proposals_authority": "none",
+          "positive_evidence_indices": [
+            0
+          ],
+          "provenance_authority": {
+            "fields": [
+              "observed.actor_role",
+              "observed.delivery_state"
+            ],
+            "source_binding": "selected_positive_reference_event_id_revision_and_content_sha256",
+            "use": "recorded_communication_attribution_and_delivery_only"
+          },
+          "support_selection": "all_positive_evidence_indices",
+          "version": "source-composition-v3"
+        },
+        "evidence": [
+          {
+            "evidence_index": 0,
+            "excerpt": "Here\u2019s a more casual version:\n\n\u201cSam exported the Cedar booklet, I checked the captions, and Priya was the one who uploaded the files \u2014 not Sam. I still haven\u2019t heard back from the recipient that they\u2019ve got them.\u201d",
+            "reference": {
+              "event_id": "event-2",
+              "event_revision": 1,
+              "relationship": "supports",
+              "source_content_sha256": "a7a34ae92e084123ab0fc249dc726c7afce871bcfc2f9d75c6422f64987ba18a",
+              "span": {
+                "end": 213,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "source_ref": {
+              "event_id": "event-2",
+              "revision": 1
+            }
+          }
+        ],
+        "group": "claims",
+        "proposal": {
+          "claim_kind": "agent_said",
+          "conditions": {
+            "op": "always"
+          },
+          "counterexamples": [],
+          "evidence_refs": [
+            {
+              "event_id": "event-2",
+              "event_revision": 1,
+              "relationship": "supports",
+              "source_content_sha256": "a7a34ae92e084123ab0fc249dc726c7afce871bcfc2f9d75c6422f64987ba18a",
+              "span": {
+                "end": 213,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            }
+          ],
+          "memory_kind": "episodic",
+          "procedure": null,
+          "proposal_id": "claim-1",
+          "representation": "episode_fragment",
+          "source_memory_versions": [],
+          "statement": "Assistant communication, quoted verbatim; embedded speakers are not resolved: \"Here\u2019s a more casual version:\\n\\n\u201cSam exported the Cedar booklet, I checked the captions, and Priya was the one who uploaded the files \u2014 not Sam. I still haven\u2019t heard back from the recipient that they\u2019ve got them.\u201d\"",
+          "valid_during": {
+            "kind": "unknown"
+          },
+          "valid_time": {
+            "basis": "unknown",
+            "end": null,
+            "precision": "unknown",
+            "start": null
+          },
+          "world": "real_world"
+        }
+      },
+      {
+        "episode_context": {
+          "effective_member_refs": [
+            {
+              "event_id": "event-1",
+              "revision": 1
+            },
+            {
+              "event_id": "event-2",
+              "revision": 1
+            }
+          ],
+          "evidence_roles": [
+            {
+              "event_id": "event-1",
+              "evidence_index": 0,
+              "revision": 1,
+              "roles": [
+                "proposed_member"
+              ]
+            },
+            {
+              "event_id": "event-2",
+              "evidence_index": 1,
+              "revision": 1,
+              "roles": [
+                "proposed_member"
+              ]
+            }
+          ],
+          "existing_episode": null,
+          "interpretation": "observed_interaction_records_not_external_event_truth",
+          "prior_member_refs": [],
+          "proposed_member_refs": [
+            {
+              "event_id": "event-1",
+              "revision": 1
+            },
+            {
+              "event_id": "event-2",
+              "revision": 1
+            }
+          ],
+          "transition": {
+            "action": "create",
+            "before_state": null,
+            "boundary_role": "no_closing_boundary_claim",
+            "resulting_groups": [
+              {
+                "boundary_ref": null,
+                "member_refs": [
+                  {
+                    "event_id": "event-1",
+                    "revision": 1
+                  },
+                  {
+                    "event_id": "event-2",
+                    "revision": 1
+                  }
+                ],
+                "role": "whole",
+                "state": "open"
+              }
+            ]
+          },
+          "version": "episode-organization-v1"
+        },
+        "evidence": [
+          {
+            "evidence_index": 0,
+            "excerpt": "Make that a little more casual, but keep who did what clear.",
+            "reference": {
+              "event_id": "event-1",
+              "event_revision": 1,
+              "relationship": "supports",
+              "source_content_sha256": "c8fb0d3d0974bedd7731d34350a44e88d89ce7a95788430cc25f2746277913e2",
+              "span": {
+                "end": 60,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "source_ref": {
+              "event_id": "event-1",
+              "revision": 1
+            }
+          },
+          {
+            "evidence_index": 1,
+            "excerpt": "Here\u2019s a more casual version:\n\n\u201cSam exported the Cedar booklet, I checked the captions, and Priya was the one who uploaded the files \u2014 not Sam. I still haven\u2019t heard back from the recipient that they\u2019ve got them.\u201d",
+            "reference": {
+              "event_id": "event-2",
+              "event_revision": 1,
+              "relationship": "supports",
+              "source_content_sha256": "a7a34ae92e084123ab0fc249dc726c7afce871bcfc2f9d75c6422f64987ba18a",
+              "span": {
+                "end": 213,
+                "start": 0,
+                "unit": "unicode_code_point"
+              }
+            },
+            "source_ref": {
+              "event_id": "event-2",
+              "revision": 1
+            }
+          }
+        ],
+        "group": "episode_actions",
+        "proposal": {
+          "action": "create",
+          "boundary_ref": null,
+          "episode_id": null,
+          "expected_revision": null,
+          "member_refs": [
+            {
+              "event_id": "event-1",
+              "revision": 1
+            },
+            {
+              "event_id": "event-2",
+              "revision": 1
+            }
+          ],
+          "organization_statement": "Interaction group; original contributions quoted verbatim, embedded speakers unresolved: user: \"Make that a little more casual, but keep who did what clear.\" | assistant: \"Here\u2019s a more casual version:\\n\\n\u201cSam exported the Cedar booklet, I checked the captions, and Priya was the one who uploaded the files \u2014 not Sam. I still haven\u2019t heard back from the recipient that they\u2019ve got them.\u201d\"",
+          "proposal_id": "episode-1"
+        }
+      }
+    ],
+    "schema_validated_new_memory": {
+      "memory_id": "semantic-e89816eba7bf9de156d0ef704a8b0e8b",
+      "revision": 1,
+      "scope": {
+        "tenant_id": "tenant",
+        "brain_id": "brain",
+        "principal_binding_id": "owner",
+        "conversation_id": "conversation",
+        "branch_id": "main",
+        "visibility": "private",
+        "access_policy_id": "private-owner",
+        "policy_revision": 1,
+        "scope_generation": 1
+      },
+      "memory_kind": "episodic",
+      "statement": "Assistant communication, quoted verbatim; embedded speakers are not resolved: \"Here\u2019s a more casual version:\\n\\n\u201cSam exported the Cedar booklet, I checked the captions, and Priya was the one who uploaded the files \u2014 not Sam. I still haven\u2019t heard back from the recipient that they\u2019ve got them.\u201d\"",
+      "epistemic_status": "derived_inference",
+      "world": "real_world",
+      "evidence_refs": [
+        {
+          "event_id": "event-2",
+          "event_revision": 1,
+          "source_content_sha256": "a7a34ae92e084123ab0fc249dc726c7afce871bcfc2f9d75c6422f64987ba18a",
+          "relationship": "supports",
+          "span": {
+            "start": 0,
+            "end": 213,
+            "unit": "unicode_code_point"
+          }
+        }
+      ],
+      "valid_time": {
+        "start": null,
+        "end": null,
+        "precision": "unknown",
+        "basis": "unknown"
+      },
+      "system_time": {
+        "recorded_at": "2026-10-27T03:24:09.793474Z",
+        "superseded_at": null
+      },
+      "lifecycle": "active",
+      "supersedes_memory_ids": [],
+      "derivation": {
+        "method": "aggregation",
+        "rule_version": "source-composition-v3",
+        "model_version": null,
+        "source_memory_versions": []
+      },
+      "dynamics": {
+        "activation": 0.5,
+        "retention_priority": 0.5,
+        "detail_level": "gist",
+        "last_external_reinforcement_at": null,
+        "last_recalled_at": null,
+        "decay_policy_version": "external-use-only-v1",
+        "user_pinned": false,
+        "reasons": [
+          "default_policy"
+        ]
+      },
+      "disclosure_basis": {
+        "dependency_generation": 0,
+        "validation_state": "current",
+        "support_paths": [
+          {
+            "path_id": "path-semantic-e89816eba7bf9de156d0ef704a8b0e8b",
+            "evidence_refs": [
+              {
+                "event_id": "event-2",
+                "event_revision": 1,
+                "source_content_sha256": "a7a34ae92e084123ab0fc249dc726c7afce871bcfc2f9d75c6422f64987ba18a",
+                "relationship": "supports",
+                "span": {
+                  "start": 0,
+                  "end": 213,
+                  "unit": "unicode_code_point"
+                }
+              }
+            ],
+            "source_memory_versions": [],
+            "permitted_scope": {
+              "tenant_id": "tenant",
+              "brain_id": "brain",
+              "principal_binding_id": "owner",
+              "conversation_id": "conversation",
+              "branch_id": "main",
+              "visibility": "private",
+              "access_policy_id": "private-owner",
+              "policy_revision": 1,
+              "scope_generation": 1
+            },
+            "dependency_generation": 0,
+            "state": "current",
+            "independently_supports_complete_statement": true
+          }
+        ],
+        "selected_path_ids": [
+          "path-semantic-e89816eba7bf9de156d0ef704a8b0e8b"
+        ],
+        "release_mode": "supported_scope"
+      },
+      "root_event_ids": [
+        "event-2"
+      ],
+      "representation": "episode_fragment",
+      "claim_kind": "agent_said",
+      "conditions": {
+        "op": "always"
+      },
+      "counterexamples": [],
+      "verification": {
+        "state": "supported_inference",
+        "method": "semantic_model",
+        "not_a_truth_certificate": true
+      },
+      "procedure": null,
+      "valid_during": {
+        "kind": "unknown"
+      },
+      "condition_registry_fingerprint": "14e281b6ca3f39da1c754fecbddce5de8aaac42821b1ef5deb27901a24733a1b"
+    },
+    "rendered_episode": {
+      "proposal_id": "episode-1",
+      "action": "create",
+      "episode_id": null,
+      "organization_statement": "Interaction group; original contributions quoted verbatim, embedded speakers unresolved: user: \"Make that a little more casual, but keep who did what clear.\" | assistant: \"Here\u2019s a more casual version:\\n\\n\u201cSam exported the Cedar booklet, I checked the captions, and Priya was the one who uploaded the files \u2014 not Sam. I still haven\u2019t heard back from the recipient that they\u2019ve got them.\u201d\"",
+      "expected_revision": null,
+      "member_refs": [
+        {
+          "event_id": "event-1",
+          "revision": 1
+        },
+        {
+          "event_id": "event-2",
+          "revision": 1
+        }
+      ],
+      "boundary_ref": null,
+      "verification": {
+        "state": "supported_inference",
+        "method": "semantic_model",
+        "not_a_truth_certificate": true
+      }
+    }
+  },
+  "acceptance": "G4 remains unpassed; a future completed run still needs whole-answer/source review and the declared age-diagnostic evidence. Previous failures remain failed."
+}

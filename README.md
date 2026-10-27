@@ -126,7 +126,7 @@ The current context still has a limit. The runtime selects memory within that bu
 
 [Source-preserving recall resolution](architecture/recall-resolution.md) explains encoding, cue expansion and upgrade compatibility. Existing memories without a verified short expression keep their full view; an upgrade does not run a paid rewrite of the archive.
 
-[Source-faithful composition](architecture/source-composition.md) separates factual details from writing style and requires participant-action checks for new claims, short views and episodes. Bounded original-source context can retain a scene together with its expressed meaning. Host instructions and model assessments remain fallible; installing memory tools alone cannot enforce an arbitrary agent's writing behavior.
+[Source-faithful composition](architecture/source-composition.md) separates factual details from writing style and requires participant-action checks for new claims, short views and episodes. New assistant speech memories retain source quotations with unresolved embedded voices; publication recomputes those views instead of trusting a paraphrase. User-reported facts still support semantic encoding and verified short expressions. Bounded original-source context can retain a scene together with its expressed meaning. Host instructions and model assessments remain fallible; installing memory tools alone cannot enforce an arbitrary agent's writing behavior.
 
 ## Local operation
 
@@ -168,6 +168,8 @@ The [subsequent release scenario](evaluations/v1-2026-10-26-release-longitudinal
 The [next source-coherence run](evaluations/v1-2026-10-26-coherent-recall.md) reached a host reasoning-output limit, and its diagnostic continuation exposed missing routine commitments. The [source-unit repair](evaluations/v1-2026-10-26-source-capsules.md) fixes duplicate crowding in candidate admission and context assembly, with 5,591 source checks, 430 installed checks and four desktop flows passing. Paired SQL recovery retains the commitments within the original budget. A subsequent same-brain diagnostic produced three correct replies but published a wrong actor assignment from a first-person draft; it was closed at review. Behavioral acceptance remains unpassed; failed and unexecuted cases are preserved.
 
 Version 0.1.0 remains in [release closeout](docs/releasing.md): scope is frozen while the observed defects are repaired and acceptance is completed. The [changelog](CHANGELOG.md) remains an unreleased draft.
+
+The [source-rendered communication candidate](evaluations/v1-2026-10-26-communication-views.json) addresses the draft-voice publication failure without another model call. Its final local run passed 5,660 source tests, 497 installed checks, four desktop flows and 40 TypeScript tests plus strict typechecking; 122 runtime files match the source archive, wheel and isolated installation. An earlier input-overhead regression is retained alongside its repair. Fresh real-model behavioral acceptance remains pending.
 
 Known limits remain visible: a model can treat historical information as current fact, retrieval can include irrelevant material, and semantic verification can reject valid proposals. Full longitudinal acceptance and real elapsed-time aging remain incomplete. Streaming, tool loops, multimodal input, native one-click installation, and full integration into arbitrary AI clients are not currently delivered; Windows/Linux desktop acceptance has not been run on actual machines. Personality and emotion modeling are future research.
 

@@ -71,6 +71,7 @@ def plan(*, fixture="original"):
     semantic = SemanticPolicy(max_output_tokens=16384, max_response_bytes=65536,
                               max_wall_time_ms=600000)
     cognitive_calls = len(turns) * 6
+    host_output_tokens = 16384 if fixture == "release" else 4096
     files = ("evaluate_longitudinal.py", "longitudinal_scenario.py", "longitudinal_journal.py",
              "longitudinal_learning.py", "evaluation_support.py", "evaluation_host.py",
              "evaluate_deepseek.py", "evaluate_conversation.py")
@@ -87,13 +88,13 @@ def plan(*, fixture="original"):
                                                recent_context_events=6, orientation_policy="on_demand")),
         "semantic_policy": asdict(semantic), "host_instructions": HOST_INSTRUCTIONS,
         "actor_instructions": ACTOR_INSTRUCTIONS,
-        "host_output_tokens": 4096, "actor_output_tokens": 512,
+        "host_output_tokens": host_output_tokens, "actor_output_tokens": 512,
         "actor_thinking": "disabled", "actor_json_mode": True,
         "provider_envelope_bytes": 262144,
         "max_actor_input_bytes": 131072, "provider_timeout_seconds": 240,
         "allocation": {"host": len(turns), "cognition": cognitive_calls, "user": actor_calls},
         "max_calls": len(turns) + cognitive_calls + actor_calls,
-        "max_reserved_output_tokens": len(turns) * 4096 + actor_calls * 512 + cognitive_calls * 16384,
+        "max_reserved_output_tokens": len(turns) * host_output_tokens + actor_calls * 512 + cognitive_calls * 16384,
         "brain_budget": {"window_seconds": 2592000, "max_model_calls": cognitive_calls,
                          "max_input_bytes": len(turns) * 3 * semantic.max_input_bytes},
         "time_mode": "narrative_order_only", "aging_assessed": False,

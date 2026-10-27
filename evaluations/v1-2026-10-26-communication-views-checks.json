@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+  "full_source": {
+    "passed": 5660,
+    "failed": 0,
+    "skipped": 4,
+    "seconds": 528.96,
+    "warning": "Python multithreaded fork deprecation",
+    "log": "full-final.log"
+  },
+  "installed": {
+    "passed": 497,
+    "seconds": 145.94,
+    "warning": "Starlette httpx TestClient deprecation",
+    "log": "installed-delivery.log"
+  },
+  "desktop": {
+    "passed": 4,
+    "source_skips_executed": 4,
+    "seconds": 49.16,
+    "warning": "Starlette httpx TestClient deprecation",
+    "log": "desktop-delivery.log"
+  },
+  "typescript": {
+    "passed": 40,
+    "strict_typecheck": "passed",
+    "unchanged_sdk_files": true
+  },
+  "artifacts": {
+    "runtime_files": 122,
+    "source_sdist_wheel_installed_match": true
+  },
+  "focused_source": {
+    "passed": 55,
+    "log": "input-reduction-focused.log",
+    "unchanged_two_batch_test_passed": true
+  },
+  "recorded_failure": true,
+  "graceful_stop_and_no_replay_controls": {
+    "graceful_stop_after_current_job": "passed",
+    "both_mock_phase_results_settled_completed": true,
+    "prior_logical_request_rejected_before_provider": "passed",
+    "paid_provider_calls": 0,
+    "scope": "Deterministic control-flow check with synthetic proposal/verifier; not semantic behavioral evidence."
+  },
+  "earlier_full_failure": "Preserved ee0a5 build:5659pass,1failure,4skip. Guidance duplicated input overhead, original two-batch assertion unchanged; current full run includes compact guidance repair.",
+  "paid_provider_calls_in_local_checks": 0,
+  "behavioral_acceptance": "Not passed; fresh real-model campaign not started.",
+  "performance": {
+    "retrieval": {
+      "passed": true,
+      "expected_labels_found": 20,
+      "p95_ms": 152.206917,
+      "limit_ms": 500
+    },
+    "capabilities": {
+      "passed": true,
+      "median_ms": 67.213917,
+      "limit_ms": 100
+    },
+    "provider_calls": 0,
+    "embedding_calls": 0
+  }
+}

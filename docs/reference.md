@@ -514,6 +514,8 @@ agent-memory desktop retry-learning JOB_ID --expected-fence 1 --request-id recov
 
 Use the job ID and fence returned by monitoring. If the recovery response is lost, reuse the exact request ID and fence. Python exposes `RuntimeClient(memory).learning_progress()`, `.job(job_id)`, and `.retry_learning(job_id, request_id="recover-1", expected_fence=1)`; TypeScript exposes `memory.learningProgress()` and `memory.retryLearning(jobId, {requestId: "recover-1", expectedFence: 1})`. Neither SDK automatically retries this write.
 
+New cognitive jobs use `source-composition-v3`. Assistant speech claims retain exact selected source quotations with embedded speakers unresolved; independently generated short views are omitted for these speech claims. Mixed episodes quote complete member contributions or use a neutral membership view if they exceed the statement limit. Publication recomputes these source-rendered views. User/operator reports keep ordinary semantic encoding and optional verified short expressions. This does not resolve every narrator, prove a drafted commitment happened, rewrite old memories, or change the retrieval/context ceilings. See [source composition](../architecture/source-composition.md) for the representation tradeoffs.
+
 ## Current low-level interfaces
 
 The Python client is in `agent_memory.client`, with an underlying workflow example in [examples/connect.py](../examples/connect.py). The TypeScript client is in [sdk/typescript](../sdk/typescript). The following HTTP contract is for adapters to orchestrate; it is not the target product's required step-by-step workflow for users or the main agent:
