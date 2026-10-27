@@ -1,5 +1,5 @@
 {
-  "status": "local_repair_verified_fresh_behavioral_acceptance_pending",
+  "status": "local_actor_repair_verified_real_model_stopped_before_verification",
   "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
   "input_contract": "source-composition-v3",
   "source_quote_projection": "Before independent verification; source versions authenticated first; publication recomputes exact view. Raw response fingerprint unchanged. No narrator classifier or extra model call.",
@@ -99,7 +99,7 @@
   "fresh_plan_scope": "Unchanged26inputs14sessions18cases,source-bound reviews at4/7/10/11/14 sessions. One finite fresh regression, no automatic retry or replacement.",
   "host_reasoning_output_budget": "Release fixture16384 instead of4096; actual preceding high-reasoning exhaustion retained. Generic default unchanged.",
   "G4": "unpassed; current real-model execution not started",
-  "new_paid_calls": 0,
+  "new_paid_calls": 2,
   "retrieval_performance": {
     "version": "v1-fixed-lexical-retrieval-regression-v1",
     "state": "finished",
@@ -754,5 +754,77 @@
       }
     }
   },
-  "acceptance": "G4 remains unpassed; a future completed run still needs whole-answer/source review and the declared age-diagnostic evidence. Previous failures remain failed."
+  "acceptance": "G4 failed required processing after one delivered reply and no complete learning/session. No publication, callback switch, delayed return, caption or age case was reached. New source-sharing repair must preserve this failure and be separately verified.",
+  "source_commit": "e7b94182b0833d06c433af5ff6737d3ba528288e",
+  "real_model": {
+    "plan_sha256": "39e921804f9220bc0c762637f90b64c8000d96207e111ceaf08886ddd542b6db",
+    "source_head_sha256": "53bdd3adeec3422ada12f6bb04d3ce1f07a8b6b6edae7c761d045b6f8db77686",
+    "source_commit": "e7b94182b0833d06c433af5ff6737d3ba528288e",
+    "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+    "verdict": "failed_required_processing",
+    "continue_permitted": false,
+    "campaign_closed": true,
+    "whole_answer_review": {
+      "zine-outline": "Pass applicable current-input task constraints: eight-page sketch zine, two20minute sessions, Monday/Thursday avoided, suggestions remain options rather than adopted permanent commitments."
+    },
+    "turns_delivered": 1,
+    "turns_learning_complete": 0,
+    "sessions_complete": 0,
+    "unexecuted_authored_inputs": 25,
+    "required_cases": {
+      "whole_answer_pass": 1,
+      "unexecuted": 17,
+      "gate_pass": false
+    },
+    "new_derived_memories_published": 0,
+    "new_episodes_published": 0,
+    "actual_timing_seconds": 185.01072366698645,
+    "provider_cognitive_wait_seconds": 159.65752529201563,
+    "failure": "First encoding used general-v1 because selected history had complete bounded coverage. Verification material repeated20source records for only2unique source versions. The121913byte request exceeded98304 and was not dispatched. The known proposal was charged, job cancelledbudget_exceeded, no recovery/retry.",
+    "usage": {
+      "completed_calls": 2,
+      "reserved_calls": 2,
+      "reserved_output_tokens": 32768,
+      "usage_confirmed_calls": 2,
+      "usage_totals": {
+        "completion_tokens": 13072,
+        "prompt_cache_hit_tokens": 4224,
+        "prompt_cache_miss_tokens": 6792,
+        "prompt_tokens": 11016,
+        "total_tokens": 24088
+      },
+      "usage_unknown_calls": 0
+    },
+    "offline_reproduction": {
+      "runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+      "source_plan_sha256": "39e921804f9220bc0c762637f90b64c8000d96207e111ceaf08886ddd542b6db",
+      "source_head_sha256": "53bdd3adeec3422ada12f6bb04d3ce1f07a8b6b6edae7c761d045b6f8db77686",
+      "recorded_proposal_sha256": "3e0ebc05e09605a8a18fc365977ea13ec9dfeacbe39976d9b258ea4a1792be8b",
+      "scope": "Zero-model in-memory replay of the exact recorded proposal and source request with synthetic batch ID; no database/source mutation or original operation retry.",
+      "provider_calls": 0,
+      "processor_status": "budget_exhausted",
+      "synthetic_phase_count": 1,
+      "verification_provider_invocations": 0,
+      "request_sizes": [
+        {
+          "phase": "proposal",
+          "bytes": 53470,
+          "message_bytes": 37851
+        },
+        {
+          "phase": "verification",
+          "bytes": 121913,
+          "message_bytes": 109128
+        }
+      ],
+      "limits": {
+        "per_request_bytes": 98304,
+        "total_input_bytes": 196608
+      },
+      "rejected": []
+    },
+    "age_diagnostics": "Not executed: final-completed checkpoint not reached.",
+    "limits": "Source-rendered actor repair has deterministic verification and installed tests, not a new real-model publication pass. Old failed campaigns unchanged. No further calls under this closed plan."
+  },
+  "raw_evidence_manifest": "v1-2026-10-26-communication-views-evidence.json"
 }

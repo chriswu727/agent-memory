@@ -1,0 +1,385 @@
+{
+  "source_plan_sha256": "39e921804f9220bc0c762637f90b64c8000d96207e111ceaf08886ddd542b6db",
+  "source_head_sha256": "53bdd3adeec3422ada12f6bb04d3ce1f07a8b6b6edae7c761d045b6f8db77686",
+  "source_runtime_build": "fe52d33156502e59d20f3a44c4e80ec67fbd2ded742bb0488b10c1b21307f5e8",
+  "scope": "Exact fictional source and model response from the closed first-encoding failure. Synthetic batch identifier for offline verification only; no old operation retry.",
+  "batch": {
+    "sources": [
+      {
+        "content_sha256": "d33336b1dd33cc61a936e74d97df252100cf9b183d01147625f75097b55360e9",
+        "event_id": "d95492d8-1fac-41dd-9922-44acf5804fd3",
+        "observed": {
+          "actor_ref": "user",
+          "actor_role": "user",
+          "content": {
+            "media_type": "text/plain",
+            "text": "I'm Morgan. I want to make an eight-page walking zine for my neighbourhood, with little sketches rather than photographs. Monday evenings I volunteer at the repair cafe; Thursdays I have a ceramics class. I can manage two twenty-minute sessions a week. Help me choose a starting task and some slots."
+          },
+          "delivery_state": "received",
+          "event_kind": "message",
+          "interpretation_hint": "unknown",
+          "occurred_time": {
+            "basis": "unknown",
+            "end": null,
+            "precision": "unknown",
+            "start": null
+          },
+          "parent_source_event_keys": [],
+          "producer_ref": "brain-runtime",
+          "source_event_key": "turn-fc51f1c456005f216edcd1a1483bb8ac83961c5e:input",
+          "source_revision": 1,
+          "speech_act_hint": "unknown"
+        },
+        "origin": "user_statement",
+        "origin_verification": "unknown",
+        "previous_revision": null,
+        "revision": 1,
+        "scope": {
+          "access_policy_id": "owner:262f1eff-21a4-47f8-825e-de6efd220870",
+          "brain_id": "262f1eff-21a4-47f8-825e-de6efd220870",
+          "branch_id": "main",
+          "conversation_id": "morgan-zine-start",
+          "policy_revision": 1,
+          "principal_binding_id": "7a49b9ee-b6fd-4736-9d20-99d86e1d02ff",
+          "scope_generation": 1,
+          "tenant_id": "dff48e21-9728-4392-b196-ee0e32268bee",
+          "visibility": "private"
+        },
+        "segmentation_rule_version": "literal-episodes-v3",
+        "sequence": 1,
+        "system_time": {
+          "recorded_at": "2026-10-27T03:33:04.059779Z",
+          "superseded_at": null
+        },
+        "utterance_segments": [
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 11,
+              "start": 0,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 121,
+              "start": 12,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 204,
+              "start": 122,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 252,
+              "start": 205,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 299,
+              "start": 253,
+              "unit": "unicode_code_point"
+            }
+          }
+        ]
+      },
+      {
+        "content_sha256": "e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c",
+        "event_id": "12d00f08-2aa1-4a81-b8d7-d1d8d2be5610",
+        "observed": {
+          "actor_ref": "assistant",
+          "actor_role": "assistant",
+          "content": {
+            "media_type": "text/plain",
+            "text": "Nice to meet you, Morgan. I\u2019d start with a **route-and-page plan** before you spend time drawing.\n\n**First week\u2019s two 20-minute tasks:**\n\n1. **Map the zine**  \n   Pick a short walking loop and divide it into 8 pages. For each page, write one line only: the spot, view, or detail you want to sketch \u2014 e.g. corner shop, front garden, bus stop, cracked pavement, a particular tree.\n\n2. **Thumbnail walk**  \n   Walk the loop with a small sketchbook and do 6\u20138 quick thumbnail sketches, one per page. No finished drawings yet \u2014 just enough to test the flow and see gaps.\n\n**Possible slots that avoid Monday evenings and Thursdays:**  \n- Tuesday 12:45\u201313:05  \n- Saturday 10:00\u201310:20  \n\nIf weekday lunchtimes don\u2019t work, another option is:  \n- Tuesday 18:30\u201318:50  \n- Sunday 16:00\u201316:20  \n\nWhich pair feels most realistic for you? I can adjust the plan around your best slots."
+          },
+          "delivery_state": "delivered",
+          "event_kind": "message",
+          "interpretation_hint": "unknown",
+          "occurred_time": {
+            "basis": "unknown",
+            "end": null,
+            "precision": "unknown",
+            "start": null
+          },
+          "parent_source_event_keys": [],
+          "producer_ref": "brain-runtime",
+          "source_event_key": "runtime-output:eab7e8713edbd808274aa173de818f129dc0a77ef7cc00c5b8b0883b2da32b48",
+          "source_revision": 2,
+          "speech_act_hint": "unknown"
+        },
+        "origin": "assistant_output",
+        "origin_verification": "unknown",
+        "previous_revision": 1,
+        "revision": 2,
+        "scope": {
+          "access_policy_id": "owner:262f1eff-21a4-47f8-825e-de6efd220870",
+          "brain_id": "262f1eff-21a4-47f8-825e-de6efd220870",
+          "branch_id": "main",
+          "conversation_id": "morgan-zine-start",
+          "policy_revision": 1,
+          "principal_binding_id": "7a49b9ee-b6fd-4736-9d20-99d86e1d02ff",
+          "scope_generation": 1,
+          "tenant_id": "dff48e21-9728-4392-b196-ee0e32268bee",
+          "visibility": "private"
+        },
+        "segmentation_rule_version": "literal-episodes-v3",
+        "sequence": 3,
+        "system_time": {
+          "recorded_at": "2026-10-27T03:33:28.060504Z",
+          "superseded_at": null
+        },
+        "utterance_segments": [
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 25,
+              "start": 0,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 97,
+              "start": 26,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 136,
+              "start": 99,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 157,
+              "start": 138,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 216,
+              "start": 163,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 302,
+              "start": 217,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 304,
+              "start": 302,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 378,
+              "start": 305,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 401,
+              "start": 380,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 495,
+              "start": 407,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 565,
+              "start": 496,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 627,
+              "start": 567,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 651,
+              "start": 630,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 676,
+              "start": 654,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 732,
+              "start": 680,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 756,
+              "start": 735,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 779,
+              "start": 759,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "inquiry",
+            "span": {
+              "end": 823,
+              "start": 783,
+              "unit": "unicode_code_point"
+            }
+          },
+          {
+            "act": "direct_statement",
+            "span": {
+              "end": 869,
+              "start": 824,
+              "unit": "unicode_code_point"
+            }
+          }
+        ]
+      }
+    ],
+    "existing_assertions": [],
+    "episodes": [],
+    "working_state": {
+      "items": [],
+      "open_loops": [],
+      "revision": 1,
+      "scope": {
+        "access_policy_id": "owner:262f1eff-21a4-47f8-825e-de6efd220870",
+        "brain_id": "262f1eff-21a4-47f8-825e-de6efd220870",
+        "branch_id": "main",
+        "conversation_id": "morgan-zine-start",
+        "policy_revision": 1,
+        "principal_binding_id": "7a49b9ee-b6fd-4736-9d20-99d86e1d02ff",
+        "scope_generation": 1,
+        "tenant_id": "dff48e21-9728-4392-b196-ee0e32268bee",
+        "visibility": "private"
+      },
+      "through_sequence": 3,
+      "updated_at": "2026-10-27T03:33:28.106801Z"
+    },
+    "sampling": {
+      "assertion_count": 0,
+      "association_depth": 1,
+      "candidate_count": 24,
+      "candidate_limit": 32,
+      "candidate_scan_limit": 128,
+      "dependency_depth": 8,
+      "episode_count": 0,
+      "indexed_through_sequence": 3,
+      "limitations": [],
+      "limits": {
+        "assertions": 32,
+        "episodes": 16,
+        "sources": 32
+      },
+      "omitted_packages": 0,
+      "publication_restricted": false,
+      "recent_window_limit": 24,
+      "redundant_literal_assertions": 24,
+      "search_exhaustive": false,
+      "selected_max_sequence": 3,
+      "selected_min_sequence": 1,
+      "source_candidate_count": 0,
+      "source_count": 2,
+      "strategy": "bounded-cue-neighborhood-v1",
+      "through_sequence": 3
+    },
+    "belief_relations": [],
+    "consolidation_plan": {
+      "candidate_count": 0,
+      "excluded_counts": {},
+      "limit": 3,
+      "objectives": [],
+      "planner_version": "independent-instance-comparison-v4",
+      "search_exhaustive": false,
+      "selection_policy": "source-pair-diversity-v1",
+      "suppressed_count": 0
+    },
+    "current_input_refs": [],
+    "learning_input_refs": [
+      {
+        "event_id": "d95492d8-1fac-41dd-9922-44acf5804fd3",
+        "revision": 1
+      },
+      {
+        "event_id": "12d00f08-2aa1-4a81-b8d7-d1d8d2be5610",
+        "revision": 2
+      }
+    ]
+  },
+  "policy": {
+    "max_assertions": 32,
+    "max_episodes": 16,
+    "max_input_bytes": 196608,
+    "max_model_calls": 2,
+    "max_output_tokens": 16384,
+    "max_proposals": 24,
+    "max_request_bytes": 98304,
+    "max_response_bytes": 65536,
+    "max_sources": 32,
+    "max_wall_time_ms": 600000
+  },
+  "proposal_mode": "general-v1",
+  "input_contract_version": "source-composition-v3",
+  "proposal_response": "{\n  \"claims\": [\n    {\n      \"proposal_id\": \"claim-morgan-name\",\n      \"statement\": \"Morgan reported that their name is Morgan.\",\n      \"memory_kind\": \"self_model\",\n      \"representation\": \"semantic_anchor\",\n      \"claim_kind\": \"reported_fact\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"d95492d8-1fac-41dd-9922-44acf5804fd3\",\n          \"event_revision\": 1,\n          \"source_content_sha256\": \"d33336b1dd33cc61a936e74d97df252100cf9b183d01147625f75097b55360e9\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 0,\n            \"end\": 11,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.8\n    },\n    {\n      \"proposal_id\": \"claim-morgan-zine-goal\",\n      \"statement\": \"Morgan reported wanting to make an eight-page walking zine for their neighbourhood, using little sketches rather than photographs.\",\n      \"memory_kind\": \"prospective\",\n      \"representation\": \"semantic_anchor\",\n      \"claim_kind\": \"reported_preference\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"d95492d8-1fac-41dd-9922-44acf5804fd3\",\n          \"event_revision\": 1,\n          \"source_content_sha256\": \"d33336b1dd33cc61a936e74d97df252100cf9b183d01147625f75097b55360e9\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 12,\n            \"end\": 121,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.9\n    },\n    {\n      \"proposal_id\": \"claim-morgan-schedule\",\n      \"statement\": \"Morgan reported volunteering at the repair cafe on Monday evenings and having a ceramics class on Thursdays.\",\n      \"memory_kind\": \"self_model\",\n      \"representation\": \"semantic_anchor\",\n      \"claim_kind\": \"reported_fact\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"d95492d8-1fac-41dd-9922-44acf5804fd3\",\n          \"event_revision\": 1,\n          \"source_content_sha256\": \"d33336b1dd33cc61a936e74d97df252100cf9b183d01147625f75097b55360e9\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 122,\n            \"end\": 204,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.7\n    },\n    {\n      \"proposal_id\": \"claim-morgan-session-capacity\",\n      \"statement\": \"Morgan reported being able to manage two twenty-minute sessions a week.\",\n      \"memory_kind\": \"self_model\",\n      \"representation\": \"semantic_anchor\",\n      \"claim_kind\": \"reported_fact\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"d95492d8-1fac-41dd-9922-44acf5804fd3\",\n          \"event_revision\": 1,\n          \"source_content_sha256\": \"d33336b1dd33cc61a936e74d97df252100cf9b183d01147625f75097b55360e9\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 205,\n            \"end\": 252,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.7\n    },\n    {\n      \"proposal_id\": \"claim-morgan-request-help\",\n      \"statement\": \"Morgan asked the assistant to help choose a starting task and some time slots.\",\n      \"memory_kind\": \"episodic\",\n      \"representation\": \"episode_fragment\",\n      \"claim_kind\": \"reported_fact\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"d95492d8-1fac-41dd-9922-44acf5804fd3\",\n          \"event_revision\": 1,\n          \"source_content_sha256\": \"d33336b1dd33cc61a936e74d97df252100cf9b183d01147625f75097b55360e9\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 253,\n            \"end\": 299,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.6\n    },\n    {\n      \"proposal_id\": \"claim-assistant-route-plan\",\n      \"statement\": \"The assistant proposed starting with a route-and-page plan before spending time drawing.\",\n      \"memory_kind\": \"episodic\",\n      \"representation\": \"episode_fragment\",\n      \"claim_kind\": \"agent_said\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 26,\n            \"end\": 97,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.8\n    },\n    {\n      \"proposal_id\": \"claim-assistant-first-week-tasks\",\n      \"statement\": \"The assistant offered two first-week 20-minute tasks: map the zine by picking a short walking loop and writing one line for each page, and thumbnail walk by walking the loop with a small sketchbook and doing 6\u20138 quick thumbnail sketches without finished drawings.\",\n      \"memory_kind\": \"episodic\",\n      \"representation\": \"episode_fragment\",\n      \"claim_kind\": \"agent_said\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 99,\n            \"end\": 136,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 138,\n            \"end\": 157,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 163,\n            \"end\": 216,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 217,\n            \"end\": 302,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 305,\n            \"end\": 378,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.8\n    },\n    {\n      \"proposal_id\": \"claim-assistant-slots-question\",\n      \"statement\": \"The assistant proposed possible time slots avoiding Monday evenings and Thursdays: Tuesday 12:45\u201313:05 and Saturday 10:00\u201310:20, with alternative slots Tuesday 18:30\u201318:50 and Sunday 16:00\u201316:20, and asked which pair felt most realistic.\",\n      \"memory_kind\": \"episodic\",\n      \"representation\": \"episode_fragment\",\n      \"claim_kind\": \"agent_said\",\n      \"world\": \"real_world\",\n      \"conditions\": {\n        \"op\": \"always\"\n      },\n      \"evidence_refs\": [\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 380,\n            \"end\": 401,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 407,\n            \"end\": 495,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 496,\n            \"end\": 565,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 567,\n            \"end\": 627,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 630,\n            \"end\": 651,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 654,\n            \"end\": 676,\n            \"unit\": \"unicode_code_point\"\n          }\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"event_revision\": 2,\n          \"source_content_sha256\": \"e6224277052a7c1c3a776994a6d04655540b462c0ae31a56bff3c60e4d302a8c\",\n          \"relationship\": \"supports\",\n          \"span\": {\n            \"start\": 783,\n            \"end\": 823,\n            \"unit\": \"unicode_code_point\"\n          }\n        }\n      ],\n      \"counterexamples\": [],\n      \"source_memory_versions\": [],\n      \"valid_time\": {\n        \"start\": null,\n        \"end\": null,\n        \"precision\": \"unknown\",\n        \"basis\": \"unknown\"\n      },\n      \"valid_during\": {\n        \"kind\": \"unknown\"\n      },\n      \"procedure\": null,\n      \"retention_priority\": 0.8\n    }\n  ],\n  \"situation_updates\": [],\n  \"episode_actions\": [\n    {\n      \"proposal_id\": \"episode-create-morgan-zine-planning\",\n      \"action\": \"create\",\n      \"organization_statement\": \"A provisional interaction group capturing Morgan's opening self-introduction, zine goal, schedule and capacity, and request for help choosing a starting task and time slots, followed by the assistant's proposed starting tasks and possible slots; this groups the observed exchange but does not establish that a task was completed or a slot was selected.\",\n      \"episode_id\": null,\n      \"expected_revision\": null,\n      \"member_refs\": [\n        {\n          \"event_id\": \"d95492d8-1fac-41dd-9922-44acf5804fd3\",\n          \"revision\": 1\n        },\n        {\n          \"event_id\": \"12d00f08-2aa1-4a81-b8d7-d1d8d2be5610\",\n          \"revision\": 2\n        }\n      ],\n      \"boundary_ref\": null\n    }\n  ]\n}",
+  "proposal_response_sha256": "3e0ebc05e09605a8a18fc365977ea13ec9dfeacbe39976d9b258ea4a1792be8b"
+}

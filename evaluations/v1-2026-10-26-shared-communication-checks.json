@@ -1,0 +1,111 @@
+{
+  "passed": true,
+  "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
+  "full_source": {
+    "passed": 5717,
+    "failed": 0,
+    "skipped": 4,
+    "seconds": 536.55,
+    "warning": "Python multithreaded fork deprecation",
+    "log": "full-final.log"
+  },
+  "installed": {
+    "passed": 524,
+    "seconds": 147.1,
+    "warning": "Starlette httpx TestClient deprecation",
+    "log": "installed-delivery.log"
+  },
+  "desktop": {
+    "passed": 4,
+    "source_skips_executed": 4,
+    "seconds": 47.0,
+    "warning": "Starlette httpx TestClient deprecation",
+    "log": "desktop-delivery.log"
+  },
+  "typescript": {
+    "passed": 40,
+    "strict_typecheck": "passed",
+    "reused_from": "fe52 candidate; SDK sources unchanged since e7b9418; no TypeScript files or external schema changed"
+  },
+  "artifacts": {
+    "runtime_files": 122,
+    "source_sdist_wheel_installed_match": true
+  },
+  "focused_source": [
+    52,
+    548,
+    11
+  ],
+  "earlier_failures_preserved": [
+    "Initial full interrupted after1729pass and2source-table format expectation errors; assertions updated to require complete shared sources and own-reference integrity. Log before-coverage-fixture-update.",
+    "Next full5716pass,1test callback still reading inline source,4skip,551.64s. Callback now checks shared complete originals,identity,hash,spans. Related11pass and final5717pass full. No runtime source changed after6037build."
+  ],
+  "paired_recorded_replay": {
+    "runtime_build": "6037bc9f9b0ec2b5c7decdfe030c8db167d5a900e39d7bc78aa4188c4b8c599a",
+    "provider_calls": 0,
+    "scope": "Exact closed-campaign source and model-proposal fixture in isolated installed wheel; synthetic IDs and always-supports verifier. No source/database write, old-operation retry or real-model acceptance.",
+    "fixed_limits": {
+      "per_request_bytes": 98304,
+      "total_input_bytes": 196608,
+      "model_calls": 2
+    },
+    "runs": [
+      {
+        "contract": "source-composition-v3",
+        "status": "budget_exhausted",
+        "synthetic_phases": 1,
+        "request_bytes": {
+          "proposal": 53470,
+          "verification": 121913
+        },
+        "verification_invocations": 0,
+        "claims": 0,
+        "episodes": 0
+      },
+      {
+        "contract": "source-composition-v4",
+        "status": "completed",
+        "synthetic_phases": 2,
+        "request_bytes": {
+          "proposal": 53470,
+          "verification": 59359
+        },
+        "verification_invocations": 1,
+        "claims": 8,
+        "episodes": 1,
+        "unique_sources": 2,
+        "exact_references": 20,
+        "all_full_sources_match_originals": true,
+        "source_table_sha256": "e1e112e40c11bd48ecca2f2d8f1e99ca284134b6ba0e235caa535f85c28e7bc3",
+        "proposal_data_sha256": "543b00c305ad89e185c7b349b2a6c58e13a9b6c841d5821f86879d4119e06016"
+      }
+    ],
+    "old_verification_bytes_unchanged": true,
+    "candidate_fits_existing_limits": true,
+    "all_positive_verdicts_do_not_restore_unsafe_narration": "Source-rendered speech claims and mixed episode views are retained and publication rechecks them; test_shared_communication also tampers an accepted speech statement and requires rejection."
+  },
+  "graceful_stop_and_no_replay_controls": {
+    "graceful_stop_after_current_job": "passed",
+    "both_mock_phase_results_settled_completed": true,
+    "prior_logical_request_rejected_before_provider": "passed",
+    "paid_provider_calls": 0,
+    "scope": "Deterministic control-flow check with synthetic proposal/verifier; not semantic behavioral evidence."
+  },
+  "paid_provider_calls_in_local_checks": 0,
+  "behavioral_acceptance": "Not passed; earlier fe52 primary stopped and closed, current6037 primary not started.",
+  "performance": {
+    "retrieval": {
+      "passed": true,
+      "labels_found": 20,
+      "p95_ms": 143.87375,
+      "limit_ms": 500
+    },
+    "capabilities": {
+      "passed": true,
+      "median_ms": 68.247542,
+      "limit_ms": 100
+    },
+    "provider_calls": 0,
+    "embedding_calls": 0
+  }
+}

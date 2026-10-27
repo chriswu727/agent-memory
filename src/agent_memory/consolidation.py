@@ -43,7 +43,7 @@ from .semantic import (
 )
 from .source_composition import (
     CLAUSE_INPUT_VERSIONS,
-    COMMUNICATION_VIEW_INPUT_VERSION,
+    COMMUNICATION_VIEW_INPUT_VERSIONS,
     communication_view,
 )
 
@@ -243,7 +243,7 @@ def _check_result(batch, result, snapshot, *, current_input_refs=()):
                     current_input_refs=current_input_refs,
                     input_contract_version=batch.input_contract_version,
                 )
-                if (batch.input_contract_version == COMMUNICATION_VIEW_INPUT_VERSION
+                if (batch.input_contract_version in COMMUNICATION_VIEW_INPUT_VERSIONS
                         and communication_view(group, item, snapshot["events"], episode_references=references) != item):
                     raise ValueError("Communication view differs from its exact sources")
             except (ValueError, KeyError, TypeError) as error:

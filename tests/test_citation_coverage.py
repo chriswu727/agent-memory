@@ -44,6 +44,7 @@ from agent_memory.semantic import (
     VERIFICATION_SCHEMA,
     proposal_schema,
 )
+from agent_memory.source_composition import SHARED_COMMUNICATION_INPUT_VERSION
 from agent_memory.verification_sources import SHARED_VERIFICATION_INPUT_VERSION
 
 
@@ -123,7 +124,7 @@ def test_scope_keeps_full_context_and_episode_but_only_own_excerpts_can_cover_cl
     claim_entry, episode_entry = entries
     assert claim_entry["citation_scope"] == citation_scope(selected, input_contract_version=version)
     assert claim_entry["citation_scope"]["positive_evidence_indices"] == list(range(len(selected)))
-    if version == SHARED_VERIFICATION_INPUT_VERSION:
+    if version in (SHARED_VERIFICATION_INPUT_VERSION, SHARED_COMMUNICATION_INPUT_VERSION):
         assert body["verification_sources"] == [source]
         assert all(item["source_ref"] == {"event_id": source["event_id"], "revision": source["revision"]}
                    for item in claim_entry["evidence"])
@@ -310,7 +311,7 @@ def test_new_schema_does_not_mutate_legacy_and_history_accounting_is_inherited()
     assert result.status == "completed" and len(result.integration_decisions) == 1
     assert LINK_DERIVED_INSTRUCTIONS in requests[0].messages[0]["content"]
     assert Draft202012Validator(requests[1].response_schema).is_valid({"assessments": list(result.verification_assessments)})
-    assert LATEST_INPUT_CONTRACT_VERSION == "source-composition-v3"
+    assert LATEST_INPUT_CONTRACT_VERSION == "source-composition-v4"
     assert batch(event("A direct report.")).input_contract_version == COMMUNICATION_INTENT_INPUT_VERSION
     for version in (None, COMMUNICATION_INTENT_INPUT_VERSION, LINK_DERIVED_INPUT_VERSION, VERSION):
         assert _snapshot_input_contract({"input_contract_version": version}) == version

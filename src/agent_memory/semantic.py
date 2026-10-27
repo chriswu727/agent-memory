@@ -107,9 +107,11 @@ from .source_composition import (
     CLAUSE_VERIFY_INSTRUCTIONS,
     COHERENT_ENCODING_INSTRUCTIONS,
     COMMUNICATION_VIEW_INPUT_VERSION,
+    COMMUNICATION_VIEW_INPUT_VERSIONS,
     COMMUNICATION_VIEW_INSTRUCTIONS,
     PARTICIPANT_ACTIONS,
     PARTICIPANT_VERIFY_INSTRUCTIONS,
+    SHARED_COMMUNICATION_INPUT_VERSION,
     SOURCE_COMPOSITION_INPUT_VERSIONS,
     canonical_references,
     communication_view,
@@ -244,7 +246,7 @@ EPISODE_SCOPE_INPUT_VERSION = "episode-operation-scope-v1"
 COMMUNICATION_INTENT_INPUT_VERSION = "communication-intent-v1"
 EPISODE_FIDELITY_INPUT_VERSION = "episode-fidelity-v1"
 EPISODE_FIDELITY_INPUT_VERSIONS = (EPISODE_FIDELITY_INPUT_VERSION, *EPISODE_SOURCE_VIEW_INPUT_VERSIONS)
-LATEST_INPUT_CONTRACT_VERSION = COMMUNICATION_VIEW_INPUT_VERSION
+LATEST_INPUT_CONTRACT_VERSION = SHARED_COMMUNICATION_INPUT_VERSION
 ORIENT_PROPOSAL_SCHEMA = _object({"situation_updates": _array(_SITUATION)})
 ORIENT_PROPOSAL_SCHEMA["$defs"] = copy.deepcopy(PROPOSAL_SCHEMA["$defs"])
 for _group in ("claims", "episode_actions", "belief_links", "consolidation_decisions"):
@@ -651,11 +653,13 @@ def request_payload(phase, data, schema, max_output_tokens, *, proposal_mode=GEN
         if phase == "verification":
             instructions += " " + CLAUSE_VERIFY_INSTRUCTIONS
         elif (proposal_mode != ORIENT_PROPOSAL_MODE
-              and input_contract_version != COMMUNICATION_VIEW_INPUT_VERSION):
+              and input_contract_version not in COMMUNICATION_VIEW_INPUT_VERSIONS):
             instructions += " " + COHERENT_ENCODING_INSTRUCTIONS
-    if input_contract_version == COMMUNICATION_VIEW_INPUT_VERSION and proposal_mode != ORIENT_PROPOSAL_MODE:
-        instructions += " " + COMMUNICATION_VIEW_INSTRUCTIONS
-    if (phase == "verification" and input_contract_version == SHARED_VERIFICATION_INPUT_VERSION
+    if input_contract_version in COMMUNICATION_VIEW_INPUT_VERSIONS and proposal_mode != ORIENT_PROPOSAL_MODE:
+        instructions += " " + COMMUNICATION_VIEW_INSTRUCTIONS.replace(
+            COMMUNICATION_VIEW_INPUT_VERSION, input_contract_version)
+    if (phase == "verification" and input_contract_version in (
+            SHARED_VERIFICATION_INPUT_VERSION, SHARED_COMMUNICATION_INPUT_VERSION)
             and proposal_mode not in BOUNDED_MODES):
         data = shared_verification_sources(data)
         instructions += " " + SHARED_VERIFICATION_INSTRUCTIONS
@@ -1397,7 +1401,7 @@ class SemanticProcessor:
                                                      current_input_refs=batch.current_input_refs,
                                                      input_contract_version=batch.input_contract_version,
                                                      abstraction_parents=abstraction_parents.get(item["proposal_id"], ()))
-                if batch.input_contract_version == COMMUNICATION_VIEW_INPUT_VERSION:
+                if batch.input_contract_version in COMMUNICATION_VIEW_INPUT_VERSIONS:
                     rendered = communication_view(group, item, events, episode_references=references)
                     item.clear()
                     item.update(rendered)

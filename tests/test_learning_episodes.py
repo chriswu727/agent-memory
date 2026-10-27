@@ -44,12 +44,14 @@ def test_production_neighborhood_supplies_complete_episode_sources_for_continuat
     receipt = learning.observe("接着讨论数学复习安排。")
     expected_ids = set(old_receipt["accepted_event_ids"] + receipt["accepted_event_ids"])
     calls = []
+    originals = {}
 
     def propose(request):
         calls.append(request.phase)
         data = json.loads(request.messages[-1]["content"])
         assert expected_ids <= {source["event_id"] for source in data["sources"]}
         sources = {(source["event_id"], source["revision"]): source for source in data["sources"]}
+        originals.update(sources)
         assert data["episodes"] == [{
             "view_version": "episode-source-view-v1",
             "use": "fallible_interaction_group_not_factual_evidence",
@@ -69,8 +71,17 @@ def test_production_neighborhood_supplies_complete_episode_sources_for_continuat
 
     def verify(request):
         calls.append(request.phase)
-        candidate = json.loads(request.messages[-1]["content"])["proposals"][0]
-        assert {item["source"]["event_id"] for item in candidate["evidence"]} == expected_ids
+        body = json.loads(request.messages[-1]["content"])
+        candidate = body["proposals"][0]
+        sources = {(source["event_id"], source["revision"]): source for source in body["verification_sources"]}
+        assert {key[0] for key in sources} == expected_ids
+        assert all(source == originals[key] for key, source in sources.items())
+        for item in candidate["evidence"]:
+            ref = item["reference"]
+            source = sources[(item["source_ref"]["event_id"], item["source_ref"]["revision"])]
+            assert (source["event_id"], source["revision"]) == (ref["event_id"], ref["event_revision"])
+            assert source["content_sha256"] == ref["source_content_sha256"]
+            assert item["excerpt"] == source["observed"]["content"]["text"][ref["span"]["start"]:ref["span"]["end"]]
         assert candidate["episode_context"]["prior_member_refs"] == previous["member_refs"]
         return verifier(request)
 
