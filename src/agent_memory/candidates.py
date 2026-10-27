@@ -7,7 +7,7 @@ from .context_views import assistant_speech
 from .dynamics import access_state, rank_weight
 from .embeddings import EmbeddingResult
 from .helpers import DomainError, digest, now
-from .retrieval import fuse_rankings, resolve_dependency_closure
+from .retrieval import RANK_METHODS, fuse_rankings, resolve_dependency_closure
 
 
 def _scope_clause(alias, target):
@@ -28,19 +28,41 @@ def _eligible(alias="a", *, current=True):
             f"AND {alias}.document IS NOT NULL ")
 
 
-def merge_belief_candidates(memories, candidate_state, package, *, selected=False):
+def _belief_endpoint_scores(signals, relations):
     from .belief_store import relation_versions
 
+    adjacency = {}
+    for relation in relations:
+        keys = relation_versions(relation)
+        for key in keys:
+            adjacency.setdefault(key, set()).update(keys - {key})
+    pending, scores = set(adjacency), {}
+    while pending:
+        frontier, component = [next(iter(pending))], set()
+        while frontier:
+            key = frontier.pop()
+            if key not in component:
+                component.add(key)
+                frontier.extend(adjacency[key] - component)
+        pending.difference_update(component)
+        score = max((sum(max(0.0, signal["score"]) for signal in signals.get(key, [])
+                         if signal["method"] in RANK_METHODS) for key in component), default=0.0)
+        scores.update((key, score) for key in component)
+    return scores
+
+
+def merge_belief_candidates(memories, candidate_state, package, *, selected=False):
     known = {(memory["memory_id"], memory["revision"]): memory for memory in memories}
     known.update({(memory["memory_id"], memory["revision"]): memory for memory in package["memories"]})
-    endpoints = set().union(*(relation_versions(relation) for relation in package["relations"]))
     candidate_state["valid_dependency_versions"] = set(candidate_state["valid_dependency_versions"]) | known.keys()
     if not selected:
+        scores = _belief_endpoint_scores(candidate_state["rank_signals"], package["relations"])
+        endpoints = {key for key, score in scores.items() if score > 0}
         candidate_state["candidate_versions"] = list(set(candidate_state["candidate_versions"]) | endpoints)
         for key in endpoints:
             candidate_state["rank_signals"].setdefault(key, [{
-                "method": "association", "score": 1 / 61,
-                "meaning": "ranking_only_not_probability", "model_or_index_version": "belief-neighborhood-v1",
+                "method": "association", "score": scores[key],
+                "meaning": "ranking_only_not_probability", "model_or_index_version": "belief-neighborhood-v2",
             }])
     return list(known.values())
 
