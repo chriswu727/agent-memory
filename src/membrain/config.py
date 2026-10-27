@@ -33,6 +33,7 @@ class Settings:
     embedding_model: str | None = None
     embedding_model_version: str | None = None
     embedding_dimensions: int | None = None
+    embedding_local_directory: str | None = None
     recovery_registry_path: Path | None = None
     recovery_registry_id: str | None = None
     recovery_installation_id: str | None = None
@@ -65,6 +66,8 @@ class Settings:
             type(self.embedding_dimensions) is not int or not 1 <= self.embedding_dimensions <= 8192
         ):
             raise ValueError("MEMORY_EMBEDDING_DIMENSIONS must be an integer from 1 to 8192")
+        if self.embedding_local_directory is not None and self.embedding_base_url is not None:
+            raise ValueError("Configure either a local embedding model or an embedding provider URL, not both")
 
     def semantic_policy(self):
         from .semantic import SemanticPolicy
@@ -104,6 +107,7 @@ class Settings:
             embedding_model=os.environ.get("MEMORY_EMBEDDING_MODEL"),
             embedding_model_version=os.environ.get("MEMORY_EMBEDDING_MODEL_VERSION"),
             embedding_dimensions=int(dimensions) if dimensions is not None else None,
+            embedding_local_directory=os.environ.get("MEMORY_EMBEDDING_LOCAL_DIRECTORY"),
         )
 
     def principals(self) -> dict[str, Principal]:
@@ -155,7 +159,11 @@ def configured_service(settings: Settings):
                 max_response_bytes=settings.cognition_max_envelope_bytes,
             ))
             processor = SemanticProcessor(provider, verify=provider, policy=settings.semantic_policy())
-        if settings.embedding_base_url is not None:
+        if settings.embedding_local_directory is not None:
+            from .local_embeddings import LocalEmbeddingProvider
+
+            embedding = resources.enter_context(LocalEmbeddingProvider(Path(settings.embedding_local_directory)))
+        elif settings.embedding_base_url is not None:
             embedding = resources.enter_context(ChatCompletionsEmbeddingProvider(
                 settings.embedding_base_url, settings.embedding_api_key, settings.embedding_model,
                 model_version=settings.embedding_model_version, dimensions=settings.embedding_dimensions,

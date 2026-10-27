@@ -230,9 +230,17 @@ class DesktopProfile:
             cognition_api_key=cognition.get("api_key"),
             cognition_model=cognition.get("model"),
             cognition_thinking=cognition.get("thinking"),
+            embedding_local_directory=_local_embeddings(self.directory),
             **load_cognition_policy(self.directory).settings(),
             **profile_settings(self),
         )
+
+
+def _local_embeddings(directory: Path) -> str | None:
+    from .local_embeddings import installed, runtime_available
+
+    model = installed(directory)
+    return str(model) if model is not None and runtime_available() else None
 
 
 def _cognition(value) -> dict | None:

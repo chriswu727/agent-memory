@@ -118,3 +118,59 @@ def test_failed_embedding_reservation_is_charged_and_retry_does_not_call_again(t
     with turns.database.transaction(turns.principal) as conn:
         job = conn.execute("SELECT model_calls FROM memory_jobs WHERE brain_id=%s AND kind='query_embedding'", (turns.brain,)).fetchone()
         assert job["model_calls"] == 1
+
+
+def test_memories_written_before_a_provider_are_backfilled_once(turns):
+    from membrain import vector_jobs
+
+    turns.observe("The spare key is under the blue flowerpot.")
+    turns.observe("My dentist appointment moved to Thursday.")
+    drain(turns)
+    calls, now = [], [1000.0]
+    with provider(turns, calls) as vectors:
+        turns.service.embedding_provider = vectors
+        assert vector_jobs.backfill_embeddings(turns.service, turns.principal, turns.brain, clock=lambda: now[0]) >= 2
+        drain(turns)
+        with turns.database.transaction(turns.principal) as conn:
+            embedded = conn.execute("SELECT count(*) AS n FROM memory_embeddings WHERE brain_id=%s",
+                                    (turns.brain,)).fetchone()["n"]
+            current = conn.execute("SELECT count(*) AS n FROM memory_assertions WHERE brain_id=%s AND is_current "
+                                   "AND NOT deleted AND NOT suppressed AND NOT invalidated AND document IS NOT NULL",
+                                   (turns.brain,)).fetchone()["n"]
+        assert embedded == current >= 2
+        count = len(calls)
+        assert vector_jobs.backfill_embeddings(turns.service, turns.principal, turns.brain, clock=lambda: now[0]) == 0
+        now[0] += vector_jobs.BACKFILL_RESCAN_SECONDS + 1
+        assert vector_jobs.backfill_embeddings(turns.service, turns.principal, turns.brain, clock=lambda: now[0]) == 0
+        assert len(calls) == count
+        result = turns.service.handle(turns.principal, recall_request(turns, "where is the house key hidden"))
+        assert any("flowerpot" in item["memory"]["statement"] for item in result["result"]["items"])
+
+
+def test_unmetered_local_models_do_not_consume_the_background_budget(turns):
+    from membrain.embeddings import EmbeddingResult, EmbeddingSpace
+
+    class Local:
+        metered = False
+        space = EmbeddingSpace("local-test", "v1", 3)
+
+        def __init__(self):
+            self.calls = 0
+
+        def request_metadata(self, request):
+            raise AssertionError("unmetered models are not reserved")
+
+        def __call__(self, request):
+            self.calls += 1
+            return EmbeddingResult(self.space, tuple((1.0, 0.0, 0.0) for _ in request.texts), None, "local", 0)
+
+    local = Local()
+    turns.service.embedding_provider = local
+    for index in range(3):
+        turns.observe(f"Local memory number {index} about the canal boat.")
+    drain(turns)
+    result = turns.service.handle(turns.principal, recall_request(turns, "canal boat"))
+    assert result["outcome"] == "completed" and local.calls >= 4
+    with turns.database.transaction(turns.principal) as conn:
+        assert conn.execute("SELECT coalesce(sum(model_calls),0) AS n FROM memory_jobs WHERE brain_id=%s "
+                            "AND kind IN ('embed','query_embedding')", (turns.brain,)).fetchone()["n"] == 0

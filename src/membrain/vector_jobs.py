@@ -1,4 +1,5 @@
 import json
+import time
 
 from psycopg.types.json import Jsonb
 
@@ -10,6 +11,16 @@ from .jobs import JobStore
 def _call(service, principal, brain_id, job, request):
     jobs = JobStore(service.database)
     provider = service.embedding_provider
+    if not getattr(provider, "metered", True):
+        # An in-process model has no cost or external call to account for; it must not consume the brain's
+        # background budget, which limits paid provider calls.
+        try:
+            result = provider(request)
+        except Exception:
+            raise DomainError("dependency_unavailable", "Embedding model is unavailable.", True) from None
+        if result.space != provider.space or len(result.vectors) != len(request.texts):
+            raise DomainError("invalid_evidence", "Embedding response does not match its request.")
+        return result
     lease = {"lease_token": job["lease_token"], "fence": job["fence"]}
     try:
         metadata = provider.request_metadata(request)
@@ -121,7 +132,7 @@ def query_embedding(service, principal, request):
         raise DomainError("dependency_unavailable", "Query embedding is unavailable or already running.", True)
     try:
         timeout = min(10, payload["budget"]["max_wall_time_ms"] / 1000)
-        result = _call(service, principal, brain_id, job, EmbeddingRequest((text,), timeout_seconds=timeout))
+        result = _call(service, principal, brain_id, job, EmbeddingRequest((text,), timeout_seconds=timeout, purpose="query"))
 
         def publish(conn, _):
             brain = service._brain(conn, principal, brain_id)
@@ -140,3 +151,50 @@ def query_embedding(service, principal, request):
         except DomainError:
             pass
         raise
+
+
+BACKFILL_RESCAN_SECONDS = 600
+
+
+def queue_missing_embeddings(service, principal, brain_id, *, after=("", 0), limit=64):
+    """Queue embedding jobs for current memories without a vector in the configured space.
+
+    Memories written before a provider was configured (for example while a local model was still downloading)
+    are otherwise never embedded. Returns the number of jobs queued and the last key scanned, or ``None`` when
+    the scan reached the end.
+    """
+    space = service.embedding_provider.space
+    params = service._params(principal, brain_id)
+    with service.database.transaction(principal) as conn:
+        service._brain(conn, principal, brain_id)
+        rows = conn.execute(
+            "SELECT a.id,a.revision,a.event_ids FROM memory_assertions a WHERE a.tenant_id=%s AND a.owner_id=%s "
+            "AND a.brain_id=%s AND a.is_current AND NOT a.invalidated AND NOT a.suppressed AND NOT a.deleted "
+            "AND a.document IS NOT NULL AND (a.id,a.revision) > (%s,%s) AND NOT EXISTS (SELECT 1 FROM memory_embeddings v "
+            "WHERE v.tenant_id=a.tenant_id AND v.owner_id=a.owner_id AND v.brain_id=a.brain_id AND v.memory_id=a.id "
+            "AND v.memory_revision=a.revision AND v.model=%s AND v.model_version=%s) ORDER BY a.id,a.revision LIMIT %s",
+            (*params, after[0], after[1], space.model, space.model_version, limit),
+        ).fetchall()
+        queued = 0
+        for row in rows:
+            job_id = "embed:" + digest([row["id"], row["revision"], space.descriptor()])
+            queued += conn.execute(
+                "INSERT INTO memory_jobs(tenant_id,owner_id,brain_id,id,kind,payload,state,source_event_ids,source_memory_ids) "
+                "VALUES(%s,%s,%s,%s,'embed',%s,'queued',%s,%s) ON CONFLICT DO NOTHING",
+                (*params, job_id, Jsonb({"memory_id": row["id"], "revision": row["revision"]}),
+                 list(row["event_ids"] or []), [row["id"]]),
+            ).rowcount
+    return queued, ((rows[-1]["id"], rows[-1]["revision"]) if len(rows) == limit else None)
+
+
+def backfill_embeddings(service, principal, brain_id, *, clock=time.monotonic):
+    """Advance a per-brain backfill scan; rescans from the start at most every ten minutes."""
+    states = service.__dict__.setdefault("_embedding_backfill", {})
+    key = (principal.tenant_id, principal.principal_id, brain_id)
+    state = states.get(key, {"after": ("", 0), "resume_at": 0.0})
+    if clock() < state["resume_at"]:
+        return 0
+    queued, last = queue_missing_embeddings(service, principal, brain_id, after=state["after"])
+    states[key] = ({"after": last, "resume_at": 0.0} if last is not None
+                   else {"after": ("", 0), "resume_at": clock() + BACKFILL_RESCAN_SECONDS})
+    return queued
