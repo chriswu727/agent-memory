@@ -96,7 +96,28 @@ def test_timeline_is_private_to_its_owner(brain):
 
 
 @pytest.mark.parametrize("options", [{"roles": ()}, {"roles": ("system",)}, {"max_characters": 0},
-                                     {"limit": 1001}, {"exclude_conversation": ""}])
+                                     {"limit": 1001}, {"exclude_conversation": ""}, {"event_ids": []},
+                                     {"event_ids": ["x"] * 101}, {"event_ids": [""]}])
 def test_timeline_rejects_invalid_limits(brain, options):
     with pytest.raises(DomainError):
         brain.timeline(**options)
+
+
+def test_timeline_returns_only_requested_messages_and_never_erased_ones(brain):
+    kept = brain.say("The budget ceiling is $24,000 all-in.")
+    reply = brain.say("Noted the ceiling.", role="assistant")
+    erased = brain.say("My old PIN is 4321.")
+    brain.say("Unrelated message.")
+    generation = brain.service.dashboard(brain.principal, brain.brain)["brain"]["scope_generation"]
+    brain.action("forget", {"idempotency_key": uid(), "selector": {"kind": "events", "ids": [erased]},
+                            "mode": "erase_content", "expected_scope_generation": generation})
+    result = brain.timeline(roles=("user", "assistant"), event_ids=[kept, reply, erased, "missing"])
+    assert [item["event_id"] for item in result["items"]] == [reply, kept]
+
+
+def test_timeline_can_read_one_conversation(brain):
+    brain.say("Saved note about Mom's walker.", conversation="membrain-notes", role="assistant")
+    brain.say("A normal message.", conversation="chat")
+    notes = brain.timeline(roles=("assistant",), conversation_id="membrain-notes")
+    assert [item["text"] for item in notes["items"]] == ["Saved note about Mom's walker."]
+    assert brain.timeline(roles=("user",), conversation_id="membrain-notes")["items"] == []

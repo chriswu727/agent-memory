@@ -174,3 +174,15 @@ def test_unmetered_local_models_do_not_consume_the_background_budget(turns):
     with turns.database.transaction(turns.principal) as conn:
         assert conn.execute("SELECT coalesce(sum(model_calls),0) AS n FROM memory_jobs WHERE brain_id=%s "
                             "AND kind IN ('embed','query_embedding')", (turns.brain,)).fetchone()["n"] == 0
+
+
+def test_other_script_neighbours_are_interleaved_without_duplicates():
+    from membrain.candidates import _interleave
+
+    def row(name):
+        return {"document": {"memory_id": name, "revision": 1}}
+
+    primary = [row(f"en{index}") for index in range(7)]
+    merged = _interleave(primary, [row("zh0"), row("en1"), row("zh1"), row("zh2"), row("zh3")])
+    assert [item["document"]["memory_id"] for item in merged] == [
+        "en0", "en1", "en2", "zh0", "en3", "en4", "en5", "zh1", "en6", "zh2", "zh3"]

@@ -21,4 +21,8 @@ test("timeline sends roles, budgets and the excluded conversation as query param
   assert.equal(requests[0].init?.method, "GET");
   await client.timeline();
   assert.deepEqual(requests[1].url.searchParams.getAll("role"), ["user"]);
+  await client.timeline({ eventIds: ["event-1", "event 2"] });
+  assert.deepEqual(requests[2].url.searchParams.getAll("event_id"), ["event-1", "event 2"]);
+  await client.timeline({ conversationId: "membrain-notes" });
+  assert.equal(requests[3].url.searchParams.get("conversation_id"), "membrain-notes");
 });

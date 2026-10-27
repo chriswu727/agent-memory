@@ -1400,11 +1400,13 @@ class MemoryService:
         return LearningEngine(self).work_once(principal, brain_id)
 
     def timeline(self, principal, brain_id, *, roles=("user",), max_characters=8000, max_item_characters=1500,
-                 limit=200, exclude_conversation=None):
+                 limit=200, exclude_conversation=None, event_ids=None, conversation_id=None):
         """Original messages, newest first, within a character budget.
 
         Deleted, suppressed, retired and superseded records are excluded. ``complete`` is true only when every
-        matching message is returned in full, so a host may treat the result as the whole history.
+        matching message is returned in full, so a host may treat the result as the whole history. ``event_ids``
+        restricts the result to those messages, for example the sources of recalled memories, and
+        ``conversation_id`` to one conversation.
         """
         roles = tuple(roles)
         if not roles or any(role not in TIMELINE_ROLES for role in roles):
@@ -1415,6 +1417,14 @@ class MemoryService:
         if exclude_conversation is not None and (not isinstance(exclude_conversation, str)
                                                  or not 1 <= len(exclude_conversation) <= 256):
             raise DomainError("validation_failed", "Excluded conversation must be an identifier.")
+        if conversation_id is not None and (not isinstance(conversation_id, str)
+                                            or not 1 <= len(conversation_id) <= 256):
+            raise DomainError("validation_failed", "Conversation must be an identifier.")
+        if event_ids is not None:
+            event_ids = list(event_ids)
+            if not 1 <= len(event_ids) <= 100 or any(
+                    not isinstance(value, str) or not 1 <= len(value) <= 256 for value in event_ids):
+                raise DomainError("validation_failed", "Timeline event IDs must be 1 to 100 identifiers.")
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
             rows = conn.execute(
@@ -1423,9 +1433,10 @@ class MemoryService:
                 "AND document->'observed'->>'event_kind'='message' "
                 "AND document->'observed'->>'actor_role'=ANY(%s::text[]) "
                 "AND (%s::text IS NULL OR conversation_id IS DISTINCT FROM %s) "
+                "AND (%s::text[] IS NULL OR id=ANY(%s::text[])) AND (%s::text IS NULL OR conversation_id=%s) "
                 "ORDER BY sequence DESC LIMIT %s",
                 (*self._params(principal, brain["id"]), list(roles), exclude_conversation, exclude_conversation,
-                 limit + 1),
+                 event_ids, event_ids, conversation_id, conversation_id, limit + 1),
             ).fetchall()
         items, used, complete = [], 0, len(rows) <= limit
         for row in rows[:limit]:
