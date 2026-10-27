@@ -117,7 +117,7 @@ def database_stream(profile, path, *, snapshot=None, restore=False, max_bytes=64
         if not isinstance(snapshot, str) or not snapshot or any(char not in '0123456789ABCDEFabcdef-' for char in snapshot):
             raise BackupError('backup_invalid')
         arguments.append('--snapshot=' + snapshot)
-    if profile.database_engine == 'embedded':
+    if getattr(profile, 'database_engine', 'docker') == 'embedded':
         from .embedded_database import client_command
 
         command, environment = client_command(profile, *arguments[3:])

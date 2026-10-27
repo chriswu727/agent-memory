@@ -126,7 +126,10 @@ def _compose(profile, *arguments: str) -> None:
     except (OSError, subprocess.TimeoutExpired):
         raise DesktopError("docker_unavailable", "Docker did not respond; open Docker and retry.") from None
     if result.returncode:
-        detail = result.stderr.decode("utf-8", "replace").strip()[-600:]
+        detail = (getattr(result, "stderr", None) or b"").decode("utf-8", "replace")
+        for secret in (profile.api_key, profile.admin_password, profile.app_password):
+            detail = detail.replace(secret, "[redacted]")
+        detail = detail.strip()[-600:]
         raise DesktopError("database_start_failed", "Docker could not manage the database. Check Docker, available ports and disk space, then retry." + (
             f" Docker reported:\n{detail}" if detail else ""))
 
