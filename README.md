@@ -8,18 +8,38 @@ Help your agent carry useful memories across conversations—with layered recall
 
 Agent Memory runs as a local service. Connect your agent's conversation lifecycle once, and the runtime captures messages, prepares relevant memory before replies, and learns in the background. The agent keeps the same brain across process restarts and changes to its configured reply model.
 
-[Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
+[Claude Code plugin](#claude-code-plugin) · [Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
 
-> **Pre-release.** The synchronous text runtime is implemented; long-term memory quality is still being validated. Desktop installation is verified on macOS. MCP currently provides memory tools only. See [supported scope and known limits](#status-and-verification).
+> **Pre-release.** The synchronous text runtime is implemented; long-term memory quality is still being validated. The Claude Code plugin and the Docker-free embedded database are new and verified on Linux x86_64 only. Desktop installation with Docker is verified on macOS. See [supported scope and known limits](#status-and-verification).
+
+<a id="claude-code-plugin"></a>
+
+## Use with Claude Code
+
+Tell your agent:
+
+> Install the Agent Memory plugin: `claude plugin install agent-memory --marketplace chriswu727/agent-memory`
+
+Inside a Claude Code session you can also run `/plugin install agent-memory --marketplace chriswu727/agent-memory`. The only prerequisite is [uv](https://docs.astral.sh/uv/). There is no Docker, setup wizard or extra model API key.
+
+From the next session on, the plugin:
+
+- records each message and Claude's final reply locally;
+- adds matching records from earlier sessions before Claude replies, as dated and attributed lines;
+- gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
+
+The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches words in the current message, and Claude is instructed to search with concrete keywords when personal context matters. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/agent-memory` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
+
+Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "agent-memory-runtime[embedded] @ git+https://github.com/chriswu727/agent-memory" agent-memory plugin mcp`. That provides the memory tools without automatic recording.
 
 <a id="desktop-setup"></a>
 
 ## Quickstart
 
-Install [uv](https://docs.astral.sh/uv/) and start Docker Desktop. You will need a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
+Install [uv](https://docs.astral.sh/uv/). You will need a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
 
 ```sh
-uv tool install --python 3.12 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
+uv tool install --python 3.12 'agent-memory-runtime[embedded] @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
 agent-memory desktop setup
 agent-memory desktop configure-chat --use-cognition
 agent-memory desktop chat
@@ -27,7 +47,7 @@ agent-memory desktop chat
 
 During `setup`, enter the provider details for memory learning. `configure-chat --use-cognition` explicitly reuses that configuration for replies. To use a different reply model, run `agent-memory desktop configure-chat` without the flag.
 
-Setup creates a persistent brain and starts its database, API, and background worker. You do not need to clone the repository or start these services separately. If the installed command is missing from your shell, run `uv tool update-shell` and reopen the terminal.
+Setup creates a persistent brain and starts its database, API, and background worker. With the `embedded` extra on macOS, Windows or Linux x86_64 and Python 3.12, the database runs as an embedded PostgreSQL without Docker; elsewhere setup uses Docker Desktop (`--database docker|embedded` overrides the choice). You do not need to clone the repository or start these services separately. If the installed command is missing from your shell, run `uv tool update-shell` and reopen the terminal.
 
 **Storage is local; model processing follows your provider configuration.** Chat and semantic learning can incur API charges and send relevant content to that provider. Skipping cognition setup leaves storage and lexical recall available, but disables model-driven learning. Slow reasoning models may need the explicit [reasoning preset and provider controls](docs/reference.md#desktop-setup).
 
@@ -148,6 +168,10 @@ See [updating and configuration](docs/reference.md#local-status-and-configuratio
 ## Status and verification
 
 The current release candidate supports **local synchronous text agents**, with a Python runtime, HTTP API, TypeScript client, MCP tools, and a direct terminal chat entry point. Core memory behavior is independent of chat frameworks. Desktop end-to-end verification currently covers **macOS with uv and Docker**.
+
+[Plugin mode](architecture/plugin-mode.md) is verified on **Linux x86_64** only. The embedded database passed real start, restart, backup, restore and activation checks as root and as an unprivileged user. An isolated Claude Code 2.1.311 installed the plugin from a local marketplace; with a stub model API, it recorded messages and replies, and a new session's model request contained the previous session's record. That check covers integration, not answer quality. Automatic recall is lexical, and macOS and Windows have not been run on real machines.
+
+A [blinded A/B diagnostic](evaluations/v1-2026-10-27-ab-baselines.md) on a fresh ten-session scenario scored the default memory runtime 4.5 of 12, a no-memory baseline 2 and a naive full-history prompt 11.5. The memory arm used about thirty times the tokens of the full-history arm and needed 58 manual interventions. Most of its misses were facts that recall did not retrieve. At this small scale full history is the stronger baseline; longer histories were not tested.
 
 The [memory-quality verification baseline](evaluations/v1-2026-10-25-memory-efficiency.md) records:
 

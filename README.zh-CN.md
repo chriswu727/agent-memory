@@ -8,19 +8,39 @@
 
 Agent Memory 以本地服务运行。将 Agent 的对话生命周期接入一次后，运行时会自动捕获消息，在回复前准备相关记忆，并在后台学习。进程重启或切换已配置的回复模型后，Agent 仍使用同一个大脑。
 
-[快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
+[Claude Code 插件](#claude-code-plugin) · [快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
 
-> **预发布阶段。** 同步文本运行时已实现，长期记忆质量仍在验证中。桌面安装已在 macOS 上验证。MCP 目前仅提供记忆工具。详见[支持范围与已知限制](#status-and-verification)。
+> **预发布阶段。** 同步文本运行时已实现，长期记忆质量仍在验证中。Claude Code 插件和无需 Docker 的嵌入式数据库是新增功能，目前仅在 Linux x86_64 上验证。使用 Docker 的桌面安装已在 macOS 上验证。详见[支持范围与已知限制](#status-and-verification)。
+
+<a id="claude-code-plugin"></a>
+
+## 在 Claude Code 中使用
+
+对你的 Agent 说：
+
+> 安装 Agent Memory 插件：`claude plugin install agent-memory --marketplace chriswu727/agent-memory`
+
+也可以在 Claude Code 会话中运行 `/plugin install agent-memory --marketplace chriswu727/agent-memory`。唯一的前置条件是 [uv](https://docs.astral.sh/uv/)。不需要 Docker、配置向导或额外的模型 API key。
+
+从下一个会话开始，插件会：
+
+- 在本地记录每条消息和 Claude 的最终回复；
+- 在 Claude 回复前，以带日期和说话人标注的条目加入此前会话中匹配的记录；
+- 为 Claude 提供记忆工具，用于主动检索、记录简短笔记以及按用户要求删除。
+
+第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按当前消息中的词语匹配；当问题涉及个人背景时，Claude 会被引导用具体关键词主动检索。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/agent-memory`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
+
+其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "agent-memory-runtime[embedded] @ git+https://github.com/chriswu727/agent-memory" agent-memory plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
 <a id="desktop-setup"></a>
 <a id="quickstart"></a>
 
 ## 快速开始
 
-安装 [uv](https://docs.astral.sh/uv/)，并启动 Docker Desktop。准备好兼容 Chat Completions 的模型服务地址、模型名称和 API key；记忆学习还要求模型支持 JSON 模式。
+安装 [uv](https://docs.astral.sh/uv/)。准备好兼容 Chat Completions 的模型服务地址、模型名称和 API key；记忆学习还要求模型支持 JSON 模式。
 
 ```sh
-uv tool install --python 3.12 'agent-memory-runtime @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
+uv tool install --python 3.12 'agent-memory-runtime[embedded] @ https://github.com/chriswu727/agent-memory/archive/refs/heads/main.zip'
 agent-memory desktop setup
 agent-memory desktop configure-chat --use-cognition
 agent-memory desktop chat
@@ -28,7 +48,7 @@ agent-memory desktop chat
 
 在 `setup` 中填写用于记忆学习的模型配置。`configure-chat --use-cognition` 明确选择复用这份配置来生成回复。如需使用不同的回复模型，请运行不带该参数的 `agent-memory desktop configure-chat`。
 
-设置会创建一个持久大脑，并启动数据库、API 和后台任务处理器。无需克隆仓库，也无需分别启动这些服务。如果终端找不到安装后的命令，请运行 `uv tool update-shell`，然后重新打开终端。
+设置会创建一个持久大脑，并启动数据库、API 和后台任务处理器。在 macOS、Windows 或 Linux x86_64 上使用 Python 3.12 并安装 `embedded` 附加组件时，数据库以嵌入式 PostgreSQL 运行，无需 Docker；其他环境下设置会使用 Docker Desktop（可用 `--database docker|embedded` 指定）。无需克隆仓库，也无需分别启动这些服务。如果终端找不到安装后的命令，请运行 `uv tool update-shell`，然后重新打开终端。
 
 **数据存储在本地；模型处理取决于你配置的提供方。** 聊天和语义学习可能产生 API 费用，并将相关内容发送给该提供方。跳过认知模型配置后，仍可使用存储和词面回忆，但模型驱动的学习会被禁用。较慢的推理模型可能需要显式启用[推理预设并调整提供方配置](docs/reference.md#desktop-setup)。
 
@@ -153,6 +173,10 @@ agent-memory desktop start
 ## 状态与验证
 
 当前候选版本支持**本地同步文本 Agent**，提供 Python 运行时、HTTP API、TypeScript 客户端、MCP 工具和直接终端聊天入口。核心记忆行为独立于聊天框架。桌面端到端验证目前覆盖 **macOS、uv 和 Docker** 的组合。
+
+[插件模式](architecture/plugin-mode.md)目前仅在 **Linux x86_64** 上验证。嵌入式数据库分别以 root 和普通用户身份，通过了真实的启动、重启、备份、恢复和激活检查。在隔离配置的 Claude Code 2.1.311 中，插件从本地插件市场安装成功；使用模拟模型 API 时，插件记录了消息和回复，新会话发给模型的请求中包含上一个会话的记录。这项检查覆盖的是集成流程，不是回答质量。自动召回基于词语匹配，macOS 和 Windows 尚未在真实设备上运行。
+
+在一个全新的十会话场景上进行的[盲评 A/B 诊断](evaluations/v1-2026-10-27-ab-baselines.md)中，默认记忆运行时得 4.5 分（满分 12），无记忆基线得 2 分，直接放入完整历史的朴素做法得 11.5 分。记忆组消耗的 token 约为完整历史组的三十倍，并需要 58 次人工干预。它失分的主要原因是召回没有取回相关事实。在这样的小规模下，完整历史是更强的基线；更长的历史尚未测试。
 
 [记忆质量验证基线](evaluations/v1-2026-10-25-memory-efficiency.md)记录了：
 

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "agent-memory": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.12",
+        "--from",
+        "${AGENT_MEMORY_PACKAGE:-agent-memory-runtime[embedded] @ git+https://github.com/chriswu727/agent-memory}",
+        "agent-memory",
+        "plugin",
+        "mcp"
+      ]
+    }
+  }
+}

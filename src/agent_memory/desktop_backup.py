@@ -51,6 +51,8 @@ def _configuration(profile):
         value = {name: getattr(current, name) for name in (
             'installation_id', 'brain_id', 'tenant_id', 'principal_id', 'name', 'cognition',
         )}
+        if current.database_engine != 'docker':
+            value['database_engine'] = current.database_engine
         value['chat'] = read_document(profile.directory / 'chat.json')
         value['cognition_policy'] = read_document(profile.directory / 'cognition-policy.json')
         if value['chat'] is not None:
@@ -211,7 +213,7 @@ def backup(directory: Path | None, *, output: Path, request_id: str | None = Non
         else:
             staging.mkdir(mode=0o700)
         desktop.stop(profile.directory)
-        desktop._compose(profile, 'up', '--detach', '--wait', '--wait-timeout', '90')
+        desktop._database_up(profile)
         desktop._check_database(profile, require_current=True)
         authority.reconcile(Database(profile.database_url), Principal(profile.tenant_id, profile.principal_id))
         head = authority.registry.verify()

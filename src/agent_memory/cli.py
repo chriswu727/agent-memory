@@ -102,10 +102,15 @@ def main() -> None:
     commands.add_parser("mcp", help="Run the MCP stdio bridge")
     from .desktop_cli import add_commands
     add_commands(commands)
+    from .plugin_cli import add_commands as add_plugin_commands
+    add_plugin_commands(commands)
     args = parser.parse_args()
     if args.command == "desktop":
         from .desktop_cli import dispatch
         dispatch(args)
+    elif args.command == "plugin":
+        from .plugin_cli import dispatch as plugin_dispatch
+        plugin_dispatch(args)
     elif args.command == "init":
         initialize(args.directory)
     elif args.command == "mcp":

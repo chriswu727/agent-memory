@@ -118,7 +118,7 @@ def test_compose_uses_packaged_template_and_private_stable_profile(tmp_path, mon
     assert options["cwd"] == profile.directory
     assert profile.directory.is_absolute()
     assert options["stdout"] == subprocess.DEVNULL
-    assert options["stderr"] == subprocess.DEVNULL
+    assert options["stderr"] == subprocess.PIPE
     assert options["timeout"] == 300
     memory_keys = {key for key in options["env"] if key.startswith("MEMORY_")}
     assert memory_keys == {"MEMORY_DESKTOP_DATABASE_PORT", "MEMORY_DESKTOP_ADMIN_PASSWORD"}
@@ -169,10 +169,13 @@ def test_compose_command_failure_never_echoes_credentials(tmp_path, monkeypatch,
     profile = ensure_profile(tmp_path)
     monkeypatch.setattr(desktop.shutil, "which", lambda name: "/opt/docker")
     monkeypatch.setattr(desktop, "_docker_endpoint", lambda *args: "unix:///var/run/docker.sock")
-    monkeypatch.setattr(desktop.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=returncode))
+    leaked = f"bind failed for postgres:{profile.admin_password} key={profile.api_key} app={profile.app_password}"
+    monkeypatch.setattr(desktop.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=returncode, stderr=leaked.encode()))
     with pytest.raises(desktop.DesktopError) as error:
         desktop._compose(profile, "up", "--detach")
     assert error.value.code == "database_start_failed"
+    assert "bind failed for postgres:[redacted]" in str(error.value)
     output = capsys.readouterr()
     for secret in (profile.api_key, profile.app_password, profile.admin_password):
         assert secret not in str(error.value) + output.out + output.err

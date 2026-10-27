@@ -14,6 +14,8 @@ def add_commands(commands):
         if name == "setup":
             parser.add_argument("--api-port", type=int)
             parser.add_argument("--database-port", type=int)
+            parser.add_argument("--database", choices=("auto", "docker", "embedded"), default="auto",
+                                help="Database engine for a new installation; auto uses the embedded engine when installed")
             parser.add_argument("--base-url", help="OpenAI-compatible cognition provider URL")
             parser.add_argument("--model", help="Cognition model name")
             parser.add_argument("--api-key-env", help="Name of the environment variable containing the provider key")
@@ -44,7 +46,13 @@ def _setup(args):
     from .desktop_connection import mcp_config
     from .local_profile import configure_cognition, ensure_profile, profile_lock
 
-    profile = ensure_profile(args.directory, api_port=args.api_port, database_port=args.database_port)
+    engine = getattr(args, "database", "docker")
+    if engine == "auto":
+        from .embedded_database import default_engine
+
+        engine = default_engine()
+    profile = ensure_profile(args.directory, api_port=args.api_port, database_port=args.database_port,
+                             database_engine=engine)
     configuration = (args.base_url, args.model, args.api_key_env, args.thinking)
     if any(configuration):
         if not all(configuration[:3]):
