@@ -442,7 +442,7 @@ export type RecallItem = {
 };
 
 export type SourcePassage = {
-  policy_version: "bounded-source-context-v1";
+  policy_version: "bounded-source-context-v1" | "bounded-source-context-v2";
   evidence_ref: EvidenceRef;
   actor_role: "user" | "operator";
   delivery_state: "received";

@@ -1,5 +1,5 @@
 {
-  "status": "local_repairs_verified_behavioral_acceptance_pending",
+  "status": "primary_and_diagnostic_tail_failed_closed",
   "runtime_build": "1a418e3a7e5446f3b69cd50437e36454556cd405492cf4dc5ff9c96141a1890e",
   "local_checks": {
     "passed": true,
@@ -350,11 +350,124 @@
   },
   "fresh_plan_sha256": "d134a3d74a0504e27bdb92868097d9d68ede9c143f0665ebf0cb4fdeadf541da",
   "closed_prior_run": "v1-2026-10-26-release-longitudinal.json",
-  "new_paid_calls": 0,
+  "new_paid_calls": 52,
   "limitations": [
-    "No new real-model acceptance result yet.",
     "Source quotes and mandatory assessments do not independently prove semantic correctness.",
     "Single frozen query reproduction does not establish general token savings.",
-    "Narrative days do not age memory or demonstrate long-term human equivalence."
-  ]
+    "Narrative days do not age memory or demonstrate long-term human equivalence.",
+    "Two closed real-model attempts are recorded; neither passes G4. Cumulative tail ledger includes forty inherited calls and is not added to the primary again."
+  ],
+  "primary": {
+    "status": "failed_closed_output_limit",
+    "runtime_build": "1a418e3a7e5446f3b69cd50437e36454556cd405492cf4dc5ff9c96141a1890e",
+    "plan_sha256": "d134a3d74a0504e27bdb92868097d9d68ede9c143f0665ebf0cb4fdeadf541da",
+    "terminal_head_sha256": "0b05e96167206d6daf3780fd8ca1e9c1624fd8e1c8dd060e78d8b70b92745bc4",
+    "source_commit": "b6e44d06d7bbb0593d03aee1116c0751dabb3fa0",
+    "turns_delivered": 9,
+    "turns_learning_complete": 9,
+    "sessions_complete": 5,
+    "whole_answers_reviewed": 9,
+    "derived_versions_reviewed": 29,
+    "episode_organizations_reviewed": 8,
+    "source_review": "Read all newly published statements, exact excerpts, full available inputs/replies and all episode organizations. Stage-4 limitations remain explicit. Fiction remains reported writing/suggestions, never the user's autobiography. No new critical publication defect found; no short view formed.",
+    "failure": {
+      "turn_id": "first-caption",
+      "delivered": false,
+      "code": "incomplete_response",
+      "finish_reason": "length",
+      "prompt_tokens": 3960,
+      "completion_tokens": 4096,
+      "reasoning_tokens": 4096,
+      "visible_body": "not delivered; all output allowance consumed by reasoning",
+      "memory_context_bytes": 7491,
+      "prompt_bytes": 17051,
+      "complete_original_source_and_expressed_capability_present": true,
+      "original_quote_count": 4,
+      "semantic_answer_quality": "unassessed; retrieval success alone is not an answer pass"
+    },
+    "dependent_case": {
+      "turn_id": "caption-tone",
+      "status": "unexecuted"
+    },
+    "usage": {
+      "completed_calls": 40,
+      "reserved_calls": 40,
+      "reserved_output_tokens": 468992,
+      "usage_confirmed_calls": 40,
+      "usage_totals": {
+        "completion_tokens": 162628,
+        "prompt_cache_hit_tokens": 79616,
+        "prompt_cache_miss_tokens": 210409,
+        "prompt_tokens": 290025,
+        "total_tokens": 452653
+      },
+      "usage_unknown_calls": 0
+    },
+    "timing": {
+      "actual_elapsed_seconds": 1430.694551,
+      "completed_invocation_seconds": 1303.4463653330458,
+      "between_invocation_seconds": [
+        127.202546
+      ]
+    },
+    "no_retry": true,
+    "diagnostic_amendment": "Separately frozen same-brain tail skips the failed caption and its dependent revision; preserves failed input, runtime row and charged ledger. Fifteen distinct remaining inputs, 16384 host output limit, no source/semantic/runtime change. Original eighteen-case G4 remains failed."
+  },
+  "diagnostic_tail": {
+    "status": "failed_closed_missing_stable_commitments",
+    "runtime_build": "1a418e3a7e5446f3b69cd50437e36454556cd405492cf4dc5ff9c96141a1890e",
+    "plan_sha256": "9bb318efdc981ff113ae1aedebf35a4d5abe65de729fef86440a498e94f9a59c",
+    "terminal_head_sha256": "6b8a8bbc682d3f9975d3af31292eaddbd9bd17bc685346a971e15480e5c3da01",
+    "cumulative_transport_usage": {
+      "completed_calls": 52,
+      "reserved_calls": 52,
+      "reserved_output_tokens": 649728,
+      "usage_confirmed_calls": 52,
+      "usage_totals": {
+        "completion_tokens": 206070,
+        "prompt_cache_hit_tokens": 108672,
+        "prompt_cache_miss_tokens": 255525,
+        "prompt_tokens": 364197,
+        "total_tokens": 570267
+      },
+      "usage_unknown_calls": 0
+    },
+    "inherited_transport_calls": 40,
+    "additional_transport_calls": 12,
+    "additional_known_tokens": 117614,
+    "turns_delivered_including_inherited": 12,
+    "turns_learning_complete_including_inherited": 11,
+    "sessions_complete_including_inherited": 6,
+    "whole_answer_review": {
+      "level-correction": "pass: Tuesday/large-level draft, no actual sending or shelf completion asserted",
+      "zine-progress": "pass: sketch completed, captions pending, same two-page scope",
+      "regular-week": "fail: remembers recent progress but says usual commitments are unavailable and asks re-teaching; actual request omits Monday/Thursday despite stored source."
+    },
+    "published_derived_versions_reviewed": 36,
+    "new_successful_derived_versions": 7,
+    "new_episode_organizations_reviewed": 2,
+    "source_review": "Read stopped-inspection.txt, actual original sources and replies. Revised shelf plans and zine progress are qualified reports, not completed shelf repair or sent messages. No new critical publication defect found. All earlier stage limits persist.",
+    "operator_stop": "STOP written when regular-week answer failure was confirmed. The current known verifier transport completed before the wrapper raised. Original engine classification remains cancelled/provider_unavailable with an uncertain operation; original learning_completed stop_reason unknown_provider_usage is preserved despite all transport usage being known. No retroactive settlement or retry.",
+    "repaired_offline_in_later_build": "Source-unit candidate admission and duplicate plain-episode context wrappers; see source-capsules report. Pure context projection alone did not fix actual SQL route.",
+    "original_acceptance": "Failed; first-caption, caption-tone and regular-week not credited; remaining cases still unexecuted at this checkpoint.",
+    "timing": {
+      "actual_elapsed_seconds": 383.172949,
+      "completed_invocation_seconds": 383.17407424992416,
+      "between_invocation_seconds": []
+    },
+    "no_provider_keys_or_hidden_reasoning_in_evidence": true
+  },
+  "source_provenance_amendment": {
+    "recorded_at": "2026-10-26T23:28:50.753246+00:00",
+    "kind": "source_provenance_amendment_no_runtime_or_fixture_change",
+    "original_review_sha256": "94daa5e544c29820acba6330e975dbb5facabb7c4debd040da7d03176deb0e3d",
+    "original_review_source_commit": "fc79ac8aa3e495e33e6afc791a32f293e1158679",
+    "complete_source_commit": "b6e44d06d7bbb0593d03aee1116c0751dabb3fa0",
+    "plan_sha256": "d134a3d74a0504e27bdb92868097d9d68ede9c143f0665ebf0cb4fdeadf541da",
+    "reason": "The already-tested five-line RecordedProvider change was omitted from the first staging command. It was committed separately after stage-4 dispatch, without editing its bytes. The frozen plan had already fingerprinted those actual harness bytes before execution. Original review and plan remain unchanged.",
+    "plan_matches_current_source": true,
+    "harness_sha256": "3aefc3f398afd82c605333b04787aec2e67b980473d8306f0b45c0f347700c43",
+    "paid_execution_was_not_restarted_or_retried": true
+  },
+  "later_repair": "v1-2026-10-26-source-capsules.json"
 }

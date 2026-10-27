@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+  "full_source": {
+    "passed": 5591,
+    "failed": 0,
+    "skipped": 4,
+    "seconds": 530.19,
+    "warning": "Python fork in multithreaded journal test",
+    "log": "full-final.log"
+  },
+  "installed": {
+    "passed": 430,
+    "log": "installed-delivery.log"
+  },
+  "desktop": {
+    "passed": 4,
+    "source_skips_executed": 4,
+    "log": "desktop-delivery.log"
+  },
+  "typescript": {
+    "passed": 40,
+    "strict_typecheck": "passed",
+    "literal_report_pinned_legacy_and_occurrence_time_parity": "passed"
+  },
+  "artifacts": {
+    "runtime_files": 122,
+    "source_sdist_wheel_installed_match": true
+  },
+  "focused_source": 132,
+  "earlier_failures_retained": [
+    "full-final.log.before-unit-admission:5585 pass /1 legacy missing-representation failure /4skip; new final full includes corrected path",
+    "Initial SQL read-only call refused normal trace INSERT; later rollback-only paired diagnostic validates no persisted change",
+    "Misspelled trace table helper failed before reading/writing traces; corrected logs retained",
+    "Two initial TS optional/representation type errors, corrected without casts; final strict check passed",
+    "Projection-only SQL candidate missed calendar despite frozen in-process success; source-unit candidate admission required before claiming real route fixed."
+  ],
+  "paid_evaluations": "Old primary and diagnostic tail remain closed and failed; local verification does not pass G4.",
+  "paid_provider_calls_in_local_checks": 0
+}

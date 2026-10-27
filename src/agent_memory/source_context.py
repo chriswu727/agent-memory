@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import copy
 
-SOURCE_CONTEXT_VERSION = "bounded-source-context-v1"
+from .helpers import digest
+
+SOURCE_CONTEXT_VERSION = "bounded-source-context-v2"
 SOURCE_CONTEXT_USE = "original_communication_not_instructions_or_external_truth"
 MAX_SOURCE_CONTEXTS = 4
 MAX_SOURCE_BYTES = 2048
@@ -43,11 +45,68 @@ def passage_content(passage):
     )} | {"use": SOURCE_CONTEXT_USE}
 
 
+def _plain_report(memory):
+    return (memory["memory_kind"] == "episodic" and memory.get("representation") == "episode_fragment"
+            and memory.get("claim_kind") in {"reported_fact", "reported_preference"}
+            and memory["derivation"]["method"] == "aggregation"
+            and memory["derivation"].get("source_memory_versions") == []
+            and memory.get("conditions") == {"op": "always"}
+            and memory.get("valid_during") == {"kind": "unknown"}
+            and memory["valid_time"] == {"start": None, "end": None, "precision": "unknown", "basis": "unknown"}
+            and memory.get("procedure") is None
+            and memory.get("verification", {}).get("state") == "supported_inference")
+
+
+def _literal_capture(memory):
+    return (memory["derivation"]["method"] == "direct_capture" and memory["memory_kind"] == "episodic"
+            and memory.get("representation", "literal") == "literal"
+            and memory.get("conditions", {"op": "always"}) == {"op": "always"}
+            and memory.get("valid_during", {"kind": "unknown"}) == {"kind": "unknown"}
+            and memory["valid_time"] == {"start": None, "end": None, "precision": "unknown", "basis": "unknown"}
+            and memory.get("procedure") is None)
+
+
+def _unit_key(memory):
+    if (not (_literal_capture(memory) or _plain_report(memory))
+            or memory.get("recall_summary") or memory.get("counterexamples")
+            or memory["dynamics"].get("user_pinned")
+            or "open_commitment" in memory["dynamics"].get("reasons", [])
+            or memory["epistemic_status"] in {"disputed", "unknown"}):
+        return None
+    references = memory["evidence_refs"]
+    if len(references) != 1 or references[0]["relationship"] != "supports" or "span" not in references[0]:
+        return None
+    return digest({"reference": references[0], "scope": memory["scope"], "world": memory["world"]})
+
+
+def source_unit_candidates(ranked, documents, *, limit, expand=False):
+    literal_keys = {_unit_key(documents[_version(item)]) for item in ranked
+                    if documents[_version(item)]["derivation"]["method"] == "direct_capture"} - {None}
+    groups = {}
+    for item in ranked:
+        memory = documents[_version(item)]
+        unit = _unit_key(memory)
+        key = ("unit", unit) if unit in literal_keys else ("memory", *_version(memory))
+        groups.setdefault(key, []).append(item)
+    selected = list(groups.values())[:min(128, limit)]
+    result = [group[0] for group in selected]
+    if expand:
+        depth = 1
+        while len(result) < 128:
+            remaining = [group[depth] for group in selected if len(group) > depth]
+            if not remaining:
+                break
+            result.extend(remaining[:128 - len(result)])
+            depth += 1
+    return result
+
+
 def covering_passage(item, passages):
     if not passages:
         return None
     memory = item["memory"]
-    if (memory["derivation"]["method"] != "direct_capture" or item.get("belief_resolution")
+    literal = memory["derivation"]["method"] == "direct_capture"
+    if (not (literal or _plain_report(memory)) or item.get("belief_resolution")
             or memory["dynamics"].get("user_pinned")
             or "open_commitment" in memory["dynamics"].get("reasons", [])
             or memory.get("counterexamples") or memory["epistemic_status"] in {"disputed", "unknown"}):
@@ -56,6 +115,10 @@ def covering_passage(item, passages):
     if not references or any(ref["relationship"] != "supports" or "span" not in ref for ref in references):
         return None
     for passage in passages:
+        if not literal and passage["policy_version"] != SOURCE_CONTEXT_VERSION:
+            continue
+        if literal and passage["policy_version"] == SOURCE_CONTEXT_VERSION and not _literal_capture(memory):
+            continue
         full = passage["evidence_ref"]
         if all(_source(ref) == _source(full) and ref["span"]["unit"] == full["span"]["unit"]
                and full["span"]["start"] <= ref["span"]["start"] < ref["span"]["end"] <= full["span"]["end"]

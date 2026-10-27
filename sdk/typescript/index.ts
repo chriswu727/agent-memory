@@ -361,13 +361,32 @@ export function recalledContext(resultOrResponse: RecallResult | ActionResponse<
 function sourceCoveredCapture(item: RecallItem, passages: SourcePassage[]): boolean {
   if (!passages.length) return false;
   const memory = item.memory, dynamics = record(memory.dynamics), derivation = record(memory.derivation);
-  if (derivation.method !== "direct_capture" || item.belief_resolution || dynamics.user_pinned
+  const literal = derivation.method === "direct_capture";
+  const time = memory.valid_time;
+  const sourceRepresentation = memory.representation === undefined ? "literal" : String(memory.representation);
+  const plainReport = memory.memory_kind === "episodic" && memory.representation === "episode_fragment"
+    && ["reported_fact", "reported_preference"].includes(String(memory.claim_kind))
+    && derivation.method === "aggregation" && Array.isArray(derivation.source_memory_versions)
+    && !derivation.source_memory_versions.length && memory.conditions !== undefined
+    && canonical(memory.conditions) === '{"op":"always"}' && memory.valid_during !== undefined
+    && canonical(memory.valid_during) === '{"kind":"unknown"}'
+    && time.start === null && time.end === null && time.precision === "unknown" && time.basis === "unknown"
+    && (memory.procedure === undefined || memory.procedure === null) && memory.verification?.state === "supported_inference";
+  const plainLiteral = literal && memory.memory_kind === "episodic"
+    && sourceRepresentation === "literal"
+    && (memory.conditions === undefined || canonical(memory.conditions) === '{"op":"always"}')
+    && (memory.valid_during === undefined || canonical(memory.valid_during) === '{"kind":"unknown"}')
+    && time.start === null && time.end === null && time.precision === "unknown" && time.basis === "unknown"
+    && (memory.procedure === undefined || memory.procedure === null);
+  if (!(literal || plainReport) || item.belief_resolution || dynamics.user_pinned
     || Array.isArray(dynamics.reasons) && dynamics.reasons.includes("open_commitment")
     || Array.isArray(memory.counterexamples) && memory.counterexamples.length
     || ["disputed", "unknown"].includes(String(memory.epistemic_status))) return false;
   const refs = memory.evidence_refs;
   if (!refs.length || refs.some(ref => ref.relationship !== "supports" || !ref.span)) return false;
   return passages.some(passage => {
+    if (!literal && passage.policy_version !== "bounded-source-context-v2") return false;
+    if (literal && passage.policy_version === "bounded-source-context-v2" && !plainLiteral) return false;
     const full = passage.evidence_ref;
     return !!full.span && refs.every(ref => ref.event_id === full.event_id && ref.event_revision === full.event_revision
       && ref.source_content_sha256 === full.source_content_sha256 && ref.span!.unit === full.span!.unit

@@ -9,6 +9,7 @@ Agent Memory is a human-inspired memory engine for AI agents. It keeps persisten
 - Persistent source-backed memory, working context, background learning, consolidation and cue-guided retrieval.
 - Source-faithful composition instructions for autobiographical drafts, a versioned fifth episode participant-action facet, and required action checks for ordinary claims and their short views during verification and publication.
 - Bounded original-source context with source integrity, scope, correction, historical and granularity guards; source-origin frequency avoids counting paraphrases as independent experiences.
+- Source-unit candidate admission and version-2 context deduplication keep repeated representations from crowding older useful source material out of recall, with unchanged hard bounds and qualified metadata preserved.
 - A prospective schema-declared citation-version alias, shared citation schemas within unchanged byte limits, and accurate known-malformed-response accounting before evaluation stops.
 - Task-specific cognitive instructions that preserve participant checks without sending unavailable episode operations or host writing procedures to bounded history processing.
 - A varied release fixture with fourteen sessions, twenty-six inputs, source-bounded review, durable continuation and a planned model-callback change.

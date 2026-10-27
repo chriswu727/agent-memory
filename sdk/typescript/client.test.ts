@@ -341,7 +341,9 @@ test("bounded original source contexts agree with Python including pinned and in
     "pinned['items'][0]['memory']['dynamics']['user_pinned']=True",
     "inactive=copy.deepcopy(result)",
     "inactive['source_passages'][0]['anchor_memory_versions']=[{'memory_id':'absent','revision':1}]",
-    "print(json.dumps([{'result':r,'expected':render_recall(r)} for r in (result,pinned,inactive)]))",
+    "dated=copy.deepcopy(result)",
+    "dated['items'][0]['memory']['valid_time']={'start':'2026-10-22T12:00:00Z','end':None,'precision':'exact','basis':'source_explicit'}",
+    "print(json.dumps([{'result':r,'expected':render_recall(r)} for r in (result,pinned,inactive,dated)]))",
   ].join("\n")], { cwd: fileURLToPath(new URL("../../", import.meta.url)), encoding: "utf8" });
   const cases = JSON.parse(raw);
   for (const { result, expected } of cases) {
@@ -353,4 +355,28 @@ test("bounded original source contexts agree with Python including pinned and in
   assert.equal(JSON.parse(cases[1].expected).memories.length, 1);
   assert.equal(JSON.parse(cases[2].expected).source_passages, undefined);
   assert.ok(JSON.parse(cases[2].expected).memories.length > 0);
+  assert.equal(JSON.parse(cases[3].expected).memories[0].valid_time.start, "2026-10-22T12:00:00Z");
+});
+
+test("plain episode report coverage is versioned and agrees with Python", () => {
+  const python = fileURLToPath(new URL("../../.venv/bin/python", import.meta.url));
+  const raw = execFileSync(python, ["-c", [
+    "import copy,json,sys",
+    "sys.path.insert(0,'tests')",
+    "from test_source_context import report_recall",
+    "from agent_memory.context_views import render_recall",
+    "_,report,result=report_recall()",
+    "legacy=copy.deepcopy(result)",
+    "legacy['source_passages'][0]['policy_version']='bounded-source-context-v1'",
+    "pinned=copy.deepcopy(result)",
+    "next(i['memory'] for i in pinned['items'] if i['memory']['memory_id']==report['memory_id'])['dynamics']['user_pinned']=True",
+    "print(json.dumps([{'result':r,'expected':render_recall(r)} for r in (result,legacy,pinned)]))",
+  ].join("\n")], { cwd: fileURLToPath(new URL("../../", import.meta.url)), encoding: "utf8" });
+  const cases = JSON.parse(raw);
+  for (const { result, expected } of cases) {
+    delete result.model_context;
+    delete result.usage;
+    assert.equal(recalledContext(result), expected);
+  }
+  assert.deepEqual(cases.map(({ expected }: any) => JSON.parse(expected).memories.length), [0, 1, 1]);
 });

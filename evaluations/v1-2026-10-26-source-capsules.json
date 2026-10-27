@@ -1,0 +1,394 @@
+{
+  "status": "local_repairs_verified_remaining_diagnostic_pending",
+  "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+  "local_checks": {
+    "passed": true,
+    "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+    "full_source": {
+      "passed": 5591,
+      "failed": 0,
+      "skipped": 4,
+      "seconds": 530.19,
+      "warning": "Python fork in multithreaded journal test",
+      "log": "full-final.log"
+    },
+    "installed": {
+      "passed": 430,
+      "log": "installed-delivery.log"
+    },
+    "desktop": {
+      "passed": 4,
+      "source_skips_executed": 4,
+      "log": "desktop-delivery.log"
+    },
+    "typescript": {
+      "passed": 40,
+      "strict_typecheck": "passed",
+      "literal_report_pinned_legacy_and_occurrence_time_parity": "passed"
+    },
+    "artifacts": {
+      "runtime_files": 122,
+      "source_sdist_wheel_installed_match": true
+    },
+    "focused_source": 132,
+    "earlier_failures_retained": [
+      "full-final.log.before-unit-admission:5585 pass /1 legacy missing-representation failure /4skip; new final full includes corrected path",
+      "Initial SQL read-only call refused normal trace INSERT; later rollback-only paired diagnostic validates no persisted change",
+      "Misspelled trace table helper failed before reading/writing traces; corrected logs retained",
+      "Two initial TS optional/representation type errors, corrected without casts; final strict check passed",
+      "Projection-only SQL candidate missed calendar despite frozen in-process success; source-unit candidate admission required before claiming real route fixed."
+    ],
+    "paid_evaluations": "Old primary and diagnostic tail remain closed and failed; local verification does not pass G4.",
+    "paid_provider_calls_in_local_checks": 0
+  },
+  "retrieval_performance": {
+    "version": "v1-fixed-lexical-retrieval-regression-v1",
+    "state": "finished",
+    "measured_at": "2026-10-27T00:54:58.441537+00:00",
+    "build_id": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+    "source": "evaluations/v1-2026-10-25-retrieval-performance.json",
+    "source_sha256": "d9235cf960f546d0a1e0a4bed210e659b41a36797262dd4756078790c8dffcb3",
+    "harness_sha256": "64182d74822cb11c6d676d76a30637814ace9cae0164f639369b6218c07bd596",
+    "artifact_manifest": "evaluations/v1-2026-10-26-source-capsules-artifacts.json",
+    "fixture_identity": {
+      "tenant_id": "39d22c9a-8abb-44f3-aa3b-c601aef6e839",
+      "principal_id": "82493bca-0237-4d90-aead-2bb7b2e3a45f",
+      "brain_id": "723ba949-4b22-4457-bb21-7ca56f4f5533"
+    },
+    "records": 10000,
+    "fixture_preflight": {
+      "counts": {
+        "memory_events": 10000,
+        "memory_assertions": 10000
+      },
+      "durable_sequence": 10000,
+      "indexed_sequence": 10000
+    },
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "execution": "Installed wheel; isolated Python (-I), working directory /tmp.",
+    "cache_state": "Existing previously used fixture. No discarded warmups; OS/database caches were not flushed.",
+    "scope": "Local in-process public lexical recall, cue_recovery intent; no HTTP or provider waiting.",
+    "limitations": [
+      "One ordered pass through the existing 20 literal-label queries; no cold-cache or production SLA claim.",
+      "This cue_recovery benchmark does not exercise the continue_conversation source-neighborhood route.",
+      "No semantic inference, vector provider, relation-fanout, worker-throughput, or model-response benchmark.",
+      "The final integrated source suite had finished; other machine load was not controlled or randomized."
+    ],
+    "full_source_suite_terminal_summary_before_measurement": "5591 passed, 4 skipped, 1 warning in 530.19s (0:08:50)",
+    "full_source_suite_build_id": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+    "query_contract": {
+      "intent": "cue_recovery",
+      "additional_cues": [],
+      "cue_event_ids": [],
+      "budget": {
+        "max_context_tokens": 16000,
+        "max_model_calls": 0,
+        "max_embedding_calls": 0,
+        "max_expansion_steps": 2,
+        "max_wall_time_ms": 5000,
+        "max_cost_microunits": 0,
+        "currency": "USD",
+        "token_counting": "conservative_estimate",
+        "tokenizer_id": null
+      },
+      "read_fence": {
+        "minimum_durable_sequence": 0,
+        "consistency": "read_your_writes",
+        "snapshot_revision": null
+      },
+      "evidence_cutoff": {
+        "mode": "through_sequence",
+        "through_sequence": 10000
+      }
+    },
+    "sample_count_planned": 20,
+    "discarded_warmups": 0,
+    "p95_definition": "Nineteenth sorted observation out of twenty (nearest-rank).",
+    "p95_limit_ms": 500,
+    "samples": [
+      {
+        "query": "zeta00094",
+        "elapsed_ms": 137.473625,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00141",
+        "elapsed_ms": 104.711792,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00188",
+        "elapsed_ms": 113.306875,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00235",
+        "elapsed_ms": 107.41275,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00282",
+        "elapsed_ms": 111.575292,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00329",
+        "elapsed_ms": 112.785834,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00376",
+        "elapsed_ms": 119.142042,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00423",
+        "elapsed_ms": 119.082,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00470",
+        "elapsed_ms": 117.646209,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00517",
+        "elapsed_ms": 116.022375,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00564",
+        "elapsed_ms": 115.438292,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00611",
+        "elapsed_ms": 129.00875,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00658",
+        "elapsed_ms": 134.396833,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00705",
+        "elapsed_ms": 131.575583,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00752",
+        "elapsed_ms": 122.904875,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00799",
+        "elapsed_ms": 148.558083,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00846",
+        "elapsed_ms": 128.422792,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00893",
+        "elapsed_ms": 119.288834,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00940",
+        "elapsed_ms": 129.824417,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      },
+      {
+        "query": "zeta00987",
+        "elapsed_ms": 123.180042,
+        "outcome": "completed",
+        "recall_status": "partial",
+        "source_found": true,
+        "provider_calls": 0,
+        "embedding_calls": 0
+      }
+    ],
+    "provider_calls": 0,
+    "finished_at": "2026-10-27T00:55:00.912419+00:00",
+    "median_ms": 119.215438,
+    "p95_ms": 137.473625,
+    "max_ms": 148.558083,
+    "expected_labels_found": 20,
+    "all_sources_found": true,
+    "all_requests_completed": true,
+    "embedding_calls": 0,
+    "passed": true
+  },
+  "relation_performance": {
+    "version": "relation-capability-performance-v1",
+    "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+    "input_contract": "source-composition-v2",
+    "platform": "macOS-15.7.4-arm64-arm-64bit",
+    "processor": "Apple M4",
+    "python": "3.12.13",
+    "endpoint_count": 32,
+    "eligible_pair_count": 496,
+    "samples_ms": [
+      145.982708,
+      88.787583,
+      69.149375,
+      67.63125,
+      67.459209
+    ],
+    "median_ms": 69.149375,
+    "median_limit_ms": 100,
+    "passed": true,
+    "cache_state": "No discarded warmup; five consecutive calls in one process.",
+    "fixture": "Thirty-two independent user-source study reports with complete known semantic endpoint metadata.",
+    "fixture_sha256": "25db1060ff6f65bbfa319ec6c8b46a80192dd18bd280ee1ef27b9ffe7f6aba8b",
+    "metadata_bytes": 13400,
+    "provider_calls": 0,
+    "embedding_calls": 0
+  },
+  "sql_pair": {
+    "baseline": {
+      "runtime_build": "1a418e3a7e5446f3b69cd50437e36454556cd405492cf4dc5ff9c96141a1890e",
+      "scope": "Current actual SQL route under rollback-only repeatable-read transaction, fixed access seam and frozen source cutoff. Later database state is present; this is not an exact replay of the original database snapshot. Full quoted originals are independently matched to the pre-request snapshot.",
+      "snapshot_sha256": "3f087ff4ad0598f0079956bb79dffbe8d877921054589e17d3ffe32b4af37fff",
+      "original_context_has_monday": false,
+      "new_context_has_monday": false,
+      "new_context_has_thursday": false,
+      "budget_bytes": 7584,
+      "context_bytes": 6499,
+      "all_quotes_match_frozen_originals": true,
+      "all_selected_memory_versions_preexisted": true,
+      "source_graph_unchanged": true,
+      "graph_sha256": "e7ce44968b9a992a6a419612a2cf1c0059faa718f175e3ee559a8d51349fbe90",
+      "provider_calls": 0,
+      "instrumentation_writes": "Normal recall traces written only inside forced rollback; original semantic/source graph unchanged.",
+      "source_and_trace_graphs_unchanged_after_rollback": true
+    },
+    "candidate": {
+      "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+      "scope": "Current actual SQL route under rollback-only repeatable-read transaction, fixed access seam and frozen source cutoff. Later database state is present; this is not an exact replay of the original database snapshot. Full quoted originals are independently matched to the pre-request snapshot.",
+      "snapshot_sha256": "3f087ff4ad0598f0079956bb79dffbe8d877921054589e17d3ffe32b4af37fff",
+      "original_context_has_monday": false,
+      "new_context_has_monday": true,
+      "new_context_has_thursday": true,
+      "budget_bytes": 7584,
+      "context_bytes": 7284,
+      "all_quotes_match_frozen_originals": true,
+      "all_selected_memory_versions_preexisted": false,
+      "source_graph_unchanged": true,
+      "graph_sha256": "e7ce44968b9a992a6a419612a2cf1c0059faa718f175e3ee559a8d51349fbe90",
+      "provider_calls": 0,
+      "instrumentation_writes": "Normal recall traces written only inside forced rollback; original semantic/source graph unchanged.",
+      "source_and_trace_graphs_unchanged_after_rollback": true,
+      "all_selected_source_references_preexisted": true,
+      "non_preexisting_selected_versions": [
+        {
+          "id": "memory-9da13a8cdf534842e44d2293b42f2a6c",
+          "method": "direct_capture",
+          "statement": "user user (direct_statement): Don't make it sound like a moral."
+        }
+      ]
+    }
+  },
+  "caption_reproduction": {
+    "runtime_build": "d6b347347d30f283db8efa8f5b344211985722536e6e06acbb4223d6900cc7e5",
+    "source_snapshot_sha256": "1ffbbd7d26d6348d803a10d7161169b334b4595c5b298982515172d9bce43636",
+    "frozen_request_sha256": "903c01c45467b01d365f90db0ed64f437054b8599387c245997ec8e1e15d2329",
+    "scope": "Frozen pre-caption sources/assertions and original query, in-process recall/prepare; no future facts, provider calls or source writes. Not an exact reproduction of the old SQL route, live clock or asynchronous indexing.",
+    "original_context_contains_expressed_meaning": false,
+    "new_context_contains_expressed_meaning": true,
+    "source_passages": 4,
+    "original_context_bytes": 7623,
+    "new_context_bytes": 7389,
+    "memory_budget_bytes": 7579,
+    "complete_prompt_bytes": 16923,
+    "max_prompt_bytes": 24000,
+    "provider_calls": 0,
+    "source_unchanged": true
+  },
+  "failed_predecessor": "v1-2026-10-26-coherent-recall.json",
+  "new_paid_calls": 0,
+  "remaining_plan_sha256": "566d2d586d137e731a76de83c8ee74e1860a6d383bb74de8ab02984aec999d4d",
+  "limits": "Candidate quota counts eligible source units; final versions <=128, lexical scan <=512, dependencies <=256, context budgets unchanged. No source edit or new model call for retrieval.",
+  "acceptance": "G4 remains failed; original caption and regular-week cases are not credited. A diagnostic continuation cannot lower that gate."
+}

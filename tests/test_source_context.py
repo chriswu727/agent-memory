@@ -11,6 +11,136 @@ TEXT = ("Aunt Mara spread the blue map. I marked the route while Leo folded the 
         "Being trusted to choose made me feel capable.")
 
 
+def plain_report(source):
+    memory = cognition.extract_event(source)[0]
+    memory.update(memory_id="map-report", statement="The user reported that Mara spread the blue map.",
+                  representation="episode_fragment", claim_kind="reported_fact", epistemic_status="derived_inference",
+                  conditions={"op": "always"}, valid_during={"kind": "unknown"}, procedure=None)
+    memory["derivation"].update(method="aggregation", rule_version="source-composition-v2")
+    memory["verification"] = {"state": "supported_inference", "method": "semantic_model",
+                               "not_a_truth_certificate": True}
+    return memory
+
+
+def report_recall():
+    source = event(TEXT)
+    report = plain_report(source)
+    result = cognition.recall(scope(), request("blue map"), [report, *cognition.extract_event(source)],
+                               [source], state())
+    return source, report, result
+
+
+def test_complete_original_replaces_duplicate_plain_episode_wrappers_without_removing_records():
+    from agent_memory.context_views import recall_context_view
+
+    source, report, result = report_recall()
+    assert any(item["memory"]["memory_id"] == report["memory_id"] for item in result["items"])
+    view = recall_context_view(result)
+    assert not view["memories"] and view["source_passages"][0]["text"] == TEXT
+    packet = cognition.prepare(scope(), prepare_payload(), working(), result, state())
+    assert not any(block["section"] == "relevant_memory" for block in packet["blocks"])
+    assert source["observed"]["content"]["text"] == TEXT
+    legacy = copy.deepcopy(result)
+    legacy["source_passages"][0]["policy_version"] = "bounded-source-context-v1"
+    old = recall_context_view(legacy)
+    assert len(old["memories"]) == 1 and old["memories"][0]["statement"] == report["statement"]
+
+
+@pytest.mark.parametrize("changes", [
+    {"conditions": {"op": "eq", "key": "activity", "value": "walking"}},
+    {"valid_during": {"kind": "interval", "start": {"kind": "unbounded"}, "end": {"kind": "unbounded"}}},
+    {"valid_time": {"start": "2026-10-22T12:00:00Z", "end": None,
+                    "precision": "exact", "basis": "source_explicit"}},
+    {"memory_kind": "semantic", "representation": "semantic_anchor"},
+    {"claim_kind": "inferred_pattern"},
+    {"derivation": {"method": "aggregation", "source_memory_versions": [{"memory_id": "parent", "revision": 1}]}},
+    {"dynamics": {"user_pinned": True}},
+])
+def test_full_source_never_suppresses_rules_validity_inference_dependencies_or_pins(changes):
+    from agent_memory.source_context import covering_passage
+
+    _, report, result = report_recall()
+    report.update(changes)
+    assert covering_passage({"memory": report}, result["source_passages"]) is None
+
+
+def test_literal_occurrence_time_stays_visible_alongside_original_communication():
+    from agent_memory.context_views import recall_context_view
+
+    source = event(TEXT)
+    memories = cognition.extract_event(source)
+    memories[0]["valid_time"] = {"start": "2026-10-22T12:00:00Z", "end": None,
+                                "precision": "exact", "basis": "source_explicit"}
+    result = cognition.recall(scope(), request("blue map"), memories, [source], state())
+    view = recall_context_view(result)
+    assert view["source_passages"][0]["text"] == TEXT
+    assert view["memories"][0]["valid_time"] == memories[0]["valid_time"]
+
+
+def test_source_unit_admission_retains_distinct_coverage_before_duplicate_versions():
+    from agent_memory.source_context import source_unit_candidates
+
+    documents, ranked = {}, []
+    for number, text in enumerate(["The shift is temporary. I am free later.",
+                                   "I have sketched two pages. Captions are pending.",
+                                   "Mara spread a map. I chose a path.",
+                                   "Mondays are occupied. Thursdays are occupied."], 1):
+        source = event(text, number)
+        literal = cognition.extract_event(source)[0]
+        report = plain_report(source)
+        report["memory_id"] = f"report-{number}"
+        for memory in (report, literal):
+            key = memory["memory_id"], memory["revision"]
+            documents[key] = memory
+            ranked.append({"memory_id": key[0], "revision": key[1], "score": 1 / (len(ranked) + 1)})
+    original = copy.deepcopy((ranked, documents))
+    naive_sources = {documents[(v["memory_id"], v["revision"])]["evidence_refs"][0]["event_id"]
+                     for v in ranked[:4]}
+    selected = source_unit_candidates(ranked, documents, limit=4, expand=True)
+    selected_sources = {documents[(v["memory_id"], v["revision"])]["evidence_refs"][0]["event_id"]
+                        for v in selected}
+    assert len(naive_sources) == 2 and len(selected_sources) == 4 and len(selected) == 8
+    assert len(source_unit_candidates(ranked, documents, limit=4)) == 4
+    assert (ranked, documents) == original
+
+
+def test_duplicate_family_cannot_exceed_the_version_cap_or_starve_other_selected_units():
+    from agent_memory.source_context import source_unit_candidates
+
+    source = event(TEXT)
+    literal = cognition.extract_event(source)[0]
+    values = [literal]
+    for number in range(140):
+        report = plain_report(source)
+        report["memory_id"] = f"duplicate-{number}"
+        values.append(report)
+    for number in range(2, 5):
+        values.append(cognition.extract_event(event(f"Independent source {number}.", number))[0])
+    documents = {(m["memory_id"], m["revision"]): m for m in values}
+    ranked = [{"memory_id": m["memory_id"], "revision": m["revision"], "score": 1 / (i + 1)}
+              for i, m in enumerate(values)]
+    selected = source_unit_candidates(ranked, documents, limit=4, expand=True)
+    assert len(selected) == 128
+    assert {documents[(v["memory_id"], v["revision"])]["evidence_refs"][0]["event_id"]
+            for v in selected} == {"event-1", "event-2", "event-3", "event-4"}
+
+
+@pytest.mark.parametrize("difference", ["scope", "world"])
+def test_identical_citations_do_not_join_candidate_families_across_scope_or_world(difference):
+    from agent_memory.source_context import source_unit_candidates
+
+    source = event(TEXT)
+    report, literal = plain_report(source), cognition.extract_event(source)[0]
+    if difference == "scope":
+        report["scope"]["visibility"] = "conversation"
+    else:
+        report["world"] = "quoted"
+    documents = {(m["memory_id"], m["revision"]): m for m in (report, literal)}
+    ranked = [{"memory_id": m["memory_id"], "revision": m["revision"], "score": 1.0}
+              for m in (report, literal)]
+    assert source_unit_candidates(ranked, documents, limit=1, expand=True) == ranked[:1]
+
+
 def recall(source=None, *, query="blue map", tokens=6000, current=None, **options):
     source = event(TEXT) if source is None else source
     memories = cognition.extract_event(source)

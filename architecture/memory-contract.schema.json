@@ -6217,7 +6217,7 @@
       "type": "object",
       "properties": {
         "policy_version": {
-          "const": "bounded-source-context-v1"
+          "enum": ["bounded-source-context-v1", "bounded-source-context-v2"]
         },
         "evidence_ref": {
           "$ref": "#/$defs/EvidenceRef"

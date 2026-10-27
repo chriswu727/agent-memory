@@ -96,6 +96,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
     else:
         from .lexical_candidates import LexicalScorer, lexical_rows
         from .source_candidates import SOURCE_ROUTE_VERSION, source_candidates
+        from .source_context import source_unit_candidates
 
         rows, truncated = lexical_rows(conn, params, target, text, limit=scan_limit)
         if not cognition.speech_requested({**query, "query": text}):
@@ -148,7 +149,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
             rankings["vector"] = remember(rows)
             versions["vector"] = "embedding-space:" + space.fingerprint
         direct_ranked = _direct_candidates(rankings, versions, lexical_scores, limit=512)
-        seeds = direct_ranked[:candidate_limit]
+        seeds = source_unit_candidates(direct_ranked, documents, limit=candidate_limit)
         seed_ids = [item["memory_id"] for item in seeds]
         seed_revisions = [item["revision"] for item in seeds]
         seed_scores = [item["score"] for item in seeds]
@@ -247,7 +248,7 @@ def collect_candidates(conn, service, principal, brain, target, query, recall_pl
                 signal["score"] *= weight
         ranked.sort(key=lambda item: (-item["score"], item["memory_id"], item["revision"]))
         truncated = truncated or len(ranked) > candidate_limit
-        ranked = ranked[:candidate_limit]
+        ranked = source_unit_candidates(ranked, documents, limit=candidate_limit, expand=True)
         roots = [(item["memory_id"], item["revision"]) for item in ranked]
         signals = {(item["memory_id"], item["revision"]): item["rank_signals"] for item in ranked}
 
