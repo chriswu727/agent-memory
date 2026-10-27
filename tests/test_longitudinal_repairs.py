@@ -135,7 +135,7 @@ def test_explicit_new_source_restriction_is_not_mistaken_for_a_legacy_classifier
 
 def test_contractions_and_source_labels_do_not_create_spurious_search_terms():
     words, _, _ = cognition._terms("I'm writing Grandma’s card; I've said I don't want it generic.")
-    assert {"grandma", "writing", "card", "not", "generic"} <= words
+    assert {"grandma", "writ", "card", "not", "generic"} <= words
     assert not words & {"m", "ve", "don", "t", "s", "i"}
     assert cognition._terms("don't")[0] == {"not"}
     assert cognition._terms("can't")[0] == {"not"}

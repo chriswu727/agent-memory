@@ -10,7 +10,7 @@ Help your agent carry useful memories across conversations—with layered recall
 
 memBrain runs as a local service. Connect your agent's conversation lifecycle once, and the runtime captures messages, prepares relevant memory before replies, and learns in the background. The agent keeps the same brain across process restarts and changes to its configured reply model.
 
-[Claude Code plugin](#claude-code-plugin) · [Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
+[Claude Code plugin](#claude-code-plugin) · [Why memBrain](#why-membrain) · [Quickstart](#quickstart) · [Python integration](#python-integration) · [How memory works](#how-memory-works) · [Status and verification](#status-and-verification) · [Full reference](docs/reference.md)
 
 > **Pre-release.** The synchronous text runtime is implemented; long-term memory quality is still being validated. The Claude Code plugin and the Docker-free embedded database are new and verified on Linux x86_64 only. Desktop installation with Docker is verified on macOS. See [supported scope and known limits](#status-and-verification).
 
@@ -27,12 +27,22 @@ Inside a Claude Code session you can also run `/plugin install membrain --market
 From the next session on, the plugin:
 
 - records each message and Claude's final reply locally;
-- adds matching records from earlier sessions before Claude replies, as dated and attributed lines;
+- starts each session with the user's complete earlier history while it is small, and switches to recalling matching records before each reply once it grows;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 
 The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches words in the current message, and Claude is instructed to search with concrete keywords when personal context matters. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
 
 Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
+
+<a id="why-membrain"></a>
+
+## Why memBrain
+
+- **Traceable, not rewritten.** Every memory keeps who said it and when. Recalled context is labelled as historical data, so a model can tell what you said from what it once suggested.
+- **Local and private.** One command installs an embedded database on your machine. There is no Docker, cloud account or extra model key; the host model you already use does the interpretation.
+- **Never in the way.** Hooks fail open: if memory is unavailable, your agent answers as usual and records are queued until it recovers.
+- **Forgetting you can audit.** Erasure is recorded and survives restoring an older backup.
+- **Measured in the open.** Evaluations, including failed ones, are published with their method and cost. Personality and emotion modelling are planned research, not current features.
 
 <a id="desktop-setup"></a>
 
@@ -173,7 +183,7 @@ The current release candidate supports **local synchronous text agents**, with a
 
 [Plugin mode](architecture/plugin-mode.md) is verified on **Linux x86_64** only. The embedded database passed real start, restart, backup, restore and activation checks as root and as an unprivileged user. An isolated Claude Code 2.1.311 installed the plugin from a local marketplace; with a stub model API, it recorded messages and replies, and a new session's model request contained the previous session's record. That check covers integration, not answer quality. Automatic recall is lexical, and macOS and Windows have not been run on real machines.
 
-A [blinded A/B diagnostic](evaluations/v1-2026-10-27-ab-baselines.md) on a fresh ten-session scenario scored the default memory runtime 4.5 of 12, a no-memory baseline 2 and a naive full-history prompt 11.5. The memory arm used about thirty times the tokens of the full-history arm and needed 58 manual interventions. Most of its misses were facts that recall did not retrieve. At this small scale full history is the stronger baseline; longer histories were not tested.
+A [blinded A/B diagnostic](evaluations/v1-2026-10-27-ab-baselines.md) on a fresh ten-session scenario scored the default memory runtime 4.5 of 12, a no-memory baseline 2 and a naive full-history prompt 11.5. The memory arm used about thirty times the tokens of the full-history arm and needed 58 manual interventions. Most of its misses were facts that recall did not retrieve. At this small scale full history is the stronger baseline; longer histories were not tested. A [second blinded run on the plugin path](evaluations/v1-2026-10-27-plugin-path-ab.md), with the same model and cases, scored the plugin 10.5 against 11 for full history on that scenario. On a longer 34-session variant with pasted code and logs, the plugin scored 7.5, and 12 after the history and recall changes made in response, against 11.5 for full history, using about a quarter of the full-history tokens. These are single runs, and the changes were designed on the same scenario; a fresh scenario is needed to confirm them.
 
 The [memory-quality verification baseline](evaluations/v1-2026-10-25-memory-efficiency.md) records:
 

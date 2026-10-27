@@ -63,3 +63,16 @@ Fictional day labels do not age memory. Access-age diagnostics use the existing 
 Prepare a source archive, wheel, SHA-256 checksums, release notes and the final acceptance report. Inspect archive contents for unintended local files and credentials. Verify the documented install command against the chosen distribution before advertising it. A package name in `pyproject.toml` does not establish availability or ownership on a package index.
 
 Use a GitHub versioned release as the first delivery record. Package-index publication and promotional posts are separate distribution steps; this checklist does not claim they have happened. Do not label a tag or release stable while acceptance is incomplete. The current [changelog](../CHANGELOG.md) is an unreleased draft, not a published release.
+
+## Publishing to PyPI
+
+The `membrain-ai` distribution is published by `.github/workflows/release.yml` when a `v<version>` tag is pushed. It uses PyPI trusted publishing, so no token is stored in the repository.
+
+One-time setup by the repository owner:
+
+1. On PyPI, add a pending trusted publisher for the project `membrain-ai` with owner `chriswu727`, repository `memBrain`, workflow `release.yml` and environment `pypi`.
+2. In the GitHub repository settings, create an environment named `pypi` (optionally requiring approval).
+
+For each release: update the version in `pyproject.toml` and the plugin manifest, commit, then push a matching tag such as `git tag v0.1.0 && git push origin v0.1.0`. The workflow refuses a tag that does not match the package version.
+
+After the first successful release, change the default package in `plugins/membrain/hooks/hooks.json` and `plugins/membrain/.mcp.json` from the Git URL to `membrain-ai[embedded]==<version>`. Installation then comes from PyPI wheels instead of cloning the repository.

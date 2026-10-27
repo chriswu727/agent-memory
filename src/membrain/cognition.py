@@ -19,7 +19,7 @@ RULE_VERSION = "literal-episodes-v3"
 PREVIOUS_RULE_VERSION = "literal-episodes-v2"
 LEGACY_RULE_VERSION = "literal-episodes-v1"
 LITERAL_RULE_VERSIONS = (RULE_VERSION, PREVIOUS_RULE_VERSION, LEGACY_RULE_VERSION)
-RETRIEVAL_VERSION = "unicode-lexical-v2"
+RETRIEVAL_VERSION = "unicode-lexical-v3"
 _LIST_PREFIX = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:(?:[-+*]|\d+[.)])(?:[ \t]+|$))")
 _MERIDIEM = re.compile(r"(?<![a-z])[ap]\.m\.", re.I)
 _SENTENCE_END = re.compile(r"[。.!！?？]+[\"'”’»」』）)\]}*_~`]*")
@@ -62,6 +62,37 @@ _CJK_FILLERS = re.compile(
     "还记得|记不记得|有没有|能不能|请问|以前|之前|曾经|那次|这个|那个|什么|"
     "我们|你们|他们|她们|告诉|说过|记得|一下"
 )
+
+
+_IRREGULAR_FORMS = {"ran": "run", "went": "go", "gone": "go", "ate": "eat", "eaten": "eat", "feet": "foot",
+                    "children": "child", "men": "man", "women": "woman", "teeth": "tooth"}
+
+
+def _stem(word: str) -> str:
+    """Conservative English word-form folding so 'running', 'runs' and 'ran' meet 'run' in lexical recall.
+
+    Stems only drop suffixes (apart from a few irregular forms), so a stem is usually a prefix of every form
+    and stored text can still be found with prefix queries.
+    """
+    if word in _IRREGULAR_FORMS:
+        return _IRREGULAR_FORMS[word]
+    if len(word) < 4 or not word.isalpha():
+        return word
+    if len(word) >= 5 and word.endswith(("ies", "ied")):
+        return word[:-3] + "y"
+    for suffix in ("ing", "ed"):
+        base = word[:-len(suffix)]
+        if word.endswith(suffix) and not word.endswith("eed") and len(base) >= 3 and re.search("[aeiouy]", base):
+            if len(base) >= 4 and base[-1] == base[-2] and base[-1] not in "aeiouylsz":
+                base = base[:-1]
+            word = base
+            break
+    else:
+        if word.endswith(("sses", "shes", "ches", "xes", "zes")):
+            word = word[:-2]
+        elif word.endswith("s") and not word.endswith(("ss", "us", "is")):
+            word = word[:-1]
+    return word[:-1] if len(word) >= 4 and word.endswith("e") else word
 
 
 def _serialized(value: Any) -> str:
@@ -328,7 +359,7 @@ def _terms(text: str) -> tuple[set[str], set[str], set[str]]:
     normalized = re.sub(r"\bshan't\b", "shall not", normalized)
     normalized = re.sub(r"n't\b", " not", normalized)
     normalized = re.sub(r"'(?:m|re|ve|ll|d|s)\b", " ", normalized)
-    words = set(re.findall(r"[a-z0-9_]+", normalized)) - _IGNORED_TERMS
+    words = {_stem(word) for word in re.findall(r"[a-z0-9_]+", normalized) if word not in _IGNORED_TERMS}
     runs = re.findall(r"[\u3400-\u9fff]+", _CJK_FILLERS.sub(" ", normalized))
     singles = {char for run in runs for char in run if char not in "的了是吗呢么在我你他她和有"}
     pairs = {run[index:index + 2] for run in runs for index in range(len(run) - 1)}

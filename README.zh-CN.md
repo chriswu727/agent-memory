@@ -10,7 +10,7 @@ memBrain 原名 Agent Memory。已有的安装、数据目录和 `agent_memory` 
 
 memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后，运行时会自动捕获消息，在回复前准备相关记忆，并在后台学习。进程重启或切换已配置的回复模型后，Agent 仍使用同一个大脑。
 
-[Claude Code 插件](#claude-code-plugin) · [快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
+[Claude Code 插件](#claude-code-plugin) · [为什么选择 memBrain](#why-membrain) · [快速开始](#quickstart) · [Python 接入](#python-integration) · [记忆如何工作](#how-memory-works) · [状态与验证](#status-and-verification) · [完整参考](docs/reference.md)
 
 > **预发布阶段。** 同步文本运行时已实现，长期记忆质量仍在验证中。Claude Code 插件和无需 Docker 的嵌入式数据库是新增功能，目前仅在 Linux x86_64 上验证。使用 Docker 的桌面安装已在 macOS 上验证。详见[支持范围与已知限制](#status-and-verification)。
 
@@ -27,12 +27,22 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 从下一个会话开始，插件会：
 
 - 在本地记录每条消息和 Claude 的最终回复；
-- 在 Claude 回复前，以带日期和说话人标注的条目加入此前会话中匹配的记录；
+- 在记忆量较小时，于每个会话开始时注入用户此前的完整历史；记忆变多后，改为在每次回复前召回匹配的记录；
 - 为 Claude 提供记忆工具，用于主动检索、记录简短笔记以及按用户要求删除。
 
 第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按当前消息中的词语匹配；当问题涉及个人背景时，Claude 会被引导用具体关键词主动检索。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
 
 其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
+
+<a id="why-membrain"></a>
+
+## 为什么选择 memBrain
+
+- **可追溯，不改写。** 每条记忆都保留是谁说的、什么时候说的。召回的内容会标明是历史数据，模型能区分“你说过的话”和“它曾经的建议”。
+- **本地、私有。** 一条命令即可在本机安装嵌入式数据库；无需 Docker、云账号或额外的模型 key，由你正在使用的宿主模型负责理解。
+- **不打扰宿主。** 钩子出错时直接放行：记忆不可用时，Agent 照常回复，记录会先排队，恢复后再写入。
+- **可审计的遗忘。** 删除会被登记，从旧备份恢复后也不会“复活”。
+- **公开评测。** 评测结果（包括失败的）连同方法和成本一并公开。人格与情绪建模属于规划中的研究，目前尚未实现。
 
 <a id="desktop-setup"></a>
 <a id="quickstart"></a>
@@ -178,7 +188,7 @@ membrain desktop start
 
 [插件模式](architecture/plugin-mode.md)目前仅在 **Linux x86_64** 上验证。嵌入式数据库分别以 root 和普通用户身份，通过了真实的启动、重启、备份、恢复和激活检查。在隔离配置的 Claude Code 2.1.311 中，插件从本地插件市场安装成功；使用模拟模型 API 时，插件记录了消息和回复，新会话发给模型的请求中包含上一个会话的记录。这项检查覆盖的是集成流程，不是回答质量。自动召回基于词语匹配，macOS 和 Windows 尚未在真实设备上运行。
 
-在一个全新的十会话场景上进行的[盲评 A/B 诊断](evaluations/v1-2026-10-27-ab-baselines.md)中，默认记忆运行时得 4.5 分（满分 12），无记忆基线得 2 分，直接放入完整历史的朴素做法得 11.5 分。记忆组消耗的 token 约为完整历史组的三十倍，并需要 58 次人工干预。它失分的主要原因是召回没有取回相关事实。在这样的小规模下，完整历史是更强的基线；更长的历史尚未测试。
+在一个全新的十会话场景上进行的[盲评 A/B 诊断](evaluations/v1-2026-10-27-ab-baselines.md)中，默认记忆运行时得 4.5 分（满分 12），无记忆基线得 2 分，直接放入完整历史的朴素做法得 11.5 分。记忆组消耗的 token 约为完整历史组的三十倍，并需要 58 次人工干预。它失分的主要原因是召回没有取回相关事实。在这样的小规模下，完整历史是更强的基线；更长的历史尚未测试。使用相同模型和用例对插件路径进行的[第二次盲评](evaluations/v1-2026-10-27-plugin-path-ab.md)中，插件在该场景得 10.5 分，完整历史得 11 分。在一个包含粘贴代码和日志的 34 会话长版本上，插件先得 7.5 分，针对问题改进历史注入和召回后得 12 分，完整历史得 11.5 分，插件消耗的 token 约为完整历史的四分之一。这些都是单次运行，且改进是在同一场景上设计的，需要用新场景确认。
 
 [记忆质量验证基线](evaluations/v1-2026-10-25-memory-efficiency.md)记录了：
 

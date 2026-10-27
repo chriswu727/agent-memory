@@ -548,6 +548,8 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation. |
 | `plugin status` | Reports service state and the number of queued records. |
 
+At session start the plugin requests `GET /v1/brains/{brain_id}/timeline?role=user&max_characters=8500&exclude_conversation=<session>`. The endpoint returns current, non-deleted, non-suppressed messages newest first, each clipped to `max_item_characters`, and `complete: true` only when nothing was omitted. When complete, the hook injects the whole history and later prompts in that session skip recall; otherwise it injects the recent part and keeps per-message recall. The Python and TypeScript clients expose this as `timeline()`.
+
 Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/membrain`; see [plugin mode](../architecture/plugin-mode.md).
 
 ### MCP

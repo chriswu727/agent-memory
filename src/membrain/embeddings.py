@@ -9,6 +9,7 @@ from typing import Any, Protocol
 import httpx
 
 from .helpers import digest
+from .outbound import provider_transport
 
 
 def _bounded_integer(value, name, minimum=1, maximum=2**31 - 1):
@@ -95,7 +96,8 @@ class ChatCompletionsEmbeddingProvider:
         self._max_response_bytes = _bounded_integer(max_response_bytes, "max_response_bytes", maximum=67108864)
         self._base_url = str(url).rstrip("/") + "/"
         self._http = httpx.Client(base_url=self._base_url, headers={"Authorization": f"Bearer {api_key}"},
-                                  transport=transport, follow_redirects=False, trust_env=False)
+                                  transport=transport if transport is not None else provider_transport(self._base_url),
+                                  follow_redirects=False, trust_env=False)
 
     @property
     def space(self) -> EmbeddingSpace:

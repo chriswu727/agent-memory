@@ -224,6 +224,17 @@ class MemoryClient:
         brain = self._scope(brain_id=brain_id)["brain_ref"]
         return self._request("GET", f"v1/brains/{quote(brain, safe='')}/dashboard")
 
+    def timeline(self, *, roles: Sequence[str] = ("user",), max_characters: int = 8000,
+                 max_item_characters: int = 1500, limit: int = 200, exclude_conversation: str | None = None,
+                 brain_id: str | None = None) -> JsonObject:
+        """Original messages, newest first, within a character budget; ``complete`` means nothing was left out."""
+        brain = self._scope(brain_id=brain_id)["brain_ref"]
+        params = [("role", role) for role in roles] + [
+            ("max_characters", max_characters), ("max_item_characters", max_item_characters), ("limit", limit)]
+        if exclude_conversation is not None:
+            params.append(("exclude_conversation", exclude_conversation))
+        return self._request("GET", f"v1/brains/{quote(brain, safe='')}/timeline", params=params)
+
     def work(self, brain_id: str | None = None) -> JsonObject:
         brain = self._scope(brain_id=brain_id)["brain_ref"]
         return self._request("POST", f"v1/brains/{quote(brain, safe='')}/work")

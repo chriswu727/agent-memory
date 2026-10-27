@@ -825,3 +825,21 @@ def test_real_runtime_unknown_outcomes_are_never_retried(live_local, uncertain):
         assert next_session.respond("Next input", message_id="two").stage == "completed"
     assert generate.call_count == 2
     assert deliver.call_count == (2 if uncertain == "delivery" else 1)
+
+
+@pytest.mark.parametrize("failure_code,unblocked", [("cancelled", True), ("lease_lost", False), (None, False)])
+def test_only_an_explicitly_cancelled_turn_stops_blocking_new_messages(mocked, failure_code, unblocked):
+    with session(mocked) as agent:
+        first = agent.respond("message", message_id="one")
+        mocked.rows[first.turn_id]["failure_code"] = failure_code
+        shared = mocked.runtime.journal.get.side_effect
+        mocked.runtime.journal.get.side_effect = lambda identifier: shared(identifier) | (
+            {"stage": "failed"} if identifier == first.turn_id else {})
+        if not unblocked:
+            with pytest.raises(SessionError) as error:
+                agent.respond("next message", message_id="two")
+            assert error.value.code == "pending_turn" and error.value.turn_id == first.turn_id
+            return
+        mocked.stage = "completed"
+        assert agent.respond("next message", message_id="two").stage == "completed"
+        assert mocked.runtime.respond.call_args.kwargs["message_id"] == "two"

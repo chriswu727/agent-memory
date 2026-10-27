@@ -42,7 +42,7 @@ def test_repeated_representations_of_one_source_do_not_change_topic_frequency():
     assert repeated.weights == baseline.weights
     assert repeated("blue green", first["statement"]) == baseline("blue green", first["statement"])
     assert separate.weights != baseline.weights
-    assert separate.weights[0]["blue"] < separate.weights[0]["green"]
+    assert separate.weights[0][cognition._stem("blue")] < separate.weights[0]["green"]
 
 
 def test_passage_score_does_not_accumulate_cues_from_unrelated_sentences():
@@ -88,7 +88,7 @@ def test_unusable_or_non_word_queries_retain_bounded_hash_fallback(text, expecte
     assert lexical_rows(conn, ("tenant", "owner", "brain"), {}, text, limit=4) == ([], truncated)
     assert len(conn.calls) == expected_calls
     if expected_calls == 2:
-        assert conn.calls[-1][1][-3] == "'label' | 'private'"
+        assert conn.calls[-1][1][-3] == "'label':* | 'privat':*"
 
 
 @pytest.mark.integration
