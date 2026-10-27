@@ -39,13 +39,13 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 4. **Compact context rendering.** Recalled memories and original source passages are rendered as short, dated, role-attributed lines, explicitly labelled as data rather than instructions, within a character budget below the host's 10,000-character limit. The full memory-consumption protocol used by `BrainRuntime` is not injected.
 5. **MCP tools.** The existing stdio bridge provides explicit recall, inspection, assistant-attributed notes (`memory_observe`) and user-requested erasure.
 6. **Skill instructions.** A plugin skill tells the host when to search memory, how to treat recalled records (historical, attributed, possibly outdated), when to save an attributed note, and to honour erasure requests.
-7. **Packaging.** The repository root carries a Claude Code marketplace manifest. The plugin directory contains `plugin.json`, `hooks/hooks.json`, `.mcp.json` and the skill. Commands launch the package through `uvx`.
+7. **Local semantic recall.** With the `semantic` extra, `plugin start` downloads a pinned, checksum-verified int8 ONNX export of `multilingual-e5-small` (MIT, 384 dimensions, about 135 MB) into the installation directory in a detached process, then restarts the service. The service passes an in-process `LocalEmbeddingProvider` to the existing embedding path: new memories get embedding jobs, older ones are backfilled when the worker is idle, and each hook or MCP recall embeds the query (with the model's query prefix) and fuses vector and keyword rankings. No key, network call per message or GPU is involved. The desktop worker now drains queued jobs for up to two seconds per round instead of one job per second.
+8. **Packaging.** The repository root carries a Claude Code marketplace manifest. The plugin directory contains `plugin.json`, `hooks/hooks.json`, `.mcp.json` and the skill. Commands launch the package through `uvx`.
 
 ## Deliberately deferred
 
 - A host-authored semantic memory contract with deterministic quote validation. The existing `assertion_proposals` path only accepts exact source captures, by design.
 - Background consolidation by a plugin subagent using the host's own session.
-- Local multilingual embeddings for semantic recall without a provider.
 - Idle shutdown of the local service.
 - Linux ARM embedded binaries (no `pgserver` wheel); those machines use Docker.
 
@@ -64,7 +64,9 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 
 ### Known limits
 
-- Automatic recall is lexical. Common English word forms are folded (`run`, `running`, `ran`), but synonyms and cross-language matches are not: "wedding" does not match "getting married", and a Chinese question does not match English records. The skill asks the model to search with concrete keywords; see the [plugin-path A/B report](../evaluations/v1-2026-10-27-plugin-path-ab.md) for how often that happened.
+- Until the semantic model has downloaded, or without the `semantic` extra, automatic recall is lexical: common English word forms are folded (`run`, `running`, `ran`), but synonyms and cross-language matches are not ("wedding" does not match "getting married"; a Chinese question does not match English records). See the [plugin-path A/B report](../evaluations/v1-2026-10-27-plugin-path-ab.md).
+- Vector similarity has no relevance floor: in a small memory every record is a candidate, so a few loosely related records can be injected. They are labelled as historical data and limited to the recall budget.
+- The model download needs access to Hugging Face or a mirror (`HF_ENDPOINT`). ONNX Runtime wheels do not exist for every platform; there recall stays lexical.
 - A query containing words such as "remember" is treated as a prior-record check. The hook supplies an evidence cutoff; the `memory_recall` MCP tool does not, so the skill tells Claude to avoid that phrasing.
 - `pgserver` publishes wheels only for CPython 3.9 to 3.12 and not for Linux ARM; the plugin pins Python 3.12 and other platforms fall back to Docker. The package has few recent releases, so bundling PostgreSQL ourselves may become necessary.
 - macOS and Windows were not run on real machines. Windows hook commands assume the POSIX shell that Claude Code uses for hooks.

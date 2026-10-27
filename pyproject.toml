@@ -24,10 +24,13 @@ dependencies = [
 # Embedded PostgreSQL + pgvector binaries. pgserver publishes wheels for CPython 3.9-3.12 on macOS,
 # Windows and Linux x86_64; other platforms keep the Docker engine.
 embedded = ["pgserver>=0.1.4,<0.2; python_version < '3.13' and (sys_platform != 'linux' or platform_machine == 'x86_64')"]
+# Local multilingual embeddings for semantic recall without an API key (ONNX Runtime, CPU only).
+semantic = ["onnxruntime>=1.17,<2", "tokenizers>=0.15,<1", "numpy>=1.26,<3"]
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.12", "build>=1,<2", "httpx2>=2.16,<3",
-       "pgserver>=0.1.4,<0.2; python_version < '3.13' and (sys_platform != 'linux' or platform_machine == 'x86_64')"]
+       "pgserver>=0.1.4,<0.2; python_version < '3.13' and (sys_platform != 'linux' or platform_machine == 'x86_64')",
+       "onnxruntime>=1.17,<2", "tokenizers>=0.15,<1", "numpy>=1.26,<3"]
 
 [project.urls]
 Homepage = "https://github.com/chriswu727/membrain"

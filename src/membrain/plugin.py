@@ -22,6 +22,7 @@ RECALL_TOKENS = 3000
 # Hosts cap one injected context field at 10,000 characters; the notice uses the rest.
 HISTORY_CHARACTERS = 8500
 HISTORY_ITEM_CHARACTERS = 400
+DOWNLOAD_STALE_SECONDS = 3600
 SESSION_MARKER_SECONDS = 14 * 24 * 3600
 MAX_INPUT_BYTES = 4 * 1024 * 1024
 _STATEMENT = re.compile(r"^(user|assistant|tool|operator|system) \S+ \(([a-z_]+)\): (.*)$", re.DOTALL)
@@ -158,6 +159,74 @@ def _start_in_background(directory: Path) -> None:
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **options)
 
 
+def recall_budget(tokens: int = RECALL_TOKENS) -> dict:
+    """Recall budget for hooks and tools: one query embedding when a local model is installed, else none used."""
+    from .client import default_budget
+
+    return {**default_budget(tokens), "max_embedding_calls": 1}
+
+
+def semantic_state(directory: Path) -> str:
+    from .local_embeddings import installed, runtime_available
+
+    if not runtime_available():
+        return "unavailable"
+    if installed(directory):
+        return "ready"
+    return "downloading" if _download_active(directory) else "not_downloaded"
+
+
+def _download_marker(directory: Path) -> Path:
+    return _state_directory(directory) / "model-download"
+
+
+def _download_active(directory: Path) -> bool:
+    try:
+        return time.time() - _download_marker(directory).stat().st_mtime < DOWNLOAD_STALE_SECONDS
+    except OSError:
+        return False
+
+
+def _fetch_in_background(directory: Path) -> None:
+    marker = _download_marker(directory)
+    try:
+        descriptor = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        if _download_active(directory):
+            return
+        marker.unlink(missing_ok=True)  # A stale attempt (crashed or interrupted); try again.
+        try:
+            descriptor = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            return
+    os.close(descriptor)
+    options = {"start_new_session": True} if os.name != "nt" else {
+        "creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
+    subprocess.Popen([sys.executable, "-m", "membrain.cli", "plugin", "fetch-model", "--directory", str(directory)],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **options)
+
+
+def fetch_model(directory: Path) -> dict:
+    """Download the local embedding model, then restart a running service so it starts using it."""
+    from . import desktop
+    from .local_embeddings import download
+
+    try:
+        download(directory)
+        _log(directory, "semantic model installed")
+        restarted = False
+        if (directory / "profile.json").exists() and desktop.status(directory).get("state") in {
+                "ready", "degraded", "restart_required"}:
+            desktop.restart(directory)
+            restarted = True
+        return {"semantic_recall": semantic_state(directory), "service_restarted": restarted}
+    except Exception as error:
+        _log(directory, f"semantic model download failed: {type(error).__name__}")
+        raise
+    finally:
+        _download_marker(directory).unlink(missing_ok=True)
+
+
 def start(directory: Path) -> dict:
     from . import desktop
     from .desktop_connection import open_client
@@ -171,6 +240,11 @@ def start(directory: Path) -> dict:
     with open_client(directory, start_service=False, timeout=30) as client:
         result["host_queue_imported"] = _import_host_queue(directory, client)
         result["spool_replayed"] = _flush(client, directory)
+    state = semantic_state(directory)
+    if state == "not_downloaded" and os.environ.get("MEMBRAIN_SEMANTIC", "1") != "0":
+        _fetch_in_background(directory)
+        state = "downloading"
+    result["semantic_recall"] = state
     return result
 
 
@@ -300,8 +374,6 @@ def _history_complete(directory: Path, session: str) -> bool:
 
 
 def user_prompt(payload: dict, directory: Path) -> str | None:
-    from .client import default_budget
-
     prompt = payload.get("prompt")
     if not isinstance(prompt, str) or not prompt.strip():
         return None
@@ -324,7 +396,7 @@ def user_prompt(payload: dict, directory: Path) -> str | None:
             # The current message is recorded after recall, so everything stored is prior evidence. An explicit
             # cutoff lets "do you remember ..." questions use it; the server clamps it to its durable sequence.
             context = render_context(client.recall(
-                prompt, budget=default_budget(RECALL_TOKENS),
+                prompt, budget=recall_budget(),
                 evidence_cutoff={"mode": "through_sequence", "through_sequence": 2**53},
             ), current_conversation=record["conversation_id"])
         except Exception as error:

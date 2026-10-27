@@ -48,6 +48,7 @@ class EmbeddingSpace:
 class EmbeddingRequest:
     texts: tuple[str, ...]
     timeout_seconds: float = 10.0
+    purpose: str = "document"  # "query" for search text; providers without asymmetric encoders ignore it
 
 
 @dataclass(frozen=True)

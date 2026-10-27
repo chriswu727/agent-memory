@@ -1,5 +1,6 @@
 import io
 import json
+import os
 
 import pytest
 
@@ -287,3 +288,51 @@ def test_lexical_prefix_query_reaches_stored_word_forms():
     from membrain.lexical_candidates import _prefixes
 
     assert list(_prefixes(["run", "marry", "5k", "go"])) == ["'run':*", "'marry':*", "'marri':*", "'5k'", "'go'"]
+
+
+def test_start_fetches_the_semantic_model_in_the_background_once(tmp_path, monkeypatch):
+    from membrain import local_embeddings
+
+    monkeypatch.setattr(local_embeddings, "runtime_available", lambda: True)
+    assert plugin.semantic_state(tmp_path) == "not_downloaded"
+    launched = []
+    monkeypatch.setattr(plugin.subprocess, "Popen", lambda args, **options: launched.append(args))
+    plugin._fetch_in_background(tmp_path)
+    plugin._fetch_in_background(tmp_path)
+    assert len(launched) == 1 and launched[0][-3:] == ["fetch-model", "--directory", str(tmp_path)]
+    assert plugin.semantic_state(tmp_path) == "downloading"
+    stale = plugin._download_marker(tmp_path)
+    os.utime(stale, (0, 0))
+    plugin._fetch_in_background(tmp_path)
+    assert len(launched) == 2
+    monkeypatch.setattr(local_embeddings, "runtime_available", lambda: False)
+    assert plugin.semantic_state(tmp_path) == "unavailable"
+
+
+def test_fetched_model_restarts_a_running_service_and_clears_the_marker(tmp_path, monkeypatch):
+    from membrain import local_embeddings
+
+    (tmp_path / "profile.json").write_text("{}")
+    monkeypatch.setattr(local_embeddings, "download", lambda directory: directory)
+    monkeypatch.setattr(local_embeddings, "runtime_available", lambda: True)
+    monkeypatch.setattr(local_embeddings, "installed", lambda directory: directory)
+    restarted = []
+    monkeypatch.setattr(desktop, "status", lambda directory: {"state": "ready"})
+    monkeypatch.setattr(desktop, "restart", lambda directory: restarted.append(directory))
+    plugin._download_marker(tmp_path).touch()
+    assert plugin.fetch_model(tmp_path) == {"semantic_recall": "ready", "service_restarted": True}
+    assert restarted == [tmp_path] and not plugin._download_marker(tmp_path).exists()
+
+    def failing(directory):
+        raise local_embeddings.LocalEmbeddingError("offline")
+
+    monkeypatch.setattr(local_embeddings, "download", failing)
+    plugin._download_marker(tmp_path).touch()
+    with pytest.raises(local_embeddings.LocalEmbeddingError):
+        plugin.fetch_model(tmp_path)
+    assert not plugin._download_marker(tmp_path).exists()
+
+
+def test_hook_recall_asks_for_one_query_embedding():
+    assert plugin.recall_budget()["max_embedding_calls"] == 1
+    assert plugin.recall_budget()["max_context_tokens"] == plugin.RECALL_TOKENS

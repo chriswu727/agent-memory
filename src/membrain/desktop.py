@@ -49,6 +49,9 @@ def _port_open(port: int) -> bool:
         return connection.connect_ex(("127.0.0.1", port)) == 0
 
 
+WORK_SLICE_SECONDS = 2.0
+
+
 def _environment() -> dict[str, str]:
     return {key: value for key, value in os.environ.items()
             if not key.startswith(("MEMORY_", "COMPOSE_"))
@@ -424,7 +427,11 @@ class LocalSupervisor:
                         for brain in service.list_brains(principal):
                             if self.stopped.is_set():
                                 break
-                            service.work_once(principal, brain["id"])
+                            # Drain queued work briefly instead of one job per second; backfills can be long.
+                            deadline = time.monotonic() + WORK_SLICE_SECONDS
+                            while (service.work_once(principal, brain["id"]) and not self.stopped.is_set()
+                                   and time.monotonic() < deadline):
+                                pass
                         self.last_progress = time.monotonic()
                         self.worker_state = "ready"
                     except Exception as error:

@@ -63,7 +63,7 @@ def create_server(client: MemoryClient) -> FastMCP:
         response = await asyncio.to_thread(
             client.recall, query, conversation_id=conversation_id, branch_id=branch_id,
             intent=intent, additional_cues=additional_cues or (), cue_event_ids=cue_event_ids or (),
-            budget=default_budget(max_context_tokens), **retrieval,
+            budget={**default_budget(max_context_tokens), "max_embedding_calls": 1}, **retrieval,
         )
         return {"action": "recall", "outcome": response["outcome"],
                 "context": recalled_context(response),

@@ -790,6 +790,11 @@ class LearningEngine:
         if self.service.embedding_provider:
             kinds.append("embed")
         job = self.jobs.claim(principal, brain_id, worker_id=uid(), kinds=kinds, lease_seconds=120)
+        if job is None and self.service.embedding_provider:
+            from .vector_jobs import backfill_embeddings
+
+            if backfill_embeddings(self.service, principal, brain_id):
+                job = self.jobs.claim(principal, brain_id, worker_id=uid(), kinds=kinds, lease_seconds=120)
         if job is None:
             return 0
         self._execute(principal, brain_id, job)

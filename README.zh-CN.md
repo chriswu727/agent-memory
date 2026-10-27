@@ -30,9 +30,9 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 - 在记忆量较小时，于每个会话开始时注入用户此前的完整历史；记忆变多后，改为在每次回复前召回匹配的记录；
 - 为 Claude 提供记忆工具，用于主动检索、记录简短笔记以及按用户要求删除。
 
-第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按当前消息中的词语匹配；当问题涉及个人背景时，Claude 会被引导用具体关键词主动检索。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
+第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按关键词匹配当前消息；本地多语言模型（约 135 MB，无需 API key）在后台下载完成后，还会按语义跨语言匹配。当问题涉及个人背景时，Claude 也会被引导主动检索记忆。可通过设置 `HF_ENDPOINT` 从 Hugging Face 镜像下载该模型。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
 
-其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
+其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
 <a id="why-membrain"></a>
 
@@ -52,7 +52,7 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 安装 [uv](https://docs.astral.sh/uv/)。准备好兼容 Chat Completions 的模型服务地址、模型名称和 API key；记忆学习还要求模型支持 JSON 模式。
 
 ```sh
-uv tool install --python 3.12 'membrain-ai[embedded] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
+uv tool install --python 3.12 'membrain-ai[embedded,semantic] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'
 membrain desktop setup
 membrain desktop configure-chat --use-cognition
 membrain desktop chat
