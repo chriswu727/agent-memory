@@ -95,6 +95,41 @@ def _flush(client, directory: Path) -> int:
         return 0
 
 
+def _import_host_queue(directory: Path, client) -> int:
+    """Record hook inputs that the host queued before the runtime was installed.
+
+    Hook commands append raw hook JSON to ``$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl`` with plain shell
+    when the runtime cannot start yet, so a first session's messages are not lost while it installs.
+    """
+    root = os.environ.get("CLAUDE_PLUGIN_DATA")
+    if not root:
+        return 0
+    queue = Path(root) / "pending-hooks.jsonl"
+    if not queue.exists():
+        return 0
+    claimed = queue.with_name(f"pending-hooks.importing-{os.getpid()}-{time.time_ns()}.jsonl")
+    try:
+        os.replace(queue, claimed)  # New appends start a fresh file; this process owns the claimed one.
+    except OSError:
+        return 0
+    imported = 0
+    for line in claimed.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            payload = json.loads(line)
+            if isinstance(payload.get("prompt"), str) and payload["prompt"].strip():
+                record = _record(payload, "user", payload["prompt"])
+            elif isinstance(payload.get("last_assistant_message"), str) and payload["last_assistant_message"].strip():
+                record = _record(payload, "assistant", payload["last_assistant_message"])
+            else:
+                continue
+        except (ValueError, AttributeError):
+            continue  # A torn or unrelated line cannot be recorded and must not block the rest.
+        _deliver(directory, client, record)
+        imported += 1
+    claimed.unlink(missing_ok=True)
+    return imported
+
+
 def _ready_client(directory: Path):
     from . import desktop
     from .desktop_connection import open_client
@@ -130,6 +165,7 @@ def start(directory: Path) -> dict:
     else:
         result = desktop.start(directory)
     with open_client(directory, start_service=False, timeout=30) as client:
+        result["host_queue_imported"] = _import_host_queue(directory, client)
         result["spool_replayed"] = _flush(client, directory)
     return result
 
@@ -223,12 +259,14 @@ def user_prompt(payload: dict, directory: Path) -> str | None:
     record = _record(payload, "user", prompt)
     client = _ready_client(directory)
     if client is None:
+        _import_host_queue(directory, None)
         _spool(directory, record)
         _start_in_background(directory)
         return None
     with client:
         context = None
         try:
+            _import_host_queue(directory, client)
             _flush(client, directory)
             # The current message is recorded after recall, so everything stored is prior evidence. An explicit
             # cutoff lets "do you remember ..." questions use it; the server clamps it to its durable sequence.
@@ -249,10 +287,12 @@ def stop(payload: dict, directory: Path) -> None:
     record = _record(payload, "assistant", text)
     client = _ready_client(directory)
     if client is None:
+        _import_host_queue(directory, None)
         _spool(directory, record)
         _start_in_background(directory)
         return None
     with client:
+        _import_host_queue(directory, client)
         _deliver(directory, client, record)
     return None
 
@@ -263,6 +303,7 @@ def session_start(payload: dict, directory: Path) -> str | None:
         _start_in_background(directory)
     else:
         with client:
+            _import_host_queue(directory, client)
             _flush(client, directory)
     return ("Agent Memory is active for this user. Matching records from earlier conversations "
             "are added automatically before replies. When a request depends on the user's personal context "

@@ -34,7 +34,7 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
    - `session-start`: adds one line saying memory is active and how to search it; starts the service in the background when needed.
    - `user-prompt`: recalls records from other conversations with an explicit evidence cutoff (the current message is not yet stored), prints compact context as `additionalContext`, then records the message. If the service is not ready, the message is spooled and no context is injected.
    - `stop` (synchronous, about half a second): records `last_assistant_message`, linked to its prompt. Asynchronous hooks are cut off when a headless `claude -p` run exits, which lost replies in testing.
-   - Per-message hooks launch the installed tool with `uvx --offline`, so they never download anything.
+   - Per-message hooks launch the installed tool with `uvx --offline`, so they never download anything. Until the runtime is installed, the hook commands append the raw hook input to `$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl` with plain shell; the runtime imports it on start, so a first session's messages are kept. A real installation from GitHub lost the first message before this queue existed.
    - A local spool (JSON Lines in the profile directory) holds records that could not be delivered and is flushed on the next successful call, so a slow start loses no history.
 4. **Compact context rendering.** Recalled memories and original source passages are rendered as short, dated, role-attributed lines, explicitly labelled as data rather than instructions, within a character budget below the host's 10,000-character limit. The full memory-consumption protocol used by `BrainRuntime` is not injected.
 5. **MCP tools.** The existing stdio bridge provides explicit recall, inspection, assistant-attributed notes (`memory_observe`) and user-requested erasure.
@@ -67,6 +67,5 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 - Automatic recall is lexical. "Can I run on Friday and Saturday?" does not match a stored "can't handle running on two consecutive days"; the skill asks Claude to search with concrete keywords, which has not yet been measured with a real model.
 - A query containing words such as "remember" is treated as a prior-record check. The hook supplies an evidence cutoff; the `memory_recall` MCP tool does not, so the skill tells Claude to avoid that phrasing.
 - `pgserver` publishes wheels only for CPython 3.9 to 3.12 and not for Linux ARM; the plugin pins Python 3.12 and other platforms fall back to Docker. The package has few recent releases, so bundling PostgreSQL ourselves may become necessary.
-- The first session after installation records messages only once the runtime is installed; on a slow network early messages of that session are not captured.
 - macOS and Windows were not run on real machines. Windows hook commands assume the POSIX shell that Claude Code uses for hooks.
 - The plugin installs from the repository's default branch until the package is published to PyPI.

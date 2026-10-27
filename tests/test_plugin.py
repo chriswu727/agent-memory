@@ -130,3 +130,57 @@ def test_hooks_carry_memory_across_sessions_on_an_embedded_installation(tmp_path
             desktop.stop(directory)
         except desktop.DesktopError:
             pass
+
+
+def _hook_command(event):
+    from pathlib import Path
+
+    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "agent-memory" / "hooks" / "hooks.json").read_text())
+    return hooks["hooks"][event][0]["hooks"][0]["command"]
+
+
+@pytest.mark.parametrize("event", ["UserPromptSubmit", "Stop"])
+def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, event):
+    import shutil
+    import subprocess
+
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("bash is required for hook commands")
+    payload = {"session_id": "s1", "prompt_id": "p1", "prompt": "I'm Mei.\nPeanut allergy.",
+               "last_assistant_message": "Noted."}
+    system_path = "/usr/bin:/bin"
+    if shutil.which("uvx", path=system_path):
+        pytest.skip("uvx is installed on the system path")
+    environment = {"PATH": system_path, "CLAUDE_PLUGIN_DATA": str(tmp_path / "data")}
+    result = subprocess.run([bash, "-c", _hook_command(event)], input=json.dumps(payload, indent=2), text=True,
+                            capture_output=True, env=environment, timeout=30)
+    assert result.returncode == 0 and result.stdout == ""
+    lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
+    assert [json.loads(line) for line in lines] == [payload]
+
+
+def test_host_queue_is_imported_with_roles_and_cleared(tmp_path, monkeypatch):
+    queue = tmp_path / "data" / "pending-hooks.jsonl"
+    queue.parent.mkdir()
+    queue.write_text("\n".join([
+        json.dumps({"session_id": "s1", "prompt_id": "p1", "prompt": "I'm allergic to peanuts."}),
+        '{"torn": ',
+        json.dumps({"session_id": "s1", "prompt_id": "p1", "last_assistant_message": "Peanut-free it is."}),
+        json.dumps({"session_id": "s1", "hook_event_name": "SessionStart"}),
+    ]) + "\n")
+    monkeypatch.setenv("CLAUDE_PLUGIN_DATA", str(tmp_path / "data"))
+
+    class Client:
+        def __init__(self):
+            self.records = []
+
+        def observe(self, **record):
+            self.records.append(record)
+
+    client = Client()
+    assert plugin._import_host_queue(tmp_path / "brain", client) == 2
+    assert [(record["role"], record["source_event_key"]) for record in client.records] == [
+        ("user", "s1:p1:user"), ("assistant", "s1:p1:assistant")]
+    assert not list((tmp_path / "data").iterdir())
+    assert plugin._import_host_queue(tmp_path / "brain", client) == 0
