@@ -16,6 +16,13 @@ def add_commands(commands):
     hook.add_argument("--host", choices=HOOK_HOSTS, default="claude-code", help="Host whose hook format is read")
     tool = actions.add_parser("tool", help="Run one memory tool with JSON arguments on stdin (for hosts without MCP)")
     tool.add_argument("name", choices=("note", "search", "pause", "resume"))
+    imports = actions.add_parser("import", help="Import the memory files hosts keep (Claude Code, Hermes, OpenClaw, "
+                                                "Codex) as notes; safe to repeat")
+    imports.add_argument("--from", dest="hosts", action="append", choices=("claude-code", "hermes", "openclaw", "codex"),
+                         help="Only this host (repeatable); default all")
+    imports.add_argument("--all", action="store_true",
+                         help="Also import project and environment memory, not only memory about the person")
+    imports.add_argument("--dry-run", action="store_true", help="Report what would be imported without saving")
     actions.add_parser("start", help="Create the local installation if needed and start the service")
     actions.add_parser("mcp", help="Run the MCP stdio bridge, creating and starting the installation if needed")
     actions.add_parser("status", help="Show installation, service and pending-record state")
@@ -35,6 +42,15 @@ def dispatch(args) -> None:
     directory = plugin.profile_directory(args.directory)
     if args.plugin_command == "hook":
         raise SystemExit(plugin.run_hook(args.event, directory, host_name=args.host))
+    if args.plugin_command == "import":
+        from . import host, imports
+
+        sources = imports.discover(tuple(args.hosts or imports.HOSTS), include_general=args.all)
+        plugin.start(directory)
+        with host.ready_client(directory) as client:
+            result = imports.import_notes(client, sources, dry_run=args.dry_run)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     if args.plugin_command == "tool":
         raise SystemExit(plugin.run_tool(args.name, directory))
     if args.plugin_command == "mcp":

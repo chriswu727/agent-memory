@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover - exercised only without Hermes installe
     _Base = object
 
 PRODUCER = "membrain-hermes"
-IMPORT_PRODUCER = "hermes-builtin-memory"
+IMPORT_PRODUCER = "membrain-import:hermes"  # Notes that mirror Hermes's own USER.md.
 TOOLS = {"note": "membrain_note", "recall": "membrain_search", "pause": "membrain_pause"}
 _SCHEMAS = [
     {"name": "membrain_note", "description": (
@@ -67,6 +67,7 @@ class MembrainProvider(_Base):
 
     def __init__(self):
         self._directory: Path | None = None
+        self._hermes_home: Path | None = None
         self._session = ""
         self._writes = True
         self._block = None
@@ -83,6 +84,7 @@ class MembrainProvider(_Base):
 
     def initialize(self, session_id: str, **kwargs) -> None:
         self._directory = _default_directory(kwargs.get("hermes_home"))
+        self._hermes_home = Path(kwargs["hermes_home"]).expanduser() if kwargs.get("hermes_home") else None
         self._session = session_id or "hermes"
         self._writes = kwargs.get("agent_context", "primary") == "primary"
         host.state_directory(self._directory)
@@ -93,8 +95,36 @@ class MembrainProvider(_Base):
         if self._directory is None:
             return ""
         if self._block is None:
-            self._block = host.session_context(self._directory, self._session, tools=TOOLS)
+            if self._writes:
+                self._import_user_file()
+            # Hermes puts its own USER.md and MEMORY.md in the prompt, so notes copied from them are not repeated.
+            self._block = host.session_context(self._directory, self._session, tools=TOOLS,
+                                               skip_imports_from=("hermes",))
         return self._block
+
+    def _import_user_file(self) -> None:
+        """Copy entries of Hermes's USER.md that memBrain does not have yet, once per change of the file."""
+        from ..imports import Source, import_notes
+
+        if self._hermes_home is None:
+            return
+        path = self._hermes_home / "memories" / "USER.md"
+        marker = host.state_directory(self._directory) / "hermes-user-import.json"
+        try:
+            stat = path.stat()
+            signature = f"{path.resolve()}:{stat.st_mtime_ns}:{stat.st_size}"
+            if marker.exists() and marker.read_text(encoding="utf-8") == signature:
+                return
+            client = host.ready_client(self._directory)
+            if client is None:
+                return
+            with client:
+                import_notes(client, [Source("hermes", path, True, "hermes")])
+            marker.write_text(signature, encoding="utf-8")
+        except FileNotFoundError:
+            return
+        except Exception as error:  # Importing is a convenience; it must never stop a Hermes session.
+            host.log(self._directory, f"hermes import failed: {type(error).__name__}")
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         if self._directory is None or not self._writes:
@@ -141,8 +171,11 @@ class MembrainProvider(_Base):
         return json.dumps({"error": f"Unknown tool {tool_name}"})
 
     def on_memory_write(self, action: str, target: str, content: str, metadata: dict[str, Any] | None = None) -> None:
-        """Mirror Hermes's built-in memory writes as notes, replacing or removing the matching earlier note."""
-        if self._directory is None or not self._writes or host.paused(self._directory):
+        """Mirror Hermes's writes about the user (USER.md) as notes, replacing or removing the matching earlier note.
+
+        Writes to MEMORY.md describe Hermes's environment and stay in Hermes.
+        """
+        if self._directory is None or not self._writes or target != "user" or host.paused(self._directory):
             return
         from ..notes import list_notes, save_note
 
@@ -162,7 +195,7 @@ class MembrainProvider(_Base):
                 return
             text = " ".join(host.scrub(content or "").split())
             if text:
-                save_note(client, text[:300], replaces=matching)
+                save_note(client, text[:300], replaces=matching, producer=IMPORT_PRODUCER)
 
     def get_config_schema(self) -> list[dict[str, Any]]:
         return [{"key": "directory", "required": False, "default": "", "type": "text", "description": (

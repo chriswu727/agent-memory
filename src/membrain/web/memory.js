@@ -1,6 +1,7 @@
 // memBrain memory page: notes, conversations, search and privacy for one local installation.
 const $ = (id) => document.getElementById(id);
 const uid = () => crypto.randomUUID();
+const HOST_NAMES = { "claude-code": "Claude Code", codex: "Codex", hermes: "Hermes", openclaw: "OpenClaw", workbuddy: "WorkBuddy" };
 const NOTES = "membrain-notes";
 const state = { key: "", brain: "" };
 let messageTimer;
@@ -102,8 +103,10 @@ function noteItem(note) {
   const item = element("div", undefined, "item");
   const meta = element("div", undefined, "meta");
   meta.append(element("span", day(note.recorded_at)));
-  meta.append(element("span", note.actor_role === "user" ? "written by you" : "saved by your agent",
-    note.actor_role === "user" ? "tag user" : "tag"));
+  const source = (note.producer || "").startsWith("membrain-import:") ? note.producer.slice(16) : null;
+  const label = note.actor_role === "user" ? "written by you"
+    : source ? `imported from ${HOST_NAMES[source] || source}` : "saved by your agent";
+  meta.append(element("span", label, note.actor_role === "user" ? "tag user" : "tag"));
   const actions = element("span", undefined, "actions");
   const edit = element("button", "Edit", "link");
   const remove = element("button", "Delete", "link danger");

@@ -787,10 +787,12 @@ def _finish_abandoned(directory: Path, client) -> int:
 
 
 def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_NAMES,
-                    user_id: str | None = None) -> str:
+                    user_id: str | None = None, skip_imports_from=()) -> str:
     """Notice, saved notes and recent history for a new session; starts the service if it is not running.
 
     ``user_id`` selects one user's memory in a multi-user host; without it the installation's own memory is used.
+    ``skip_imports_from`` names hosts whose own memory files are already in the prompt, so notes imported from them
+    are not repeated.
     """
     from .notes import list_notes, render_notes
 
@@ -804,7 +806,8 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
             _finish_pending(directory, client, session)
             _finish_abandoned(directory, client)
             try:
-                notes = render_notes(list_notes(client))
+                notes = render_notes(list_notes(client), tool=tools["note"] if tools else None,
+                                     skip_imports_from=tuple(skip_imports_from))
             except Exception as error:
                 log(directory, f"notes failed: {type(error).__name__}")
             try:

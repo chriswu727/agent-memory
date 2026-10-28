@@ -1,6 +1,6 @@
 # Roadmap: memory for chat and life agents
 
-Status: **in progress.** Implemented so far: A3 privacy controls, A2 memory page, the shared `membrain.host` layer and the A4 Hermes Agent adapter (not yet run inside a real Hermes installation). Everything else is planned. This document turns the competitive review of 2026-10-27 into phased work. Implemented and verified behaviour is described in [plugin mode](plugin-mode.md) and the [evaluation reports](../evaluations/).
+Status: **in progress.** Implemented so far: A3 privacy controls, A2 memory page, the shared `membrain.host` layer, A4 adapters (Hermes, Codex, OpenClaw, WorkBuddy and CodeBuddy, AstrBot and the OpenAI-compatible proxy; real-host status in [plugin mode](plugin-mode.md)) and A5 host-memory import. Everything else is planned. This document turns the competitive review of 2026-10-27 into phased work. Implemented and verified behaviour is described in [plugin mode](plugin-mode.md) and the [evaluation reports](../evaluations/).
 
 ## Positioning
 
@@ -124,6 +124,8 @@ Shared work: move host-independent logic out of `plugin.py` into a `membrain.hos
 - A recorded install with a one-line instruction for each host.
 
 ### A5. Coexisting with host memory
+
+Status: implemented (`membrain plugin import`, Hermes automatic import, per-host skipping at session start). Only memory about the person is imported by default; project and environment memory needs `--all`.
 
 - Import Claude Code `MEMORY.md`, Hermes `MEMORY.md` and `USER.md`, and OpenClaw memory files as notes attributed as *imported*, removing duplicates of existing notes.
 - Document a recommended setup for each host: keep the built-in memory for project conventions, and use memBrain for the person. Alternatively, turn the built-in memory off.
