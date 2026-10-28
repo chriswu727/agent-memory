@@ -815,12 +815,12 @@ class TurnStore:
             self._record(conn, row, "advance")
             return self._public(conn, principal, row)
 
-    def _delivery_staleness(self, conn, principal, brain, row, *, recorded=False):
+    def _delivery_staleness(self, conn, principal, brain, row):
         reasons = []
         if self._unavailable(conn, principal, row):
             reasons.append("source_unavailable")
-        # Replacing this turn's draft advances the generation exactly once.
-        if row["context_generation"] + int(recorded) != brain["dependency_generation"]:
+        # Recording this turn's own delivery does not advance the generation (see MemoryService._append_event).
+        if row["context_generation"] != brain["dependency_generation"]:
             reasons.append("context_generation_changed")
         try:
             self._working_revision(conn, principal, row)
@@ -832,7 +832,7 @@ class TurnStore:
 
     def _record_delivery(self, conn, principal, brain, row, incoming):
         from .delivery_receipts import receipt_for
-        from .learning import orientation_result, validate_snapshot
+        from .learning import orientation_result
         from .service import MemoryService
 
         if len(row["output_event_refs"]) != 1:
@@ -861,21 +861,9 @@ class TurnStore:
             input_ids = {ref["event_id"] for ref in row["input_event_refs"] + row["context_event_refs"]}
             if event_id in input_ids:
                 raise DomainError("invalid_evidence", "Generated output cannot also be its own input evidence.")
-            if orientation and "dependency_generation" in orientation:
-                # Only the known draft revision may rebind an otherwise current orientation.
-                rebound = {**orientation, "dependency_generation": brain["dependency_generation"]}
-                try:
-                    validate_snapshot(conn, service, principal, brain, rebound)
-                except DomainError:
-                    reasons.append("orientation_changed")
-                else:
-                    updated = conn.execute(
-                        "UPDATE memory_jobs SET result=%s WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                        "AND id=%s AND state='completed' AND result IS NOT NULL",
-                        (Jsonb(rebound), principal.tenant_id, principal.principal_id, brain["id"], row["orientation_job_id"]),
-                    )
-                    if updated.rowcount != 1:
-                        reasons.append("orientation_changed")
+            if orientation and orientation.get("dependency_generation", brain["dependency_generation"]) != brain[
+                    "dependency_generation"]:
+                reasons.append("orientation_changed")
             conn.execute(
                 "INSERT INTO memory_event_dependencies(tenant_id,owner_id,brain_id,input_event_id,output_event_id) "
                 "SELECT %s,%s,%s,input_id,%s FROM unnest(%s::text[]) AS sources(input_id) ON CONFLICT DO NOTHING",
@@ -970,7 +958,7 @@ class TurnStore:
             receipt = row.get("delivery_receipt")
             if receipt is not None and not recorded_delivery_receipt(row):
                 raise DomainError("invalid_evidence", "Delivery receipt does not match its durable turn.")
-            reasons = self._delivery_staleness(conn, principal, brain, row, recorded=True)
+            reasons = self._delivery_staleness(conn, principal, brain, row)
             if receipt is None:
                 reasons = [reason for reason in reasons if reason != "context_generation_changed"]
             updates = []
