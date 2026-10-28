@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from contextlib import ExitStack, asynccontextmanager
 from importlib.resources import files
 from typing import Annotated, Literal
@@ -370,6 +371,18 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
             raise DomainError("validation_failed", "Name must contain 1 to 120 characters")
         from starlette.concurrency import run_in_threadpool
         return await run_in_threadpool(service.create_brain, principal, name.strip())
+
+    @app.put("/v1/brains/{brain_id}")
+    async def ensure_brain(brain_id: str, request: Request, principal: Principal = Depends(authenticate)):
+        """Create a brain with a caller-chosen stable ID if it does not exist; idempotent."""
+        body = await read_document(request)
+        name = body.get("name")
+        if not isinstance(name, str) or not 1 <= len(name.strip()) <= 120:
+            raise DomainError("validation_failed", "Name must contain 1 to 120 characters")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", brain_id):
+            raise DomainError("validation_failed", "Brain IDs use letters, digits, '.', '_', ':' or '-'")
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(service.ensure_brain, principal, brain_id, name.strip())
 
     @app.get("/v1/brains/{brain_id}/dashboard")
     def dashboard(brain_id: str, principal: Principal = Depends(authenticate)):

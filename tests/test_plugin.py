@@ -77,7 +77,7 @@ def test_handler_errors_are_logged_and_never_block(tmp_path, monkeypatch, capsys
 
 def test_messages_are_spooled_when_the_service_is_not_ready(tmp_path, monkeypatch):
     started = []
-    monkeypatch.setattr(host, "ready_client", lambda directory: None)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
     monkeypatch.setattr(host, "start_in_background", started.append)
     assert plugin.user_prompt({"session_id": "s1", "prompt_id": "p1", "prompt": "Remember Biscuit"}, tmp_path) is None
     plugin.stop({"session_id": "s1", "prompt_id": "p1", "last_assistant_message": "Noted."}, tmp_path)
@@ -97,6 +97,8 @@ def test_spool_replay_keeps_undelivered_records(tmp_path):
         stream.write('{"torn": \n')
 
     class Client:
+        brain_id = "brain"
+
         def __init__(self, fail_after):
             self.seen, self.fail_after = [], fail_after
 
@@ -185,6 +187,8 @@ def test_host_queue_is_imported_with_roles_and_cleared(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_PLUGIN_DATA", str(tmp_path / "data"))
 
     class Client:
+        brain_id = "brain"
+
         def __init__(self):
             self.records = []
 
@@ -216,6 +220,8 @@ def test_history_is_rendered_oldest_first_and_states_completeness():
 
 
 class _ReadyClient:
+    brain_id = "brain"
+
     def __init__(self, timeline, recalled=None, notes=None, messages=()):
         self.timeline_response, self.recalled, self.observed, self.recalls = timeline, recalled, [], 0
         self.notes, self.messages, self.timeline_calls = notes or {"items": [], "complete": True}, list(messages), []
@@ -245,7 +251,7 @@ class _ReadyClient:
 
 def test_complete_history_is_injected_once_and_replaces_per_message_recall(tmp_path, monkeypatch):
     client = _ReadyClient({"complete": True, "items": [{"text": "I'm vegetarian.", "recorded_at": "2026-10-03T00:00:00Z"}]})
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "complete history from earlier sessions" in context and "- [2026-10-03] I'm vegetarian." in context
     assert len(client.timeline_calls) == 1
@@ -262,7 +268,7 @@ def test_partial_history_keeps_per_message_recall(tmp_path, monkeypatch):
                "recorded_at": "2026-10-03T08:00:00Z", "text": "Big news. The wedding is on December 14 in Porto."}
     client = _ReadyClient({"complete": False, "items": [{"text": "latest", "recorded_at": "2026-12-01T00:00:00Z"}]},
                           recalled, messages=[message])
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "Older messages are not shown" in context and "memory_note" in context
     recall = plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "When is the wedding?"}, tmp_path)
@@ -366,6 +372,8 @@ def test_recall_falls_back_to_keywords_when_the_query_embedding_fails():
     from membrain.client import MemoryActionError
 
     class Client:
+        brain_id = "brain"
+
         def __init__(self):
             self.budgets = []
 
@@ -401,6 +409,8 @@ def test_recalled_statements_are_shown_as_their_source_messages_oldest_first():
     )
 
     class Client:
+        brain_id = "brain"
+
         def recall(self, query, **options):
             return response
 
@@ -422,6 +432,8 @@ def test_meaning_only_matches_are_capped_and_timeline_failure_falls_back_to_stat
                      methods=("vector",), score=0.01 - index * 0.001) for index in range(6)]
 
     class Client:
+        brain_id = "brain"
+
         def recall(self, query, **options):
             return _response(*items)
 
@@ -447,7 +459,7 @@ def test_session_start_shows_notes_first_and_fills_the_rest_with_compacted_histo
         {"text": "x" * 9000, "recorded_at": "2026-04-03T00:00:00Z"},
         {"text": "Short earlier message.", "recorded_at": "2026-03-01T00:00:00Z"}]}
     client = _ReadyClient(history, notes=notes)
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert context.index("<membrain-notes>") < context.index("<membrain-history>")
     assert context.index("Mom uses a walker; no stairs. (id: n1)") < context.index("Mom: likely shellfish allergy.")
@@ -459,12 +471,14 @@ def test_follow_up_prompts_carry_the_previous_prompt_as_a_cue(tmp_path, monkeypa
     cues = []
 
     class Client(_ReadyClient):
+        brain_id = "brain"
+
         def recall(self, query, **options):
             cues.append(options.get("additional_cues"))
             return {"result": {"items": []}}
 
     client = Client({"complete": False, "items": []})
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     plugin.session_start({"session_id": "s2"}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "1", "prompt": "Mom fell and we're going to urgent care."}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "2", "prompt": "What do I tell the front desk?"}, tmp_path)
@@ -476,6 +490,6 @@ def test_session_context_stays_within_the_host_limit(tmp_path, monkeypatch):
                                           "text": "Durable fact " + "y" * 250} for index in range(13)]}
     history = {"complete": True, "items": [{"text": f"Message {index} " + "z" * 280,
                                             "recorded_at": "2026-04-03T00:00:00Z"} for index in range(80)]}
-    monkeypatch.setattr(host, "ready_client", lambda directory: _ReadyClient(history, notes=notes))
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: _ReadyClient(history, notes=notes))
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "<membrain-history>" in context and len(context) <= host.SESSION_CONTEXT_CHARACTERS

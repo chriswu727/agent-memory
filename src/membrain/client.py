@@ -207,6 +207,10 @@ class MemoryClient:
     def create_brain(self, name: str) -> JsonObject:
         return self._request("POST", "v1/brains", json={"name": name})
 
+    def ensure_brain(self, brain_id: str, name: str) -> JsonObject:
+        """Create the brain with this stable ID unless it already exists."""
+        return self._request("PUT", f"v1/brains/{quote(brain_id, safe='')}", json={"name": name})
+
     def capabilities(self) -> JsonObject:
         return self._request("GET", "v1/capabilities")
 

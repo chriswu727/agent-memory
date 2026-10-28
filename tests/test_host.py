@@ -14,6 +14,7 @@ def no_model_download(monkeypatch):
 
 class Client:
     brain_id = "brain"
+
     def __init__(self):
         self.observed = []
 
@@ -52,7 +53,7 @@ def test_assignments_and_private_spans_are_scrubbed_but_ordinary_text_is_kept():
 
 def test_turns_are_stored_with_the_reply_and_private_text_never_reaches_disk(tmp_path, monkeypatch):
     client = Client()
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     prompt = "My token is sk-proj-" + "x" * 30 + " and <private>I was fired today</private>. Plan my week."
     host.prompt_context(tmp_path, "s1", prompt, turn_id="t1")
     stored_state = "".join(path.read_text() for path in (tmp_path / "plugin" / "sessions").glob("*.json"))
@@ -66,7 +67,7 @@ def test_turns_are_stored_with_the_reply_and_private_text_never_reaches_disk(tmp
 
 def test_pausing_during_a_turn_keeps_that_turn_and_later_ones_out(tmp_path, monkeypatch):
     client = Client()
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     host.prompt_context(tmp_path, "s1", "Don't remember this: I'm job hunting.", turn_id="t1")
     host.pause(tmp_path)
     host.finish_turn(tmp_path, "s1", "Understood, I won't keep it.", turn_id="t1")
@@ -92,8 +93,8 @@ def test_timed_pause_expires(tmp_path):
 
 
 def test_spooled_records_are_scrubbed_when_the_service_is_down(tmp_path, monkeypatch):
-    monkeypatch.setattr(host, "ready_client", lambda directory: None)
-    monkeypatch.setattr(host, "start_in_background", lambda directory: None)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
+    monkeypatch.setattr(host, "start_in_background", lambda directory, user_id=None: None)
     host.prompt_context(tmp_path, "s1", "password=correcthorsebattery remember my dog Biscuit", turn_id="t1")
     host.finish_turn(tmp_path, "s1", "Biscuit noted.", turn_id="t1")
     spooled = (tmp_path / "plugin" / "spool.jsonl").read_text()
@@ -102,7 +103,7 @@ def test_spooled_records_are_scrubbed_when_the_service_is_down(tmp_path, monkeyp
 
 def test_an_unfinished_turn_is_stored_by_the_next_prompt_or_when_abandoned(tmp_path, monkeypatch):
     client = Client()
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     host.prompt_context(tmp_path, "s1", "First, never answered.", turn_id="t1")
     host.prompt_context(tmp_path, "s1", "Second.", turn_id="t2")
     assert [record["text"] for record in client.observed] == ["First, never answered."]
@@ -179,6 +180,55 @@ def test_memory_page_signs_in_once_and_controls_recording(tmp_path):
             "recording"] == "paused" and host.paused(directory)
         assert httpx.post(base + "/v1/local/recording", json={"paused": False}, headers=headers).json() == {
             "recording": "on"}
+    finally:
+        try:
+            desktop.stop(directory)
+        except desktop.DesktopError:
+            pass
+
+
+def test_one_users_pause_does_not_stop_others(tmp_path, monkeypatch):
+    client = Client()
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
+    monkeypatch.setattr(host, "use_brain", lambda client, user_id: client)
+    host.pause(tmp_path, user_id="qq:1001")
+    assert host.paused(tmp_path, "qq:1001") and not host.paused(tmp_path, "qq:2002") and not host.paused(tmp_path)
+    for user in ("qq:1001", "qq:2002"):
+        host.prompt_context(tmp_path, f"group:{user}", f"hello from {user}", turn_id="t1", user_id=user)
+        host.finish_turn(tmp_path, f"group:{user}", "hi", turn_id="t1", user_id=user)
+    assert [record["text"] for record in client.observed] == ["hello from qq:2002", "hi"]
+    assert host.user_brain_id("qq:1001") == host.user_brain_id("qq:1001") != host.user_brain_id("qq:2002")
+    with pytest.raises(ValueError):
+        host.user_brain_id("")
+
+
+@pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
+def test_users_of_a_shared_bot_keep_separate_memories(tmp_path, monkeypatch):
+    directory = tmp_path / "brain"
+    try:
+        host.start(directory)
+        turns = {"telegram:alice": "I'm allergic to peanuts.", "telegram:bob": "I just adopted a greyhound named Sardina."}
+        for user, text in turns.items():
+            host.session_context(directory, f"chat:{user}", user_id=user)
+            host.prompt_context(directory, f"chat:{user}", text, turn_id="1", user_id=user)
+            host.finish_turn(directory, f"chat:{user}", "Noted.", turn_id="1", user_id=user)
+        monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
+        host.finish_turn(directory, "chat:telegram:alice", "Spooled reply.", turn_id="2",
+                         prompt="My sister is called Mei.", user_id="telegram:alice")
+        monkeypatch.undo()
+        with host.ready_client(directory) as client:
+            assert host.flush(client, directory) == 2
+        for user, own in turns.items():
+            with host.ready_client(directory, user) as client:
+                stored = json.dumps(client.timeline(roles=("user", "assistant"), max_characters=200_000))
+            other = next(text for name, text in turns.items() if name != user)
+            assert own in stored and other not in stored
+        with host.ready_client(directory, "telegram:alice") as client:
+            assert "Mei" in json.dumps(client.timeline(max_characters=200_000))
+        with host.ready_client(directory) as client:
+            assert json.loads(json.dumps(client.timeline(max_characters=200_000)))["items"] == []
+        context = host.prompt_context(directory, "chat2:telegram:bob", "what is my dog's name again", user_id="telegram:bob")
+        assert "Sardina" in (context or "") and "peanuts" not in (context or "")
     finally:
         try:
             desktop.stop(directory)

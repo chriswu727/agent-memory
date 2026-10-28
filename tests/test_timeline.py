@@ -121,3 +121,13 @@ def test_timeline_can_read_one_conversation(brain):
     notes = brain.timeline(roles=("assistant",), conversation_id="membrain-notes")
     assert [item["text"] for item in notes["items"]] == ["Saved note about Mom's walker."]
     assert brain.timeline(roles=("user",), conversation_id="membrain-notes")["items"] == []
+
+
+def test_ensure_brain_is_idempotent_and_never_takes_another_owners_brain(brain):
+    brain_id = "user-" + uid()
+    first = brain.service.ensure_brain(brain.principal, brain_id, "user qq:1001")
+    assert first["id"] == brain_id
+    assert brain.service.ensure_brain(brain.principal, brain_id, "renamed")["id"] == brain_id
+    assert brain.service.timeline(brain.principal, brain_id)["items"] == []
+    with pytest.raises(DomainError):
+        brain.service.ensure_brain(Principal(uid(), uid()), brain_id, "stranger")
