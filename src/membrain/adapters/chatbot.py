@@ -47,7 +47,8 @@ class ChatMemory:
     """One memBrain installation serving every user of a bot. Methods block; async hosts run them in a thread."""
 
     def __init__(self, directory: Path, *, group_memory: str = "separate", record_groups: bool = True,
-                 producer: str = "membrain-chatbot", tools: dict = TOOLS, block_seconds: float = BLOCK_SECONDS):
+                 producer: str = "membrain-chatbot", tools: dict | None = TOOLS,
+                 block_seconds: float = BLOCK_SECONDS):
         if group_memory not in GROUP_MEMORY:
             raise ValueError(f"group_memory must be one of {', '.join(GROUP_MEMORY)}.")
         self.directory = Path(directory).expanduser()

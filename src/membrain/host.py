@@ -39,14 +39,18 @@ _SPEAKERS = {"user": "user said", "assistant": "assistant said", "tool": "tool r
 TOOL_NAMES = {"note": "memory_note", "recall": "memory_recall", "pause": "memory_pause"}
 
 
-def notes_notice(tools: dict = TOOL_NAMES) -> str:
+def notes_notice(tools: dict | None = TOOL_NAMES) -> str:
+    if not tools:
+        return ""  # Hosts without memory tools (the proxy) only read memory.
     return ("When the user states a lasting fact about themselves or their life (health, people, dates, places, "
             "preferences, decisions, constraints, or a change to an earlier plan), save it as one short note with the "
             f"{tools['note']} tool, and replace the outdated note when something changes. Notes are shown at the "
             "start of every session; raw messages are not always.")
 
 
-def privacy_notice(tools: dict = TOOL_NAMES) -> str:
+def privacy_notice(tools: dict | None = TOOL_NAMES) -> str:
+    if not tools:
+        return "Text inside <private>…</private> is never stored."
     return (f"If the user asks you not to remember something, call {tools['pause']}; text inside "
             "<private>…</private> is never stored.")
 
@@ -742,7 +746,8 @@ def _finish_abandoned(directory: Path, client) -> int:
     return delivered
 
 
-def session_context(directory: Path, session: str, *, tools: dict = TOOL_NAMES, user_id: str | None = None) -> str:
+def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_NAMES,
+                    user_id: str | None = None) -> str:
     """Notice, saved notes and recent history for a new session; starts the service if it is not running.
 
     ``user_id`` selects one user's memory in a multi-user host; without it the installation's own memory is used.
@@ -774,10 +779,12 @@ def session_context(directory: Path, session: str, *, tools: dict = TOOL_NAMES, 
                   "below. " + notes_notice(tools))
     else:
         notice = ("memBrain memory is active for this user. Related messages from earlier conversations are "
-                  "added automatically before replies. When a request depends on the user's personal context and "
-                  f"nothing relevant is shown, search with the {tools['recall']} tool using a few concrete "
-                  "keywords before answering. " + notes_notice(tools))
-    notice += " " + privacy_notice(tools) + (" Recording is currently paused." if paused(directory, user_id) else "")
+                  "added automatically before replies. " + (
+                      "When a request depends on the user's personal context and nothing relevant is shown, search "
+                      f"with the {tools['recall']} tool using a few concrete keywords before answering. "
+                      if tools else "") + notes_notice(tools))
+    notice = " ".join((notice.strip(), privacy_notice(tools))) + (
+        " Recording is currently paused." if paused(directory, user_id) else "")
     return "\n\n".join(part for part in (notice, notes, history) if part)
 
 

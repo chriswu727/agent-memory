@@ -100,6 +100,13 @@ def main() -> None:
     worker = commands.add_parser("worker", help="Process durable background jobs")
     worker.add_argument("--once", action="store_true")
     commands.add_parser("mcp", help="Run the MCP stdio bridge")
+    proxy = commands.add_parser("proxy", help="Run an OpenAI-compatible proxy that adds per-user memory to any bot")
+    proxy.add_argument("--upstream", required=True, help="The base_url your bot used before, e.g. https://api.deepseek.com/v1")
+    proxy.add_argument("--host", default="127.0.0.1")
+    proxy.add_argument("--port", type=int, default=8790)
+    proxy.add_argument("--directory", type=Path, default=None)
+    proxy.add_argument("--group-memory", choices=("separate", "shared"), default="separate",
+                       help="Whether a person's group messages share memory with their private chats")
     from .desktop_cli import add_commands
     add_commands(commands)
     from .plugin_cli import add_commands as add_plugin_commands
@@ -113,6 +120,13 @@ def main() -> None:
         plugin_dispatch(args)
     elif args.command == "init":
         initialize(args.directory)
+    elif args.command == "proxy":
+        import os
+
+        from .proxy import serve as serve_proxy
+        serve_proxy(args.upstream, host=args.host, port=args.port, directory=args.directory,
+                    group_memory=args.group_memory, upstream_key=os.environ.get("MEMBRAIN_UPSTREAM_KEY") or None,
+                    token=os.environ.get("MEMBRAIN_PROXY_TOKEN") or None)
     elif args.command == "mcp":
         from .mcp_server import main as mcp_main
         mcp_main()

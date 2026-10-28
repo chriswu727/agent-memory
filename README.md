@@ -46,6 +46,8 @@ On the next start Codex asks you to review the plugin's hooks; choose to trust t
 
 **Chat bots on QQ, WeChat, Telegram and more.** The [AstrBot plugin](integrations/astrbot/README.md) gives every person who talks to an AstrBot bot their own long-term memory, on any platform and model provider AstrBot supports (DeepSeek included). What one person said is never shown to another, and group chats are kept apart from private chats by default. It has not yet been run inside a real AstrBot installation.
 
+**Any bot with a `base_url` (Douyin and Bilibili live streams, NoneBot, Koishi, SillyTavern...).** [`membrain proxy`](integrations/openai-proxy/README.md) is an OpenAI-compatible proxy: point the bot's `base_url` at it instead of DeepSeek or another provider, and each person (told apart by the request's `user` field or a header) gets their own memory. It has not yet been run against a real provider.
+
 **Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
 
 ```sh
