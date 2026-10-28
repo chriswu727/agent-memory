@@ -545,6 +545,7 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 | --- | --- |
 | `plugin hook session-start\|user-prompt\|stop [--host claude-code\|codex\|openclaw]` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
 | `plugin tool note\|search\|pause\|resume` | Runs one memory tool for hosts without MCP: JSON arguments on stdin (`text` and `replaces`, `query`, `hours`), a JSON result on stdout. |
+| `plugin import [--from HOST] [--all] [--dry-run]` | Copies host memory files into notes labelled *imported from* the host: Claude Code auto memories of type `user` or `feedback` (`~/.claude/projects/*/memory`, or `CLAUDE_CONFIG_DIR`), Hermes `USER.md` (`HERMES_HOME/memories`), OpenClaw `USER.md` (`~/.openclaw/workspace`, or `OPENCLAW_WORKSPACE`). `--all` adds project and environment memory: Hermes and OpenClaw `MEMORY.md`, Claude Code `project` and `reference` memories, Codex `memories/MEMORY.md` and `memory_summary.md`. Each bullet or entry becomes one note (shortened to 300 characters at a sentence); privacy scrubbing applies, entries already present as notes are skipped, and source files are only read. |
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
@@ -568,6 +569,19 @@ Before each reply, `user-prompt` recalls up to about thirty ranked statements (k
 **One memory per person for shared bots.** Adapters for group and multi-user hosts (QQ, Telegram, Discord bots, proxies) pass `user_id` (for example `qq:12345`) to `session_context`, `prompt_context`, `finish_turn` and `pause`. Each user gets their own brain, `user-` plus a stable digest of the ID, created on first use with `PUT /v1/brains/{brain_id}` (`{"name": ...}`; idempotent, and never takes over a brain owned by another identity; `ensure_brain()` / `ensureBrain()` in the clients). Notes, history and recall never cross between users. Spooled and staged records keep their user, and `pause(user_id=...)` stops recording for that user only; a pause without a user applies to everyone. Without `user_id` the installation's own brain is used, as in single-user hosts.
 
 Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/membrain`; see [plugin mode](../architecture/plugin-mode.md).
+
+### Host memory
+
+Hosts keep their own memory files, and memBrain is meant to sit beside them: keep the host's memory for project and environment conventions, and let memBrain hold what matters about the person across hosts.
+
+| Host | Its own memory | Recommended setup |
+| --- | --- | --- |
+| Claude Code | Auto memory (`MEMORY.md` index plus topic files per project) | Keep it for project facts; run `membrain plugin import` once so `user` and `feedback` memories reach every host. Imported notes stay visible in Claude Code, which loads only the index at session start. |
+| Hermes | `USER.md` and `MEMORY.md` in the system prompt | Nothing to do: the provider imports `USER.md` when it changes and mirrors new `USER.md` writes; `MEMORY.md` stays in Hermes. Notes imported from Hermes are not repeated in Hermes's own prompt. |
+| OpenClaw | Workspace `USER.md`, `MEMORY.md` and daily notes | Keep them; run `membrain plugin import --from openclaw`. Notes imported from OpenClaw are not repeated in OpenClaw sessions. |
+| Codex | `memories/` summaries | Mostly about repositories; import with `--all` only if they hold personal facts. Notes imported from Codex are not repeated in Codex sessions. |
+
+To use memBrain alone, turn the host's memory off in its settings; nothing in memBrain depends on it.
 
 ### Codex
 
@@ -593,7 +607,7 @@ Verified with Codex CLI 0.165 on Linux against a stub Responses API: after the h
 | `system_prompt_block` | Session notice with the provider's tool names, saved notes, then recent history; computed once per session. |
 | `prefetch` | Related earlier messages for the turn (Hermes fences them as memory context); stages the prompt. |
 | `sync_turn` | Stores the user message and the reply together; skipped while recording is paused. |
-| `on_memory_write` | Mirrors built-in `MEMORY.md` / `USER.md` writes as notes; `replace` and `remove` suppress the matching earlier note. |
+| `on_memory_write` | Mirrors writes to built-in `USER.md` as notes imported from Hermes; `replace` and `remove` suppress the matching earlier note. `MEMORY.md` writes stay in Hermes. `USER.md` itself is imported when it changes, and notes from Hermes are left out of Hermes's own system prompt. |
 | Tools | `membrain_note`, `membrain_search`, `membrain_pause`, `membrain_resume`. |
 
 Verified with unit tests, a signature check against Hermes's `agent/memory_provider.py`, and two provider sessions sharing memory through a real embedded service. Not yet run inside a real Hermes installation.

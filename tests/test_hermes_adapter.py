@@ -29,7 +29,7 @@ class Client:
         self.observed.append({"text": text, **options})
         if options.get("conversation_id") == "membrain-notes":
             self.notes.insert(0, {"event_id": event_id, "text": text, "actor_role": "assistant",
-                                  "recorded_at": "2026-10-28T00:00:00Z"})
+                                  "producer": options.get("producer_ref"), "recorded_at": "2026-10-28T00:00:00Z"})
         return {"result": {"accepted_event_ids": [event_id]}}
 
     def timeline(self, **options):
@@ -155,3 +155,21 @@ def test_hermes_sessions_share_memory_through_a_real_service(tmp_path, monkeypat
             desktop.stop(directory)
         except desktop.DesktopError:
             pass
+
+
+def test_hermes_user_file_is_imported_once_and_not_repeated_in_hermes(tmp_path, monkeypatch):
+    memories = tmp_path / "home" / "memories"
+    memories.mkdir(parents=True)
+    (memories / "USER.md").write_text("Allergic to sesame.\n§\nSister Mei, birthday 14 November.", encoding="utf-8")
+    client = Client(notes=[{"event_id": "n1", "text": "Prefers short replies.", "actor_role": "assistant",
+                            "producer": "membrain-notes", "recorded_at": "2026-04-01T00:00:00Z"}])
+    instance = provider(tmp_path, monkeypatch, client)
+    block = instance.system_prompt_block()
+    assert [note["text"] for note in client.notes if note.get("producer") == "membrain-import:hermes"] == [
+        "Sister Mei, birthday 14 November.", "Allergic to sesame."]
+    assert "Prefers short replies." in block and "Allergic to sesame" not in block  # Hermes shows its own file.
+    again = provider(tmp_path, monkeypatch, client)
+    again.system_prompt_block()
+    assert len(client.notes) == 3  # Unchanged file: no second import.
+    instance.on_memory_write("add", "memory", "Server runs Ubuntu.")
+    assert len(client.notes) == 3  # Environment memory stays in Hermes.

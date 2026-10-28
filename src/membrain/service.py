@@ -1428,9 +1428,9 @@ class MemoryService:
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
             rows = conn.execute(
-                "SELECT conversation_id, document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
-                "AND is_current AND NOT deleted AND NOT suppressed AND NOT retired AND document IS NOT NULL "
-                "AND document->'observed'->>'event_kind'='message' "
+                "SELECT conversation_id, producer_ref, document FROM memory_events WHERE tenant_id=%s AND owner_id=%s "
+                "AND brain_id=%s AND is_current AND NOT deleted AND NOT suppressed AND NOT retired "
+                "AND document IS NOT NULL AND document->'observed'->>'event_kind'='message' "
                 "AND document->'observed'->>'actor_role'=ANY(%s::text[]) "
                 "AND (%s::text IS NULL OR conversation_id IS DISTINCT FROM %s) "
                 "AND (%s::text[] IS NULL OR id=ANY(%s::text[])) AND (%s::text IS NULL OR conversation_id=%s) "
@@ -1451,7 +1451,7 @@ class MemoryService:
                 break
             used += len(text)
             items.append({"event_id": document["event_id"], "conversation_id": row["conversation_id"],
-                          "actor_role": document["observed"]["actor_role"],
+                          "actor_role": document["observed"]["actor_role"], "producer": row["producer_ref"],
                           "recorded_at": document["system_time"]["recorded_at"], "text": text})
         return {"items": items, "complete": complete, "characters": used}
 

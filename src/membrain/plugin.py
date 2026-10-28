@@ -45,6 +45,8 @@ TRANSCRIPT_TAIL_BYTES = 2 * 1024 * 1024
 # Hosts that run the MCP bridge use its tool names; others call ``membrain plugin tool`` under these names.
 HOST_TOOLS = {"openclaw": {"note": "membrain_note", "recall": "membrain_search", "pause": "membrain_pause"}}
 TOOLS = ("note", "search", "pause", "resume")
+# Hosts that put their own memory files in the prompt; notes imported from them are not shown to them again.
+HOST_SKIPS = {"codex": ("codex",), "openclaw": ("openclaw",)}
 
 
 def _conversation(payload: dict) -> str:
@@ -105,8 +107,9 @@ def start(directory: Path) -> dict:
 
 def session_start(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
     _import_host_queue(directory, producer)
-    tools = next((names for name, names in HOST_TOOLS.items() if PRODUCERS[name] == producer), host.TOOL_NAMES)
-    return host.session_context(directory, _conversation(payload), tools=tools)
+    name = next((key for key, value in PRODUCERS.items() if value == producer), "claude-code")
+    return host.session_context(directory, _conversation(payload), tools=HOST_TOOLS.get(name, host.TOOL_NAMES),
+                                skip_imports_from=HOST_SKIPS.get(name, ()))
 
 
 def user_prompt(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:

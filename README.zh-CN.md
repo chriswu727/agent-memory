@@ -31,7 +31,7 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 - 在每次回复前召回相关的早期消息：按关键词匹配，本地模型安装后还会跨语言按语义匹配；
 - 为 Claude 提供记忆工具，用于主动检索、记录简短笔记以及按用户要求删除。
 
-第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按关键词匹配当前消息；本地多语言模型（约 135 MB，无需 API key）在后台下载完成后，还会按语义跨语言匹配。当问题涉及个人背景时，Claude 也会被引导主动检索记忆。可通过设置 `HF_ENDPOINT` 从 Hugging Face 镜像下载该模型。运行 `membrain plugin ui` 可打开本地记忆页面，查看、更正和删除已记住的内容，暂停记录，或导出全部数据。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
+第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；就绪之前发送的消息会先排队，就绪后再存入。自动召回按关键词匹配当前消息；本地多语言模型（约 135 MB，无需 API key）在后台下载完成后，还会按语义跨语言匹配。当问题涉及个人背景时，Claude 也会被引导主动检索记忆。可通过设置 `HF_ENDPOINT` 从 Hugging Face 镜像下载该模型。运行一次 `membrain plugin import`，可以把 Claude Code、Hermes、OpenClaw 或 Codex 已经记住的关于你的内容导入 memBrain（加 `--dry-run` 先预览）。运行 `membrain plugin ui` 可打开本地记忆页面，查看、更正和删除已记住的内容，暂停记录，或导出全部数据。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
 
 其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
@@ -59,7 +59,7 @@ uv pip install --python ~/.hermes/hermes-agent/.venv/bin/python 'membrain-ai[emb
 hermes config set memory.provider membrain   # 或：hermes memory setup
 ```
 
-之后 Hermes 会在每个会话开始时注入你的笔记和最近消息，在每次回复前加入相关的早期消息，记录每一轮对话，并获得 `membrain_note`、`membrain_search`、`membrain_pause` 和 `membrain_resume` 工具。写入 Hermes 内置 `MEMORY.md`／`USER.md` 的内容会同步为笔记。默认 Hermes 配置档与同一台电脑上的 Claude Code 共享记忆；其他配置档各自独立。该适配器已按 Hermes 的接口和真实 memBrain 服务测试，但尚未在真实的 Hermes 安装中运行过。
+之后 Hermes 会在每个会话开始时注入你的笔记和最近消息，在每次回复前加入相关的早期消息，记录每一轮对话，并获得 `membrain_note`、`membrain_search`、`membrain_pause` 和 `membrain_resume` 工具。Hermes 在 `USER.md` 中记下的关于你的内容会被导入，之后的写入也会同步为笔记；它的 `MEMORY.md`（环境信息）留在 Hermes 中。默认 Hermes 配置档与同一台电脑上的 Claude Code 共享记忆；其他配置档各自独立。该适配器已按 Hermes 的接口和真实 memBrain 服务测试，但尚未在真实的 Hermes 安装中运行过。
 
 <a id="why-membrain"></a>
 
