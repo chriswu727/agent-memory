@@ -15,7 +15,7 @@ codex plugin add membrain@membrain
 
 Codex asks you to review and trust the hooks on the next start (or later with `/hooks`); untrusted hooks never run.
 
-In WorkBuddy, add the marketplace `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json` under **Plugins → +** and install **membrain**. In CodeBuddy Code:
+In WorkBuddy, add the marketplace `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json` under **Skills → Plugins → Add Marketplace** (WorkBuddy 5.9.3) and install **membrain**. In CodeBuddy Code:
 
 ```sh
 codebuddy plugin marketplace add chriswu727/memBrain

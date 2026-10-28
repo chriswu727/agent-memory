@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -137,6 +138,45 @@ def ready_client(directory: Path, user_id: str | None = None):
     except Exception:
         client.close()
         raise
+
+
+TOOL_PACKAGE = "membrain-ai"
+
+
+def _uv_tool_directory() -> Path | None:
+    """Where ``uv tool install`` puts tool environments, without failing when uv is not reachable."""
+    uv = os.environ.get("UV") or shutil.which("uv")
+    if uv:
+        try:
+            result = subprocess.run([uv, "tool", "dir"], capture_output=True, text=True, timeout=10, check=False)
+            if result.returncode == 0 and result.stdout.strip():
+                return Path(result.stdout.strip())
+        except (OSError, subprocess.SubprocessError):
+            pass
+    if os.environ.get("UV_TOOL_DIR"):
+        return Path(os.environ["UV_TOOL_DIR"])
+    if os.name == "nt":
+        return Path(os.environ["APPDATA"]) / "uv" / "data" / "tools" if os.environ.get("APPDATA") else None
+    data = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    return Path(data) / "uv" / "tools"
+
+
+def installed_tool_python() -> Path | None:
+    """The interpreter of the durable ``uv tool`` installation, if there is one."""
+    tools = _uv_tool_directory()
+    if tools is None:
+        return None
+    root = tools / TOOL_PACKAGE
+    python = root / "Scripts" / "python.exe" if os.name == "nt" else root / "bin" / "python"
+    return python if python.exists() else None
+
+
+def running_from_uv_cache() -> bool:
+    """Whether this process runs from an environment uv built in its cache (``uvx --from <url>``).
+
+    Such environments disappear when the cache is cleaned, so a long-lived service must not be started from one.
+    """
+    return any(part in ("archive-v0", "builds-v0", "environments-v2") for part in Path(sys.prefix).parts)
 
 
 def _detached(arguments: list[str]) -> None:

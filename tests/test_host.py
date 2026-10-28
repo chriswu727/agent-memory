@@ -234,3 +234,30 @@ def test_users_of_a_shared_bot_keep_separate_memories(tmp_path, monkeypatch):
             desktop.stop(directory)
         except desktop.DesktopError:
             pass
+
+
+def test_mcp_from_a_uv_cache_environment_hands_over_to_the_installed_tool(tmp_path, monkeypatch):
+    import argparse
+    import subprocess
+
+    from membrain import plugin_cli
+
+    tools = tmp_path / "tools"
+    python = tools / "membrain-ai" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    python.parent.mkdir(parents=True)
+    python.write_text("")
+    monkeypatch.setenv("UV_TOOL_DIR", str(tools))
+    monkeypatch.setattr(host.shutil, "which", lambda name: None)
+    monkeypatch.delenv("UV", raising=False)
+    assert host.installed_tool_python() == python
+    monkeypatch.setattr(host.sys, "prefix", str(tmp_path / ".cache" / "uv" / "archive-v0" / "abc"))
+    assert host.running_from_uv_cache()
+    calls = []
+    monkeypatch.setattr(subprocess, "call", lambda command: calls.append(command) or 0)
+    args = argparse.Namespace(plugin_command="mcp", directory=tmp_path / "brain")
+    with pytest.raises(SystemExit) as stopped:
+        plugin_cli.dispatch(args)
+    assert stopped.value.code == 0
+    assert calls == [[str(python), "-m", "membrain.cli", "plugin", "mcp", "--directory", str(tmp_path / "brain")]]
+    monkeypatch.setattr(host.sys, "prefix", str(tools / "membrain-ai"))
+    assert not host.running_from_uv_cache()
