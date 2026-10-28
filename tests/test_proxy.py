@@ -44,11 +44,11 @@ class Memory(ChatMemory):
         super().__init__(directory)
         self.contexts, self.records = [], []
 
-    def context(self, speaker, text, *, session, turn_id=None):
+    def context(self, speaker, text, *, session, turn_id=None, **options):
         self.contexts.append((speaker, text, session))
         return f"<membrain-notes>notes for {speaker.user}</membrain-notes>"
 
-    def record(self, speaker, reply, *, session, turn_id=None, prompt=None):
+    def record(self, speaker, reply, *, session, turn_id=None, prompt=None, **options):
         self.records.append((speaker.user, prompt, reply))
 
 
