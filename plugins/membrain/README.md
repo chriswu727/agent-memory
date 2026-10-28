@@ -1,10 +1,19 @@
-# memBrain for Claude Code
+# memBrain for Claude Code and Codex
 
-Automatic, local long-term memory across Claude Code sessions.
+Automatic, local long-term memory across Claude Code and Codex sessions.
 
 ```sh
 claude plugin install membrain --marketplace chriswu727/membrain
 ```
+
+In Codex:
+
+```sh
+codex plugin marketplace add chriswu727/memBrain
+codex plugin add membrain@membrain
+```
+
+Codex asks you to review and trust the hooks on the next start (or later with `/hooks`); untrusted hooks never run.
 
 Requires [uv](https://docs.astral.sh/uv/). No Docker, setup wizard or extra model API key.
 

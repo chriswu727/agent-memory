@@ -35,6 +35,15 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 
 其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
+**Codex。** 同一个插件也可以在 OpenAI Codex 中使用：
+
+```sh
+codex plugin marketplace add chriswu727/memBrain
+codex plugin add membrain@membrain
+```
+
+下次启动时 Codex 会请你审核插件的 hooks；请选择信任（也可以之后用 `/hooks` 信任），因为 Codex 不会运行未受信任的 hooks。之后 Codex 获得与 Claude Code 相同的笔记、历史、召回、记录和记忆工具，同一台电脑上两者共享同一份记忆。已在 Linux 上用 Codex CLI 0.165 验证：在一个会话中告诉它的事实出现在了下一个会话的上下文里。
+
 **Hermes Agent。** memBrain 也可以作为 Hermes Agent 的记忆后端。把它安装到 Hermes 的 Python 环境并选用：
 
 ```sh

@@ -543,7 +543,7 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 
 | Command | Purpose |
 | --- | --- |
-| `plugin hook session-start\|user-prompt\|stop` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
+| `plugin hook session-start\|user-prompt\|stop [--host claude-code\|codex]` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
@@ -567,6 +567,12 @@ Before each reply, `user-prompt` recalls up to about thirty ranked statements (k
 **One memory per person for shared bots.** Adapters for group and multi-user hosts (QQ, Telegram, Discord bots, proxies) pass `user_id` (for example `qq:12345`) to `session_context`, `prompt_context`, `finish_turn` and `pause`. Each user gets their own brain, `user-` plus a stable digest of the ID, created on first use with `PUT /v1/brains/{brain_id}` (`{"name": ...}`; idempotent, and never takes over a brain owned by another identity; `ensure_brain()` / `ensureBrain()` in the clients). Notes, history and recall never cross between users. Spooled and staged records keep their user, and `pause(user_id=...)` stops recording for that user only; a pause without a user applies to everyone. Without `user_id` the installation's own brain is used, as in single-user hosts.
 
 Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/membrain`; see [plugin mode](../architecture/plugin-mode.md).
+
+### Codex
+
+The package in `plugins/membrain` is also a Codex plugin: `.codex-plugin/plugin.json` points to `hooks/codex-hooks.json`, `.codex-mcp.json` and the shared skill, and `.agents/plugins/marketplace.json` lists it. The Codex hooks run `membrain plugin hook <event> --host codex`, which reads Codex's `turn_id` in place of `prompt_id` and records turns with producer `membrain-codex`; they set `additionalContextLimit` (10,000 for session start, 7,000 per prompt) so Codex does not spill the context to a file. Before the runtime is installed, hook input is queued in `$PLUGIN_DATA`. Codex runs plugin hooks only after the user trusts them (`/hooks`), and only for plugins installed locally, not for plugins installed from the web directory.
+
+Verified with Codex CLI 0.165 on Linux against a stub Responses API: after the hooks were trusted in `/hooks`, two `codex exec` sessions ran all four hooks, stored both turns, and the second session's model request contained the first session's message in `<membrain-history>`. Not yet run with a real OpenAI model or in the desktop app.
 
 ### Hermes Agent
 

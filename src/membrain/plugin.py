@@ -1,9 +1,10 @@
-"""Claude Code adapter: hook commands over the host-independent operations in ``membrain.host``.
+"""Claude Code and Codex adapter: hook commands over the host-independent operations in ``membrain.host``.
 
 Hooks never own the host's turn and always exit 0. ``SessionStart`` adds saved notes and recent history,
 ``UserPromptSubmit`` adds related earlier messages and stages the prompt, and ``Stop`` stores the prompt
 and the reply together. Before the runtime is installed, the hook commands queue raw hook input in the
-plugin data directory with plain shell; it is imported on the next start.
+plugin data directory with plain shell; it is imported on the next start. Codex runs the same hooks with the
+same input fields, except that it identifies a turn by ``turn_id`` instead of ``prompt_id``.
 """
 from __future__ import annotations
 
@@ -38,6 +39,7 @@ from .host import (  # noqa: F401  (re-exported for callers of the previous plug
 )
 
 MAX_INPUT_BYTES = 4 * 1024 * 1024
+PRODUCERS = {"claude-code": PRODUCER, "codex": "membrain-codex"}
 
 
 def _conversation(payload: dict) -> str:
@@ -48,17 +50,17 @@ def _conversation(payload: dict) -> str:
 
 
 def _turn(payload: dict) -> str | None:
-    turn = payload.get("prompt_id")
+    turn = payload.get("prompt_id") or payload.get("turn_id")
     return turn if isinstance(turn, str) and 1 <= len(turn) <= 120 else None
 
 
-def _import_host_queue(directory: Path) -> int:
+def _import_host_queue(directory: Path, producer: str = PRODUCER) -> int:
     """Spool hook inputs that the host queued before the runtime was installed.
 
     Hook commands append raw hook JSON to ``$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl`` with plain shell
     when the runtime cannot start yet, so a first session's messages are not lost while it installs.
     """
-    root = os.environ.get("CLAUDE_PLUGIN_DATA")
+    root = os.environ.get("CLAUDE_PLUGIN_DATA") or os.environ.get("PLUGIN_DATA")  # Codex sets both.
     if not root:
         return 0
     queue = Path(root) / "pending-hooks.jsonl"
@@ -79,7 +81,8 @@ def _import_host_queue(directory: Path) -> int:
                 role, text = "assistant", payload["last_assistant_message"]
             else:
                 continue
-            record = host.message_record(_conversation(payload), role, text, turn_id=_turn(payload))
+            record = host.message_record(_conversation(payload), role, text, turn_id=_turn(payload),
+                                         producer=producer)
         except (ValueError, AttributeError):
             continue  # A torn or unrelated line cannot be recorded and must not block the rest.
         if host.deliver(directory, None, record):  # Spooled in order; replayed by the next ready call.
@@ -95,20 +98,21 @@ def start(directory: Path) -> dict:
     return result
 
 
-def session_start(payload: dict, directory: Path) -> str | None:
-    _import_host_queue(directory)
+def session_start(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
+    _import_host_queue(directory, producer)
     return host.session_context(directory, _conversation(payload))
 
 
-def user_prompt(payload: dict, directory: Path) -> str | None:
-    _import_host_queue(directory)
-    return host.prompt_context(directory, _conversation(payload), payload.get("prompt"), turn_id=_turn(payload))
+def user_prompt(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
+    _import_host_queue(directory, producer)
+    return host.prompt_context(directory, _conversation(payload), payload.get("prompt"), turn_id=_turn(payload),
+                               producer=producer)
 
 
-def stop(payload: dict, directory: Path) -> None:
-    _import_host_queue(directory)
+def stop(payload: dict, directory: Path, producer: str = PRODUCER) -> None:
+    _import_host_queue(directory, producer)
     host.finish_turn(directory, _conversation(payload), payload.get("last_assistant_message"),
-                     turn_id=_turn(payload))
+                     turn_id=_turn(payload), producer=producer)
 
 
 HANDLERS = {
@@ -118,7 +122,7 @@ HANDLERS = {
 }
 
 
-def run_hook(event: str, directory: Path | None = None, stream=None) -> int:
+def run_hook(event: str, directory: Path | None = None, stream=None, *, host_name: str = "claude-code") -> int:
     """Run one hook. Always returns 0 so a memory failure never blocks the host."""
     directory = profile_directory(directory)
     try:
@@ -130,7 +134,7 @@ def run_hook(event: str, directory: Path | None = None, stream=None) -> int:
         return 0
     name, handler = HANDLERS[event]
     try:
-        context = handler(payload, directory)
+        context = handler(payload, directory, PRODUCERS[host_name])
     except Exception:
         host.log(directory, f"{event} failed: {traceback.format_exc(limit=3)}")
         return 0

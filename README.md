@@ -35,6 +35,15 @@ The first session installs the runtime and an embedded PostgreSQL database in th
 
 Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
 
+**Codex.** The same plugin works in OpenAI Codex:
+
+```sh
+codex plugin marketplace add chriswu727/memBrain
+codex plugin add membrain@membrain
+```
+
+On the next start Codex asks you to review the plugin's hooks; choose to trust them (or trust them later with `/hooks`), because Codex never runs untrusted hooks. Codex then gets the same notes, history, recall, recording and memory tools as Claude Code, and both share one memory on the same computer. Verified with Codex CLI 0.165 on Linux: a fact told in one session was in the next session's context.
+
 **Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
 
 ```sh

@@ -65,7 +65,7 @@ def test_hooks_fail_open_on_unusable_input(tmp_path, capsys, raw):
 
 
 def test_handler_errors_are_logged_and_never_block(tmp_path, monkeypatch, capsys):
-    def broken(payload, directory):
+    def broken(payload, directory, producer):
         raise RuntimeError("database exploded")
 
     monkeypatch.setitem(plugin.HANDLERS, "stop", ("Stop", broken))
@@ -147,15 +147,17 @@ def test_hooks_carry_memory_across_sessions_on_an_embedded_installation(tmp_path
             pass
 
 
-def _hook_command(event):
+def _hook_command(event, hooks_file="hooks.json"):
     from pathlib import Path
 
-    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "membrain" / "hooks" / "hooks.json").read_text())
+    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "membrain" / "hooks" / hooks_file).read_text())
     return hooks["hooks"][event][0]["hooks"][0]["command"]
 
 
+@pytest.mark.parametrize("hooks_file,data_variable", [("hooks.json", "CLAUDE_PLUGIN_DATA"),
+                                                      ("codex-hooks.json", "PLUGIN_DATA")])
 @pytest.mark.parametrize("event", ["UserPromptSubmit", "Stop"])
-def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, event):
+def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, event, hooks_file, data_variable):
     import shutil
     import subprocess
 
@@ -167,8 +169,8 @@ def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, e
     system_path = "/usr/bin:/bin"
     if shutil.which("uvx", path=system_path):
         pytest.skip("uvx is installed on the system path")
-    environment = {"PATH": system_path, "CLAUDE_PLUGIN_DATA": str(tmp_path / "data")}
-    result = subprocess.run([bash, "-c", _hook_command(event)], input=json.dumps(payload, indent=2), text=True,
+    environment = {"PATH": system_path, data_variable: str(tmp_path / "data")}
+    result = subprocess.run([bash, "-c", _hook_command(event, hooks_file)], input=json.dumps(payload, indent=2), text=True,
                             capture_output=True, env=environment, timeout=30)
     assert result.returncode == 0 and result.stdout == ""
     lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
@@ -493,3 +495,38 @@ def test_session_context_stays_within_the_host_limit(tmp_path, monkeypatch):
     monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: _ReadyClient(history, notes=notes))
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "<membrain-history>" in context and len(context) <= host.SESSION_CONTEXT_CHARACTERS
+
+
+def test_codex_hooks_use_turn_ids_and_their_own_producer(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
+    monkeypatch.setattr(host, "start_in_background", lambda directory: None)
+    for event, payload in [("user-prompt", {"prompt": "Mei is my sister."}),
+                           ("stop", {"last_assistant_message": "Noted.", "stop_hook_active": False})]:
+        raw = json.dumps({"session_id": "019a-codex", "turn_id": "turn-7", "hook_event_name": "x", "model": "m",
+                          **payload}).encode()
+        assert plugin.run_hook(event, tmp_path, stream=io.BytesIO(raw), host_name="codex") == 0
+    assert capsys.readouterr().out == ""
+    records = [json.loads(line) for line in (tmp_path / "plugin" / "spool.jsonl").read_text().splitlines()]
+    assert [(record["source_event_key"], record["producer_ref"]) for record in records] == [
+        ("019a-codex:turn-7:user", "membrain-codex"), ("019a-codex:turn-7:assistant", "membrain-codex")]
+
+
+def test_codex_and_claude_packages_describe_the_same_plugin():
+    from pathlib import Path
+
+    root = Path(__file__).parents[1]
+    package = root / "plugins" / "membrain"
+    claude = json.loads((package / ".claude-plugin" / "plugin.json").read_text())
+    codex = json.loads((package / ".codex-plugin" / "plugin.json").read_text())
+    assert codex["name"] == claude["name"] and codex["version"] == claude["version"]
+    for field in ("skills", "mcpServers", "hooks"):
+        assert codex[field].startswith("./") and (package / codex[field]).exists()
+    hooks = json.loads((package / codex["hooks"]).read_text())["hooks"]
+    commands = [hook for groups in hooks.values() for group in groups for hook in group["hooks"]]
+    assert all("--host codex" in hook["command"] for hook in commands if "plugin hook" in hook["command"])
+    assert all(hook.get("additionalContextLimit", 0) >= 7000 for hook in hooks["SessionStart"][1]["hooks"]
+               + hooks["UserPromptSubmit"][0]["hooks"])
+    server = json.loads((package / codex["mcpServers"]).read_text())["mcpServers"]["membrain"]
+    assert "${" not in json.dumps(server)  # Codex does not expand shell defaults in MCP arguments.
+    market = json.loads((root / ".agents" / "plugins" / "marketplace.json").read_text())
+    assert market["plugins"][0]["source"]["path"] == "./plugins/membrain"
