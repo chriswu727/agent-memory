@@ -46,3 +46,7 @@ When the user asks to forget something:
 ## Privacy
 
 Memory is stored on this machine. It is shared across this user's sessions, not across different users.
+
+- When the user asks you not to remember something ("off the record", "don't keep this"), call `memory_pause` before replying; the current exchange is then not stored either. Pass `hours` if they name a duration, and call `memory_resume` only when they ask. Tell them recording is paused.
+- Text inside `<private>…</private>` and values that look like passwords, keys or tokens are removed before anything is stored. Never copy such values into a note.
+- Pausing does not delete what was stored earlier; use the forgetting steps above for that.

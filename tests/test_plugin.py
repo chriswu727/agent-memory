@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from membrain import desktop, embedded_database, plugin
+from membrain import desktop, embedded_database, host, plugin
 from membrain.local_profile import load_profile
 
 
@@ -77,8 +77,8 @@ def test_handler_errors_are_logged_and_never_block(tmp_path, monkeypatch, capsys
 
 def test_messages_are_spooled_when_the_service_is_not_ready(tmp_path, monkeypatch):
     started = []
-    monkeypatch.setattr(plugin, "_ready_client", lambda directory: None)
-    monkeypatch.setattr(plugin, "_start_in_background", started.append)
+    monkeypatch.setattr(host, "ready_client", lambda directory: None)
+    monkeypatch.setattr(host, "start_in_background", started.append)
     assert plugin.user_prompt({"session_id": "s1", "prompt_id": "p1", "prompt": "Remember Biscuit"}, tmp_path) is None
     plugin.stop({"session_id": "s1", "prompt_id": "p1", "last_assistant_message": "Noted."}, tmp_path)
     records = [json.loads(line) for line in (tmp_path / "plugin" / "spool.jsonl").read_text().splitlines()]
@@ -91,7 +91,7 @@ def test_messages_are_spooled_when_the_service_is_not_ready(tmp_path, monkeypatc
 
 def test_spool_replay_keeps_undelivered_records(tmp_path):
     for index in range(3):
-        plugin._spool(tmp_path, {"text": f"m{index}", "conversation_id": "c", "branch_id": "main",
+        host.spool(tmp_path, {"text": f"m{index}", "conversation_id": "c", "branch_id": "main",
                                  "source_event_key": f"k{index}", "role": "user", "producer_ref": "p"})
     with open(tmp_path / "plugin" / "spool.jsonl", "a") as stream:
         stream.write('{"torn": \n')
@@ -106,16 +106,15 @@ def test_spool_replay_keeps_undelivered_records(tmp_path):
             self.seen.append(record["text"])
 
     with pytest.raises(ConnectionError):
-        plugin._flush(Client(fail_after=1), tmp_path)
+        host.flush(Client(fail_after=1), tmp_path)
     client = Client(fail_after=99)
-    assert plugin._flush(client, tmp_path) == 4
+    assert host.flush(client, tmp_path) == 4
     assert client.seen == ["m0", "m1", "m2"]
     assert (tmp_path / "plugin" / "spool.jsonl").read_text() == ""
 
 
 def test_event_keys_are_stable_without_prompt_ids():
-    payload = {"session_id": "s9", "prompt": "same text"}
-    first, second = plugin._record(payload, "user", "same text"), plugin._record(payload, "user", "same text")
+    first, second = host.message_record("s9", "user", "same text"), host.message_record("s9", "user", "same text")
     assert first["source_event_key"] == second["source_event_key"]
     assert first["source_event_key"].startswith("s9:") and first["source_event_key"].endswith(":user")
 
@@ -193,11 +192,12 @@ def test_host_queue_is_imported_with_roles_and_cleared(tmp_path, monkeypatch):
             self.records.append(record)
 
     client = Client()
-    assert plugin._import_host_queue(tmp_path / "brain", client) == 2
+    assert plugin._import_host_queue(tmp_path / "brain") == 2
+    assert not list((tmp_path / "data").iterdir())
+    assert host.flush(client, tmp_path / "brain") == 2
     assert [(record["role"], record["source_event_key"]) for record in client.records] == [
         ("user", "s1:p1:user"), ("assistant", "s1:p1:assistant")]
-    assert not list((tmp_path / "data").iterdir())
-    assert plugin._import_host_queue(tmp_path / "brain", client) == 0
+    assert plugin._import_host_queue(tmp_path / "brain") == 0
 
 
 def test_history_is_rendered_oldest_first_and_states_completeness():
@@ -245,12 +245,15 @@ class _ReadyClient:
 
 def test_complete_history_is_injected_once_and_replaces_per_message_recall(tmp_path, monkeypatch):
     client = _ReadyClient({"complete": True, "items": [{"text": "I'm vegetarian.", "recorded_at": "2026-10-03T00:00:00Z"}]})
-    monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "complete history from earlier sessions" in context and "- [2026-10-03] I'm vegetarian." in context
     assert len(client.timeline_calls) == 1
     assert plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "Plan dinner"}, tmp_path) is None
-    assert client.recalls == 0 and client.observed[-1]["text"] == "Plan dinner"
+    assert client.recalls == 0 and client.observed == []
+    plugin.stop({"session_id": "s2", "prompt_id": "p", "last_assistant_message": "Pasta?"}, tmp_path)
+    assert [(record["role"], record["text"]) for record in client.observed] == [
+        ("user", "Plan dinner"), ("assistant", "Pasta?")]
 
 
 def test_partial_history_keeps_per_message_recall(tmp_path, monkeypatch):
@@ -259,7 +262,7 @@ def test_partial_history_keeps_per_message_recall(tmp_path, monkeypatch):
                "recorded_at": "2026-10-03T08:00:00Z", "text": "Big news. The wedding is on December 14 in Porto."}
     client = _ReadyClient({"complete": False, "items": [{"text": "latest", "recorded_at": "2026-12-01T00:00:00Z"}]},
                           recalled, messages=[message])
-    monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "Older messages are not shown" in context and "memory_note" in context
     recall = plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "When is the wedding?"}, tmp_path)
@@ -279,10 +282,13 @@ def test_new_sessions_receive_the_complete_history_from_the_real_service(tmp_pat
         plugin.start(directory)
         hook("session-start", {"session_id": "a"})
         hook("user-prompt", {"session_id": "a", "prompt_id": "1", "prompt": "I'm vegetarian and train for a half."})
+        hook("stop", {"session_id": "a", "prompt_id": "1", "last_assistant_message": "Noted."})
         hook("user-prompt", {"session_id": "a", "prompt_id": "2", "prompt": "The race moved to December 7."})
+        hook("stop", {"session_id": "a", "prompt_id": "2", "last_assistant_message": "Updated."})
         context = hook("session-start", {"session_id": "b"})
         assert context.index("I'm vegetarian") < context.index("December 7") and "complete history" in context
         assert hook("user-prompt", {"session_id": "b", "prompt_id": "3", "prompt": "What should I eat?"}) is None
+        hook("stop", {"session_id": "b", "prompt_id": "3", "last_assistant_message": "Lentil curry."})
         assert "What should I eat?" in hook("session-start", {"session_id": "c"})
     finally:
         try:
@@ -314,14 +320,14 @@ def test_start_fetches_the_semantic_model_in_the_background_once(tmp_path, monke
     monkeypatch.setattr(local_embeddings, "runtime_available", lambda: True)
     assert plugin.semantic_state(tmp_path) == "not_downloaded"
     launched = []
-    monkeypatch.setattr(plugin.subprocess, "Popen", lambda args, **options: launched.append(args))
-    plugin._fetch_in_background(tmp_path)
-    plugin._fetch_in_background(tmp_path)
+    monkeypatch.setattr(host.subprocess, "Popen", lambda args, **options: launched.append(args))
+    host._fetch_in_background(tmp_path)
+    host._fetch_in_background(tmp_path)
     assert len(launched) == 1 and launched[0][-3:] == ["fetch-model", "--directory", str(tmp_path)]
     assert plugin.semantic_state(tmp_path) == "downloading"
-    stale = plugin._download_marker(tmp_path)
+    stale = host._download_marker(tmp_path)
     os.utime(stale, (0, 0))
-    plugin._fetch_in_background(tmp_path)
+    host._fetch_in_background(tmp_path)
     assert len(launched) == 2
     monkeypatch.setattr(local_embeddings, "runtime_available", lambda: False)
     assert plugin.semantic_state(tmp_path) == "unavailable"
@@ -337,18 +343,18 @@ def test_fetched_model_restarts_a_running_service_and_clears_the_marker(tmp_path
     restarted = []
     monkeypatch.setattr(desktop, "status", lambda directory: {"state": "ready"})
     monkeypatch.setattr(desktop, "restart", lambda directory: restarted.append(directory))
-    plugin._download_marker(tmp_path).touch()
+    host._download_marker(tmp_path).touch()
     assert plugin.fetch_model(tmp_path) == {"semantic_recall": "ready", "service_restarted": True}
-    assert restarted == [tmp_path] and not plugin._download_marker(tmp_path).exists()
+    assert restarted == [tmp_path] and not host._download_marker(tmp_path).exists()
 
     def failing(directory):
         raise local_embeddings.LocalEmbeddingError("offline")
 
     monkeypatch.setattr(local_embeddings, "download", failing)
-    plugin._download_marker(tmp_path).touch()
+    host._download_marker(tmp_path).touch()
     with pytest.raises(local_embeddings.LocalEmbeddingError):
         plugin.fetch_model(tmp_path)
-    assert not plugin._download_marker(tmp_path).exists()
+    assert not host._download_marker(tmp_path).exists()
 
 
 def test_hook_recall_asks_for_one_query_embedding():
@@ -422,7 +428,7 @@ def test_meaning_only_matches_are_capped_and_timeline_failure_falls_back_to_stat
         def timeline(self, **options):
             raise RuntimeError("down")
 
-    assert [event for event, _ in plugin._sources(_response(*items), None)] == ["v0", "v1", "v2"]
+    assert [event for event, _ in host._sources(_response(*items), None)] == ["v0", "v1", "v2"]
     assert "Vector match number 0 here." in plugin.recall_context(Client(), "q")
 
 
@@ -441,12 +447,12 @@ def test_session_start_shows_notes_first_and_fills_the_rest_with_compacted_histo
         {"text": "x" * 9000, "recorded_at": "2026-04-03T00:00:00Z"},
         {"text": "Short earlier message.", "recorded_at": "2026-03-01T00:00:00Z"}]}
     client = _ReadyClient(history, notes=notes)
-    monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert context.index("<membrain-notes>") < context.index("<membrain-history>")
     assert context.index("Mom uses a walker; no stairs. (id: n1)") < context.index("Mom: likely shellfish allergy.")
     assert "Short earlier message." in context and "x" * 400 not in context
-    assert not plugin._history_complete(tmp_path, "s2")
+    assert not host.history_complete(tmp_path, "s2")
 
 
 def test_follow_up_prompts_carry_the_previous_prompt_as_a_cue(tmp_path, monkeypatch):
@@ -458,7 +464,7 @@ def test_follow_up_prompts_carry_the_previous_prompt_as_a_cue(tmp_path, monkeypa
             return {"result": {"items": []}}
 
     client = Client({"complete": False, "items": []})
-    monkeypatch.setattr(plugin, "_ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory: client)
     plugin.session_start({"session_id": "s2"}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "1", "prompt": "Mom fell and we're going to urgent care."}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "2", "prompt": "What do I tell the front desk?"}, tmp_path)
@@ -470,6 +476,6 @@ def test_session_context_stays_within_the_host_limit(tmp_path, monkeypatch):
                                           "text": "Durable fact " + "y" * 250} for index in range(13)]}
     history = {"complete": True, "items": [{"text": f"Message {index} " + "z" * 280,
                                             "recorded_at": "2026-04-03T00:00:00Z"} for index in range(80)]}
-    monkeypatch.setattr(plugin, "_ready_client", lambda directory: _ReadyClient(history, notes=notes))
+    monkeypatch.setattr(host, "ready_client", lambda directory: _ReadyClient(history, notes=notes))
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
-    assert "<membrain-history>" in context and len(context) <= plugin.SESSION_CONTEXT_CHARACTERS
+    assert "<membrain-history>" in context and len(context) <= host.SESSION_CONTEXT_CHARACTERS
