@@ -186,7 +186,7 @@ def ingest(sample: dict, directory: Path, model_cache: Path | None = None) -> in
     if marker.exists():
         host.start(directory)
         return json.loads(marker.read_text())["messages"]
-    directory.mkdir(parents=True, exist_ok=True)
+    host.ensure_installation(directory)  # Create the profile first; a non-empty directory without one is refused.
     if model_cache is not None:
         install_model(directory, model_cache)
     host.start(directory)
