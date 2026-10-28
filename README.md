@@ -31,9 +31,18 @@ From the next session on, the plugin:
 - recalls related earlier messages before each reply, by keywords and, once the local model is installed, by meaning across languages;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 
-The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches the current message by keywords and, once a local multilingual model (about 135 MB, no API key) has downloaded in the background, by meaning across languages. Claude is also instructed to search memory deliberately when personal context matters. Set `HF_ENDPOINT` to download the model from a Hugging Face mirror. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
+The first session installs the runtime and an embedded PostgreSQL database in the background; messages sent before it is ready are queued and stored afterwards. Automatic recall matches the current message by keywords and, once a local multilingual model (about 135 MB, no API key) has downloaded in the background, by meaning across languages. Claude is also instructed to search memory deliberately when personal context matters. Set `HF_ENDPOINT` to download the model from a Hugging Face mirror. Run `membrain plugin ui` to open a local memory page where you can review, correct and delete what is remembered, pause recording, or export everything. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
 
 Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
+
+**Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
+
+```sh
+uv pip install --python ~/.hermes/hermes-agent/.venv/bin/python 'membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain'
+hermes config set memory.provider membrain   # or: hermes memory setup
+```
+
+Hermes then starts each session with your notes and recent messages, adds related earlier messages before each reply, records each turn, and gets `membrain_note`, `membrain_search`, `membrain_pause` and `membrain_resume` tools. Writes to Hermes's built-in `MEMORY.md` / `USER.md` are mirrored as notes. The default Hermes profile shares memory with Claude Code on the same computer; other profiles get their own. The adapter is tested against Hermes's provider interface and a real memBrain service, but has not yet been run inside a real Hermes installation.
 
 <a id="why-membrain"></a>
 
@@ -225,6 +234,7 @@ Read the [acceptance criteria](architecture/v1-acceptance.md), [closed longitudi
 | [Automatic runtime contract](architecture/autonomous-runtime.contract.json) | Lifecycle responsibilities, integration requirements, and implementation boundaries. |
 | [Cognitive budget controls](architecture/cognitive-budgets.md) | Explicit model-call allowances, accounting, and configuration. |
 | [Memory quality and efficiency](architecture/memory-quality-and-efficiency.md) | Measured costs, algorithm choices, and boundaries for future personality and emotion research. |
+| [Roadmap: memory for chat and life agents](architecture/companion-roadmap.md) | Planned work: parity with other memory tools, memory of people, plans and relationships, then personality and emotion. Not yet implemented. |
 | [Development setup](docs/reference.md#development-setup) | Clone-based setup, database migrations, and the worker. |
 | [Local verification](docs/reference.md#verification) | Test commands and the scope of existing evidence. |
 

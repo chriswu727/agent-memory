@@ -21,7 +21,7 @@ WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHin
 DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False)
 
 
-def create_server(client: MemoryClient) -> FastMCP:
+def create_server(client: MemoryClient, *, directory=None) -> FastMCP:
     if not client.brain_id:
         raise ValueError("MCP requires a configured brain_id")
     server = FastMCP(
@@ -108,6 +108,22 @@ def create_server(client: MemoryClient) -> FastMCP:
         from membrain.notes import save_note
 
         return await asyncio.to_thread(save_note, client, text, replaces=replaces or ())
+
+    if directory is not None:
+        from membrain import host
+
+        installation = host.profile_directory(directory)
+
+        @server.tool(annotations=WRITE)
+        async def memory_pause(hours: float | None = None) -> dict[str, Any]:
+            """Stop recording this user's messages, for example when they ask you not to remember something.
+            Without hours it lasts until memory_resume. The current turn is not stored either. Recall still works."""
+            return host.pause(installation, hours)
+
+        @server.tool(annotations=WRITE)
+        async def memory_resume() -> dict[str, Any]:
+            """Resume recording after memory_pause, when the user asks for it."""
+            return host.resume(installation)
 
     @server.tool(annotations=READ_ONLY)
     async def memory_prepare(

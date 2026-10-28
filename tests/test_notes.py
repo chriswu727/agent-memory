@@ -12,7 +12,7 @@ class Client:
         return {"result": {"accepted_event_ids": [event_id]}}
 
     def timeline(self, **options):
-        assert options["conversation_id"] == notes.NOTES_CONVERSATION and options["roles"] == ("assistant",)
+        assert options["conversation_id"] == notes.NOTES_CONVERSATION and options["roles"] == ("assistant", "user")
         return {"complete": True, "items": [event for event in reversed(self.events)
                                             if event["event_id"] not in self.forgotten]}
 
@@ -47,3 +47,11 @@ def test_notes_must_be_short_single_facts():
             continue
         raise AssertionError("expected a validation error")
     assert notes.render_notes({"items": []}) is None
+
+
+def test_notes_written_by_the_user_are_labelled():
+    rendered = notes.render_notes({"items": [
+        {"event_id": "u1", "actor_role": "user", "recorded_at": "2026-05-01T00:00:00Z", "text": "I'm vegan now."},
+        {"event_id": "a1", "actor_role": "assistant", "recorded_at": "2026-04-01T00:00:00Z", "text": "Vegetarian."}]})
+    assert "- [2026-04-01] Vegetarian. (id: a1)" in rendered
+    assert "- [2026-05-01 · written by the user] I'm vegan now. (id: u1)" in rendered

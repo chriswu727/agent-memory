@@ -547,6 +547,8 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
+| `plugin ui [--no-browser]` | Starts the service if needed and opens `/memory` with a single-use code valid for two minutes. The page exchanges it at `POST /v1/local/ui-session` for the local credential and offers notes (add, correct, delete; corrections are stored as user-written notes and suppress the old one), conversations (browse, delete messages or whole conversations), search with the hooks' recall, recording pause, export and erase-everything. |
+| `plugin pause [--hours N]` / `plugin resume` | Stops or resumes recording for every host session; recall keeps working. The MCP bridge offers the same as `memory_pause` and `memory_resume`. |
 | `plugin fetch-model` | Downloads the local embedding model and restarts a running service so it is used. `plugin start` runs it in the background when the model is missing. |
 
 `GET /v1/brains/{brain_id}/timeline` returns current, non-deleted, non-suppressed messages newest first, each clipped to `max_item_characters`, with `complete: true` only when nothing was omitted. Optional filters: `role` (repeatable), `exclude_conversation`, `conversation_id`, and `event_id` (repeatable, up to 100). The Python and TypeScript clients expose this as `timeline()`.
@@ -560,7 +562,24 @@ Before each reply, `user-prompt` recalls up to about thirty ranked statements (k
 
 **Semantic recall without a key.** With the `semantic` extra (ONNX Runtime, `tokenizers`, NumPy), `plugin start` downloads `multilingual-e5-small` (int8 ONNX export of `intfloat/multilingual-e5-small`, MIT licence, about 135 MB) into `models/` in the profile directory, pinned to a revision and verified by SHA-256. `HF_ENDPOINT` selects a Hugging Face mirror; `MEMBRAIN_SEMANTIC=0` disables the download. Once the files are present the desktop service sets `MEMORY_EMBEDDING_LOCAL_DIRECTORY` internally, embeds every current memory (memories written earlier are backfilled when the worker is idle) and embeds each recall query in the same process, about 4 ms per short text on a laptop-class CPU. Hook and MCP recall request one query embedding (`max_embedding_calls: 1`); keyword and vector rankings are fused. Without the extra or before the download finishes, recall stays lexical. Server deployments can set `MEMORY_EMBEDDING_LOCAL_DIRECTORY` to an installation directory containing the model; it cannot be combined with `MEMORY_EMBEDDING_BASE_URL`.
 
+**Turn lifecycle and privacy.** Host adapters share `membrain.host`. A prompt is staged in the session's state file and stored together with the reply when the turn finishes, so pausing during a turn keeps that turn out as well; a turn that never finishes is stored by the session's next prompt, or after 30 minutes by any session start. Before anything is staged, spooled or stored, `<private>…</private>` spans become `[private]` and values that look like credentials (provider API keys, GitHub and Slack tokens, AWS access keys, JWTs, private keys, `password=`-style assignments) become `[secret removed]`. Scrubbing is pattern based and can miss unusual formats.
+
 Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/membrain`; see [plugin mode](../architecture/plugin-mode.md).
+
+### Hermes Agent
+
+`membrain.adapters.hermes` implements Hermes Agent's `MemoryProvider` and registers through the `hermes_agent.memory_providers` entry point, so installing `membrain-ai` into Hermes's environment and setting `memory.provider: membrain` is enough. The mapping onto `membrain.host`:
+
+| Hermes call | memBrain behaviour |
+| --- | --- |
+| `initialize` | Binds the installation: the shared memBrain directory for the default `~/.hermes` profile, `<HERMES_HOME>/membrain` for other profiles, or the `directory` saved by `hermes memory setup`. Starts the service in the background. Subagent, cron and flush contexts never write. |
+| `system_prompt_block` | Session notice with the provider's tool names, saved notes, then recent history; computed once per session. |
+| `prefetch` | Related earlier messages for the turn (Hermes fences them as memory context); stages the prompt. |
+| `sync_turn` | Stores the user message and the reply together; skipped while recording is paused. |
+| `on_memory_write` | Mirrors built-in `MEMORY.md` / `USER.md` writes as notes; `replace` and `remove` suppress the matching earlier note. |
+| Tools | `membrain_note`, `membrain_search`, `membrain_pause`, `membrain_resume`. |
+
+Verified with unit tests, a signature check against Hermes's `agent/memory_provider.py`, and two provider sessions sharing memory through a real embedded service. Not yet run inside a real Hermes installation.
 
 ### MCP
 

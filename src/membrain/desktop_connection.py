@@ -52,5 +52,5 @@ def run_mcp(directory: Path | None = None) -> None:
         client = open_client(directory)
     with client:
         with redirect_stdout(sys.stderr):
-            server = create_server(client)
+            server = create_server(client, directory=directory)
         server.run(transport="stdio")

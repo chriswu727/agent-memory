@@ -639,4 +639,8 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     def console():
         return static.joinpath("index.html").read_text(encoding="utf-8")
 
+    @app.get("/memory", response_class=HTMLResponse)
+    def memory_page():
+        return static.joinpath("memory.html").read_text(encoding="utf-8")
+
     return app
