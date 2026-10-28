@@ -133,6 +133,8 @@ Status: implemented (`membrain plugin import`, Hermes automatic import, per-host
 
 ### A6. Standard benchmarks
 
+Status: the LoCoMo harness is in [evaluations/locomo](../evaluations/locomo/README.md), verified against a stub model; real-model results and LongMemEval and PersonaMem are next.
+
 Measure end-to-end answer accuracy with a judge, not retrieval alone, for these arms: no memory, full context (where it fits), and memBrain through the plugin path.
 
 | Benchmark | What it measures | Data |
