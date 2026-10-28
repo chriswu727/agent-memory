@@ -409,9 +409,10 @@ def ensure_profile(
             )):
                 raise LocalProfileError("Existing profile ports cannot be changed during setup.")
             return profile
-        if any(entry.name != ".profile.lock" and not re.fullmatch(
-            r"\.profile-[0-9a-f]{32}\.tmp", entry.name,
-        ) for entry in path.iterdir()):
+        # Host adapters keep their own state (spooled records, start markers, pauses) in plugin/ and may write it
+        # before the first start creates the profile; it holds no installation identity.
+        if any(entry.name != ".profile.lock" and not (entry.name == "plugin" and entry.is_dir())
+               and not re.fullmatch(r"\.profile-[0-9a-f]{32}\.tmp", entry.name) for entry in path.iterdir()):
             raise LocalProfileError("Profile configuration is missing from an existing installation; restore it before setup.")
         api = _available_port(api_port, 8788, set())
         database = _available_port(database_port, 55433, {api})

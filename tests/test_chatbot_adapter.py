@@ -136,9 +136,10 @@ def test_astrbot_plugin_remembers_each_qq_user_separately_through_a_real_service
     assert set(handlers) == {"request", "response", "membrain_note", "membrain_search", "membrain_pause",
                              "membrain_resume"}
     try:
-        host.start(directory)
+        # AstrBot constructs the plugin before any installation exists; its background start must still succeed.
         plugin = module.MembrainPlugin(context=None, config={})
         assert plugin.memory.directory == directory
+        host.start(directory)
 
         async def turn(event, reply, conversation="c1"):
             request = types.SimpleNamespace(system_prompt="You are a friendly bot.", prompt=event.text,
