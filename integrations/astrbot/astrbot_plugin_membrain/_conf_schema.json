@@ -1,0 +1,22 @@
+{
+  "group_memory": {
+    "description": "Group chat memory",
+    "type": "string",
+    "default": "separate",
+    "options": ["separate", "shared"],
+    "labels": ["Separate from private chats", "Shared with private chats"],
+    "hint": "Separate keeps what someone says in a group apart from their private chats with the bot, so a group reply cannot reveal a private conversation."
+  },
+  "record_groups": {
+    "description": "Remember group conversations",
+    "type": "bool",
+    "default": true,
+    "hint": "Only messages that reach the model (for example when the bot is mentioned) are remembered."
+  },
+  "directory": {
+    "description": "Memory directory",
+    "type": "string",
+    "default": "",
+    "hint": "Leave empty to keep memory in AstrBot's data/plugin_data/membrain, which survives plugin updates and is included in AstrBot data backups."
+  }
+}

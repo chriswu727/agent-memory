@@ -44,6 +44,8 @@ codex plugin add membrain@membrain
 
 下次启动时 Codex 会请你审核插件的 hooks；请选择信任（也可以之后用 `/hooks` 信任），因为 Codex 不会运行未受信任的 hooks。之后 Codex 获得与 Claude Code 相同的笔记、历史、召回、记录和记忆工具，同一台电脑上两者共享同一份记忆。已在 Linux 上用 Codex CLI 0.165 验证：在一个会话中告诉它的事实出现在了下一个会话的上下文里。
 
+**QQ、微信、Telegram 等平台上的聊天机器人。** [AstrBot 插件](integrations/astrbot/README.zh-CN.md)为每一个和 AstrBot 机器人聊天的人提供独立的长期记忆，适用于 AstrBot 支持的所有平台和模型服务（包括 DeepSeek）。一个人说过的话永远不会出现在给另一个人的回复里，群聊默认也与私聊分开保存。该插件尚未在真实的 AstrBot 安装中运行过。
+
 **Hermes Agent。** memBrain 也可以作为 Hermes Agent 的记忆后端。把它安装到 Hermes 的 Python 环境并选用：
 
 ```sh

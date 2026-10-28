@@ -44,6 +44,8 @@ codex plugin add membrain@membrain
 
 On the next start Codex asks you to review the plugin's hooks; choose to trust them (or trust them later with `/hooks`), because Codex never runs untrusted hooks. Codex then gets the same notes, history, recall, recording and memory tools as Claude Code, and both share one memory on the same computer. Verified with Codex CLI 0.165 on Linux: a fact told in one session was in the next session's context.
 
+**Chat bots on QQ, WeChat, Telegram and more.** The [AstrBot plugin](integrations/astrbot/README.md) gives every person who talks to an AstrBot bot their own long-term memory, on any platform and model provider AstrBot supports (DeepSeek included). What one person said is never shown to another, and group chats are kept apart from private chats by default. It has not yet been run inside a real AstrBot installation.
+
 **Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
 
 ```sh

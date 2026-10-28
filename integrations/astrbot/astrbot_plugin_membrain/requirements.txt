@@ -1,0 +1,1 @@
+membrain-ai[embedded,semantic] @ https://github.com/chriswu727/memBrain/archive/refs/heads/main.zip

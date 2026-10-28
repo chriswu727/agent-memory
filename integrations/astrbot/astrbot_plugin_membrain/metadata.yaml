@@ -1,0 +1,6 @@
+name: astrbot_plugin_membrain
+display_name: memBrain
+desc: Local long-term memory for every user of your bot. Notes, earlier conversations and related messages before each reply; per-user isolation, private-group separation and pause controls. No extra API key.
+author: chriswu727
+version: 0.1.0
+repo: https://github.com/chriswu727/memBrain

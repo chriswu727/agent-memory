@@ -132,6 +132,15 @@ def _shared_binaries(source: Path, shared_root: Path = SHARED_ROOT) -> Path:
     return target
 
 
+def _traversable(directory: Path) -> bool:
+    """Whether every directory down to ``directory`` lets other accounts pass through it."""
+    try:
+        path = Path(directory).resolve()
+        return all(os.stat(part).st_mode & 0o001 for part in (path, *path.parents))
+    except OSError:
+        return False
+
+
 def _layout(profile) -> _Layout:
     source = _installation()
     if source is None:
@@ -148,6 +157,10 @@ def _layout(profile) -> _Layout:
     cluster = shared_root / "clusters" / profile.installation_id
     shared_root.mkdir(mode=0o755, parents=True, exist_ok=True)
     (shared_root / "clusters").mkdir(mode=0o755, exist_ok=True)
+    if not legacy and not (cluster / "data" / "PG_VERSION").is_file() and _traversable(profile.directory):
+        # Keep the data with the installation (a container's data volume, for example) when the service account
+        # can reach it; only the binaries need the shared root.
+        cluster = profile.directory / "postgres-cluster"
     cluster.mkdir(mode=0o700, exist_ok=True)
     os.chown(cluster, *account)
     binaries = _shared_binaries(source, shared_root) / "pgserver" / "pginstall" / "bin"
