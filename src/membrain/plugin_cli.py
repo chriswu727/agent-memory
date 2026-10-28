@@ -39,6 +39,15 @@ def dispatch(args) -> None:
         raise SystemExit(plugin.run_tool(args.name, directory))
     if args.plugin_command == "mcp":
         from .desktop_connection import run_mcp
+        from .host import installed_tool_python, running_from_uv_cache
+
+        durable = installed_tool_python() if running_from_uv_cache() else None
+        if durable is not None:
+            # Serve MCP from the installed tool so the service it starts outlives uv cache cleanups.
+            import subprocess
+
+            raise SystemExit(subprocess.call([str(durable), "-m", "membrain.cli", "plugin", "mcp",
+                                              "--directory", str(directory)]))
 
         plugin.ensure_installation(directory)
         run_mcp(directory)
