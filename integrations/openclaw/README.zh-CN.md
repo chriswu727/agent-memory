@@ -9,11 +9,11 @@
 ```sh
 curl -L https://github.com/chriswu727/memBrain/archive/refs/heads/main.zip -o membrain.zip
 unzip -q membrain.zip 'memBrain-main/integrations/openclaw/membrain/*'
-openclaw plugins install ./memBrain-main/integrations/openclaw/membrain --force
+openclaw plugins install ./memBrain-main/integrations/openclaw/membrain --force --accept-capabilities
 openclaw config set plugins.entries.membrain.hooks.allowConversationAccess true
 ```
 
-OpenClaw 要求任何读取提示词或回复的非内置插件都获得明确的会话访问授权。首次加载时，插件会用 uv 安装 memBrain 运行时并在后台启动本地服务；就绪之前的对话照常进行，只是没有记忆。
+OpenClaw 2026.10 在你接受本地插件声明的能力（`--accept-capabilities`）之前会拒绝安装，并要求任何读取提示词或回复的非内置插件都获得明确的会话访问授权。当前的 OpenClaw 版本需要 Node 24.22.1 或更高版本。首次加载时，插件会用 uv 安装 memBrain 运行时并在后台启动本地服务；就绪之前的对话照常进行，只是没有记忆。
 
 ## 功能
 
@@ -27,4 +27,4 @@ OpenClaw 要求任何读取提示词或回复的非内置插件都获得明确�
 
 ## 状态
 
-插件逻辑已用 Node 针对真实的 memBrain 运行时测试：两个会话共享记忆、笔记、检索和暂停。清单文件按 OpenClaw 的插件文档和源码编写。尚未被真实的 OpenClaw Gateway 加载过。
+插件逻辑已用 Node 针对真实的 memBrain 运行时测试：两个会话共享记忆、笔记、检索和暂停。清单文件按 OpenClaw 的插件文档和源码编写。在 Windows 11 上，真实的 OpenClaw 2026.10.8 Gateway（模型为 DeepSeek V4 Pro）用上面的命令加载了它：hook 保存了每一轮对话，模型用 `membrain_note` 保存了笔记；在关闭 OpenClaw 自带的 `memory-core` 插件、且工作区文件中没有该事实的情况下，新会话召回了之前会话中告知的车牌号和车位。尚未在消息渠道上运行。

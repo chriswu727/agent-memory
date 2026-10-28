@@ -35,4 +35,4 @@ Wrap text in `<private>…</private>` to keep it out of memory; values that look
 
 ## Status
 
-Tested with stand-ins for AstrBot's plugin API and a real memBrain service (two QQ users kept apart, a group kept apart from a private chat, pause), and the tool docstrings are checked against AstrBot's parameter format. Not yet run inside a real AstrBot installation.
+Tested with stand-ins for AstrBot's plugin API and a real memBrain service (two QQ users kept apart, a group kept apart from a private chat, pause), and the tool docstrings are checked against AstrBot's parameter format. On Windows 11 it ran inside AstrBot 4.29.3 (source install, Python 3.12) with DeepSeek through AstrBot's own WebChat: AstrBot installed the dependency from `requirements.txt`, the first start created the memory in `data/plugin_data/membrain`, the model saved notes and searched with the plugin's tools, each of two users recalled their own facts in a new conversation, and neither saw the other's. That run found a bug that stopped every first start (fixed). QQ through NapCat has not been tried yet.
