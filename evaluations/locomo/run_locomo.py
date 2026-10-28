@@ -301,7 +301,7 @@ def run(args) -> None:
                     desktop.stop(directory)
                 except desktop.DesktopError:
                     pass
-    usage_path = out / "usage.json"
+    usage_path = out / f"usage-{'-'.join(arms)}.json"  # One file per invocation, so arms can run in parallel.
     previous = json.loads(usage_path.read_text()) if usage_path.exists() else {}
     for key, value in model.usage.items():
         previous[key] = previous.get(key, 0) + value
@@ -326,8 +326,14 @@ def report(args) -> None:
         summary[arm] = {"overall": sum(overall) / len(overall) if overall else None, "questions": len(overall),
                         **{CATEGORIES[c]: sum(v) / len(v) for c, v in by_category.items() if v}}
         lines.append(f"| {arm} | " + " | ".join(cells) + f" | {100 * sum(overall) / max(len(overall), 1):.1f}% | {len(overall)} |")
+    usage = defaultdict(int)
+    for path in out.glob("usage*.json"):
+        for key, value in json.loads(path.read_text()).items():
+            usage[key] += value
+    summary["usage"] = dict(usage)
     (out / "summary.json").write_text(json.dumps(summary, indent=2))
     print("\n".join(lines))
+    print("usage:", json.dumps(dict(usage)))
 
 
 def main() -> None:
