@@ -35,6 +35,15 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 
 其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
+**Hermes Agent。** memBrain 也可以作为 Hermes Agent 的记忆后端。把它安装到 Hermes 的 Python 环境并选用：
+
+```sh
+uv pip install --python ~/.hermes/hermes-agent/.venv/bin/python 'membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain'
+hermes config set memory.provider membrain   # 或：hermes memory setup
+```
+
+之后 Hermes 会在每个会话开始时注入你的笔记和最近消息，在每次回复前加入相关的早期消息，记录每一轮对话，并获得 `membrain_note`、`membrain_search`、`membrain_pause` 和 `membrain_resume` 工具。写入 Hermes 内置 `MEMORY.md`／`USER.md` 的内容会同步为笔记。默认 Hermes 配置档与同一台电脑上的 Claude Code 共享记忆；其他配置档各自独立。该适配器已按 Hermes 的接口和真实 memBrain 服务测试，但尚未在真实的 Hermes 安装中运行过。
+
 <a id="why-membrain"></a>
 
 ## 为什么选择 memBrain

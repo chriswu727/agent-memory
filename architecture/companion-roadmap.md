@@ -1,6 +1,6 @@
 # Roadmap: memory for chat and life agents
 
-Status: **plan, not implemented.** This document turns the competitive review of 2026-10-27 into phased work. Implemented and verified behaviour is described in [plugin mode](plugin-mode.md) and the [evaluation reports](../evaluations/).
+Status: **in progress.** Implemented so far: A3 privacy controls, A2 memory page, the shared `membrain.host` layer and the A4 Hermes Agent adapter (not yet run inside a real Hermes installation). Everything else is planned. This document turns the competitive review of 2026-10-27 into phased work. Implemented and verified behaviour is described in [plugin mode](plugin-mode.md) and the [evaluation reports](../evaluations/).
 
 ## Positioning
 

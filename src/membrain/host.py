@@ -36,12 +36,22 @@ _STATEMENT = re.compile(r"^(user|assistant|tool|operator|system) \S+ \(([a-z_]+)
 _SPEAKERS = {"user": "user said", "assistant": "assistant said", "tool": "tool reported",
              "operator": "operator said", "system": "system noted"}
 
-NOTES_NOTICE = ("When the user states a lasting fact about themselves or their life (health, people, dates, "
-                "places, preferences, decisions, constraints, or a change to an earlier plan), save it as one short "
-                "note with the memory_note tool, and replace the outdated note when something changes. "
-                "Notes are shown at the start of every session; raw messages are not always.")
-PRIVACY_NOTICE = ("If the user asks you not to remember something, call memory_pause; text inside "
-                  "<private>…</private> is never stored.")
+TOOL_NAMES = {"note": "memory_note", "recall": "memory_recall", "pause": "memory_pause"}
+
+
+def notes_notice(tools: dict = TOOL_NAMES) -> str:
+    return ("When the user states a lasting fact about themselves or their life (health, people, dates, places, "
+            "preferences, decisions, constraints, or a change to an earlier plan), save it as one short note with the "
+            f"{tools['note']} tool, and replace the outdated note when something changes. Notes are shown at the "
+            "start of every session; raw messages are not always.")
+
+
+def privacy_notice(tools: dict = TOOL_NAMES) -> str:
+    return (f"If the user asks you not to remember something, call {tools['pause']}; text inside "
+            "<private>…</private> is never stored.")
+
+
+NOTES_NOTICE = notes_notice()
 
 
 # Installation and service ------------------------------------------------------------------------------------
@@ -666,7 +676,7 @@ def _finish_abandoned(directory: Path, client) -> int:
     return delivered
 
 
-def session_context(directory: Path, session: str) -> str:
+def session_context(directory: Path, session: str, *, tools: dict = TOOL_NAMES) -> str:
     """Notice, saved notes and recent history for a new session; starts the service if it is not running."""
     from .notes import list_notes, render_notes
 
@@ -692,13 +702,13 @@ def session_context(directory: Path, session: str) -> str:
     _mark_history(directory, session, complete and history is not None)
     if complete and history:
         notice = ("memBrain memory is active for this user. Their complete history from earlier sessions is "
-                  "below. " + NOTES_NOTICE)
+                  "below. " + notes_notice(tools))
     else:
         notice = ("memBrain memory is active for this user. Related messages from earlier conversations are "
                   "added automatically before replies. When a request depends on the user's personal context and "
-                  "nothing relevant is shown, search with the memory_recall tool using a few concrete "
-                  "keywords before answering. " + NOTES_NOTICE)
-    notice += " " + PRIVACY_NOTICE + (" Recording is currently paused." if paused(directory) else "")
+                  f"nothing relevant is shown, search with the {tools['recall']} tool using a few concrete "
+                  "keywords before answering. " + notes_notice(tools))
+    notice += " " + privacy_notice(tools) + (" Recording is currently paused." if paused(directory) else "")
     return "\n\n".join(part for part in (notice, notes, history) if part)
 
 
@@ -731,12 +741,18 @@ def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str |
 
 
 def finish_turn(directory: Path, session: str, reply: str | None, *, turn_id: str | None = None,
-                producer: str = PRODUCER) -> None:
-    """Store the staged user message and the reply, unless recording was paused during the turn."""
+                producer: str = PRODUCER, user: str | None = None) -> None:
+    """Store the staged user message and the reply, unless recording was paused during the turn.
+
+    Hosts that report the whole turn at once pass ``user``; it is recorded if no prompt was staged for it.
+    """
     pending = _take_pending(directory, session)
     if paused(directory):
         return
     records = [pending] if pending else []
+    if isinstance(user, str) and user.strip() and (pending is None or pending["text"] != scrub(user)):
+        pending = message_record(session, "user", user, turn_id=turn_id, producer=producer)
+        records.append(pending)
     if isinstance(reply, str) and reply.strip():
         if turn_id is None and pending:
             turn_id = pending["source_event_key"].rsplit(":", 2)[1]

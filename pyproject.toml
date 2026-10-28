@@ -32,6 +32,9 @@ dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.12", "build>=1,<2", "ht
        "pgserver>=0.1.4,<0.2; python_version < '3.13' and (sys_platform != 'linux' or platform_machine == 'x86_64')",
        "onnxruntime>=1.17,<2", "tokenizers>=0.15,<1", "numpy>=1.26,<3"]
 
+[project.entry-points."hermes_agent.memory_providers"]
+membrain = "membrain.adapters.hermes:register"
+
 [project.urls]
 Homepage = "https://github.com/chriswu727/membrain"
 Documentation = "https://github.com/chriswu727/membrain/blob/main/docs/reference.md"

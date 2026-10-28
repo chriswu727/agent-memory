@@ -35,6 +35,15 @@ The first session installs the runtime and an embedded PostgreSQL database in th
 
 Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
 
+**Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
+
+```sh
+uv pip install --python ~/.hermes/hermes-agent/.venv/bin/python 'membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain'
+hermes config set memory.provider membrain   # or: hermes memory setup
+```
+
+Hermes then starts each session with your notes and recent messages, adds related earlier messages before each reply, records each turn, and gets `membrain_note`, `membrain_search`, `membrain_pause` and `membrain_resume` tools. Writes to Hermes's built-in `MEMORY.md` / `USER.md` are mirrored as notes. The default Hermes profile shares memory with Claude Code on the same computer; other profiles get their own. The adapter is tested against Hermes's provider interface and a real memBrain service, but has not yet been run inside a real Hermes installation.
+
 <a id="why-membrain"></a>
 
 ## Why memBrain
