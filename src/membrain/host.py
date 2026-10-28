@@ -57,12 +57,14 @@ NOTES_NOTICE = notes_notice()
 # Installation and service ------------------------------------------------------------------------------------
 
 def profile_directory(directory: Path | None = None) -> Path:
-    from .local_profile import default_profile_directory
-
-    configured = os.environ.get("MEMBRAIN_DIRECTORY") or os.environ.get("AGENT_MEMORY_DIRECTORY")
     if directory is not None:
         return Path(directory)
-    return Path(configured) if configured else default_profile_directory()
+    configured = os.environ.get("MEMBRAIN_DIRECTORY") or os.environ.get("AGENT_MEMORY_DIRECTORY")
+    if configured:
+        return Path(configured)
+    from .local_profile import default_profile_directory
+
+    return default_profile_directory()
 
 
 def ensure_installation(directory: Path):
