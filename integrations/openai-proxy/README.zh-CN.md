@@ -20,6 +20,8 @@ membrain proxy --upstream https://api.deepseek.com/v1
 
 可选请求头：`X-Membrain-Platform`（例如 `bilibili`）、`X-Membrain-Group`（群或直播间；默认一个人在群里的记忆与私聊分开，可用 `--group-memory shared` 改为共用）、`X-Membrain-Session`（你自己的会话 ID；默认同一聊天的一天为一个会话）。没有用户标识的请求共用一份记忆，适合个人陪伴聊天。
 
+用于角色扮演（SillyTavern 等）时，发送 `X-Membrain-Roleplay: <角色名>`：这个故事会有自己的记忆，永远不会和这个人的真实生活记忆混在一起。再加上 `X-Membrain-Share-Real-Life: 1`，可以在故事中同时看到这个人的真实生活笔记（标记为敏感的除外）。
+
 ## 对每个请求做了什么
 
 对 `POST /v1/chat/completions`，代理在这个人的最新消息之前加入一条 system 消息，内容是记忆说明、他在其他日子发过的消息，以及与当前消息相关的早期消息。对话开头保持不变，因此模型服务（包括 DeepSeek）的提示词缓存仍然有效。回复返回后（流式或非流式），代理保存这个人的消息和回复。其他所有接口原样转发。

@@ -200,7 +200,7 @@ def run_hook(event: str, directory: Path | None = None, stream=None, *, host_nam
 
 def run_tool(name: str, directory: Path | None = None, stream=None) -> int:
     """Run one memory tool for hosts without MCP: JSON arguments on stdin, a JSON result on stdout."""
-    from .notes import save_note
+    from .notes import note_fields, save_note
 
     directory = profile_directory(directory)
     try:
@@ -221,7 +221,8 @@ def run_tool(name: str, directory: Path | None = None, stream=None) -> int:
                 with client:
                     if name == "note":
                         result = save_note(client, host.scrub(str(arguments.get("text") or "")),
-                                           replaces=tuple(arguments.get("replaces") or ()))
+                                           replaces=tuple(arguments.get("replaces") or ()),
+                                           **note_fields(arguments))
                     else:
                         found = host.recall_context(client, host.scrub(str(arguments.get("query") or "")),
                                                     current_conversation=arguments.get("session_id"))

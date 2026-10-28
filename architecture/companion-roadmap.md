@@ -164,6 +164,8 @@ Goal: be measurably better than the alternatives at remembering a person.
 
 ### B1. Typed notes
 
+Status: implemented. Instead of `application/json` content, a typed note is plain text with a parseable header (`[plan · intended · due 2026-11-14 · about Mei] …`): JSON content would bypass sentence segmentation and put serialized keys into the recall index, while the header keeps recall, the memory page, replacement and deletion unchanged. `source_event_ids` is not stored yet.
+
 A note becomes a JSON document, stored as an assistant-authored event with `application/json` content in the notes conversation, so no schema migration is needed. It has these fields:
 
 - `kind`: `person`, `constraint` (health, diet, access), `preference`, `plan`, `routine`, `milestone`, `relationship`, `agent_commitment` or `other`.
@@ -183,11 +185,15 @@ The `memory_note` tool accepts these fields, and plain text stays valid. Session
 
 ### B2. People and aliases
 
+Status: implemented (person notes with `about` and `aliases`, a People group at session start, alias names as recall cues).
+
 - `person` notes carry a name, aliases ("the sparky"), a relation to the user, and short facts.
 - Recall expands aliases into cues, so "the sparky" finds the electrician's name.
 - Session start shows a compact People block with each name's relation, so similar names stay apart (Tom the colleague, Tomás the brother-in-law).
 
 ### B3. Coming up and open loops
+
+Status: implemented (`<membrain-coming-up>` and skill guidance); its effect on the plan-versus-done case is measured in B7.
 
 - At session start, show plans due in the next two weeks, plans whose date has passed but are still `intended`, and agent commitments not yet fulfilled. Dates are relative to the host's local date.
 - The skill tells the agent to follow up naturally ("Did the passport arrive?") and never to assume a planned action happened.
@@ -195,11 +201,15 @@ The `memory_note` tool accepts these fields, and plain text stays valid. Session
 
 ### B4. Fiction and real life
 
+Status: implemented for chat hosts (`ChatMemory`, the proxy headers and the AstrBot setting): one brain per person and character, records marked `roleplay`, and opt-in sharing of non-sensitive real-life notes. A SillyTavern extension that sets the character automatically is not built yet; SillyTavern can use the proxy with the header.
+
 - Hosts mark sessions or characters as role-play: always in SillyTavern, and configurable elsewhere. Their records use the core's existing `world: roleplay` scope.
 - Role-play facts never enter the real-life context, and real-life sensitive notes never enter role-play unless the user allows it.
 - A role-play character's own memory stays separate for each character.
 
 ### B5. The agent's own memory
+
+Status: implemented through typed notes: `agent_commitment` notes (promises, with status and due date) appear in Coming up, and `relationship` notes hold how the user wants the agent to be with them. Extracting commitments automatically from the agent's replies is not built.
 
 - Promises the agent made ("I'll remind you on Friday"), opinions it stated, and nicknames it uses become `agent_commitment` and `relationship` notes.
 - These use the core's existing recall of the agent's own speech and commitments, and appear in Coming up.

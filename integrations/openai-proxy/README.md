@@ -20,6 +20,8 @@ The proxy separates memories by:
 
 Optional headers: `X-Membrain-Platform` (for example `bilibili`), `X-Membrain-Group` (a group or live room; by default a person's group memory is kept apart from their private chats, change with `--group-memory shared`), and `X-Membrain-Session` (your own conversation ID; by default one day of one chat is a session). Requests with no user share one memory, which suits a personal companion chat.
 
+For role-play (SillyTavern and similar), send `X-Membrain-Roleplay: <character name>`: that story gets its own memory, which never mixes with the person's real-life memory. Add `X-Membrain-Share-Real-Life: 1` to also show the person's real-life notes in the story, except those marked sensitive.
+
 ## What it does to each request
 
 For `POST /v1/chat/completions` it adds one system message just before the person's latest message, containing the memory notice, their earlier messages from other days, and older messages related to the current one. The start of the conversation is left untouched so the provider's prompt cache (DeepSeek's included) keeps working. After the reply arrives (streamed or not) it stores the person's message and the reply. Every other endpoint is forwarded unchanged.

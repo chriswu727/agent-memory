@@ -48,12 +48,14 @@ class ChatMemory:
 
     def __init__(self, directory: Path, *, group_memory: str = "separate", record_groups: bool = True,
                  producer: str = "membrain-chatbot", tools: dict | None = TOOLS,
-                 block_seconds: float = BLOCK_SECONDS):
+                 block_seconds: float = BLOCK_SECONDS, roleplay: str | None = None, share_real_life: bool = False):
         if group_memory not in GROUP_MEMORY:
             raise ValueError(f"group_memory must be one of {', '.join(GROUP_MEMORY)}.")
         self.directory = Path(directory).expanduser()
         self.group_memory, self.record_groups, self.producer, self.tools = group_memory, record_groups, producer, tools
         self.block_seconds = block_seconds
+        # A bot that plays a character keeps that story's memory apart from each person's real-life memory.
+        self.roleplay, self.share_real_life = roleplay or None, share_real_life
         self._blocks: dict[str, tuple[float, str, str]] = {}
         self._lock = threading.Lock()
         host.state_directory(self.directory)
@@ -78,16 +80,21 @@ class ChatMemory:
         chat = conversation or speaker.group or "private"
         return f"{_short(speaker.platform, 40)}:{_short(chat, 60)}:{_short(speaker.user, 60)}:{day}"[:MAX_SESSION]
 
+    def memory_user(self, speaker: Speaker, roleplay: str | None = None) -> str:
+        """The memory this speaker's messages go to: their own, or their role-play with a character."""
+        return host.roleplay_user(self.user_id(speaker), roleplay or self.roleplay)
+
     def _recording(self, speaker: Speaker) -> bool:
         return speaker.usable() and (self.record_groups or not speaker.group)
 
-    def _block(self, session: str, user: str) -> str:
+    def _block(self, session: str, user: str, real_life: str, roleplay: str | None, share: bool) -> str:
         now = time.monotonic()
         with self._lock:
             cached = self._blocks.get(session)
-        if cached and now - cached[0] < self.block_seconds:
+        if cached and cached[1] == user and now - cached[0] < self.block_seconds:
             return cached[2]
-        block = host.session_context(self.directory, session, tools=self.tools, user_id=user)
+        block = host.session_context(self.directory, session, tools=self.tools, user_id=real_life, roleplay=roleplay,
+                                     share_real_life=share)
         with self._lock:
             self._blocks[session] = (now, user, block)
         return block
@@ -97,40 +104,44 @@ class ChatMemory:
             for session in [key for key, value in self._blocks.items() if value[1] == user]:
                 del self._blocks[session]
 
-    def context(self, speaker: Speaker, text: str, *, session: str, turn_id: str | None = None) -> str | None:
+    def context(self, speaker: Speaker, text: str, *, session: str, turn_id: str | None = None,
+                roleplay: str | None = None, share_real_life: bool | None = None) -> str | None:
         """Memory to add to the system prompt for this message: notice, notes, history and related messages.
 
         The message is staged and stored with the reply by ``record``. Returns ``None`` when nothing applies.
+        ``roleplay`` (or the bot's own character) selects that story's separate memory.
         """
         if not self._recording(speaker):
             return None
-        user = self.user_id(speaker)
-        block = self._block(session, user)
+        roleplay = roleplay or self.roleplay
+        share = self.share_real_life if share_real_life is None else share_real_life
+        block = self._block(session, self.memory_user(speaker, roleplay), self.user_id(speaker), roleplay, share)
         recalled = host.prompt_context(self.directory, session, text, turn_id=turn_id, producer=self.producer,
-                                       user_id=user)
+                                       user_id=self.user_id(speaker), roleplay=roleplay)
         return "\n\n".join(part for part in (block, recalled) if part) or None
 
     def record(self, speaker: Speaker, reply: str | None, *, session: str, turn_id: str | None = None,
-               prompt: str | None = None) -> None:
+               prompt: str | None = None, roleplay: str | None = None) -> None:
         """Store the staged message (or ``prompt``) and the reply, unless this user paused recording."""
         if self._recording(speaker):
             host.finish_turn(self.directory, session, reply, turn_id=turn_id, producer=self.producer, prompt=prompt,
-                             user_id=self.user_id(speaker))
+                             user_id=self.user_id(speaker), roleplay=roleplay or self.roleplay)
 
-    def note(self, speaker: Speaker, text: str, replaces=()) -> dict:
-        from ..notes import save_note
+    def note(self, speaker: Speaker, text: str, replaces=(), *, roleplay: str | None = None, **fields) -> dict:
+        from ..notes import note_fields, save_note
 
-        user = self.user_id(speaker)
+        user = self.memory_user(speaker, roleplay)
         client = self._client(user)
         if client is None:
             return {"error": "memBrain is starting; try again in a few seconds."}
         with client:
-            result = save_note(client, host.scrub(str(text or "")), replaces=tuple(replaces or ()))
+            result = save_note(client, host.scrub(str(text or "")), replaces=tuple(replaces or ()),
+                               **note_fields(fields))
         self._forget_blocks(user)
         return result
 
-    def search(self, speaker: Speaker, query: str, *, session: str | None = None) -> dict:
-        client = self._client(self.user_id(speaker))
+    def search(self, speaker: Speaker, query: str, *, session: str | None = None, roleplay: str | None = None) -> dict:
+        client = self._client(self.memory_user(speaker, roleplay))
         if client is None:
             return {"error": "memBrain is starting; try again in a few seconds."}
         with client:

@@ -29,6 +29,8 @@ Each person has their own memory: what Alice told the bot is never shown in a re
 | --- | --- | --- |
 | `group_memory` | `separate` | `shared` lets a person's group messages and private chats share one memory. |
 | `record_groups` | on | Off: group messages are neither recalled nor stored. Only messages that reach the model (for example when the bot is mentioned) are seen. |
+| `roleplay_character` | empty | If the bot plays a fictional character, its name: the story's memory is kept apart from each person's real-life memory. |
+| `share_real_life` | off | Show each person's non-sensitive real-life notes in the role-play, marked as real life. |
 | `directory` | empty | Where memory is kept; empty means `data/plugin_data/membrain`. |
 
 Wrap text in `<private>…</private>` to keep it out of memory; values that look like passwords, API keys or tokens are removed before storage.

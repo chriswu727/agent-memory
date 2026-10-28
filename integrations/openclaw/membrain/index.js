@@ -54,10 +54,24 @@ const TOOLS = [
     name: "membrain_note",
     description: "Save one short, lasting fact about the user (health, people, dates, places, preferences, decisions, " +
       "constraints, plans and their changes) so it is shown at the start of every later session. One fact per note, " +
-      "under 300 characters, with dates when they matter. When a fact changes, pass the old note's id in replaces. " +
-      "Do not save routine requests or anything the user asked you not to keep.",
-    parameters: { type: "object", properties: { text: { type: "string" },
-      replaces: { type: "array", items: { type: "string" } } }, required: ["text"] },
+      "under 300 characters, with dates when they matter. Set kind when it is clear: person (with about = their name, " +
+      "aliases, and the relation in the text), constraint, preference, plan (with status intended until the user " +
+      "confirms it is scheduled or done, and due or occurs_at as YYYY-MM-DD), routine, milestone, relationship, or " +
+      "agent_commitment for something you promised to do. When a fact changes, save the updated note and pass the " +
+      "old note's id in replaces. Do not save routine requests or anything the user asked you not to keep.",
+    parameters: { type: "object", properties: {
+      text: { type: "string" },
+      replaces: { type: "array", items: { type: "string" } },
+      kind: { type: "string", enum: ["person", "constraint", "preference", "plan", "routine", "milestone",
+        "relationship", "agent_commitment", "other"] },
+      about: { type: "string" },
+      aliases: { type: "array", items: { type: "string" } },
+      status: { type: "string", enum: ["intended", "scheduled", "done", "cancelled", "superseded"] },
+      due: { type: "string", description: "YYYY-MM-DD" },
+      occurs_at: { type: "string", description: "YYYY-MM-DD" },
+      pinned: { type: "boolean" },
+      sensitive: { type: "boolean" },
+    }, required: ["text"] },
   },
   {
     name: "membrain_search",

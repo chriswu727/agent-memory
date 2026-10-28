@@ -27,7 +27,7 @@ Inside a Claude Code session you can also run `/plugin install membrain --market
 From the next session on, the plugin:
 
 - records each message and Claude's final reply locally;
-- lets Claude keep short notes of lasting facts (health limits, people, dates, budgets, preferences) and starts every session with those notes and the user's recent messages;
+- lets Claude keep short notes of lasting facts (health limits, people and their nicknames, plans and whether they are done, promises it made, preferences) and starts every session with those notes, what is coming up, and the user's recent messages;
 - recalls related earlier messages before each reply, by keywords and, once the local model is installed, by meaning across languages;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 

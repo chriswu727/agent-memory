@@ -5,7 +5,9 @@ chat completion the proxy adds the person's memory as a system message just befo
 the request upstream (streaming or not), and stores the message and the reply. Everything else is passed through.
 
 People are told apart by the request's ``user`` field or the ``X-Membrain-User`` header (with optional
-``X-Membrain-Platform`` and ``X-Membrain-Group``); requests without either share one memory. The memory system
+``X-Membrain-Platform`` and ``X-Membrain-Group``); requests without either share one memory.
+``X-Membrain-Roleplay: <character>`` keeps a role-play's memory apart from real life; ``X-Membrain-Share-Real-Life: 1``
+also shows that person's non-sensitive real-life notes in it. The memory system
 message is placed after the stable start of the conversation so providers' prompt caches keep working.
 
 By default the proxy listens on loopback and forwards the client's own API key. To serve other machines, store the
@@ -108,11 +110,16 @@ def create_proxy_app(memory: ChatMemory, upstream: str, *, upstream_key: str | N
         except (ValueError, KeyError, AssertionError, TypeError):
             return await passthrough(request, path, raw, forwarded)
         person, index = speaker(request, body), _latest_user(messages)
-        session = request.headers.get("x-membrain-session") or memory.session(person)
+        # A role-play character (SillyTavern and similar) gets its own memory, apart from the person's real life.
+        roleplay = " ".join(request.headers.get("x-membrain-roleplay", "").split())[:80] or None
+        share = request.headers.get("x-membrain-share-real-life", "").lower() in ("1", "true", "yes")
+        session = request.headers.get("x-membrain-session") or memory.session(
+            person, f"roleplay:{roleplay}" if roleplay else None)
         turn, prompt = uuid.uuid4().hex[:20], _text(messages[index]["content"]) if index is not None else ""
         if prompt.strip():
             try:
-                block = await asyncio.to_thread(memory.context, person, prompt, session=session, turn_id=turn)
+                block = await asyncio.to_thread(memory.context, person, prompt, session=session, turn_id=turn,
+                                                roleplay=roleplay, share_real_life=share)
             except Exception as error:  # Memory must never stop the bot from answering.
                 _logger.warning("memory failed: %s", type(error).__name__)
                 block = None
@@ -123,7 +130,7 @@ def create_proxy_app(memory: ChatMemory, upstream: str, *, upstream_key: str | N
             if prompt.strip() and reply.strip():
                 try:
                     await asyncio.to_thread(memory.record, person, reply, session=session, turn_id=turn,
-                                            prompt=prompt)
+                                            prompt=prompt, roleplay=roleplay)
                 except Exception as error:
                     _logger.warning("recording failed: %s", type(error).__name__)
 

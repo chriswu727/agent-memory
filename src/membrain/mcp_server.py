@@ -99,15 +99,22 @@ def create_server(client: MemoryClient, *, directory=None) -> FastMCP:
             delivery_state="unknown", interpretation_hint="unknown",
         )
 
-    @server.tool(annotations=WRITE)
-    async def memory_note(text: str, replaces: list[str] | None = None) -> dict[str, Any]:
-        """Save one short, lasting fact about the user (health, people, dates, places, preferences, decisions,
-        constraints, plans and their changes) so it is shown at the start of every later session. One fact per
-        note, under 300 characters, with dates when they matter. When a fact changes, pass the old note's id in
-        replaces. Do not save routine requests, one-off tasks or anything the user asked you not to keep."""
-        from membrain.notes import save_note
+    from membrain.notes import NOTE_TOOL_DESCRIPTION
 
-        return await asyncio.to_thread(save_note, client, text, replaces=replaces or ())
+    @server.tool(annotations=WRITE, description=NOTE_TOOL_DESCRIPTION)
+    async def memory_note(
+        text: str, replaces: list[str] | None = None,
+        kind: Literal["person", "constraint", "preference", "plan", "routine", "milestone", "relationship",
+                      "agent_commitment", "other"] | None = None,
+        about: str | None = None, aliases: list[str] | None = None,
+        status: Literal["intended", "scheduled", "done", "cancelled", "superseded"] | None = None,
+        due: str | None = None, occurs_at: str | None = None, pinned: bool = False, sensitive: bool = False,
+    ) -> dict[str, Any]:
+        from membrain.notes import note_fields, save_note
+
+        fields = note_fields({"kind": kind, "about": about, "aliases": aliases, "status": status, "due": due,
+                              "occurs_at": occurs_at, "pinned": pinned, "sensitive": sensitive})
+        return await asyncio.to_thread(save_note, client, text, replaces=replaces or (), **fields)
 
     if directory is not None:
         from membrain import host

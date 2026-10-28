@@ -45,8 +45,9 @@ def notes_notice(tools: dict | None = TOOL_NAMES) -> str:
         return ""  # Hosts without memory tools (the proxy) only read memory.
     return ("When the user states a lasting fact about themselves or their life (health, people, dates, places, "
             "preferences, decisions, constraints, or a change to an earlier plan), save it as one short note with the "
-            f"{tools['note']} tool, and replace the outdated note when something changes. Notes are shown at the "
-            "start of every session; raw messages are not always.")
+            f"{tools['note']} tool, with its kind (a plan stays intended until the user confirms it is scheduled or "
+            "done), and replace the outdated note when something changes. Notes are shown at the start of every "
+            "session; raw messages are not always.")
 
 
 def privacy_notice(tools: dict | None = TOOL_NAMES) -> str:
@@ -106,9 +107,38 @@ def user_brain_id(user_id: str) -> str:
     """The stable brain for one user of a multi-user host (a QQ or Telegram bot, a live-stream audience)."""
     from .helpers import digest
 
-    if not isinstance(user_id, str) or not 1 <= len(user_id) <= 200:
-        raise ValueError("A user identifier must contain 1 to 200 characters.")
+    if not isinstance(user_id, str) or not 1 <= len(user_id) <= 400:
+        raise ValueError("A user identifier must contain 1 to 400 characters.")
     return "user-" + digest(["user", user_id])[:32]
+
+
+ROLEPLAY = "roleplay:"
+
+
+def roleplay_user(user_id: str | None, character: str | None) -> str | None:
+    """The memory of one role-play character, kept apart from real life (and from other characters).
+
+    Role-play facts never reach the real-life context and real-life notes never reach role-play unless the host
+    shares them. ``user_id`` keeps characters separate for each person of a multi-user host.
+    """
+    if not character:
+        return user_id
+    character = " ".join(str(character).split())
+    if not 1 <= len(character) <= 80:
+        raise ValueError("A role-play character name must contain 1 to 80 characters.")
+    return f"{user_id}|{ROLEPLAY}{character}" if user_id else ROLEPLAY + character
+
+
+def real_life_user(user_id: str | None) -> str | None:
+    """The real-life memory behind a role-play memory (``None`` is the installation's own)."""
+    if user_id is None or ROLEPLAY not in user_id:
+        return user_id
+    base = user_id.rsplit("|" + ROLEPLAY, 1)[0] if "|" + ROLEPLAY in user_id else None
+    return base
+
+
+def is_roleplay(user_id: str | None) -> bool:
+    return bool(user_id) and (user_id.startswith(ROLEPLAY) or "|" + ROLEPLAY in user_id)
 
 
 def use_brain(client, user_id: str | None):
@@ -350,6 +380,8 @@ def paused(directory: Path, user_id: str | None = None) -> bool:
     """True when recording is paused for everyone, or for this user."""
     if _paused_file(_pause_file(directory)):
         return True
+    if is_roleplay(user_id) and paused(directory, real_life_user(user_id)):
+        return True  # A person's pause also covers their role-play.
     return user_id is not None and _paused_file(_pause_file(directory, user_id))
 
 
@@ -417,6 +449,8 @@ def message_record(session: str, role: str, text: str, *, turn_id: str | None = 
     if user_id is not None:
         user_brain_id(user_id)  # Validates the identifier before anything is staged or spooled.
         record["_user"] = user_id
+        if is_roleplay(user_id):
+            record["interpretation_hint"] = "roleplay"
     return record
 
 
@@ -787,16 +821,22 @@ def _finish_abandoned(directory: Path, client) -> int:
 
 
 def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_NAMES,
-                    user_id: str | None = None, skip_imports_from=()) -> str:
+                    user_id: str | None = None, skip_imports_from=(), roleplay: str | None = None,
+                    share_real_life: bool = False) -> str:
     """Notice, saved notes and recent history for a new session; starts the service if it is not running.
 
     ``user_id`` selects one user's memory in a multi-user host; without it the installation's own memory is used.
     ``skip_imports_from`` names hosts whose own memory files are already in the prompt, so notes imported from them
-    are not repeated.
+    are not repeated. ``roleplay`` names a role-play character whose separate memory is used; with
+    ``share_real_life`` the person's non-sensitive real-life notes are shown too, marked as such.
     """
-    from .notes import list_notes, render_notes
+    from .notes import list_notes, render_coming_up, render_notes
 
-    history, notes, complete = None, None, False
+    real_life = user_id
+    user_id = roleplay_user(user_id, roleplay)
+    shared = None
+
+    history, notes, coming, complete = None, None, None, False
     client = ready_client(directory, user_id)
     if client is None:
         start_in_background(directory)
@@ -806,13 +846,23 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
             _finish_pending(directory, client, session)
             _finish_abandoned(directory, client)
             try:
-                notes = render_notes(list_notes(client), tool=tools["note"] if tools else None,
+                saved = list_notes(client)
+                notes = render_notes(saved, tool=tools["note"] if tools else None,
                                      skip_imports_from=tuple(skip_imports_from))
+                coming = render_coming_up(saved, skip_imports_from=tuple(skip_imports_from))
+                if roleplay and share_real_life:
+                    current = client.brain_id
+                    try:
+                        use_brain(client, real_life)
+                        shared = render_notes(list_notes(client), tool=None, real_life=True)
+                    finally:
+                        client.brain_id = current
             except Exception as error:
                 log(directory, f"notes failed: {type(error).__name__}")
             try:
                 # Notice and history header take about 1,000 characters of the host's limit.
-                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - 1000) - len(notes or "")
+                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - 1000) - len(notes or "") - len(
+                    coming or "") - len(shared or "")
                 history, complete = _history(client, session, budget)
             except Exception as error:
                 log(directory, f"timeline failed: {type(error).__name__}")
@@ -828,14 +878,19 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
                       if tools else "") + notes_notice(tools))
     notice = " ".join((notice.strip(), privacy_notice(tools))) + (
         " Recording is currently paused." if paused(directory, user_id) else "")
-    return "\n\n".join(part for part in (notice, notes, history) if part)
+    if roleplay:
+        notice = (f"This is a role-play with the character {' '.join(roleplay.split())}. The memory below is this "
+                  "story's own: it is fiction, not facts about the user's real life, and nothing said here is kept "
+                  "with their real-life memory. " + notice)
+    return "\n\n".join(part for part in (notice, coming, notes, shared, history) if part)
 
 
 def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str | None = None,
-                   producer: str = PRODUCER, user_id: str | None = None) -> str | None:
+                   producer: str = PRODUCER, user_id: str | None = None, roleplay: str | None = None) -> str | None:
     """Related earlier messages for this prompt. The prompt is staged and stored when the turn finishes."""
     if not isinstance(prompt, str) or not prompt.strip():
         return None
+    user_id = roleplay_user(user_id, roleplay)
     record = message_record(session, "user", prompt, turn_id=turn_id, producer=producer, user_id=user_id)
     previous = session_state(directory, session).get("last_prompt")
     earlier = _stage(directory, session, record, prompt)
@@ -852,19 +907,23 @@ def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str |
                 deliver(directory, client, earlier)
             if history_complete(directory, session):
                 return None  # The complete earlier history is already in this session's context.
-            return recall_context(client, scrub(prompt), current_conversation=session,
-                                  cues=(previous,) if isinstance(previous, str) else ())
+            from .notes import alias_cues, list_notes
+
+            cues = ((previous,) if isinstance(previous, str) else ()) + alias_cues(list_notes(client), prompt)
+            return recall_context(client, scrub(prompt), current_conversation=session, cues=cues)
         except Exception as error:
             log(directory, f"recall failed: {type(error).__name__}")
             return None
 
 
 def finish_turn(directory: Path, session: str, reply: str | None, *, turn_id: str | None = None,
-                producer: str = PRODUCER, prompt: str | None = None, user_id: str | None = None) -> None:
+                producer: str = PRODUCER, prompt: str | None = None, user_id: str | None = None,
+                roleplay: str | None = None) -> None:
     """Store the staged user message and the reply, unless recording was paused during the turn.
 
     Hosts that report the whole turn at once pass ``prompt``; it is recorded if no prompt was staged for it.
     """
+    user_id = roleplay_user(user_id, roleplay)
     pending = _take_pending(directory, session)
     if user_id is None and pending:
         user_id = pending.get("_user")
