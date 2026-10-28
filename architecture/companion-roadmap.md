@@ -216,6 +216,8 @@ Status: implemented through typed notes: `agent_commitment` notes (promises, wit
 
 ### B6. Keeping notes tidy
 
+Status: partly implemented. Session start chooses notes within its budget by priority (pinned, the user's own, constraints and people, open plans and promises, then the newest), says how many were left out, and lists likely duplicates (same kind and person, high word overlap) for the agent to merge with `replaces`. Not built: embedding-based similarity, merge suggestions on the memory page, and decay.
+
 - Detect near-duplicate notes by embedding similarity and same `about`. Offer merges on the memory page, and let the host merge at session end when notes exceed a threshold.
 - When notes exceed the session-start budget, choose notes by pinned status, then by importance, recency and relevance to the session's first message.
 - Unpinned trivial notes lose priority over time (decay that resets on use) but are never deleted automatically.

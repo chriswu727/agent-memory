@@ -125,3 +125,32 @@ def test_typed_notes_drive_session_context_and_alias_recall_on_a_real_service(tm
             desktop.stop(directory)
         except desktop.DesktopError:
             pass
+
+
+def test_notes_over_budget_keep_pinned_user_constraints_and_open_plans_first():
+    filler = [item(f"f{i}", f"Small talk fact number {i} about the weather and tea.") for i in range(40)]
+    important = [
+        item("pin", format_note("Call me Hao, never Mr Wu.", kind="preference", pinned=True)),
+        item("allergy", format_note("Severe peanut allergy.", kind="constraint")),
+        item("plan", format_note("Book the passport appointment.", kind="plan", due="2026-11-03")),
+        item("mine", "I moved to Leeds in 2024.", actor_role="user"),
+    ]
+    response = {"complete": True, "items": filler[:20] + important + filler[20:]}  # Newest first.
+    rendered = render_notes(response, budget=900)
+    for event_id in ("pin", "allergy", "plan", "mine"):
+        assert f"(id: {event_id})" in rendered
+    assert "older or less important notes did not fit" in rendered
+    assert "(id: f0)" in rendered and "(id: f39)" not in rendered  # Then the newest of the rest.
+    assert "did not fit" not in render_notes({"complete": True, "items": important})
+
+
+def test_near_duplicate_notes_are_offered_for_merging():
+    response = {"items": [
+        item("a", format_note("Mei is allergic to sesame seeds.", kind="person", about="Mei")),
+        item("b", format_note("Mei is allergic to sesame.", kind="person", about="Mei")),
+        item("c", format_note("Mei is allergic to sesame.", kind="constraint")),  # Different kind: not a pair.
+        item("d", "Mei is allergic to sesame seeds.", actor_role="user"),  # The user's own: never merged by you.
+    ]}
+    rendered = render_notes(response, tool="memory_note")
+    assert "Possible duplicates (merge each pair into one note with replaces when convenient): b and a." in rendered
+    assert notes.duplicate_pairs([]) == []

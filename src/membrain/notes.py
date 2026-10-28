@@ -60,7 +60,8 @@ def imported_from(item: dict) -> str | None:
     return producer[len(IMPORT_PREFIX):] if producer.startswith(IMPORT_PREFIX) else None
 
 
-def list_notes(client, *, max_characters: int = NOTES_CHARACTERS) -> dict:
+def list_notes(client, *, max_characters: int = 200_000) -> dict:
+    """Current notes, newest first. Session start chooses among them within its own budget (``select_notes``)."""
     return client.timeline(roles=("assistant", "user"), conversation_id=NOTES_CONVERSATION, max_characters=max_characters,
                            max_item_characters=STORED_CHARACTERS, limit=200)
 
@@ -199,14 +200,64 @@ def _parsed(response: dict, skip_imports_from=()) -> list[tuple[dict, dict, str]
     return [(item, *parse_note(item["text"])) for item in reversed(items)]  # Oldest first.
 
 
+def _priority(entry) -> int:
+    item, fields, _sentence = entry
+    if fields.get("pinned"):
+        return 0
+    if item.get("actor_role") == "user":
+        return 1  # The user's own corrections.
+    if fields.get("kind") in ("constraint", "person"):
+        return 2
+    if fields.get("kind") in ("plan", "agent_commitment", "milestone") and fields.get("status", "intended") in (
+            OPEN_STATUSES):
+        return 3
+    return 4
+
+
+def select_notes(parsed: list, budget: int = NOTES_CHARACTERS) -> tuple[list, int]:
+    """Notes that fit ``budget``: pinned, the user's own, constraints and people, open plans, then the newest.
+
+    Returns the chosen notes in their original (oldest-first) order and how many were left out. Nothing is deleted.
+    """
+    order = sorted(range(len(parsed)), key=lambda index: (_priority(parsed[index]), -index))
+    chosen, used = set(), 0
+    for index in order:
+        size = len(parsed[index][2]) + 60
+        if used + size > budget:
+            continue
+        chosen.add(index)
+        used += size
+    return [entry for index, entry in enumerate(parsed) if index in chosen], len(parsed) - len(chosen)
+
+
+def _words(text: str) -> set[str]:
+    return {word for word in re.findall(r"\w+", text.casefold()) if len(word) > 2}
+
+
+def duplicate_pairs(parsed: list, threshold: float = 0.75) -> list[tuple[str, str]]:
+    """Pairs of your own notes about the same thing that say nearly the same (by word overlap)."""
+    pairs = []
+    own = [(item, fields, _words(sentence)) for item, fields, sentence in parsed if item.get("actor_role") != "user"]
+    for index, (first, first_fields, first_words) in enumerate(own):
+        for second, second_fields, second_words in own[index + 1:]:
+            same = (first_fields.get("kind"), first_fields.get("about")) == (
+                second_fields.get("kind"), second_fields.get("about"))
+            union = first_words | second_words
+            if same and union and len(first_words & second_words) / len(union) >= threshold:
+                pairs.append((first["event_id"], second["event_id"]))
+    return pairs
+
+
 def render_notes(response: dict, *, tool: str | None = "memory_note", skip_imports_from=(),
-                 real_life: bool = False) -> str | None:
+                 real_life: bool = False, budget: int = NOTES_CHARACTERS) -> str | None:
     """The notes block, grouped by kind; ``skip_imports_from`` leaves out notes copied from hosts that show their
     own memory files. ``real_life`` renders the person's non-sensitive real-life notes for a role-play session."""
     parsed = [entry for entry in _parsed(response, skip_imports_from)
               if not (real_life and entry[1].get("sensitive"))]
     if not parsed:
         return None
+    parsed, omitted = select_notes(parsed, budget)
+    duplicates = [] if real_life or tool is None else duplicate_pairs(parsed)
     groups: dict[str, list[str]] = {}
     for item, fields, sentence in parsed:
         groups.setdefault(fields.get("kind") or "", []).append(_line(item, fields, sentence))
@@ -216,7 +267,12 @@ def render_notes(response: dict, *, tool: str | None = "memory_note", skip_impor
             body += [f"{title}:", *groups[kind]]
     if groups.get(""):
         body += (["Notes:"] if body else []) + groups[""]
-    more = "" if response.get("complete", True) else " Older notes did not fit and are not shown."
+    more = "" if response.get("complete", True) and not omitted else (
+        f" {omitted or 'Some'} older or less important notes did not fit and are not shown; search for them when "
+        "a request needs them.")
+    if duplicates:
+        body.append("Possible duplicates (merge each pair into one note with replaces when convenient): " + "; ".join(
+            f"{first} and {second}" for first, second in duplicates[:5]) + ".")
     if real_life:
         return ("<membrain-real-life-notes>\nNotes about the user's real life, which they chose to share with "
                 "this role-play. They are facts about the user, not about the story; keep them apart from the "
