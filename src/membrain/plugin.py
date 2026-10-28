@@ -39,7 +39,10 @@ from .host import (  # noqa: F401  (re-exported for callers of the previous plug
 )
 
 MAX_INPUT_BYTES = 4 * 1024 * 1024
-PRODUCERS = {"claude-code": PRODUCER, "codex": "membrain-codex"}
+PRODUCERS = {"claude-code": PRODUCER, "codex": "membrain-codex", "openclaw": "membrain-openclaw"}
+# Hosts that run the MCP bridge use its tool names; others call ``membrain plugin tool`` under these names.
+HOST_TOOLS = {"openclaw": {"note": "membrain_note", "recall": "membrain_search", "pause": "membrain_pause"}}
+TOOLS = ("note", "search", "pause", "resume")
 
 
 def _conversation(payload: dict) -> str:
@@ -100,7 +103,8 @@ def start(directory: Path) -> dict:
 
 def session_start(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
     _import_host_queue(directory, producer)
-    return host.session_context(directory, _conversation(payload))
+    tools = next((names for name, names in HOST_TOOLS.items() if PRODUCERS[name] == producer), host.TOOL_NAMES)
+    return host.session_context(directory, _conversation(payload), tools=tools)
 
 
 def user_prompt(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
@@ -142,4 +146,39 @@ def run_hook(event: str, directory: Path | None = None, stream=None, *, host_nam
         sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": name, "additionalContext": context}},
                                     ensure_ascii=False))
         sys.stdout.flush()
+    return 0
+
+
+def run_tool(name: str, directory: Path | None = None, stream=None) -> int:
+    """Run one memory tool for hosts without MCP: JSON arguments on stdin, a JSON result on stdout."""
+    from .notes import save_note
+
+    directory = profile_directory(directory)
+    try:
+        raw = (stream or sys.stdin.buffer).read(MAX_INPUT_BYTES + 1)
+        arguments = json.loads(raw) if raw.strip() else {}
+        if not isinstance(arguments, dict) or name not in TOOLS:
+            raise ValueError("Tool arguments must be a JSON object.")
+        if name == "pause":
+            result = host.pause(directory, arguments.get("hours"))
+        elif name == "resume":
+            result = host.resume(directory)
+        else:
+            client = host.ready_client(directory)
+            if client is None:
+                host.start_in_background(directory)
+                result = {"error": "memBrain is starting; try again in a few seconds."}
+            else:
+                with client:
+                    if name == "note":
+                        result = save_note(client, host.scrub(str(arguments.get("text") or "")),
+                                           replaces=tuple(arguments.get("replaces") or ()))
+                    else:
+                        found = host.recall_context(client, host.scrub(str(arguments.get("query") or "")),
+                                                    current_conversation=arguments.get("session_id"))
+                        result = {"context": found or "No matching records."}
+    except Exception as error:  # A tool reports failure to the model instead of crashing the host.
+        result = {"error": str(error) if isinstance(error, ValueError) else type(error).__name__}
+    sys.stdout.write(json.dumps(result, ensure_ascii=False))
+    sys.stdout.flush()
     return 0

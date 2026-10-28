@@ -48,6 +48,8 @@ On the next start Codex asks you to review the plugin's hooks; choose to trust t
 
 **Any bot with a `base_url` (Douyin and Bilibili live streams, NoneBot, Koishi, SillyTavern...).** [`membrain proxy`](integrations/openai-proxy/README.md) is an OpenAI-compatible proxy: point the bot's `base_url` at it instead of DeepSeek or another provider, and each person (told apart by the request's `user` field or a header) gets their own memory. It has not yet been run against a real provider.
 
+**OpenClaw.** The [OpenClaw plugin](integrations/openclaw/README.md) adds the same memory to an OpenClaw assistant on every channel, alongside OpenClaw's own memory. It has not yet been loaded by a real OpenClaw Gateway.
+
 **Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
 
 ```sh

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 HOOK_EVENTS = ("session-start", "user-prompt", "stop")
-HOOK_HOSTS = ("claude-code", "codex")
+HOOK_HOSTS = ("claude-code", "codex", "openclaw")
 
 
 def add_commands(commands):
@@ -14,6 +14,8 @@ def add_commands(commands):
     hook = actions.add_parser("hook", help="Handle one host lifecycle hook from JSON on stdin; never fails")
     hook.add_argument("event", choices=HOOK_EVENTS)
     hook.add_argument("--host", choices=HOOK_HOSTS, default="claude-code", help="Host whose hook format is read")
+    tool = actions.add_parser("tool", help="Run one memory tool with JSON arguments on stdin (for hosts without MCP)")
+    tool.add_argument("name", choices=("note", "search", "pause", "resume"))
     actions.add_parser("start", help="Create the local installation if needed and start the service")
     actions.add_parser("mcp", help="Run the MCP stdio bridge, creating and starting the installation if needed")
     actions.add_parser("status", help="Show installation, service and pending-record state")
@@ -33,6 +35,8 @@ def dispatch(args) -> None:
     directory = plugin.profile_directory(args.directory)
     if args.plugin_command == "hook":
         raise SystemExit(plugin.run_hook(args.event, directory, host_name=args.host))
+    if args.plugin_command == "tool":
+        raise SystemExit(plugin.run_tool(args.name, directory))
     if args.plugin_command == "mcp":
         from .desktop_connection import run_mcp
 

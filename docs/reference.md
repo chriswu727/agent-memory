@@ -543,7 +543,8 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 
 | Command | Purpose |
 | --- | --- |
-| `plugin hook session-start\|user-prompt\|stop [--host claude-code\|codex]` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
+| `plugin hook session-start\|user-prompt\|stop [--host claude-code\|codex\|openclaw]` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
+| `plugin tool note\|search\|pause\|resume` | Runs one memory tool for hosts without MCP: JSON arguments on stdin (`text` and `replaces`, `query`, `hours`), a JSON result on stdout. |
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
@@ -573,6 +574,10 @@ Records that arrive while the service is unavailable are appended to `plugin/spo
 The package in `plugins/membrain` is also a Codex plugin: `.codex-plugin/plugin.json` points to `hooks/codex-hooks.json`, `.codex-mcp.json` and the shared skill, and `.agents/plugins/marketplace.json` lists it. The Codex hooks run `membrain plugin hook <event> --host codex`, which reads Codex's `turn_id` in place of `prompt_id` and records turns with producer `membrain-codex`; they set `additionalContextLimit` (10,000 for session start, 7,000 per prompt) so Codex does not spill the context to a file. Before the runtime is installed, hook input is queued in `$PLUGIN_DATA`. Codex runs plugin hooks only after the user trusts them (`/hooks`), and only for plugins installed locally, not for plugins installed from the web directory.
 
 Verified with Codex CLI 0.165 on Linux against a stub Responses API: after the hooks were trusted in `/hooks`, two `codex exec` sessions ran all four hooks, stored both turns, and the second session's model request contained the first session's message in `<membrain-history>`. Not yet run with a real OpenAI model or in the desktop app.
+
+### OpenClaw
+
+`integrations/openclaw/membrain` is a non-exclusive OpenClaw plugin (manifest category `memory`, no `kind`, so OpenClaw's memory slot is untouched). `before_prompt_build` runs `membrain plugin hook session-start` once per session every five minutes and returns it as `appendSystemContext`, then `user-prompt` (with `currentUserMessageId` as the turn) as `prependContext`; `agent_end` runs `stop` with the last assistant text of successful runs. Hooks use `--host openclaw` (producer `membrain-openclaw`, tool names `membrain_*`), and the four tools call `membrain plugin tool`. Non-bundled plugins need `plugins.entries.membrain.hooks.allowConversationAccess: true`.
 
 ### Hermes Agent
 

@@ -1,0 +1,11 @@
+{
+  "name": "openclaw-membrain",
+  "version": "0.1.0",
+  "description": "memBrain long-term memory for OpenClaw: notes and earlier conversations before replies, recording after them, and memory tools.",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/chriswu727/memBrain" },
+  "openclaw": {
+    "extensions": ["./index.js"]
+  }
+}

@@ -48,6 +48,8 @@ codex plugin add membrain@membrain
 
 **任何可设置 `base_url` 的机器人（抖音和 B 站直播、NoneBot、Koishi、SillyTavern 等）。** [`membrain proxy`](integrations/openai-proxy/README.zh-CN.md) 是一个 OpenAI 兼容代理：把机器人的 `base_url` 从 DeepSeek 等模型服务改为指向它，每个人（通过请求的 `user` 字段或请求头区分）就有了自己的记忆。尚未接入真实的模型服务运行过。
 
+**OpenClaw。** [OpenClaw 插件](integrations/openclaw/README.zh-CN.md)为 OpenClaw 助手在每个渠道上加入同一份记忆，与 OpenClaw 自带的记忆并行工作。尚未被真实的 OpenClaw Gateway 加载过。
+
 **Hermes Agent。** memBrain 也可以作为 Hermes Agent 的记忆后端。把它安装到 Hermes 的 Python 环境并选用：
 
 ```sh
