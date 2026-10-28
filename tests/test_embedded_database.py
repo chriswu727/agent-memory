@@ -1,5 +1,7 @@
 import json
+import os
 import subprocess
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -109,3 +111,26 @@ def test_initialization_failures_report_the_database_tool_output(tmp_path, monke
         desktop._database_up(profile)
     assert error.value.code == "database_initialization_failed"
     assert "could not create directory" in str(error.value)
+
+
+def test_root_installations_keep_new_clusters_with_their_data_when_reachable(tmp_path, monkeypatch):
+    monkeypatch.setattr(embedded_database, "_installation", lambda: tmp_path / "venv")
+    monkeypatch.setattr(embedded_database, "_running_as_root", lambda: True)
+    monkeypatch.setattr(embedded_database, "_service_account", lambda name="x": (os.getuid(), os.getgid()))
+    monkeypatch.setattr(embedded_database, "_shared_binaries", lambda source, root: root / "binaries")
+    monkeypatch.setattr(embedded_database, "SHARED_ROOT", tmp_path / "shared")
+    monkeypatch.setattr(embedded_database, "LEGACY_SHARED_ROOT", tmp_path / "legacy")
+    reachable, hidden = tmp_path / "volume" / "membrain", tmp_path / "home" / "membrain"
+    reachable.mkdir(parents=True)
+    hidden.mkdir(parents=True)
+    hidden.parent.chmod(0o700)
+    assert not embedded_database._traversable(hidden)
+    monkeypatch.setattr(embedded_database, "_traversable", lambda path: Path(path) == reachable)
+    layout = embedded_database._layout(SimpleNamespace(directory=reachable, installation_id="a"))
+    assert layout.data == reachable / "postgres-cluster" / "data"
+    layout = embedded_database._layout(SimpleNamespace(directory=hidden, installation_id="b"))
+    assert layout.data == tmp_path / "shared" / "clusters" / "b" / "data"
+    (tmp_path / "shared" / "clusters" / "a" / "data").mkdir(parents=True)
+    (tmp_path / "shared" / "clusters" / "a" / "data" / "PG_VERSION").write_text("17")
+    layout = embedded_database._layout(SimpleNamespace(directory=reachable, installation_id="a"))
+    assert layout.data == tmp_path / "shared" / "clusters" / "a" / "data"  # Existing clusters stay where they are.

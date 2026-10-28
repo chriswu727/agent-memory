@@ -13,6 +13,8 @@ def no_model_download(monkeypatch):
 
 
 class Client:
+    brain_id = "brain"
+
     def __init__(self, notes=()):
         self.observed, self.notes, self.forgotten = [], list(notes), []
 
@@ -46,7 +48,7 @@ class Client:
 
 
 def provider(tmp_path, monkeypatch, client, **kwargs):
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     instance = hermes.MembrainProvider()
     instance.initialize("h1", hermes_home=str(tmp_path / "home"), platform="cli", **kwargs)
     return instance

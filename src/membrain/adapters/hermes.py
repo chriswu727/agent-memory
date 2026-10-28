@@ -105,7 +105,7 @@ class MembrainProvider(_Base):
                   messages: list[dict[str, Any]] | None = None, **kwargs) -> None:
         if self._directory is None or not self._writes:
             return
-        host.finish_turn(self._directory, session_id or self._session, assistant_content, user=user_content,
+        host.finish_turn(self._directory, session_id or self._session, assistant_content, prompt=user_content,
                          producer=PRODUCER)
 
     def on_session_switch(self, new_session_id: str, *, parent_session_id: str = "", reset: bool = False,

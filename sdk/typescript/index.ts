@@ -470,6 +470,10 @@ export class MemoryClient {
 
   brains(): Promise<JsonObject> { return this.#request("GET", "v1/brains"); }
   createBrain(name: string): Promise<JsonObject> { return this.#request("POST", "v1/brains", { name }); }
+  /** Create the brain with this stable ID unless it already exists. */
+  ensureBrain(brainId: string, name: string): Promise<JsonObject> {
+    return this.#request("PUT", `v1/brains/${encodeURIComponent(brainId)}`, { name });
+  }
   capabilities(): Promise<JsonObject> { return this.#request("GET", "v1/capabilities"); }
   downloadArchive(archiveId: string): Promise<JsonObject> {
     return this.#request("GET", `v1/archives/${encodeURIComponent(archiveId)}`);

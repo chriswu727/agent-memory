@@ -1,0 +1,28 @@
+{
+  "name": "membrain",
+  "displayName": "memBrain",
+  "description": "memBrain: local long-term memory for AI agents.",
+  "maintainer": {
+    "name": "chriswu727",
+    "url": "https://github.com/chriswu727/memBrain"
+  },
+  "plugins": [
+    {
+      "name": "membrain",
+      "version": "0.1.0",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/chriswu727/memBrain.git",
+        "subdir": "plugins/membrain"
+      },
+      "description": "Automatic long-term memory across WorkBuddy and CodeBuddy sessions: records conversations locally, recalls related earlier messages before replies, and adds memory tools. Shared with Claude Code and Codex on the same computer. No Docker or extra API key.",
+      "tags": [
+        "memory",
+        "mcp",
+        "hooks",
+        "long-term memory"
+      ],
+      "homepage": "https://github.com/chriswu727/memBrain"
+    }
+  ]
+}

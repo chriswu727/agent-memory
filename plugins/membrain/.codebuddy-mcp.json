@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "membrain": {
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.12",
+        "--from",
+        "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/memBrain",
+        "membrain",
+        "plugin",
+        "mcp"
+      ]
+    }
+  }
+}

@@ -35,6 +35,23 @@ The first session installs the runtime and an embedded PostgreSQL database in th
 
 Other MCP hosts can add a stdio server that runs `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`. That provides the memory tools without automatic recording.
 
+**Codex.** The same plugin works in OpenAI Codex:
+
+```sh
+codex plugin marketplace add chriswu727/memBrain
+codex plugin add membrain@membrain
+```
+
+On the next start Codex asks you to review the plugin's hooks; choose to trust them (or trust them later with `/hooks`), because Codex never runs untrusted hooks. Codex then gets the same notes, history, recall, recording and memory tools as Claude Code, and both share one memory on the same computer. Verified with Codex CLI 0.165 on Linux: a fact told in one session was in the next session's context.
+
+**Chat bots on QQ, WeChat, Telegram and more.** The [AstrBot plugin](integrations/astrbot/README.md) gives every person who talks to an AstrBot bot their own long-term memory, on any platform and model provider AstrBot supports (DeepSeek included). What one person said is never shown to another, and group chats are kept apart from private chats by default. It has not yet been run inside a real AstrBot installation.
+
+**Any bot with a `base_url` (Douyin and Bilibili live streams, NoneBot, Koishi, SillyTavern...).** [`membrain proxy`](integrations/openai-proxy/README.md) is an OpenAI-compatible proxy: point the bot's `base_url` at it instead of DeepSeek or another provider, and each person (told apart by the request's `user` field or a header) gets their own memory. It has not yet been run against a real provider.
+
+**WorkBuddy and CodeBuddy.** The same plugin also installs in Tencent's WorkBuddy and CodeBuddy. In WorkBuddy, open **Plugins → +** and add the marketplace `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json`, then install **membrain**; in CodeBuddy Code run `codebuddy plugin marketplace add chriswu727/memBrain` and `codebuddy plugin install membrain@membrain`. Because these hosts do not pass the final reply to their Stop hook, memBrain reads it from the session transcript. The hook chain is verified with simulated WorkBuddy hook input on Linux; it has not yet been run inside WorkBuddy or CodeBuddy, and the Windows launcher is untested.
+
+**OpenClaw.** The [OpenClaw plugin](integrations/openclaw/README.md) adds the same memory to an OpenClaw assistant on every channel, alongside OpenClaw's own memory. It has not yet been loaded by a real OpenClaw Gateway.
+
 **Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:
 
 ```sh

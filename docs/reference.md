@@ -543,7 +543,8 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 
 | Command | Purpose |
 | --- | --- |
-| `plugin hook session-start\|user-prompt\|stop` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
+| `plugin hook session-start\|user-prompt\|stop [--host claude-code\|codex\|openclaw]` | Reads the host's hook JSON on stdin. `user-prompt` recalls related earlier messages from other conversations (using the session's previous prompt as an extra cue) and prints them as `additionalContext`, then records the message; `stop` records `last_assistant_message`. Always exits 0. |
+| `plugin tool note\|search\|pause\|resume` | Runs one memory tool for hosts without MCP: JSON arguments on stdin (`text` and `replaces`, `query`, `hours`), a JSON result on stdout. |
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
@@ -564,7 +565,23 @@ Before each reply, `user-prompt` recalls up to about thirty ranked statements (k
 
 **Turn lifecycle and privacy.** Host adapters share `membrain.host`. A prompt is staged in the session's state file and stored together with the reply when the turn finishes, so pausing during a turn keeps that turn out as well; a turn that never finishes is stored by the session's next prompt, or after 30 minutes by any session start. Before anything is staged, spooled or stored, `<private>…</private>` spans become `[private]` and values that look like credentials (provider API keys, GitHub and Slack tokens, AWS access keys, JWTs, private keys, `password=`-style assignments) become `[secret removed]`. Scrubbing is pattern based and can miss unusual formats.
 
+**One memory per person for shared bots.** Adapters for group and multi-user hosts (QQ, Telegram, Discord bots, proxies) pass `user_id` (for example `qq:12345`) to `session_context`, `prompt_context`, `finish_turn` and `pause`. Each user gets their own brain, `user-` plus a stable digest of the ID, created on first use with `PUT /v1/brains/{brain_id}` (`{"name": ...}`; idempotent, and never takes over a brain owned by another identity; `ensure_brain()` / `ensureBrain()` in the clients). Notes, history and recall never cross between users. Spooled and staged records keep their user, and `pause(user_id=...)` stops recording for that user only; a pause without a user applies to everyone. Without `user_id` the installation's own brain is used, as in single-user hosts.
+
 Records that arrive while the service is unavailable are appended to `plugin/spool.jsonl` in the profile directory and replayed idempotently on the next successful call. Hook failures are written to `plugin/hooks.log`. The Claude Code packaging lives in `plugins/membrain`; see [plugin mode](../architecture/plugin-mode.md).
+
+### Codex
+
+The package in `plugins/membrain` is also a Codex plugin: `.codex-plugin/plugin.json` points to `hooks/codex-hooks.json`, `.codex-mcp.json` and the shared skill, and `.agents/plugins/marketplace.json` lists it. The Codex hooks run `membrain plugin hook <event> --host codex`, which reads Codex's `turn_id` in place of `prompt_id` and records turns with producer `membrain-codex`; they set `additionalContextLimit` (10,000 for session start, 7,000 per prompt) so Codex does not spill the context to a file. Before the runtime is installed, hook input is queued in `$PLUGIN_DATA`. Codex runs plugin hooks only after the user trusts them (`/hooks`), and only for plugins installed locally, not for plugins installed from the web directory.
+
+Verified with Codex CLI 0.165 on Linux against a stub Responses API: after the hooks were trusted in `/hooks`, two `codex exec` sessions ran all four hooks, stored both turns, and the second session's model request contained the first session's message in `<membrain-history>`. Not yet run with a real OpenAI model or in the desktop app.
+
+### WorkBuddy and CodeBuddy
+
+`plugins/membrain/.codebuddy-plugin/plugin.json` (read before `.claude-plugin/` by WorkBuddy and CodeBuddy) points to `hooks/workbuddy-hooks.json`, `.codebuddy-mcp.json` and the shared skill; the repository's `.codebuddy-plugin/marketplace.json` lists it as a `git-subdir` source. Hooks call `bin/membrain-hook <event>` (`membrain-hook.cmd` on Windows, which cmd picks for the same command), which runs `membrain plugin hook <event> --host workbuddy` and queues input in `$CLAUDE_PLUGIN_DATA` until the runtime is installed. These hosts have no asynchronous hooks, so the `start` event detaches the install and service start and returns at once. Their `Stop` input has no `last_assistant_message`; the hook reads the final assistant text from `transcript_path` (Claude Code-style `{"type": "assistant", "message": ...}` lines or plain `{"role": "assistant", "content": ...}` lines, stopping at the newest user prompt). No plugin manifest uses the default `hooks/hooks.json` or `.mcp.json` locations, so each host loads only its own hooks.
+
+### OpenClaw
+
+`integrations/openclaw/membrain` is a non-exclusive OpenClaw plugin (manifest category `memory`, no `kind`, so OpenClaw's memory slot is untouched). `before_prompt_build` runs `membrain plugin hook session-start` once per session every five minutes and returns it as `appendSystemContext`, then `user-prompt` (with `currentUserMessageId` as the turn) as `prependContext`; `agent_end` runs `stop` with the last assistant text of successful runs. Hooks use `--host openclaw` (producer `membrain-openclaw`, tool names `membrain_*`), and the four tools call `membrain plugin tool`. Non-bundled plugins need `plugins.entries.membrain.hooks.allowConversationAccess: true`.
 
 ### Hermes Agent
 
@@ -580,6 +597,18 @@ Records that arrive while the service is unavailable are appended to `plugin/spo
 | Tools | `membrain_note`, `membrain_search`, `membrain_pause`, `membrain_resume`. |
 
 Verified with unit tests, a signature check against Hermes's `agent/memory_provider.py`, and two provider sessions sharing memory through a real embedded service. Not yet run inside a real Hermes installation.
+
+### Chat bots and AstrBot
+
+`membrain.adapters.chatbot.ChatMemory` serves every user of a bot from one installation. Bot frameworks call `context(speaker, text, session=...)` before a model request (session notice, the user's notes and earlier days, related messages; cached for five minutes per session and refreshed when notes or recording change) and `record(speaker, reply, session=..., prompt=...)` after the reply, and expose `note`, `search`, `pause` and `resume` as tools. A `Speaker` is a platform, a user ID and an optional group; each maps to its own user brain. With `group_memory="separate"` (default) a person's group messages use a brain per group, apart from their private chats. `session()` is one calendar day of one chat or framework conversation, because bots keep a single conversation for months while recall leaves the current session out.
+
+The AstrBot plugin in `integrations/astrbot/astrbot_plugin_membrain` maps `on_llm_request` to `context` (appended to `req.system_prompt`, which AstrBot does not persist, rather than to the user message, which it does), `on_llm_response` to `record`, and registers `membrain_note`, `membrain_search`, `membrain_pause` and `membrain_resume` with `llm_tool`. Memory is kept in `data/plugin_data/membrain`.
+
+When the embedded database runs as root, as in AstrBot's Docker image, a new cluster is created inside the installation directory if the database's service account can traverse it, so it lives on the same volume as the rest of the data; otherwise, and for clusters that already exist, it stays under `/var/lib/membrain`.
+
+### OpenAI-compatible proxy
+
+`membrain proxy --upstream URL [--host 127.0.0.1] [--port 8790] [--directory DIR] [--group-memory separate|shared]` (`membrain.proxy`) serves `ChatMemory` without tools. `POST /v1/chat/completions` (also without the `/v1` prefix) gets one system message with the person's memory inserted just before the latest user message; the reply, streamed or not, is stored with the message; other paths and malformed bodies are forwarded unchanged. The person is `X-Membrain-User` or the body's `user`, with optional `X-Membrain-Platform` (default `api`), `X-Membrain-Group` and `X-Membrain-Session`; anonymous requests share the user `default`. Without `MEMBRAIN_PROXY_TOKEN` the client's `Authorization` header is forwarded and only loopback addresses are allowed; with it, clients must present the token and `MEMBRAIN_UPSTREAM_KEY` is sent upstream instead. With no tools, the memory notice tells the model only that memory is active and that `<private>` text is not stored.
 
 ### MCP
 

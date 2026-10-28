@@ -35,6 +35,23 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 
 其他 MCP 宿主可以添加一个 stdio 服务器，运行 `uvx --python 3.12 --from "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/membrain" membrain plugin mcp`。这样可以使用记忆工具，但不会自动记录。
 
+**Codex。** 同一个插件也可以在 OpenAI Codex 中使用：
+
+```sh
+codex plugin marketplace add chriswu727/memBrain
+codex plugin add membrain@membrain
+```
+
+下次启动时 Codex 会请你审核插件的 hooks；请选择信任（也可以之后用 `/hooks` 信任），因为 Codex 不会运行未受信任的 hooks。之后 Codex 获得与 Claude Code 相同的笔记、历史、召回、记录和记忆工具，同一台电脑上两者共享同一份记忆。已在 Linux 上用 Codex CLI 0.165 验证：在一个会话中告诉它的事实出现在了下一个会话的上下文里。
+
+**QQ、微信、Telegram 等平台上的聊天机器人。** [AstrBot 插件](integrations/astrbot/README.zh-CN.md)为每一个和 AstrBot 机器人聊天的人提供独立的长期记忆，适用于 AstrBot 支持的所有平台和模型服务（包括 DeepSeek）。一个人说过的话永远不会出现在给另一个人的回复里，群聊默认也与私聊分开保存。该插件尚未在真实的 AstrBot 安装中运行过。
+
+**任何可设置 `base_url` 的机器人（抖音和 B 站直播、NoneBot、Koishi、SillyTavern 等）。** [`membrain proxy`](integrations/openai-proxy/README.zh-CN.md) 是一个 OpenAI 兼容代理：把机器人的 `base_url` 从 DeepSeek 等模型服务改为指向它，每个人（通过请求的 `user` 字段或请求头区分）就有了自己的记忆。尚未接入真实的模型服务运行过。
+
+**WorkBuddy 和 CodeBuddy。** 同一个插件也可以安装到腾讯的 WorkBuddy 和 CodeBuddy。在 WorkBuddy 中打开 **插件 → +**，添加插件市场 `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json`，然后安装 **membrain**；在 CodeBuddy Code 中运行 `codebuddy plugin marketplace add chriswu727/memBrain` 和 `codebuddy plugin install membrain@membrain`。由于这些宿主不会把最终回复传给 Stop hook，memBrain 会从会话记录中读取回复。该 hook 流程已在 Linux 上用模拟的 WorkBuddy hook 输入验证；尚未在 WorkBuddy 或 CodeBuddy 中实际运行，Windows 启动脚本也未经测试。
+
+**OpenClaw。** [OpenClaw 插件](integrations/openclaw/README.zh-CN.md)为 OpenClaw 助手在每个渠道上加入同一份记忆，与 OpenClaw 自带的记忆并行工作。尚未被真实的 OpenClaw Gateway 加载过。
+
 **Hermes Agent。** memBrain 也可以作为 Hermes Agent 的记忆后端。把它安装到 Hermes 的 Python 环境并选用：
 
 ```sh

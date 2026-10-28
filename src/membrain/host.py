@@ -39,14 +39,18 @@ _SPEAKERS = {"user": "user said", "assistant": "assistant said", "tool": "tool r
 TOOL_NAMES = {"note": "memory_note", "recall": "memory_recall", "pause": "memory_pause"}
 
 
-def notes_notice(tools: dict = TOOL_NAMES) -> str:
+def notes_notice(tools: dict | None = TOOL_NAMES) -> str:
+    if not tools:
+        return ""  # Hosts without memory tools (the proxy) only read memory.
     return ("When the user states a lasting fact about themselves or their life (health, people, dates, places, "
             "preferences, decisions, constraints, or a change to an earlier plan), save it as one short note with the "
             f"{tools['note']} tool, and replace the outdated note when something changes. Notes are shown at the "
             "start of every session; raw messages are not always.")
 
 
-def privacy_notice(tools: dict = TOOL_NAMES) -> str:
+def privacy_notice(tools: dict | None = TOOL_NAMES) -> str:
+    if not tools:
+        return "Text inside <private>…</private> is never stored."
     return (f"If the user asks you not to remember something, call {tools['pause']}; text inside "
             "<private>…</private> is never stored.")
 
@@ -94,13 +98,45 @@ def log(directory: Path, event: str) -> None:
         pass
 
 
-def ready_client(directory: Path):
+_ENSURED_BRAINS: set[tuple[str, str]] = set()
+
+
+def user_brain_id(user_id: str) -> str:
+    """The stable brain for one user of a multi-user host (a QQ or Telegram bot, a live-stream audience)."""
+    from .helpers import digest
+
+    if not isinstance(user_id, str) or not 1 <= len(user_id) <= 200:
+        raise ValueError("A user identifier must contain 1 to 200 characters.")
+    return "user-" + digest(["user", user_id])[:32]
+
+
+def use_brain(client, user_id: str | None):
+    """Point a client at the user's brain (created on first use), or back at the installation's own brain."""
+    home = client.__dict__.setdefault("_membrain_home", client.brain_id)
+    if user_id is None:
+        client.brain_id = home
+        return client
+    brain = user_brain_id(user_id)
+    key = (str(getattr(client, "base_url", "")), brain)
+    if key not in _ENSURED_BRAINS:
+        client.ensure_brain(brain, ("user " + user_id)[:120])
+        _ENSURED_BRAINS.add(key)
+    client.brain_id = brain
+    return client
+
+
+def ready_client(directory: Path, user_id: str | None = None):
     from . import desktop
     from .desktop_connection import open_client
 
     if not (Path(directory) / "profile.json").exists() or not desktop.status(directory).get("ready"):
         return None
-    return open_client(directory, start_service=False, timeout=10)
+    client = open_client(directory, start_service=False, timeout=10)
+    try:
+        return use_brain(client, user_id)
+    except Exception:
+        client.close()
+        raise
 
 
 def _detached(arguments: list[str]) -> None:
@@ -230,37 +266,51 @@ def scrub(text: str) -> str:
     return text
 
 
-def _pause_file(directory: Path) -> Path:
-    return state_directory(directory) / "paused.json"
+def _pause_file(directory: Path, user_id: str | None = None) -> Path:
+    if user_id is None:
+        return state_directory(directory) / "paused.json"
+    folder = state_directory(directory) / "paused-users"
+    folder.mkdir(mode=0o700, exist_ok=True)
+    return folder / (user_brain_id(user_id) + ".json")
 
 
-def pause(directory: Path, hours: float | None = None) -> dict:
-    """Stop recording until resumed, or for ``hours``. Recall keeps working; nothing new is stored."""
+def pause(directory: Path, hours: float | None = None, user_id: str | None = None) -> dict:
+    """Stop recording until resumed, or for ``hours``; for one user of a multi-user host, or for everyone.
+
+    Recall keeps working; nothing new is stored.
+    """
     if hours is not None and not 0 < float(hours) <= 24 * 365:
         raise ValueError("Pause for a positive number of hours, at most a year.")
     until = None if hours is None else time.time() + float(hours) * 3600
-    path = _pause_file(directory)
+    path = _pause_file(directory, user_id)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
         json.dump({"since": time.time(), "until": until}, stream)
     return {"recording": "paused", "until": until}
 
 
-def resume(directory: Path) -> dict:
-    _pause_file(directory).unlink(missing_ok=True)
+def resume(directory: Path, user_id: str | None = None) -> dict:
+    _pause_file(directory, user_id).unlink(missing_ok=True)
     return {"recording": "on"}
 
 
-def paused(directory: Path) -> bool:
+def _paused_file(path: Path) -> bool:
     try:
-        state = json.loads(_pause_file(directory).read_text(encoding="utf-8"))
+        state = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
     until = state.get("until") if isinstance(state, dict) else None
     if isinstance(until, (int, float)) and until <= time.time():
-        _pause_file(directory).unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
         return False
     return True
+
+
+def paused(directory: Path, user_id: str | None = None) -> bool:
+    """True when recording is paused for everyone, or for this user."""
+    if _paused_file(_pause_file(directory)):
+        return True
+    return user_id is not None and _paused_file(_pause_file(directory, user_id))
 
 
 # Memory page sign-in -----------------------------------------------------------------------------------------
@@ -311,7 +361,7 @@ def consume_ui_code(directory: Path, code: str) -> bool:
 # Records, spool and session state -----------------------------------------------------------------------------
 
 def message_record(session: str, role: str, text: str, *, turn_id: str | None = None,
-                   producer: str = PRODUCER) -> dict:
+                   producer: str = PRODUCER, user_id: str | None = None) -> dict:
     """An observe request for one message; deterministic keys make replays idempotent."""
     from .helpers import digest
 
@@ -324,6 +374,9 @@ def message_record(session: str, role: str, text: str, *, turn_id: str | None = 
               "delivery_state": "delivered" if role == "assistant" else "received"}
     if role == "assistant":
         record["parent_source_event_keys"] = [f"{session}:{turn_id}:user"]
+    if user_id is not None:
+        user_brain_id(user_id)  # Validates the identifier before anything is staged or spooled.
+        record["_user"] = user_id
     return record
 
 
@@ -344,14 +397,19 @@ def flush(client, directory: Path) -> int:
         with profile_lock(state_directory(directory) / "spool-lock", timeout=0):
             lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
             delivered = 0
-            for line in lines:
-                try:
-                    record = json.loads(line)
-                except ValueError:
-                    delivered += 1  # A torn line cannot be replayed; it must not block later records.
-                    continue
-                client.observe(**record)
-                delivered += 1
+            current = client.brain_id
+            try:
+                for line in lines:
+                    try:
+                        record = json.loads(line)
+                    except ValueError:
+                        delivered += 1  # A torn line cannot be replayed; it must not block later records.
+                        continue
+                    use_brain(client, record.pop("_user", None))
+                    client.observe(**record)
+                    delivered += 1
+            finally:
+                client.brain_id = current
             remaining = lines[delivered:]
             temporary = path.with_suffix(".tmp")
             temporary.write_text("".join(line + "\n" for line in remaining), encoding="utf-8")
@@ -362,14 +420,24 @@ def flush(client, directory: Path) -> int:
 
 
 def deliver(directory: Path, client, record: dict) -> bool:
-    """Store one record now, or spool it; returns False when recording is paused and nothing was kept."""
-    if paused(directory):
+    """Store one record now, or spool it; returns False when recording is paused and nothing was kept.
+
+    A record may carry ``_user`` (its user in a multi-user host); it is stored in that user's brain and the
+    client is returned to the brain it was on.
+    """
+    user_id = record.get("_user")
+    if paused(directory, user_id):
         return False
     record = {**record, "text": scrub(record["text"])}
     try:
         if client is None:
             raise ConnectionError("service not ready")
-        client.observe(**record)
+        current = client.brain_id
+        try:
+            use_brain(client, user_id)
+            client.observe(**{key: value for key, value in record.items() if key != "_user"})
+        finally:
+            client.brain_id = current
     except Exception as error:
         spool(directory, record)
         log(directory, f"spooled {record['role']} record: {type(error).__name__}")
@@ -421,7 +489,7 @@ def _stage(directory: Path, session: str, record: dict, prompt: str) -> dict | N
     state = session_state(directory, session)
     earlier = state.get("pending")
     state["last_prompt"] = scrub(prompt)[-CUE_CHARACTERS:]
-    state["pending"] = None if paused(directory) else {**record, "text": scrub(record["text"])}
+    state["pending"] = None if paused(directory, record.get("_user")) else {**record, "text": scrub(record["text"])}
     _write_session_state(directory, session, state)
     return earlier if isinstance(earlier, dict) else None
 
@@ -678,12 +746,16 @@ def _finish_abandoned(directory: Path, client) -> int:
     return delivered
 
 
-def session_context(directory: Path, session: str, *, tools: dict = TOOL_NAMES) -> str:
-    """Notice, saved notes and recent history for a new session; starts the service if it is not running."""
+def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_NAMES,
+                    user_id: str | None = None) -> str:
+    """Notice, saved notes and recent history for a new session; starts the service if it is not running.
+
+    ``user_id`` selects one user's memory in a multi-user host; without it the installation's own memory is used.
+    """
     from .notes import list_notes, render_notes
 
     history, notes, complete = None, None, False
-    client = ready_client(directory)
+    client = ready_client(directory, user_id)
     if client is None:
         start_in_background(directory)
     else:
@@ -707,22 +779,24 @@ def session_context(directory: Path, session: str, *, tools: dict = TOOL_NAMES) 
                   "below. " + notes_notice(tools))
     else:
         notice = ("memBrain memory is active for this user. Related messages from earlier conversations are "
-                  "added automatically before replies. When a request depends on the user's personal context and "
-                  f"nothing relevant is shown, search with the {tools['recall']} tool using a few concrete "
-                  "keywords before answering. " + notes_notice(tools))
-    notice += " " + privacy_notice(tools) + (" Recording is currently paused." if paused(directory) else "")
+                  "added automatically before replies. " + (
+                      "When a request depends on the user's personal context and nothing relevant is shown, search "
+                      f"with the {tools['recall']} tool using a few concrete keywords before answering. "
+                      if tools else "") + notes_notice(tools))
+    notice = " ".join((notice.strip(), privacy_notice(tools))) + (
+        " Recording is currently paused." if paused(directory, user_id) else "")
     return "\n\n".join(part for part in (notice, notes, history) if part)
 
 
 def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str | None = None,
-                   producer: str = PRODUCER) -> str | None:
+                   producer: str = PRODUCER, user_id: str | None = None) -> str | None:
     """Related earlier messages for this prompt. The prompt is staged and stored when the turn finishes."""
     if not isinstance(prompt, str) or not prompt.strip():
         return None
-    record = message_record(session, "user", prompt, turn_id=turn_id, producer=producer)
+    record = message_record(session, "user", prompt, turn_id=turn_id, producer=producer, user_id=user_id)
     previous = session_state(directory, session).get("last_prompt")
     earlier = _stage(directory, session, record, prompt)
-    client = ready_client(directory)
+    client = ready_client(directory, user_id)
     if client is None:
         if earlier:
             deliver(directory, None, earlier)
@@ -743,25 +817,28 @@ def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str |
 
 
 def finish_turn(directory: Path, session: str, reply: str | None, *, turn_id: str | None = None,
-                producer: str = PRODUCER, user: str | None = None) -> None:
+                producer: str = PRODUCER, prompt: str | None = None, user_id: str | None = None) -> None:
     """Store the staged user message and the reply, unless recording was paused during the turn.
 
-    Hosts that report the whole turn at once pass ``user``; it is recorded if no prompt was staged for it.
+    Hosts that report the whole turn at once pass ``prompt``; it is recorded if no prompt was staged for it.
     """
     pending = _take_pending(directory, session)
-    if paused(directory):
+    if user_id is None and pending:
+        user_id = pending.get("_user")
+    if paused(directory, user_id):
         return
     records = [pending] if pending else []
-    if isinstance(user, str) and user.strip() and (pending is None or pending["text"] != scrub(user)):
-        pending = message_record(session, "user", user, turn_id=turn_id, producer=producer)
+    if isinstance(prompt, str) and prompt.strip() and (pending is None or pending["text"] != scrub(prompt)):
+        pending = message_record(session, "user", prompt, turn_id=turn_id, producer=producer, user_id=user_id)
         records.append(pending)
     if isinstance(reply, str) and reply.strip():
         if turn_id is None and pending:
             turn_id = pending["source_event_key"].rsplit(":", 2)[1]
-        records.append(message_record(session, "assistant", reply, turn_id=turn_id, producer=producer))
+        records.append(message_record(session, "assistant", reply, turn_id=turn_id, producer=producer,
+                                      user_id=user_id))
     if not records:
         return
-    client = ready_client(directory)
+    client = ready_client(directory, user_id)
     if client is None:
         for record in records:
             deliver(directory, None, record)

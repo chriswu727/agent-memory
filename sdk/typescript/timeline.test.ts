@@ -26,3 +26,18 @@ test("timeline sends roles, budgets and the excluded conversation as query param
   await client.timeline({ conversationId: "membrain-notes" });
   assert.equal(requests[3].url.searchParams.get("conversation_id"), "membrain-notes");
 });
+
+test("ensureBrain creates or reuses a named brain with PUT", async () => {
+  const requests: { url: URL; init?: RequestInit }[] = [];
+  const client = new MemoryClient({
+    baseUrl: "http://memory.test", apiKey: "test-key", brainId: "home",
+    fetch: async (input, init) => {
+      requests.push({ url: new URL(String(input)), init });
+      return Response.json({ id: "user-abc" });
+    },
+  });
+  assert.deepEqual(await client.ensureBrain("user-abc", "user qq:1001"), { id: "user-abc" });
+  assert.equal(requests[0].url.pathname, "/v1/brains/user-abc");
+  assert.equal(requests[0].init?.method, "PUT");
+  assert.deepEqual(JSON.parse(String(requests[0].init?.body)), { name: "user qq:1001" });
+});

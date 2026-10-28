@@ -1,0 +1,36 @@
+{
+  "name": "membrain",
+  "version": "0.1.0",
+  "description": "Automatic long-term memory across Codex sessions: records conversations locally, recalls related earlier messages before replies, and adds memory tools. No Docker or extra API key.",
+  "author": {
+    "name": "chriswu727"
+  },
+  "homepage": "https://github.com/chriswu727/memBrain",
+  "repository": "https://github.com/chriswu727/memBrain",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "long-term memory",
+    "recall",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.codex-mcp.json",
+  "hooks": "./hooks/codex-hooks.json",
+  "interface": {
+    "displayName": "memBrain",
+    "shortDescription": "Local long-term memory across sessions",
+    "longDescription": "memBrain records your Codex conversations on this computer, starts each session with notes Codex saved about you and your recent messages, and adds related earlier messages before each reply. Memory is shared with Claude Code and Hermes on the same computer. Pause recording, keep <private> text out, and review or delete everything on a local memory page.",
+    "developerName": "chriswu727",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/chriswu727/memBrain",
+    "defaultPrompt": [
+      "What do you remember about my current projects?"
+    ],
+    "logo": "./assets/icon.png"
+  }
+}

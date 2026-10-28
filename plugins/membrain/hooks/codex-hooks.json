@@ -1,0 +1,51 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "async": true,
+            "timeout": 600,
+            "statusMessage": "Updating memBrain",
+            "command": "command -v uvx >/dev/null 2>&1 && uv tool install --quiet --python 3.12 \"${MEMBRAIN_PACKAGE:-membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/memBrain}\" >/dev/null 2>&1; uvx --offline --python 3.12 --from membrain-ai membrain plugin start >/dev/null 2>&1; true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "statusMessage": "Loading memBrain notes",
+            "additionalContextLimit": 10000,
+            "command": "command -v uvx >/dev/null 2>&1 && uvx --offline --python 3.12 --from membrain-ai membrain plugin hook session-start --host codex 2>/dev/null; true"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 15,
+            "additionalContextLimit": 7000,
+            "command": "input=$(cat); if command -v uvx >/dev/null 2>&1 && printf '%s' \"$input\" | uvx --offline --python 3.12 --from membrain-ai membrain plugin hook user-prompt --host codex 2>/dev/null; then :; elif [ -n \"$PLUGIN_DATA\" ]; then mkdir -p \"$PLUGIN_DATA\" && { printf '%s' \"$input\" | tr -d '\\n'; echo; } >> \"$PLUGIN_DATA/pending-hooks.jsonl\"; fi; true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "command": "input=$(cat); if command -v uvx >/dev/null 2>&1 && printf '%s' \"$input\" | uvx --offline --python 3.12 --from membrain-ai membrain plugin hook stop --host codex 2>/dev/null; then :; elif [ -n \"$PLUGIN_DATA\" ]; then mkdir -p \"$PLUGIN_DATA\" && { printf '%s' \"$input\" | tr -d '\\n'; echo; } >> \"$PLUGIN_DATA/pending-hooks.jsonl\"; fi; true"
+          }
+        ]
+      }
+    ]
+  }
+}

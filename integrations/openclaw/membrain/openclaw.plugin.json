@@ -1,0 +1,29 @@
+{
+  "id": "membrain",
+  "name": "memBrain",
+  "description": "Local long-term memory shared with Claude Code, Codex and Hermes: notes and earlier conversations before replies, recording after them, and note, search and pause tools. No extra API key.",
+  "categories": ["memory"],
+  "activation": { "onStartup": true },
+  "contracts": {
+    "tools": ["membrain_note", "membrain_search", "membrain_pause", "membrain_resume"]
+  },
+  "toolMetadata": {
+    "membrain_note": { "sideEffecting": true },
+    "membrain_pause": { "sideEffecting": true },
+    "membrain_resume": { "sideEffecting": true }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "directory": { "type": "string" }
+    }
+  },
+  "uiHints": {
+    "directory": {
+      "label": "Memory directory",
+      "help": "Leave empty to share memory with Claude Code, Codex and Hermes on this computer.",
+      "advanced": true
+    }
+  }
+}

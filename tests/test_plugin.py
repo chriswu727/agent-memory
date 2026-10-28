@@ -65,7 +65,7 @@ def test_hooks_fail_open_on_unusable_input(tmp_path, capsys, raw):
 
 
 def test_handler_errors_are_logged_and_never_block(tmp_path, monkeypatch, capsys):
-    def broken(payload, directory):
+    def broken(payload, directory, producer):
         raise RuntimeError("database exploded")
 
     monkeypatch.setitem(plugin.HANDLERS, "stop", ("Stop", broken))
@@ -77,7 +77,7 @@ def test_handler_errors_are_logged_and_never_block(tmp_path, monkeypatch, capsys
 
 def test_messages_are_spooled_when_the_service_is_not_ready(tmp_path, monkeypatch):
     started = []
-    monkeypatch.setattr(host, "ready_client", lambda directory: None)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
     monkeypatch.setattr(host, "start_in_background", started.append)
     assert plugin.user_prompt({"session_id": "s1", "prompt_id": "p1", "prompt": "Remember Biscuit"}, tmp_path) is None
     plugin.stop({"session_id": "s1", "prompt_id": "p1", "last_assistant_message": "Noted."}, tmp_path)
@@ -97,6 +97,8 @@ def test_spool_replay_keeps_undelivered_records(tmp_path):
         stream.write('{"torn": \n')
 
     class Client:
+        brain_id = "brain"
+
         def __init__(self, fail_after):
             self.seen, self.fail_after = [], fail_after
 
@@ -145,15 +147,17 @@ def test_hooks_carry_memory_across_sessions_on_an_embedded_installation(tmp_path
             pass
 
 
-def _hook_command(event):
+def _hook_command(event, hooks_file="claude-hooks.json"):
     from pathlib import Path
 
-    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "membrain" / "hooks" / "hooks.json").read_text())
+    hooks = json.loads((Path(__file__).parents[1] / "plugins" / "membrain" / "hooks" / hooks_file).read_text())
     return hooks["hooks"][event][0]["hooks"][0]["command"]
 
 
+@pytest.mark.parametrize("hooks_file,data_variable", [("claude-hooks.json", "CLAUDE_PLUGIN_DATA"),
+                                                      ("codex-hooks.json", "PLUGIN_DATA")])
 @pytest.mark.parametrize("event", ["UserPromptSubmit", "Stop"])
-def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, event):
+def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, event, hooks_file, data_variable):
     import shutil
     import subprocess
 
@@ -165,8 +169,8 @@ def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, e
     system_path = "/usr/bin:/bin"
     if shutil.which("uvx", path=system_path):
         pytest.skip("uvx is installed on the system path")
-    environment = {"PATH": system_path, "CLAUDE_PLUGIN_DATA": str(tmp_path / "data")}
-    result = subprocess.run([bash, "-c", _hook_command(event)], input=json.dumps(payload, indent=2), text=True,
+    environment = {"PATH": system_path, data_variable: str(tmp_path / "data")}
+    result = subprocess.run([bash, "-c", _hook_command(event, hooks_file)], input=json.dumps(payload, indent=2), text=True,
                             capture_output=True, env=environment, timeout=30)
     assert result.returncode == 0 and result.stdout == ""
     lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
@@ -185,6 +189,8 @@ def test_host_queue_is_imported_with_roles_and_cleared(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_PLUGIN_DATA", str(tmp_path / "data"))
 
     class Client:
+        brain_id = "brain"
+
         def __init__(self):
             self.records = []
 
@@ -216,6 +222,8 @@ def test_history_is_rendered_oldest_first_and_states_completeness():
 
 
 class _ReadyClient:
+    brain_id = "brain"
+
     def __init__(self, timeline, recalled=None, notes=None, messages=()):
         self.timeline_response, self.recalled, self.observed, self.recalls = timeline, recalled, [], 0
         self.notes, self.messages, self.timeline_calls = notes or {"items": [], "complete": True}, list(messages), []
@@ -245,7 +253,7 @@ class _ReadyClient:
 
 def test_complete_history_is_injected_once_and_replaces_per_message_recall(tmp_path, monkeypatch):
     client = _ReadyClient({"complete": True, "items": [{"text": "I'm vegetarian.", "recorded_at": "2026-10-03T00:00:00Z"}]})
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "complete history from earlier sessions" in context and "- [2026-10-03] I'm vegetarian." in context
     assert len(client.timeline_calls) == 1
@@ -262,7 +270,7 @@ def test_partial_history_keeps_per_message_recall(tmp_path, monkeypatch):
                "recorded_at": "2026-10-03T08:00:00Z", "text": "Big news. The wedding is on December 14 in Porto."}
     client = _ReadyClient({"complete": False, "items": [{"text": "latest", "recorded_at": "2026-12-01T00:00:00Z"}]},
                           recalled, messages=[message])
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "Older messages are not shown" in context and "memory_note" in context
     recall = plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "When is the wedding?"}, tmp_path)
@@ -366,6 +374,8 @@ def test_recall_falls_back_to_keywords_when_the_query_embedding_fails():
     from membrain.client import MemoryActionError
 
     class Client:
+        brain_id = "brain"
+
         def __init__(self):
             self.budgets = []
 
@@ -401,6 +411,8 @@ def test_recalled_statements_are_shown_as_their_source_messages_oldest_first():
     )
 
     class Client:
+        brain_id = "brain"
+
         def recall(self, query, **options):
             return response
 
@@ -422,6 +434,8 @@ def test_meaning_only_matches_are_capped_and_timeline_failure_falls_back_to_stat
                      methods=("vector",), score=0.01 - index * 0.001) for index in range(6)]
 
     class Client:
+        brain_id = "brain"
+
         def recall(self, query, **options):
             return _response(*items)
 
@@ -447,7 +461,7 @@ def test_session_start_shows_notes_first_and_fills_the_rest_with_compacted_histo
         {"text": "x" * 9000, "recorded_at": "2026-04-03T00:00:00Z"},
         {"text": "Short earlier message.", "recorded_at": "2026-03-01T00:00:00Z"}]}
     client = _ReadyClient(history, notes=notes)
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert context.index("<membrain-notes>") < context.index("<membrain-history>")
     assert context.index("Mom uses a walker; no stairs. (id: n1)") < context.index("Mom: likely shellfish allergy.")
@@ -459,12 +473,14 @@ def test_follow_up_prompts_carry_the_previous_prompt_as_a_cue(tmp_path, monkeypa
     cues = []
 
     class Client(_ReadyClient):
+        brain_id = "brain"
+
         def recall(self, query, **options):
             cues.append(options.get("additional_cues"))
             return {"result": {"items": []}}
 
     client = Client({"complete": False, "items": []})
-    monkeypatch.setattr(host, "ready_client", lambda directory: client)
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: client)
     plugin.session_start({"session_id": "s2"}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "1", "prompt": "Mom fell and we're going to urgent care."}, tmp_path)
     plugin.user_prompt({"session_id": "s2", "prompt_id": "2", "prompt": "What do I tell the front desk?"}, tmp_path)
@@ -476,6 +492,112 @@ def test_session_context_stays_within_the_host_limit(tmp_path, monkeypatch):
                                           "text": "Durable fact " + "y" * 250} for index in range(13)]}
     history = {"complete": True, "items": [{"text": f"Message {index} " + "z" * 280,
                                             "recorded_at": "2026-04-03T00:00:00Z"} for index in range(80)]}
-    monkeypatch.setattr(host, "ready_client", lambda directory: _ReadyClient(history, notes=notes))
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: _ReadyClient(history, notes=notes))
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "<membrain-history>" in context and len(context) <= host.SESSION_CONTEXT_CHARACTERS
+
+
+def test_codex_hooks_use_turn_ids_and_their_own_producer(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
+    monkeypatch.setattr(host, "start_in_background", lambda directory: None)
+    for event, payload in [("user-prompt", {"prompt": "Mei is my sister."}),
+                           ("stop", {"last_assistant_message": "Noted.", "stop_hook_active": False})]:
+        raw = json.dumps({"session_id": "019a-codex", "turn_id": "turn-7", "hook_event_name": "x", "model": "m",
+                          **payload}).encode()
+        assert plugin.run_hook(event, tmp_path, stream=io.BytesIO(raw), host_name="codex") == 0
+    assert capsys.readouterr().out == ""
+    records = [json.loads(line) for line in (tmp_path / "plugin" / "spool.jsonl").read_text().splitlines()]
+    assert [(record["source_event_key"], record["producer_ref"]) for record in records] == [
+        ("019a-codex:turn-7:user", "membrain-codex"), ("019a-codex:turn-7:assistant", "membrain-codex")]
+
+
+def test_codex_and_claude_packages_describe_the_same_plugin():
+    from pathlib import Path
+
+    root = Path(__file__).parents[1]
+    package = root / "plugins" / "membrain"
+    claude = json.loads((package / ".claude-plugin" / "plugin.json").read_text())
+    codex = json.loads((package / ".codex-plugin" / "plugin.json").read_text())
+    assert codex["name"] == claude["name"] and codex["version"] == claude["version"]
+    for field in ("skills", "mcpServers", "hooks"):
+        assert codex[field].startswith("./") and (package / codex[field]).exists()
+    hooks = json.loads((package / codex["hooks"]).read_text())["hooks"]
+    commands = [hook for groups in hooks.values() for group in groups for hook in group["hooks"]]
+    assert all("--host codex" in hook["command"] for hook in commands if "plugin hook" in hook["command"])
+    assert all(hook.get("additionalContextLimit", 0) >= 7000 for hook in hooks["SessionStart"][1]["hooks"]
+               + hooks["UserPromptSubmit"][0]["hooks"])
+    server = json.loads((package / codex["mcpServers"]).read_text())["mcpServers"]["membrain"]
+    assert "${" not in json.dumps(server)  # Codex does not expand shell defaults in MCP arguments.
+    market = json.loads((root / ".agents" / "plugins" / "marketplace.json").read_text())
+    assert market["plugins"][0]["source"]["path"] == "./plugins/membrain"
+
+
+def test_final_reply_is_read_from_the_transcript_when_the_stop_hook_lacks_it(tmp_path, monkeypatch):
+    transcript = tmp_path / "session.jsonl"
+    transcript.write_text("\n".join(json.dumps(entry) for entry in [
+        {"type": "user", "message": {"role": "user", "content": "Earlier question"}},
+        {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Old reply"}]}},
+        {"type": "user", "message": {"role": "user", "content": "Plan Mei's birthday dinner"}},
+        {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "text", "text": "Sesame-free menu:"}, {"type": "tool_use", "name": "x"}]}},
+        {"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "content": "ok"}]}},
+        {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "thinking", "thinking": "..."}]}},
+    ]) + "\n{torn")
+    assert plugin.last_assistant_message(str(transcript)) == "Sesame-free menu:"
+    plain = tmp_path / "plain.jsonl"
+    plain.write_text(json.dumps({"role": "assistant", "content": "Hi!"}) + "\n" + json.dumps({"role": "user", "content": "Next"}))
+    assert plugin.last_assistant_message(str(plain)) is None  # The newest prompt has no reply yet.
+    assert plugin.last_assistant_message(str(tmp_path / "missing.jsonl")) is None
+    monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
+    monkeypatch.setattr(host, "start_in_background", lambda directory: None)
+    plugin.user_prompt({"session_id": "wb", "prompt": "Plan Mei's birthday dinner"}, tmp_path, "membrain-workbuddy")
+    plugin.stop({"session_id": "wb", "transcript_path": str(transcript), "stop_hook_active": False}, tmp_path,
+                "membrain-workbuddy")
+    records = [json.loads(line) for line in (tmp_path / "plugin" / "spool.jsonl").read_text().splitlines()]
+    assert [(record["role"], record["text"]) for record in records] == [
+        ("user", "Plan Mei's birthday dinner"), ("assistant", "Sesame-free menu:")]
+
+
+def test_every_host_manifest_points_only_at_its_own_files():
+    from pathlib import Path
+
+    package = Path(__file__).parents[1] / "plugins" / "membrain"
+    assert not (package / "hooks" / "hooks.json").exists() and not (package / ".mcp.json").exists()
+    hosts = {".claude-plugin": "claude-code", ".codex-plugin": "codex", ".codebuddy-plugin": None}
+    seen = set()
+    for folder, host_name in hosts.items():
+        manifest = json.loads((package / folder / "plugin.json").read_text())
+        hooks_file, mcp_file = manifest["hooks"], manifest["mcpServers"]
+        assert (package / hooks_file).is_file() and (package / mcp_file).is_file()
+        assert (hooks_file, mcp_file) not in seen
+        seen.add((hooks_file, mcp_file))
+        text = (package / hooks_file).read_text()
+        if host_name == "codex":
+            assert "--host codex" in text
+        if folder == ".codebuddy-plugin":
+            assert "${CODEBUDDY_PLUGIN_ROOT}/bin/membrain-hook" in text and '"async"' not in text
+            assert "${" not in (package / mcp_file).read_text()
+    launcher = (package / "bin" / "membrain-hook").read_text()
+    assert "--host workbuddy" in launcher and "--host workbuddy" in (package / "bin" / "membrain-hook.cmd").read_text()
+    assert os.access(package / "bin" / "membrain-hook", os.X_OK)
+    market = json.loads((package.parents[1] / ".codebuddy-plugin" / "marketplace.json").read_text())
+    assert market["plugins"][0]["source"]["subdir"] == "plugins/membrain"
+
+
+def test_workbuddy_launcher_queues_input_until_the_runtime_is_installed(tmp_path):
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    bash = shutil.which("bash")
+    if bash is None or shutil.which("uvx", path="/usr/bin:/bin"):
+        pytest.skip("needs bash and no system-wide uvx")
+    launcher = Path(__file__).parents[1] / "plugins" / "membrain" / "bin" / "membrain-hook"
+    payload = {"session_id": "s1", "prompt": "Mei turns 30.\nShe hates sesame.", "hook_event_name": "UserPromptSubmit"}
+    environment = {"PATH": "/usr/bin:/bin", "CLAUDE_PLUGIN_DATA": str(tmp_path / "data")}
+    for event in ("start", "session-start", "user-prompt"):
+        result = subprocess.run([bash, str(launcher), event], input=json.dumps(payload, indent=2), text=True,
+                                capture_output=True, env=environment, timeout=30)
+        assert result.returncode == 0 and result.stdout == ""
+    lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
+    assert [json.loads(line) for line in lines] == [payload]

@@ -41,7 +41,7 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 6. **Host-curated notes.** A blinded run on a fresh scenario showed two limits of retrieval: about seventy messages exceed what a hook may inject (Claude Code caps hook context at 10,000 characters), and similarity search cannot connect facts related only by implication (a seafood menu and a shellfish allergy; checking in at a clinic and a parent who needs an interpreter). The host model can make those connections, so it keeps the durable facts: when the user states one, it saves a one-line note with `memory_note`, and replaces the note when the fact changes (the old note is suppressed, not erased). Session start injects all notes first, then the user's recent messages with pasted code and logs compacted. Per-prompt recall shows complete source messages around recalled statements, oldest first, with the session's previous prompt as a cue.
 7. **Skill instructions.** A plugin skill tells the host when to search memory, how to treat recalled records (historical, attributed, possibly outdated), when to save an attributed note, and to honour erasure requests.
 8. **Local semantic recall.** With the `semantic` extra, `plugin start` downloads a pinned, checksum-verified int8 ONNX export of `multilingual-e5-small` (MIT, 384 dimensions, about 135 MB) into the installation directory in a detached process, then restarts the service. The service passes an in-process `LocalEmbeddingProvider` to the existing embedding path: new memories get embedding jobs, older ones are backfilled when the worker is idle, and each hook or MCP recall embeds the query (with the model's query prefix) and fuses vector and keyword rankings. No key, network call per message or GPU is involved. The desktop worker now drains queued jobs for up to two seconds per round instead of one job per second.
-9. **Packaging.** The repository root carries a Claude Code marketplace manifest. The plugin directory contains `plugin.json`, `hooks/hooks.json`, `.mcp.json` and the skill. Commands launch the package through `uvx`.
+9. **Packaging.** The repository root carries a Claude Code marketplace manifest. The plugin directory contains one manifest per host (`.claude-plugin/`, `.codex-plugin/`, `.codebuddy-plugin/` for WorkBuddy and CodeBuddy), each pointing explicitly at its own hooks file in `hooks/` and its own MCP file, plus the shared skill. Nothing sits at the default `hooks/hooks.json` or `.mcp.json` locations, so no host loads another host's hooks. Commands launch the package through `uvx`.
 
 ## Deliberately deferred
 
@@ -56,6 +56,12 @@ Plugin mode is an optional host adapter over the unchanged core. The core still 
 - Hooks: never exit non-zero and never block a prompt; recall adds at most 1.5 s at p95 on a warm service; records survive a cold start through the spool.
 - Plugin: `claude plugin validate` passes; installation from a local marketplace works; two separate Claude Code sessions demonstrate cross-session recall without manual memory calls.
 - Documentation states what is and is not verified, in English and Chinese.
+
+## Verification record (2026-10-28, Linux x86_64 container)
+
+- **Claude Code after the per-host file split.** Claude Code 2.1.312 with an isolated configuration and a stub model API: `claude plugin validate` passed, and of two `claude -p` sessions the second's model request contained the first session's message in `<membrain-history>`. Child processes must not inherit `CLAUDE_CODE_SESSION_ID`; when they did (running inside another Claude Code session), every run shared one session ID and memory correctly treated them as the same conversation.
+- **Codex.** Codex CLI 0.165 with an isolated `CODEX_HOME` and a stub Responses API: the plugin installed from the local marketplace, its four hooks were trusted in `/hooks`, and two `codex exec` sessions stored both turns and carried the first session's message into the second.
+- **WorkBuddy and CodeBuddy.** No host available; `bin/membrain-hook` was driven with WorkBuddy's documented hook input (no `last_assistant_message` on `Stop`), the reply was recovered from the transcript, and the next session received the earlier message.
 
 ## Verification record (2026-10-27, Linux x86_64 container)
 
