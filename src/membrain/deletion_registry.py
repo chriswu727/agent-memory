@@ -71,7 +71,8 @@ class DeletionRegistry:
         return registry
 
     def _sync(self):
-        descriptor = _open_private(self.path, os.O_RDONLY)
+        # Windows can only flush a descriptor opened for writing (fsync on a read-only one fails with EBADF).
+        descriptor = _open_private(self.path, os.O_RDWR)
         try:
             os.fsync(descriptor)
         finally:
