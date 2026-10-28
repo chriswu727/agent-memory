@@ -89,13 +89,15 @@ def log(*parts):
 class Model:
     """OpenAI-compatible chat client with a hard cap on calls and token accounting."""
 
-    def __init__(self, base_url: str, model: str, cap: int):
+    def __init__(self, base_url: str, model: str, cap: int, thinking: bool = False):
         self.base_url, self.model, self.cap, self.calls = base_url.rstrip("/"), model, cap, 0
+        self.thinking = thinking
         self.usage = defaultdict(int)
         self.http = httpx.Client(timeout=300)
 
     def chat(self, messages, *, tools=None, json_mode=False, max_tokens=300):
-        body = {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": max_tokens}
+        body = {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": max_tokens,
+                "thinking": {"type": "enabled" if self.thinking else "disabled"}}
         if tools:
             body["tools"] = tools
         if json_mode:
@@ -149,13 +151,44 @@ def questions(sample: dict, categories):
 
 # memBrain arm ---------------------------------------------------------------------------------------------------
 
-def ingest(sample: dict, directory: Path) -> int:
+def install_model(directory: Path, cache: Path) -> None:
+    """Give an installation the local embedding model (downloaded once into ``cache``), as the plugin would."""
+    import shutil
+
+    from membrain.local_embeddings import download, installed, model_directory
+
+    if installed(directory):
+        return
+    if not installed(cache):
+        download(cache)
+    shutil.copytree(model_directory(cache), model_directory(directory), dirs_exist_ok=True)
+
+
+def wait_for_embeddings(directory: Path, timeout: float = 3600) -> dict:
+    """Wait until the service has embedded everything stored, so recall uses meaning as well as keywords."""
+    from membrain import host
+
+    deadline, status = time.monotonic() + timeout, {}
+    while time.monotonic() < deadline:
+        with host.ready_client(directory) as client:
+            status = client.dashboard()["status"]
+        if status.get("pending_jobs") == 0 and status.get("index_lag", 0) == 0:
+            return status
+        time.sleep(5)
+    raise RuntimeError(f"embeddings did not finish: {status}")
+
+
+def ingest(sample: dict, directory: Path, model_cache: Path | None = None) -> int:
     """Store every turn as the hooks would; returns the number of stored messages. Idempotent per turn."""
     from membrain import host
 
     marker = directory / "ingested.json"
     if marker.exists():
+        host.start(directory)
         return json.loads(marker.read_text())["messages"]
+    directory.mkdir(parents=True, exist_ok=True)
+    if model_cache is not None:
+        install_model(directory, model_cache)
     host.start(directory)
     stored = 0
     with host.ready_client(directory) as client:
@@ -166,7 +199,9 @@ def ingest(sample: dict, directory: Path) -> int:
                                              producer="locomo-ingest")
                 stored += host.deliver(directory, client, record)
     host.pause(directory)  # Questions must never become memories.
-    marker.write_text(json.dumps({"messages": stored}))
+    status = wait_for_embeddings(directory) if model_cache is not None else {}
+    marker.write_text(json.dumps({"messages": stored, "semantic": model_cache is not None,
+                                  "candidate_index": status.get("candidate_index")}))
     return stored
 
 
@@ -236,7 +271,8 @@ def run(args) -> None:
     if args.max_questions:
         total = min(total, args.max_questions)
     arms = args.arms.split(",")
-    model = Model(args.base_url, args.model, cap=total * len(arms) * 5 + 20)
+    model = Model(args.base_url, args.model, cap=total * len(arms) * 5 + 20, thinking=args.thinking)
+    model_cache = None if args.no_semantic else out / "model-cache"
     for arm in arms:
         path = out / f"answers-{arm}.jsonl"
         done = {json.loads(line)["id"] for line in path.read_text().splitlines()} if path.exists() else set()
@@ -244,7 +280,7 @@ def run(args) -> None:
         for sample in selected:
             directory = out / f"brain-{sample['sample_id']}"
             if arm == "M":
-                log("ingest", sample["sample_id"], ingest(sample, directory), "messages")
+                log("ingest", sample["sample_id"], ingest(sample, directory, model_cache), "messages")
             for qid, qa in questions(sample, categories):
                 count += 1
                 if args.max_questions and count > args.max_questions:
@@ -303,7 +339,9 @@ def main() -> None:
     parser.add_argument("--categories", default="1,2,3,4")
     parser.add_argument("--max-questions", type=int, default=0, help="Per arm; 0 means all")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
-    parser.add_argument("--model", default="deepseek-chat")
+    parser.add_argument("--model", default="deepseek-flash")
+    parser.add_argument("--thinking", action="store_true", help="Let the host model reason before answering")
+    parser.add_argument("--no-semantic", action="store_true", help="memBrain arm without the local embedding model")
     parser.add_argument("--report", action="store_true", help="Only summarize existing results")
     args = parser.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
