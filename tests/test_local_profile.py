@@ -210,6 +210,14 @@ def test_lost_profile_cannot_silently_replace_an_existing_installation(tmp_path)
     assert not (tmp_path / "profile.json").exists()
 
 
+def test_host_adapter_state_written_before_setup_does_not_block_it(tmp_path):
+    # Bot adapters create plugin/ (start markers, spooled records) before the first start creates the profile.
+    (tmp_path / "plugin").mkdir()
+    (tmp_path / "plugin" / "last-start-attempt").touch()
+    profile = ensure_profile(tmp_path)
+    assert load_profile(tmp_path) == profile
+
+
 def test_interrupted_initial_atomic_write_can_be_retried(tmp_path):
     (tmp_path / (".profile-" + "a" * 32 + ".tmp")).write_text("incomplete write")
     profile = ensure_profile(tmp_path)

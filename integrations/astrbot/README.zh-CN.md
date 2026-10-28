@@ -35,4 +35,4 @@ mv memBrain-main/integrations/astrbot/astrbot_plugin_membrain . && rm -rf memBra
 
 ## 状态
 
-已使用 AstrBot 插件 API 的替身和真实的 memBrain 服务测试（两个 QQ 用户互相隔离、群聊与私聊隔离、暂停记录），工具的文档字符串也已按 AstrBot 的参数格式检查。尚未在真实的 AstrBot 安装中运行过。
+已使用 AstrBot 插件 API 的替身和真实的 memBrain 服务测试（两个 QQ 用户互相隔离、群聊与私聊隔离、暂停记录），工具的文档字符串也已按 AstrBot 的参数格式检查。在 Windows 11 上，它已在 AstrBot 4.29.3（源码安装，Python 3.12）中配合 DeepSeek、通过 AstrBot 自带的 WebChat 实际运行：AstrBot 按 `requirements.txt` 安装了依赖，首次启动在 `data/plugin_data/membrain` 中创建了记忆，模型通过插件工具保存了笔记并进行了检索，两个用户各自在新对话中召回了自己的信息，且互相看不到对方的内容。这次运行发现了一个会让每次首次启动都失败的问题（已修复）。尚未通过 NapCat 接入 QQ 测试。

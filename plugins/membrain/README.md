@@ -49,6 +49,6 @@ Every hook fails open: if memory is unavailable the prompt and reply proceed unc
 - Semantic recall uses a local multilingual model (about 135 MB) downloaded from Hugging Face after the first start; until then recall matches words only. Set `HF_ENDPOINT` to use a mirror, or `MEMBRAIN_SEMANTIC=0` to skip it.
 - Model-driven background learning is off unless a provider is configured with `membrain desktop setup`.
 - The embedded database needs CPython 3.12 (installed automatically by uv) on macOS, Windows or Linux x86_64. Linux ARM uses Docker instead.
-- Verified on Linux x86_64. macOS and Windows have not yet been tested on real machines.
+- Verified on Linux x86_64. On Windows 11 the runtime, the embedded database and both hook launchers were run on a real machine: WorkBuddy runs hook commands with the Git Bash it bundles (PowerShell if no bash is found, never `cmd.exe`), so it uses `bin/membrain-hook`; `bin/membrain-hook.cmd` serves hosts that run hooks with `cmd.exe`. The WorkBuddy and CodeBuddy apps themselves, Claude Code and Codex have not yet been run on Windows, and macOS has not been tested on a real machine.
 
 See [plugin mode](../../architecture/plugin-mode.md) for the design and verification record.

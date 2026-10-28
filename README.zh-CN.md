@@ -44,13 +44,13 @@ codex plugin add membrain@membrain
 
 下次启动时 Codex 会请你审核插件的 hooks；请选择信任（也可以之后用 `/hooks` 信任），因为 Codex 不会运行未受信任的 hooks。之后 Codex 获得与 Claude Code 相同的笔记、历史、召回、记录和记忆工具，同一台电脑上两者共享同一份记忆。已在 Linux 上用 Codex CLI 0.165 验证：在一个会话中告诉它的事实出现在了下一个会话的上下文里。
 
-**QQ、微信、Telegram 等平台上的聊天机器人。** [AstrBot 插件](integrations/astrbot/README.zh-CN.md)为每一个和 AstrBot 机器人聊天的人提供独立的长期记忆，适用于 AstrBot 支持的所有平台和模型服务（包括 DeepSeek）。一个人说过的话永远不会出现在给另一个人的回复里，群聊默认也与私聊分开保存。该插件尚未在真实的 AstrBot 安装中运行过。
+**QQ、微信、Telegram 等平台上的聊天机器人。** [AstrBot 插件](integrations/astrbot/README.zh-CN.md)为每一个和 AstrBot 机器人聊天的人提供独立的长期记忆，适用于 AstrBot 支持的所有平台和模型服务（包括 DeepSeek）。一个人说过的话永远不会出现在给另一个人的回复里，群聊默认也与私聊分开保存。该插件已在 Windows 11 上的 AstrBot 4.29.3 中配合 DeepSeek、通过 AstrBot 自带的 WebChat 实际运行（两个用户互相隔离、跨对话召回、笔记与检索）；尚未通过 NapCat 接入 QQ 测试。
 
-**任何可设置 `base_url` 的机器人（抖音和 B 站直播、NoneBot、Koishi、SillyTavern 等）。** [`membrain proxy`](integrations/openai-proxy/README.zh-CN.md) 是一个 OpenAI 兼容代理：把机器人的 `base_url` 从 DeepSeek 等模型服务改为指向它，每个人（通过请求的 `user` 字段或请求头区分）就有了自己的记忆。尚未接入真实的模型服务运行过。
+**任何可设置 `base_url` 的机器人（抖音和 B 站直播、NoneBot、Koishi、SillyTavern 等）。** [`membrain proxy`](integrations/openai-proxy/README.zh-CN.md) 是一个 OpenAI 兼容代理：把机器人的 `base_url` 从 DeepSeek 等模型服务改为指向它，每个人（通过请求的 `user` 字段或请求头区分）就有了自己的记忆。已在 Windows 11 上接入真实的 DeepSeek API 运行，流式和非流式回复都已验证；尚未配合具体的机器人项目运行。
 
-**WorkBuddy 和 CodeBuddy。** 同一个插件也可以安装到腾讯的 WorkBuddy 和 CodeBuddy。在 WorkBuddy 中打开 **插件 → +**，添加插件市场 `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json`，然后安装 **membrain**；在 CodeBuddy Code 中运行 `codebuddy plugin marketplace add chriswu727/memBrain` 和 `codebuddy plugin install membrain@membrain`。由于这些宿主不会把最终回复传给 Stop hook，memBrain 会从会话记录中读取回复。该 hook 流程已在 Linux 上用模拟的 WorkBuddy hook 输入验证；尚未在 WorkBuddy 或 CodeBuddy 中实际运行，Windows 启动脚本也未经测试。
+**WorkBuddy 和 CodeBuddy。** 同一个插件也可以安装到腾讯的 WorkBuddy 和 CodeBuddy。在 WorkBuddy 中打开 **插件 → +**，添加插件市场 `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json`，然后安装 **membrain**；在 CodeBuddy Code 中运行 `codebuddy plugin marketplace add chriswu727/memBrain` 和 `codebuddy plugin install membrain@membrain`。由于这些宿主不会把最终回复传给 Stop hook，memBrain 会从会话记录中读取回复。该 hook 流程已在 Linux 上用模拟的 WorkBuddy hook 输入验证，并在 Windows 11 上通过 WorkBuddy 5.8.3 自带、也用来运行 hook 的 Git Bash 验证；尚未在 WorkBuddy 或 CodeBuddy 应用内实际运行。
 
-**OpenClaw。** [OpenClaw 插件](integrations/openclaw/README.zh-CN.md)为 OpenClaw 助手在每个渠道上加入同一份记忆，与 OpenClaw 自带的记忆并行工作。尚未被真实的 OpenClaw Gateway 加载过。
+**OpenClaw。** [OpenClaw 插件](integrations/openclaw/README.zh-CN.md)为 OpenClaw 助手在每个渠道上加入同一份记忆，与 OpenClaw 自带的记忆并行工作。Windows 11 上真实的 OpenClaw 2026.10.8 Gateway 已加载该插件，并在关闭 OpenClaw 自带记忆的情况下，配合 DeepSeek 在新会话中召回了之前的事实。
 
 **Hermes Agent。** memBrain 也可以作为 Hermes Agent 的记忆后端。把它安装到 Hermes 的 Python 环境并选用：
 
@@ -213,7 +213,7 @@ membrain desktop start
 
 当前候选版本支持**本地同步文本 Agent**，提供 Python 运行时、HTTP API、TypeScript 客户端、MCP 工具和直接终端聊天入口。核心记忆行为独立于聊天框架。桌面端到端验证目前覆盖 **macOS、uv 和 Docker** 的组合。
 
-[插件模式](architecture/plugin-mode.md)目前仅在 **Linux x86_64** 上验证。嵌入式数据库分别以 root 和普通用户身份，通过了真实的启动、重启、备份、恢复和激活检查。在隔离配置的 Claude Code 2.1.311 中，插件从本地插件市场安装成功；使用模拟模型 API 时，插件记录了消息和回复，新会话发给模型的请求中包含上一个会话的记录。这项检查覆盖的是集成流程，不是回答质量。自动召回基于词语匹配，macOS 和 Windows 尚未在真实设备上运行。
+[插件模式](architecture/plugin-mode.md)已在 **Linux x86_64** 上完成端到端验证。嵌入式数据库分别以 root 和普通用户身份，通过了真实的启动、重启、备份、恢复和激活检查。在隔离配置的 Claude Code 2.1.311 中，插件从本地插件市场安装成功；使用模拟模型 API 时，插件记录了消息和回复，新会话发给模型的请求中包含上一个会话的记录。这项检查覆盖的是集成流程，不是回答质量。自动召回基于词语匹配。在一台 Windows 11 机器上，嵌入式数据库、本地服务、hook 启动脚本（Git Bash 与 `cmd.exe`）、代理以及 AstrBot 和 OpenClaw 插件都已实际运行；这次运行发现并修复了两个安装问题，它们会让所有新的 Windows 安装以及 AstrBot 首次启动失败。Claude Code 和 Codex 尚未在 Windows 上运行，macOS 尚未在真实设备上运行。
 
 在一个全新的十会话场景上进行的[盲评 A/B 诊断](evaluations/v1-2026-10-27-ab-baselines.md)中，默认记忆运行时得 4.5 分（满分 12），无记忆基线得 2 分，直接放入完整历史的朴素做法得 11.5 分。记忆组消耗的 token 约为完整历史组的三十倍，并需要 58 次人工干预。它失分的主要原因是召回没有取回相关事实。在这样的小规模下，完整历史是更强的基线；更长的历史尚未测试。使用相同模型和用例对插件路径进行的[第二次盲评](evaluations/v1-2026-10-27-plugin-path-ab.md)中，插件在该场景得 10.5 分，完整历史得 11 分。在一个包含粘贴代码和日志的 34 会话长版本上，插件先得 7.5 分，针对问题改进历史注入和召回后得 12 分，完整历史得 11.5 分，插件消耗的 token 约为完整历史的四分之一。这些都是单次运行，且改进是在同一场景上设计的。由另一个智能体编写的[两个全新场景](evaluations/v1-2026-10-27-fresh-scenarios.md)对此做了检验：在第一个场景的长版本上，当时已合并的插件（含本地语义召回）只得 6 分，完整历史得 11 分。随后的重新设计（由宿主模型维护笔记、按整条消息召回）在预留的第二个场景长版本上得 11.5 分，与完整历史相同，而之前的插件只得 5.5 分，token 消耗约为完整历史的三分之一。这只是使用一个宿主模型（DeepSeek V4 Pro）的单次运行。
 

@@ -37,6 +37,30 @@ def test_registry_reopens_with_exact_durable_intents_and_stable_replay(tmp_path)
     assert conflict.value.code == 'idempotency_conflict'
 
 
+def test_registry_flushes_only_writable_descriptors(tmp_path, monkeypatch):
+    # Windows rejects fsync on a read-only descriptor (EBADF), which blocked every new installation there.
+    import os
+
+    from membrain import deletion_registry
+
+    modes, opened, flushed = {}, deletion_registry._open_private, []
+
+    def open_private(path, flags):
+        descriptor = opened(path, flags)
+        modes[descriptor] = flags
+        return descriptor
+
+    def fsync(descriptor):
+        if descriptor in modes:
+            flushed.append(modes[descriptor] & (os.O_WRONLY | os.O_RDWR))
+
+    monkeypatch.setattr(deletion_registry, '_open_private', open_private)
+    monkeypatch.setattr(deletion_registry.os, 'fsync', fsync)
+    registry = DeletionRegistry.create(tmp_path / 'authority', uid())
+    append(registry, Principal(uid(), uid()))
+    assert flushed and all(flushed)
+
+
 @pytest.mark.parametrize('tamper', ['target', 'chain', 'document', 'identity'])
 def test_registry_rejects_modified_authority(tmp_path, tamper):
     registry = DeletionRegistry.create(tmp_path / 'authority', uid())
