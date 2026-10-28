@@ -75,4 +75,4 @@ One-time setup by the repository owner:
 
 For each release: update the version in `pyproject.toml` and the plugin manifest, commit, then push a matching tag such as `git tag v0.1.0 && git push origin v0.1.0`. The workflow refuses a tag that does not match the package version.
 
-After the first successful release, change the default package in `plugins/membrain/hooks/hooks.json` and `plugins/membrain/.mcp.json` from the Git URL to `membrain-ai[embedded,semantic]==<version>`. Installation then comes from PyPI wheels instead of cloning the repository.
+After the first successful release, change the default package from the Git URL to `membrain-ai[embedded,semantic]==<version>` in `plugins/membrain/hooks/claude-hooks.json`, `hooks/codex-hooks.json`, `.claude-mcp.json`, `.codex-mcp.json`, `.codebuddy-mcp.json`, `bin/membrain-hook` and `bin/membrain-hook.cmd`, in `integrations/openclaw/membrain/index.js`, and in `integrations/astrbot/astrbot_plugin_membrain/requirements.txt`. Installation then comes from PyPI wheels instead of cloning the repository.

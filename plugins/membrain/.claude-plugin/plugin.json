@@ -14,5 +14,7 @@
     "recall",
     "mcp"
   ],
-  "icon": "assets/icon.png"
+  "icon": "assets/icon.png",
+  "hooks": "./hooks/claude-hooks.json",
+  "mcpServers": "./.claude-mcp.json"
 }

@@ -48,6 +48,8 @@ On the next start Codex asks you to review the plugin's hooks; choose to trust t
 
 **Any bot with a `base_url` (Douyin and Bilibili live streams, NoneBot, Koishi, SillyTavern...).** [`membrain proxy`](integrations/openai-proxy/README.md) is an OpenAI-compatible proxy: point the bot's `base_url` at it instead of DeepSeek or another provider, and each person (told apart by the request's `user` field or a header) gets their own memory. It has not yet been run against a real provider.
 
+**WorkBuddy and CodeBuddy.** The same plugin also installs in Tencent's WorkBuddy and CodeBuddy. In WorkBuddy, open **Plugins → +** and add the marketplace `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json`, then install **membrain**; in CodeBuddy Code run `codebuddy plugin marketplace add chriswu727/memBrain` and `codebuddy plugin install membrain@membrain`. Because these hosts do not pass the final reply to their Stop hook, memBrain reads it from the session transcript. The hook chain is verified with simulated WorkBuddy hook input on Linux; it has not yet been run inside WorkBuddy or CodeBuddy, and the Windows launcher is untested.
+
 **OpenClaw.** The [OpenClaw plugin](integrations/openclaw/README.md) adds the same memory to an OpenClaw assistant on every channel, alongside OpenClaw's own memory. It has not yet been loaded by a real OpenClaw Gateway.
 
 **Hermes Agent.** memBrain is also a Hermes Agent memory provider. Install it into Hermes's Python environment and select it:

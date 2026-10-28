@@ -39,7 +39,9 @@ from .host import (  # noqa: F401  (re-exported for callers of the previous plug
 )
 
 MAX_INPUT_BYTES = 4 * 1024 * 1024
-PRODUCERS = {"claude-code": PRODUCER, "codex": "membrain-codex", "openclaw": "membrain-openclaw"}
+PRODUCERS = {"claude-code": PRODUCER, "codex": "membrain-codex", "openclaw": "membrain-openclaw",
+             "workbuddy": "membrain-workbuddy"}
+TRANSCRIPT_TAIL_BYTES = 2 * 1024 * 1024
 # Hosts that run the MCP bridge use its tool names; others call ``membrain plugin tool`` under these names.
 HOST_TOOLS = {"openclaw": {"note": "membrain_note", "recall": "membrain_search", "pause": "membrain_pause"}}
 TOOLS = ("note", "search", "pause", "resume")
@@ -113,10 +115,54 @@ def user_prompt(payload: dict, directory: Path, producer: str = PRODUCER) -> str
                                producer=producer)
 
 
+def _text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(part.get("text", "") for part in content
+                         if isinstance(part, dict) and part.get("type") in ("text", "output_text")
+                         and isinstance(part.get("text"), str))
+    return ""
+
+
+def last_assistant_message(transcript: str | None) -> str | None:
+    """The final reply in a host transcript (JSON lines), for hosts whose Stop hook does not include it.
+
+    Reads entries shaped like Claude Code's (``{"type": "assistant", "message": {...}}``) or plain chat messages
+    (``{"role": "assistant", "content": ...}``), newest first, and stops at the user's prompt.
+    """
+    if not isinstance(transcript, str) or not transcript:
+        return None
+    try:
+        with open(transcript, "rb") as stream:
+            stream.seek(0, os.SEEK_END)
+            stream.seek(max(0, stream.tell() - TRANSCRIPT_TAIL_BYTES))
+            lines = stream.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return None
+    for line in reversed(lines):
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(entry, dict):
+            continue
+        message = entry.get("message") if isinstance(entry.get("message"), dict) else entry
+        role = message.get("role") or entry.get("type")
+        text = _text(message.get("content"))
+        if role == "assistant" and text.strip():
+            return text
+        if role == "user" and text.strip():
+            return None  # The prompt came after the last reply: this turn has no text reply.
+    return None
+
+
 def stop(payload: dict, directory: Path, producer: str = PRODUCER) -> None:
     _import_host_queue(directory, producer)
-    host.finish_turn(directory, _conversation(payload), payload.get("last_assistant_message"),
-                     turn_id=_turn(payload), producer=producer)
+    reply = payload.get("last_assistant_message")
+    if not isinstance(reply, str) or not reply.strip():
+        reply = last_assistant_message(payload.get("transcript_path"))
+    host.finish_turn(directory, _conversation(payload), reply, turn_id=_turn(payload), producer=producer)
 
 
 HANDLERS = {

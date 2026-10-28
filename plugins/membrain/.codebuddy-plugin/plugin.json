@@ -1,0 +1,20 @@
+{
+  "name": "membrain",
+  "version": "0.1.0",
+  "description": "Automatic long-term memory across WorkBuddy and CodeBuddy sessions: records conversations locally, recalls related earlier messages before replies, and adds memory tools. Shared with Claude Code and Codex on the same computer. No Docker or extra API key.",
+  "author": {
+    "name": "chriswu727"
+  },
+  "homepage": "https://github.com/chriswu727/memBrain",
+  "repository": "https://github.com/chriswu727/memBrain",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "long-term memory",
+    "recall",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/workbuddy-hooks.json",
+  "mcpServers": "./.codebuddy-mcp.json"
+}

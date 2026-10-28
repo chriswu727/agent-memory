@@ -1,6 +1,6 @@
-# memBrain for Claude Code and Codex
+# memBrain for Claude Code, Codex, WorkBuddy and CodeBuddy
 
-Automatic, local long-term memory across Claude Code and Codex sessions.
+Automatic, local long-term memory across Claude Code, Codex, WorkBuddy and CodeBuddy sessions, shared on the same computer.
 
 ```sh
 claude plugin install membrain --marketplace chriswu727/membrain
@@ -14,6 +14,13 @@ codex plugin add membrain@membrain
 ```
 
 Codex asks you to review and trust the hooks on the next start (or later with `/hooks`); untrusted hooks never run.
+
+In WorkBuddy, add the marketplace `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json` under **Plugins → +** and install **membrain**. In CodeBuddy Code:
+
+```sh
+codebuddy plugin marketplace add chriswu727/memBrain
+codebuddy plugin install membrain@membrain
+```
 
 Requires [uv](https://docs.astral.sh/uv/). No Docker, setup wizard or extra model API key.
 

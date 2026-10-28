@@ -1,0 +1,43 @@
+{
+  "description": "memBrain long-term memory for WorkBuddy and CodeBuddy",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "command": "\"${CODEBUDDY_PLUGIN_ROOT}/bin/membrain-hook\" start"
+          },
+          {
+            "type": "command",
+            "timeout": 15,
+            "command": "\"${CODEBUDDY_PLUGIN_ROOT}/bin/membrain-hook\" session-start"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 15,
+            "command": "\"${CODEBUDDY_PLUGIN_ROOT}/bin/membrain-hook\" user-prompt"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 15,
+            "command": "\"${CODEBUDDY_PLUGIN_ROOT}/bin/membrain-hook\" stop"
+          }
+        ]
+      }
+    ]
+  }
+}

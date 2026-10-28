@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 HOOK_EVENTS = ("session-start", "user-prompt", "stop")
-HOOK_HOSTS = ("claude-code", "codex", "openclaw")
+HOOK_HOSTS = ("claude-code", "codex", "openclaw", "workbuddy")
 
 
 def add_commands(commands):
