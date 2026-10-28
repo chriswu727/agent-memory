@@ -178,18 +178,35 @@ def wait_for_embeddings(directory: Path, timeout: float = 3600) -> dict:
     raise RuntimeError(f"embeddings did not finish: {status}")
 
 
+def start(directory: Path, timeout: float = 600) -> None:
+    """Start the installation; a slow start (a loaded machine) is waited for instead of failing the run."""
+    from membrain import desktop, host
+
+    try:
+        host.start(directory)
+    except desktop.DesktopError as error:
+        if error.code != "service_start_timeout":
+            raise
+        deadline = time.monotonic() + timeout
+        while not desktop.status(directory).get("ready"):
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(5)
+        host.start(directory)
+
+
 def ingest(sample: dict, directory: Path, model_cache: Path | None = None) -> int:
     """Store every turn as the hooks would; returns the number of stored messages. Idempotent per turn."""
     from membrain import host
 
     marker = directory / "ingested.json"
     if marker.exists():
-        host.start(directory)
+        start(directory)
         return json.loads(marker.read_text())["messages"]
     host.ensure_installation(directory)  # Create the profile first; a non-empty directory without one is refused.
     if model_cache is not None:
         install_model(directory, model_cache)
-    host.start(directory)
+    start(directory)
     stored = 0
     with host.ready_client(directory) as client:
         for number, date, turns in sessions(sample):
@@ -271,6 +288,15 @@ def run(args) -> None:
     if args.max_questions:
         total = min(total, args.max_questions)
     arms = args.arms.split(",")
+    usage_path = out / f"usage-{'-'.join(arms)}.json"  # One file per invocation, so arms can run in parallel.
+    earlier = json.loads(usage_path.read_text()) if usage_path.exists() else {}
+
+    def save_usage():  # After every question, so a stopped run still reports what it cost.
+        totals = dict(earlier)
+        for key, value in {**model.usage, "calls": model.calls}.items():
+            totals[key] = earlier.get(key, 0) + value
+        usage_path.write_text(json.dumps(totals, indent=2))
+
     model = Model(args.base_url, args.model, cap=total * len(arms) * 5 + 20, thinking=args.thinking)
     model_cache = None if args.no_semantic else out / "model-cache"
     for arm in arms:
@@ -294,6 +320,7 @@ def run(args) -> None:
                        "gold": qa["answer"], **result, **verdict, "seconds": round(time.monotonic() - started, 2)}
                 with path.open("a", encoding="utf-8") as stream:
                     stream.write(json.dumps(row, ensure_ascii=False) + "\n")
+                save_usage()
                 log(arm, qid, "correct" if verdict["correct"] else "wrong", "|", result["answer"][:60])
             if arm == "M":
                 from membrain import desktop
@@ -301,12 +328,7 @@ def run(args) -> None:
                     desktop.stop(directory)
                 except desktop.DesktopError:
                     pass
-    usage_path = out / f"usage-{'-'.join(arms)}.json"  # One file per invocation, so arms can run in parallel.
-    previous = json.loads(usage_path.read_text()) if usage_path.exists() else {}
-    for key, value in model.usage.items():
-        previous[key] = previous.get(key, 0) + value
-    previous["calls"] = previous.get("calls", 0) + model.calls
-    usage_path.write_text(json.dumps(previous, indent=2))
+    save_usage()
 
 
 def report(args) -> None:
