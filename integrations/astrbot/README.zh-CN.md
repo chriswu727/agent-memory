@@ -29,6 +29,8 @@ mv memBrain-main/integrations/astrbot/astrbot_plugin_membrain . && rm -rf memBra
 | --- | --- | --- |
 | `group_memory` | `separate` | 设为 `shared` 时，一个人的群聊消息和私聊共用同一份记忆。 |
 | `record_groups` | 开 | 关闭后，群消息既不召回也不保存。只有到达模型的消息（例如 @ 机器人时）才会被看到。 |
+| `roleplay_character` | 空 | 如果机器人扮演一个虚构角色，填写角色名：故事的记忆会与每个人的真实生活记忆分开保存。 |
+| `share_real_life` | 关 | 在角色扮演中显示每个人的非敏感真实生活笔记，并标明是真实生活。 |
 | `directory` | 空 | 记忆保存位置；留空即 `data/plugin_data/membrain`。 |
 
 用 `<private>…</private>` 包住的文字不会被记住；看起来像密码、API key 或 token 的内容会在保存前被移除。

@@ -199,10 +199,12 @@ def _parsed(response: dict, skip_imports_from=()) -> list[tuple[dict, dict, str]
     return [(item, *parse_note(item["text"])) for item in reversed(items)]  # Oldest first.
 
 
-def render_notes(response: dict, *, tool: str | None = "memory_note", skip_imports_from=()) -> str | None:
+def render_notes(response: dict, *, tool: str | None = "memory_note", skip_imports_from=(),
+                 real_life: bool = False) -> str | None:
     """The notes block, grouped by kind; ``skip_imports_from`` leaves out notes copied from hosts that show their
-    own memory files."""
-    parsed = _parsed(response, skip_imports_from)
+    own memory files. ``real_life`` renders the person's non-sensitive real-life notes for a role-play session."""
+    parsed = [entry for entry in _parsed(response, skip_imports_from)
+              if not (real_life and entry[1].get("sensitive"))]
     if not parsed:
         return None
     groups: dict[str, list[str]] = {}
@@ -215,6 +217,10 @@ def render_notes(response: dict, *, tool: str | None = "memory_note", skip_impor
     if groups.get(""):
         body += (["Notes:"] if body else []) + groups[""]
     more = "" if response.get("complete", True) else " Older notes did not fit and are not shown."
+    if real_life:
+        return ("<membrain-real-life-notes>\nNotes about the user's real life, which they chose to share with "
+                "this role-play. They are facts about the user, not about the story; keep them apart from the "
+                "fiction.\n" + "\n".join(body) + "\n</membrain-real-life-notes>")
     return ("<membrain-notes>\nNotes about this user from earlier sessions, oldest first within each group. Unless "
             "marked as written by the user or imported, they are your own summaries, not the user's words; notes "
             "the user wrote or corrected take precedence over yours, and the user's current message over both. A plan "

@@ -201,11 +201,15 @@ Status: implemented (`<membrain-coming-up>` and skill guidance); its effect on t
 
 ### B4. Fiction and real life
 
+Status: implemented for chat hosts (`ChatMemory`, the proxy headers and the AstrBot setting): one brain per person and character, records marked `roleplay`, and opt-in sharing of non-sensitive real-life notes. A SillyTavern extension that sets the character automatically is not built yet; SillyTavern can use the proxy with the header.
+
 - Hosts mark sessions or characters as role-play: always in SillyTavern, and configurable elsewhere. Their records use the core's existing `world: roleplay` scope.
 - Role-play facts never enter the real-life context, and real-life sensitive notes never enter role-play unless the user allows it.
 - A role-play character's own memory stays separate for each character.
 
 ### B5. The agent's own memory
+
+Status: implemented through typed notes: `agent_commitment` notes (promises, with status and due date) appear in Coming up, and `relationship` notes hold how the user wants the agent to be with them. Extracting commitments automatically from the agent's replies is not built.
 
 - Promises the agent made ("I'll remind you on Friday"), opinions it stated, and nicknames it uses become `agent_commitment` and `relationship` notes.
 - These use the core's existing recall of the agent's own speech and commitments, and appear in Coming up.

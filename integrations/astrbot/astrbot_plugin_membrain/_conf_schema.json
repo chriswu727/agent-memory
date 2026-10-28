@@ -3,8 +3,14 @@
     "description": "Group chat memory",
     "type": "string",
     "default": "separate",
-    "options": ["separate", "shared"],
-    "labels": ["Separate from private chats", "Shared with private chats"],
+    "options": [
+      "separate",
+      "shared"
+    ],
+    "labels": [
+      "Separate from private chats",
+      "Shared with private chats"
+    ],
     "hint": "Separate keeps what someone says in a group apart from their private chats with the bot, so a group reply cannot reveal a private conversation."
   },
   "record_groups": {
@@ -18,5 +24,17 @@
     "type": "string",
     "default": "",
     "hint": "Leave empty to keep memory in AstrBot's data/plugin_data/membrain, which survives plugin updates and is included in AstrBot data backups."
+  },
+  "roleplay_character": {
+    "description": "Role-play character",
+    "type": "string",
+    "default": "",
+    "hint": "If this bot plays a fictional character, give its name: the story's memory is then kept apart from each person's real-life memory."
+  },
+  "share_real_life": {
+    "description": "Share real-life notes with the role-play",
+    "type": "bool",
+    "default": false,
+    "hint": "Show each person's non-sensitive real-life notes in the role-play, marked as real life."
   }
 }

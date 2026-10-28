@@ -26,7 +26,9 @@ class MembrainPlugin(star.Star):
         config = config or {}
         directory = config.get("directory") or str(Path(get_astrbot_plugin_data_path()) / "membrain")
         self.memory = ChatMemory(Path(directory), group_memory=config.get("group_memory") or "separate",
-                                 record_groups=config.get("record_groups", True), producer="membrain-astrbot")
+                                 record_groups=config.get("record_groups", True), producer="membrain-astrbot",
+                                 roleplay=config.get("roleplay_character") or None,
+                                 share_real_life=bool(config.get("share_real_life")))
         self.memory.start()
 
     @filter.on_llm_request()
