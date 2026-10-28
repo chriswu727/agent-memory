@@ -547,6 +547,7 @@ The default `prepare` budget of 2,000 units is the memory allocation left after 
 | `plugin start` | Creates the installation if needed, starts the service (restarting it after a package update) and replays queued records. |
 | `plugin mcp` | Runs the MCP stdio bridge on the same installation, including `memory_note(text, replaces)` for host-curated notes. |
 | `plugin status` | Reports service state, the number of queued records and `semantic_recall` (`ready`, `downloading`, `not_downloaded` or `unavailable`). |
+| `plugin ui [--no-browser]` | Starts the service if needed and opens `/memory` with a single-use code valid for two minutes. The page exchanges it at `POST /v1/local/ui-session` for the local credential and offers notes (add, correct, delete; corrections are stored as user-written notes and suppress the old one), conversations (browse, delete messages or whole conversations), search with the hooks' recall, recording pause, export and erase-everything. |
 | `plugin pause [--hours N]` / `plugin resume` | Stops or resumes recording for every host session; recall keeps working. The MCP bridge offers the same as `memory_pause` and `memory_resume`. |
 | `plugin fetch-model` | Downloads the local embedding model and restarts a running service so it is used. `plugin start` runs it in the background when the model is missing. |
 

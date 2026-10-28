@@ -19,6 +19,8 @@ def add_commands(commands):
     pause = actions.add_parser("pause", help="Stop recording messages (recall keeps working) until resumed")
     pause.add_argument("--hours", type=float, default=None, help="Resume automatically after this many hours")
     actions.add_parser("resume", help="Resume recording messages")
+    ui = actions.add_parser("ui", help="Open the memory page in a browser (starts the service if needed)")
+    ui.add_argument("--no-browser", action="store_true", help="Only print the single-use link")
     for parser in actions.choices.values():
         parser.add_argument("--directory", type=Path, default=None)
 
@@ -42,6 +44,18 @@ def dispatch(args) -> None:
             result = plugin.start(directory)
         elif args.plugin_command == "fetch-model":
             result = plugin.fetch_model(directory)
+        elif args.plugin_command == "ui":
+            from . import host
+            from .local_profile import load_profile
+
+            plugin.start(directory)
+            url = f"{load_profile(directory).base_url}/memory?code={host.issue_ui_code(directory)}"
+            if not args.no_browser:
+                import webbrowser
+
+                webbrowser.open(url)
+            print(f"Memory page (single-use link, valid for {host.UI_CODE_SECONDS // 60} minutes):\n{url}")
+            return
         elif args.plugin_command in ("pause", "resume"):
             from . import host
 

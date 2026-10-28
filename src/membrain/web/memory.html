@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>memBrain · Your memory</title>
+  <link rel="stylesheet" href="/static/memory.css">
+  <script src="/static/memory.js" defer></script>
+</head>
+<body>
+<header>
+  <a class="brand" href="/memory">memBrain</a>
+  <nav id="tabs" hidden>
+    <button data-view="notes" class="active">Notes</button>
+    <button data-view="conversations">Conversations</button>
+    <button data-view="search">Search</button>
+    <button data-view="privacy">Privacy</button>
+  </nav>
+  <span id="recording" class="badge" hidden></span>
+</header>
+<main>
+  <section id="signin" class="panel narrow" hidden>
+    <h1>Your memory</h1>
+    <p class="muted">Open this page with <code>membrain plugin ui</code>. It starts the local service and opens a
+      single-use link, so you never copy a key.</p>
+    <details>
+      <summary>Use an access key instead</summary>
+      <form id="key-form">
+        <label for="key">Access key</label>
+        <input id="key" type="password" autocomplete="off" required>
+        <button type="submit">Open</button>
+      </form>
+    </details>
+  </section>
+
+  <section id="view-notes" class="view" hidden>
+    <div class="heading">
+      <div>
+        <h1>Notes</h1>
+        <p class="muted">Lasting facts your agent keeps about you. Every session starts with these. Correct anything
+          that is wrong; your corrections take precedence over the agent's notes.</p>
+      </div>
+    </div>
+    <form id="note-form" class="card row">
+      <input id="note-text" maxlength="300" placeholder="Add a note, e.g. I'm vegetarian; my sister Mei lives in Vancouver" required>
+      <button type="submit">Add</button>
+    </form>
+    <div id="notes" class="list"></div>
+  </section>
+
+  <section id="view-conversations" class="view" hidden>
+    <div class="heading">
+      <div>
+        <h1>Conversations</h1>
+        <p class="muted">Original messages, as recorded. Notes and recall always trace back to these.</p>
+      </div>
+    </div>
+    <div id="conversations" class="list"></div>
+  </section>
+
+  <section id="view-search" class="view" hidden>
+    <div class="heading"><div><h1>Search</h1><p class="muted">The same recall your agent uses before replying.</p></div></div>
+    <form id="search-form" class="card row">
+      <input id="search-text" placeholder="What did I say about…" required>
+      <button type="submit">Search</button>
+    </form>
+    <div id="results" class="list"></div>
+  </section>
+
+  <section id="view-privacy" class="view" hidden>
+    <div class="heading"><div><h1>Privacy</h1><p class="muted">Memory lives only on this computer.</p></div></div>
+    <div class="card">
+      <h2>Recording</h2>
+      <p id="recording-text" class="muted"></p>
+      <div class="row">
+        <select id="pause-hours">
+          <option value="1">for 1 hour</option>
+          <option value="24">for 24 hours</option>
+          <option value="">until I resume</option>
+        </select>
+        <button id="pause">Pause recording</button>
+        <button id="resume" class="secondary">Resume recording</button>
+      </div>
+      <p class="hint">While paused nothing new is stored; recall of earlier memory keeps working. Text inside
+        <code>&lt;private&gt;…&lt;/private&gt;</code> and values that look like passwords or keys are never stored.</p>
+    </div>
+    <div class="card">
+      <h2>Export</h2>
+      <p class="muted">Download everything, with original text and sources, as one JSON file.</p>
+      <button id="export" class="secondary">Export memory</button>
+    </div>
+    <div class="card danger">
+      <h2>Erase everything</h2>
+      <p class="muted">Deletes the content of every message and note. Erasure is recorded, so it also holds if an
+        older backup is restored. This cannot be undone.</p>
+      <div class="row">
+        <input id="erase-confirm" placeholder="Type ERASE to confirm" autocomplete="off">
+        <button id="erase" class="danger">Erase everything</button>
+      </div>
+    </div>
+  </section>
+  <div id="message" role="status" aria-live="polite"></div>
+</main>
+</body>
+</html>

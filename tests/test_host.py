@@ -145,3 +145,42 @@ def test_private_text_never_reaches_the_database(tmp_path):
             desktop.stop(directory)
         except desktop.DesktopError:
             pass
+
+
+def test_memory_page_codes_are_single_use_and_expire(tmp_path):
+    code = host.issue_ui_code(tmp_path)
+    assert host.consume_ui_code(tmp_path, code) and not host.consume_ui_code(tmp_path, code)
+    stale = host.issue_ui_code(tmp_path)
+    codes = json.loads((tmp_path / "plugin" / "ui-codes.json").read_text())
+    (tmp_path / "plugin" / "ui-codes.json").write_text(json.dumps({key: 0 for key in codes}))
+    assert not host.consume_ui_code(tmp_path, stale)
+    assert not host.consume_ui_code(tmp_path, "short") and not host.consume_ui_code(tmp_path, None)
+    assert code not in (tmp_path / "plugin" / "ui-codes.json").read_text()
+
+
+@pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
+def test_memory_page_signs_in_once_and_controls_recording(tmp_path):
+    import httpx
+
+    from membrain.local_profile import load_profile
+
+    directory = tmp_path / "brain"
+    try:
+        host.start(directory)
+        base = load_profile(directory).base_url
+        assert "memory.js" in httpx.get(base + "/memory").text
+        code = host.issue_ui_code(directory)
+        session = httpx.post(base + "/v1/local/ui-session", json={"code": code})
+        assert session.status_code == 200 and session.json()["brain_id"] == load_profile(directory).brain_id
+        assert httpx.post(base + "/v1/local/ui-session", json={"code": code}).status_code == 401
+        headers = {"Authorization": "Bearer " + session.json()["api_key"]}
+        assert httpx.get(base + "/v1/local/recording").status_code == 401
+        assert httpx.post(base + "/v1/local/recording", json={"paused": True, "hours": 2}, headers=headers).json()[
+            "recording"] == "paused" and host.paused(directory)
+        assert httpx.post(base + "/v1/local/recording", json={"paused": False}, headers=headers).json() == {
+            "recording": "on"}
+    finally:
+        try:
+            desktop.stop(directory)
+        except desktop.DesktopError:
+            pass

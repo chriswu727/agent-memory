@@ -251,6 +251,51 @@ def paused(directory: Path) -> bool:
     return True
 
 
+# Memory page sign-in -----------------------------------------------------------------------------------------
+
+UI_CODE_SECONDS = 120
+
+
+def _ui_codes(directory: Path) -> Path:
+    return state_directory(directory) / "ui-codes.json"
+
+
+def issue_ui_code(directory: Path) -> str:
+    """A single-use code that lets a browser on this machine open the memory page without copying a key."""
+    import hashlib
+    import secrets
+
+    code = secrets.token_urlsafe(32)
+    path, now_ = _ui_codes(directory), time.time()
+    try:
+        codes = {key: expiry for key, expiry in json.loads(path.read_text(encoding="utf-8")).items() if expiry > now_}
+    except (OSError, ValueError, AttributeError):
+        codes = {}
+    codes[hashlib.sha256(code.encode()).hexdigest()] = now_ + UI_CODE_SECONDS
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        json.dump(codes, stream)
+    return code
+
+
+def consume_ui_code(directory: Path, code: str) -> bool:
+    import hashlib
+
+    from .local_profile import profile_lock
+
+    if not isinstance(code, str) or not 20 <= len(code) <= 100:
+        return False
+    with profile_lock(state_directory(directory) / "ui-codes-lock", timeout=5):
+        path = _ui_codes(directory)
+        try:
+            codes = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        expiry = codes.pop(hashlib.sha256(code.encode()).hexdigest(), None) if isinstance(codes, dict) else None
+        path.write_text(json.dumps(codes), encoding="utf-8")
+    return isinstance(expiry, (int, float)) and expiry > time.time()
+
+
 # Records, spool and session state -----------------------------------------------------------------------------
 
 def message_record(session: str, role: str, text: str, *, turn_id: str | None = None,

@@ -22,6 +22,7 @@ Every hook fails open: if memory is unavailable the prompt and reply proceed unc
 ## Data and control
 
 - Memory is stored under your user data directory (`~/.local/share/membrain` on Linux, `~/Library/Application Support/memBrain` on macOS, `%LOCALAPPDATA%\memBrain` on Windows). Set `MEMBRAIN_DIRECTORY` to use another location.
+- `membrain plugin ui` opens your memory page in the browser with a single-use link: review, correct and delete notes, browse and delete conversations, search, pause recording, export or erase everything.
 - `membrain plugin status` shows the service state, queued records and whether semantic recall is ready; `membrain desktop stop` stops the service.
 - Ask Claude to forget something, or use the `memory_forget` tool, to suppress or erase records.
 - Say "don't remember this" (Claude calls `memory_pause`) or run `membrain plugin pause [--hours N]` to stop recording; `membrain plugin resume` turns it back on. A turn in which recording is paused is not stored at all.

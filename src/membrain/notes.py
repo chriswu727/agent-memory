@@ -15,7 +15,7 @@ NOTES_CHARACTERS = 3500
 
 
 def list_notes(client, *, max_characters: int = NOTES_CHARACTERS) -> dict:
-    return client.timeline(roles=("assistant",), conversation_id=NOTES_CONVERSATION, max_characters=max_characters,
+    return client.timeline(roles=("assistant", "user"), conversation_id=NOTES_CONVERSATION, max_characters=max_characters,
                            max_item_characters=NOTE_CHARACTERS, limit=200)
 
 
@@ -43,10 +43,11 @@ def render_notes(response: dict) -> str | None:
     items = [item for item in response.get("items", []) if isinstance(item.get("text"), str) and item["text"].strip()]
     if not items:
         return None
-    lines = [f"- [{(item.get('recorded_at') or '')[:10]}] {' '.join(item['text'].split())} (id: {item['event_id']})"
-             for item in reversed(items)]
+    lines = [f"- [{(item.get('recorded_at') or '')[:10]}{' · written by the user' if item.get('actor_role') == 'user' else ''}] "
+             f"{' '.join(item['text'].split())} (id: {item['event_id']})" for item in reversed(items)]
     more = "" if response.get("complete", True) else " Older notes did not fit and are not shown."
-    return ("<membrain-notes>\nNotes you saved about this user in earlier sessions, oldest first. They are your "
-            "own summaries, not the user's words; the user's current message takes precedence. When a fact "
+    return ("<membrain-notes>\nNotes about this user from earlier sessions, oldest first. Unless marked as written "
+            "by the user, they are your own summaries, not the user's words; notes the user wrote or corrected take "
+            "precedence over yours, and the user's current message over both. When a fact "
             "changes, save the new note with memory_note and pass the old note's id in replaces." + more + "\n"
             + "\n".join(lines) + "\n</membrain-notes>")

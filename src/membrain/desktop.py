@@ -486,7 +486,7 @@ class LocalSupervisor:
                 "instance_id": self.instance_id, "configuration": self.configuration}
 
     def app(self):
-        from fastapi import Header, HTTPException
+        from fastapi import Body, Header, HTTPException
 
         from .api import create_app
 
@@ -505,6 +505,36 @@ class LocalSupervisor:
             return {"installation_id": self.profile.installation_id, "brain_id": self.profile.brain_id,
                     "instance_id": self.instance_id, "signature": _identity_signature(
                         self.profile, self.instance_id, x_memory_challenge)}
+
+        @app.post("/v1/local/ui-session")
+        def ui_session(body: dict = Body(...)):
+            from . import host
+
+            if not host.consume_ui_code(self.profile.directory, body.get("code")):
+                raise HTTPException(401, "This link has expired or was already used. Run membrain plugin ui again.")
+            return {"api_key": self.profile.api_key, "brain_id": self.profile.brain_id}
+
+        @app.get("/v1/local/recording")
+        def recording_state(authorization: str | None = Header(default=None)):
+            from . import host
+
+            authenticate(authorization)
+            return {"recording": "paused" if host.paused(self.profile.directory) else "on"}
+
+        @app.post("/v1/local/recording")
+        def change_recording(body: dict = Body(...), authorization: str | None = Header(default=None)):
+            from . import host
+
+            authenticate(authorization)
+            if body.get("paused") is True:
+                hours = body.get("hours")
+                try:
+                    return host.pause(self.profile.directory, hours if hours is None else float(hours))
+                except (TypeError, ValueError) as error:
+                    raise HTTPException(422, str(error)) from None
+            if body.get("paused") is False:
+                return host.resume(self.profile.directory)
+            raise HTTPException(422, "Set paused to true or false")
 
         @app.get("/v1/local/status")
         def local_status(authorization: str | None = Header(default=None)):
