@@ -117,15 +117,16 @@ class ChatMemory:
             host.finish_turn(self.directory, session, reply, turn_id=turn_id, producer=self.producer, prompt=prompt,
                              user_id=self.user_id(speaker))
 
-    def note(self, speaker: Speaker, text: str, replaces=()) -> dict:
-        from ..notes import save_note
+    def note(self, speaker: Speaker, text: str, replaces=(), **fields) -> dict:
+        from ..notes import note_fields, save_note
 
         user = self.user_id(speaker)
         client = self._client(user)
         if client is None:
             return {"error": "memBrain is starting; try again in a few seconds."}
         with client:
-            result = save_note(client, host.scrub(str(text or "")), replaces=tuple(replaces or ()))
+            result = save_note(client, host.scrub(str(text or "")), replaces=tuple(replaces or ()),
+                               **note_fields(fields))
         self._forget_blocks(user)
         return result
 

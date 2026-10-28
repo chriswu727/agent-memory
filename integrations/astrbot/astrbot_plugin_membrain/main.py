@@ -58,14 +58,30 @@ class MembrainPlugin(star.Star):
             self.logger.warning(f"memBrain recording failed: {type(error).__name__}: {error}")
 
     @filter.llm_tool(name="membrain_note")
-    async def membrain_note(self, event: AstrMessageEvent, text: str, replaces: list | None = None):
-        """Save one short, lasting fact about the user you are talking to (health, people, dates, places, preferences, decisions, plans and their changes) so it is shown in every later conversation. One fact per note, under 300 characters. Do not save routine requests or anything the user asked you not to keep.
+    async def membrain_note(self, event: AstrMessageEvent, text: str, replaces: list | None = None,
+                            kind: str | None = None, about: str | None = None, aliases: list | None = None,
+                            status: str | None = None, due: str | None = None, occurs_at: str | None = None,
+                            pinned: bool = False, sensitive: bool = False):
+        """Save one short, lasting fact about the user you are talking to (health, people, dates, places, preferences, decisions, plans and their changes) so it is shown in every later conversation. One fact per note, under 300 characters. Set kind when it is clear; a plan stays intended until the user confirms it is scheduled or done. When a fact changes, save the new note and pass the old note's id in replaces. Do not save routine requests or anything the user asked you not to keep.
 
         Args:
             text(string): The fact, in one sentence, with dates when they matter.
             replaces(array[string]): IDs of earlier notes this one replaces, when a fact changed.
+            kind(string): person, constraint, preference, plan, routine, milestone, relationship, agent_commitment or other.
+            about(string): Who the fact is about, by name, if not the user.
+            aliases(array[string]): Other names for that person, such as a nickname.
+            status(string): For plans and promises: intended, scheduled, done, cancelled or superseded.
+            due(string): YYYY-MM-DD by which a plan or promise should happen.
+            occurs_at(string): YYYY-MM-DD on which an event happens.
+            pinned(boolean): Always show this note.
+            sensitive(boolean): Health, money or other private matters.
         """
-        result = await asyncio.to_thread(self.memory.note, _speaker(event), text, replaces or ())
+        fields = {"kind": kind, "about": about, "aliases": aliases, "status": status, "due": due,
+                  "occurs_at": occurs_at, "pinned": pinned, "sensitive": sensitive}
+        try:
+            result = await asyncio.to_thread(self.memory.note, _speaker(event), text, replaces or (), **fields)
+        except ValueError as error:
+            result = {"error": str(error)}
         return json.dumps(result, ensure_ascii=False)
 
     @filter.llm_tool(name="membrain_search")

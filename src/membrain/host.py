@@ -45,8 +45,9 @@ def notes_notice(tools: dict | None = TOOL_NAMES) -> str:
         return ""  # Hosts without memory tools (the proxy) only read memory.
     return ("When the user states a lasting fact about themselves or their life (health, people, dates, places, "
             "preferences, decisions, constraints, or a change to an earlier plan), save it as one short note with the "
-            f"{tools['note']} tool, and replace the outdated note when something changes. Notes are shown at the "
-            "start of every session; raw messages are not always.")
+            f"{tools['note']} tool, with its kind (a plan stays intended until the user confirms it is scheduled or "
+            "done), and replace the outdated note when something changes. Notes are shown at the start of every "
+            "session; raw messages are not always.")
 
 
 def privacy_notice(tools: dict | None = TOOL_NAMES) -> str:
@@ -794,9 +795,9 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
     ``skip_imports_from`` names hosts whose own memory files are already in the prompt, so notes imported from them
     are not repeated.
     """
-    from .notes import list_notes, render_notes
+    from .notes import list_notes, render_coming_up, render_notes
 
-    history, notes, complete = None, None, False
+    history, notes, coming, complete = None, None, None, False
     client = ready_client(directory, user_id)
     if client is None:
         start_in_background(directory)
@@ -806,13 +807,16 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
             _finish_pending(directory, client, session)
             _finish_abandoned(directory, client)
             try:
-                notes = render_notes(list_notes(client), tool=tools["note"] if tools else None,
+                saved = list_notes(client)
+                notes = render_notes(saved, tool=tools["note"] if tools else None,
                                      skip_imports_from=tuple(skip_imports_from))
+                coming = render_coming_up(saved, skip_imports_from=tuple(skip_imports_from))
             except Exception as error:
                 log(directory, f"notes failed: {type(error).__name__}")
             try:
                 # Notice and history header take about 1,000 characters of the host's limit.
-                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - 1000) - len(notes or "")
+                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - 1000) - len(notes or "") - len(
+                    coming or "")
                 history, complete = _history(client, session, budget)
             except Exception as error:
                 log(directory, f"timeline failed: {type(error).__name__}")
@@ -828,7 +832,7 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
                       if tools else "") + notes_notice(tools))
     notice = " ".join((notice.strip(), privacy_notice(tools))) + (
         " Recording is currently paused." if paused(directory, user_id) else "")
-    return "\n\n".join(part for part in (notice, notes, history) if part)
+    return "\n\n".join(part for part in (notice, coming, notes, history) if part)
 
 
 def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str | None = None,
@@ -852,8 +856,10 @@ def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str |
                 deliver(directory, client, earlier)
             if history_complete(directory, session):
                 return None  # The complete earlier history is already in this session's context.
-            return recall_context(client, scrub(prompt), current_conversation=session,
-                                  cues=(previous,) if isinstance(previous, str) else ())
+            from .notes import alias_cues, list_notes
+
+            cues = ((previous,) if isinstance(previous, str) else ()) + alias_cues(list_notes(client), prompt)
+            return recall_context(client, scrub(prompt), current_conversation=session, cues=cues)
         except Exception as error:
             log(directory, f"recall failed: {type(error).__name__}")
             return None

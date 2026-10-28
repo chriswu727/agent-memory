@@ -99,6 +99,17 @@ async function loadNotes() {
   for (const note of items) list.append(noteItem(note));
 }
 
+const KINDS = ["person", "constraint", "preference", "plan", "routine", "milestone", "relationship",
+  "agent_commitment", "other"];
+
+// Typed notes start with a header such as "[plan · intended · due 2026-11-14 · about Mei]"; show it as tags.
+function typedNote(text) {
+  const match = /^\[([^\[\]]{1,200})\] ([\s\S]+)$/.exec(text || "");
+  const tokens = match ? match[1].split(" · ") : [];
+  if (!match || !KINDS.includes(tokens[0])) return { tags: [], sentence: text };
+  return { tags: tokens.map((token) => token.replace("agent_commitment", "my promise")), sentence: match[2] };
+}
+
 function noteItem(note) {
   const item = element("div", undefined, "item");
   const meta = element("div", undefined, "meta");
@@ -112,7 +123,9 @@ function noteItem(note) {
   const remove = element("button", "Delete", "link danger");
   actions.append(edit, remove);
   meta.append(actions);
-  const text = element("p", note.text);
+  const typed = typedNote(note.text);
+  for (const tag of typed.tags) meta.insertBefore(element("span", tag, "tag"), actions);
+  const text = element("p", typed.sentence);
   item.append(meta, text);
   edit.addEventListener("click", () => editNote(item, note));
   guard(remove, async () => {

@@ -164,6 +164,8 @@ Goal: be measurably better than the alternatives at remembering a person.
 
 ### B1. Typed notes
 
+Status: implemented. Instead of `application/json` content, a typed note is plain text with a parseable header (`[plan · intended · due 2026-11-14 · about Mei] …`): JSON content would bypass sentence segmentation and put serialized keys into the recall index, while the header keeps recall, the memory page, replacement and deletion unchanged. `source_event_ids` is not stored yet.
+
 A note becomes a JSON document, stored as an assistant-authored event with `application/json` content in the notes conversation, so no schema migration is needed. It has these fields:
 
 - `kind`: `person`, `constraint` (health, diet, access), `preference`, `plan`, `routine`, `milestone`, `relationship`, `agent_commitment` or `other`.
@@ -183,11 +185,15 @@ The `memory_note` tool accepts these fields, and plain text stays valid. Session
 
 ### B2. People and aliases
 
+Status: implemented (person notes with `about` and `aliases`, a People group at session start, alias names as recall cues).
+
 - `person` notes carry a name, aliases ("the sparky"), a relation to the user, and short facts.
 - Recall expands aliases into cues, so "the sparky" finds the electrician's name.
 - Session start shows a compact People block with each name's relation, so similar names stay apart (Tom the colleague, Tomás the brother-in-law).
 
 ### B3. Coming up and open loops
+
+Status: implemented (`<membrain-coming-up>` and skill guidance); its effect on the plan-versus-done case is measured in B7.
 
 - At session start, show plans due in the next two weeks, plans whose date has passed but are still `intended`, and agent commitments not yet fulfilled. Dates are relative to the host's local date.
 - The skill tells the agent to follow up naturally ("Did the passport arrive?") and never to assume a planned action happened.

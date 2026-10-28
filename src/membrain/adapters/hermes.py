@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import host
+from ..notes import NOTE_FIELDS, NOTE_TOOL_DESCRIPTION
 
 try:  # Hermes is only present when this module is loaded by Hermes; tests run without it.
     from agent.memory_provider import MemoryProvider as _Base
@@ -25,13 +26,9 @@ PRODUCER = "membrain-hermes"
 IMPORT_PRODUCER = "membrain-import:hermes"  # Notes that mirror Hermes's own USER.md.
 TOOLS = {"note": "membrain_note", "recall": "membrain_search", "pause": "membrain_pause"}
 _SCHEMAS = [
-    {"name": "membrain_note", "description": (
-        "Save one short, lasting fact about the user (health, people, dates, places, preferences, decisions, "
-        "constraints, plans and their changes) so it is shown at the start of every later session. One fact per "
-        "note, under 300 characters, with dates when they matter. When a fact changes, pass the old note's id in "
-        "replaces. Do not save routine requests or anything the user asked you not to keep."),
+    {"name": "membrain_note", "description": NOTE_TOOL_DESCRIPTION,
      "parameters": {"type": "object", "properties": {
-         "text": {"type": "string"}, "replaces": {"type": "array", "items": {"type": "string"}}},
+         "text": {"type": "string"}, "replaces": {"type": "array", "items": {"type": "string"}}, **NOTE_FIELDS},
          "required": ["text"]}},
     {"name": "membrain_search", "description": (
         "Search the user's earlier conversations and notes by a few concrete keywords (names, places, activities, "
@@ -148,7 +145,7 @@ class MembrainProvider(_Base):
         return list(_SCHEMAS)
 
     def handle_tool_call(self, tool_name: str, args: dict[str, Any], **kwargs) -> str:
-        from ..notes import save_note
+        from ..notes import note_fields, save_note
 
         try:
             if tool_name == "membrain_pause":
@@ -161,7 +158,8 @@ class MembrainProvider(_Base):
                 return json.dumps({"error": "memBrain is starting; try again in a few seconds."})
             with client:
                 if tool_name == "membrain_note":
-                    return json.dumps(save_note(client, args.get("text", ""), replaces=args.get("replaces") or ()))
+                    return json.dumps(save_note(client, args.get("text", ""), replaces=args.get("replaces") or (),
+                                                **note_fields(args)))
                 if tool_name == "membrain_search":
                     found = host.recall_context(client, host.scrub(str(args.get("query", ""))),
                                                 current_conversation=self._session)
