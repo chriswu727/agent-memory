@@ -288,7 +288,7 @@ def run(args) -> None:
     if args.max_questions:
         total = min(total, args.max_questions)
     arms = args.arms.split(",")
-    usage_path = out / f"usage-{'-'.join(arms)}.json"  # One file per invocation, so arms can run in parallel.
+    usage_path = out / f"usage-{'-'.join(arms)}{'-' + args.label if args.label else ''}.json"  # One file per invocation, so arms can run in parallel.
     earlier = json.loads(usage_path.read_text()) if usage_path.exists() else {}
 
     def save_usage():  # After every question, so a stopped run still reports what it cost.

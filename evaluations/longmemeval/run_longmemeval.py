@@ -180,7 +180,7 @@ def run(args) -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     arms = args.arms.split(",")
-    usage_path = out / f"usage-{'-'.join(arms)}.json"
+    usage_path = out / f"usage-{'-'.join(arms)}{'-' + args.label if args.label else ''}.json"
     earlier = json.loads(usage_path.read_text()) if usage_path.exists() else {}
     model = Model(args.base_url, args.model, cap=len(data) * len(arms) * 5 + 20, thinking=args.thinking)
 
