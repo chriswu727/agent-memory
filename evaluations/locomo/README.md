@@ -11,4 +11,4 @@ python evaluations/locomo/run_locomo.py --data locomo10.json --out evaluations/l
 
 Results are appended per question and resumed on restart; every model call is capped. The `M` arm builds one embedded installation per conversation (about 420 to 690 stored messages each) and pauses recording before questions so they never become memories. Use `--conversations 0 --max-questions 20` for a cheap first check.
 
-Status: harness verified end to end against a stub model (ingestion, history and recall injection, the `memory_recall` tool loop, judging, resumption and the report). No real-model results yet.
+Results: [2026-10-29 report](../locomo-2026-10-29.md), raw answers in `results-2026-10-29/`.

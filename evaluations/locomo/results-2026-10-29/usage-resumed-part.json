@@ -1,0 +1,9 @@
+{
+  "note": "Covers only the resumed part of the run (after the first key stopped working); see the report.",
+  "prompt_tokens": 39601090,
+  "completion_tokens": 90957,
+  "total_tokens": 39692047,
+  "prompt_cache_hit_tokens": 36634624,
+  "prompt_cache_miss_tokens": 2966466,
+  "calls": 6926
+}
