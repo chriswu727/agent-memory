@@ -23,6 +23,7 @@ LINE_CHARACTERS = 500
 RECALL_TOKENS = 16000  # Memory documents are large; this leaves room for about thirty ranked statements.
 MAX_MESSAGES = 8
 VECTOR_ONLY_STATEMENTS = 3  # Meaning-only matches have no relevance floor; keep only the closest few.
+MAX_REPLIES = 4  # Recalled questions whose next message (usually the answer) is shown too.
 CUE_CHARACTERS = 500
 MESSAGE_CHARACTERS = 700
 # Hosts cap one injected context field at 10,000 characters; the notice uses the rest.
@@ -653,8 +654,12 @@ def _informative(text: str) -> bool:
     return letters >= 8 and letters >= 0.6 * len(compact)
 
 
-def _sources(response: dict, current_conversation: str | None) -> list[tuple[str, int | None]]:
-    """Source messages of recalled statements in rank order, with where the best-ranked statement starts."""
+def _sources(response: dict, current_conversation: str | None, *, questions: set | None = None
+             ) -> list[tuple[str, int | None]]:
+    """Source messages of recalled statements in rank order, with where the best-ranked statement starts.
+
+    ``questions`` collects the messages whose matching statement was a question, whose answer is the next message.
+    """
     items = (response.get("result") or {}).get("items", [])
     vector = sorted((signal.get("score") or 0 for item in items for signal in item.get("rank_signals") or []
                      if signal.get("method") == "vector"), reverse=True)
@@ -673,11 +678,32 @@ def _sources(response: dict, current_conversation: str | None) -> list[tuple[str
             continue
         for ref in memory.get("evidence_refs") or []:
             event_id = ref.get("event_id")
-            if ref.get("relationship") != "supports" or not isinstance(event_id, str) or event_id in seen:
+            if ref.get("relationship") != "supports" or not isinstance(event_id, str):
+                continue
+            if questions is not None and match.group(2) == "inquiry":
+                questions.add(event_id)
+            if event_id in seen:
                 continue
             seen.add(event_id)
             sources.append((event_id, (ref.get("span") or {}).get("start")))
     return sources[:MAX_MESSAGES]
+
+
+def _replies(client, messages: list[dict], limit: int = MAX_REPLIES) -> dict[str, dict]:
+    """The message right after each recalled question in its conversation: where the answer to it usually is."""
+    replies, done = {}, set()
+    for message in messages[:limit]:
+        conversation = message.get("conversation_id")
+        if not conversation or conversation in done:
+            continue
+        done.add(conversation)
+        thread = client.timeline(roles=("user", "assistant"), conversation_id=conversation, max_characters=200_000,
+                                 max_item_characters=20_000, limit=1000).get("items", [])
+        ordered = list(reversed(thread))  # The timeline is newest first.
+        for index, item in enumerate(ordered[:-1]):
+            if item["event_id"] in {m["event_id"] for m in messages}:
+                replies.setdefault(item["event_id"], ordered[index + 1])
+    return replies
 
 
 def _window(text: str, start: int | None, size: int = MESSAGE_CHARACTERS) -> str:
@@ -697,7 +723,8 @@ def recall_context(client, query: str, *, current_conversation: str | None = Non
     cannot be read.
     """
     response = recall(client, query, cues)
-    sources = _sources(response, current_conversation)
+    questions: set = set()
+    sources = _sources(response, current_conversation, questions=questions)
     if not sources:
         return None
     try:
@@ -707,9 +734,17 @@ def recall_context(client, query: str, *, current_conversation: str | None = Non
         return render_context(response, current_conversation=current_conversation, limit=limit)
     messages = {item["event_id"]: item for item in found.get("items", [])}
     starts = dict(sources)
-    selected = sorted((messages[event_id] for event_id, _ in sources if event_id in messages
-                       and messages[event_id].get("conversation_id") != current_conversation),
-                      key=lambda item: item.get("recorded_at") or "")
+    ranked = [messages[event_id] for event_id, _ in sources if event_id in messages
+              and messages[event_id].get("conversation_id") != current_conversation]
+    try:
+        replies = _replies(client, [item for item in ranked if item["event_id"] in questions])
+    except Exception:
+        replies = {}
+    for reply in replies.values():
+        if reply["event_id"] not in messages:
+            messages[reply["event_id"]] = reply
+            ranked.append(reply)
+    selected = sorted(ranked, key=lambda item: (item.get("recorded_at") or "", item["event_id"]))
     lines = []
     for item in selected:
         speaker = _SPEAKERS.get(item.get("actor_role"), "remembered")
