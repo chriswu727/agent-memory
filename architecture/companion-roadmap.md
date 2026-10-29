@@ -229,6 +229,8 @@ Status: implemented, with two parts deliberately left out.
 
 ### B7. Evaluation
 
+Status: held-out scenarios done with DeepSeek as host ([report](../evaluations/v1-2026-10-29-phase-b.md)): the plugin scored 18.5 of 22, against 14.5 before Phase B, 18 with full history and 7.5 without memory. Claude as host and PersonaMem are not run yet.
+
 - Run PersonaMem.
 - Run two new held-out scenarios written by a separate agent, targeting:
   - plan versus done;
