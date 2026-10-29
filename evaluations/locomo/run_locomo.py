@@ -300,7 +300,8 @@ def run(args) -> None:
     model = Model(args.base_url, args.model, cap=total * len(arms) * 5 + 20, thinking=args.thinking)
     model_cache = None if args.no_semantic else out / "model-cache"
     for arm in arms:
-        path = out / f"answers-{arm}.jsonl"
+        name = f"{arm}-{args.label}" if args.label else arm
+        path = out / f"answers-{name}.jsonl"
         done = {json.loads(line)["id"] for line in path.read_text().splitlines()} if path.exists() else set()
         count = 0
         for sample in selected:
@@ -316,7 +317,7 @@ def run(args) -> None:
                 started = time.monotonic()
                 result = answer(model, arm, sample, directory, qid, qa["question"])
                 verdict = judge(model, qa["question"], qa["answer"], result["answer"])
-                row = {"id": qid, "arm": arm, "category": qa["category"], "question": qa["question"],
+                row = {"id": qid, "arm": name, "category": qa["category"], "question": qa["question"],
                        "gold": qa["answer"], **result, **verdict, "seconds": round(time.monotonic() - started, 2)}
                 with path.open("a", encoding="utf-8") as stream:
                     stream.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -370,6 +371,7 @@ def main() -> None:
     parser.add_argument("--model", default="deepseek-flash")
     parser.add_argument("--thinking", action="store_true", help="Let the host model reason before answering")
     parser.add_argument("--no-semantic", action="store_true", help="memBrain arm without the local embedding model")
+    parser.add_argument("--label", default="", help="Store this run as a separate arm, e.g. after a recall change")
     parser.add_argument("--report", action="store_true", help="Only summarize existing results")
     args = parser.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
