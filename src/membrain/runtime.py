@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
@@ -158,6 +159,13 @@ class TurnResult:
     replayed: bool = False
 
 
+def _transient(error):
+    """A failure that says nothing about the lease, such as a database lock wait reported as 503."""
+    if isinstance(error, httpx.HTTPStatusError):
+        return error.response.status_code == 503
+    return isinstance(error, httpx.TransportError)
+
+
 class _Lease:
     def __init__(self, journal, row, seconds):
         self.journal, self.row, self.seconds = journal, row, seconds
@@ -165,6 +173,7 @@ class _Lease:
         self.lock = threading.RLock()
         self.stopped = threading.Event()
         self.error = None
+        self.renewed = time.monotonic()
         self.thread = threading.Thread(target=self._heartbeat, daemon=True)
 
     def __enter__(self):
@@ -176,6 +185,10 @@ class _Lease:
             try:
                 self.check()
             except Exception as error:
+                # Background learning can hold the brain row past the turn's lock timeout; try again on the next
+                # beat while the last renewal still covers the lease.
+                if _transient(error) and time.monotonic() - self.renewed < self.seconds:
+                    continue
                 self.error = error
                 return
 
@@ -183,9 +196,11 @@ class _Lease:
         with self.lock:
             if self.error is not None:
                 raise RuntimeBlocked("lease_lost", self.row["turn_id"]) from self.error
+            started = time.monotonic()
             fresh = self.journal.renew(
                 self.row["turn_id"], lease_token=self.token, lease_seconds=self.seconds,
             )
+            self.renewed = started
             if not fresh["sources_available"]:
                 raise RuntimeBlocked("source_unavailable", self.row["turn_id"])
             return fresh
