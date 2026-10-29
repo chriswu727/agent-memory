@@ -61,6 +61,8 @@ hermes config set memory.provider membrain   # or: hermes memory setup
 
 Hermes then starts each session with your notes and recent messages, adds related earlier messages before each reply, records each turn, and gets `membrain_note`, `membrain_search`, `membrain_pause` and `membrain_resume` tools. What Hermes keeps about you in its `USER.md` is imported and later writes are mirrored as notes; its `MEMORY.md` (environment facts) stays in Hermes. The default Hermes profile shares memory with Claude Code on the same computer; other profiles get their own. The adapter is tested against Hermes's provider interface and a real memBrain service, but has not yet been run inside a real Hermes installation.
 
+**Benchmark.** On LoCoMo (1,540 questions), memBrain through the plugin path answered 69.5% correctly, against 81.4% with the whole conversation in context and 2.4% without memory, while giving the model about one eighth of the context. See the [report](evaluations/locomo-2026-10-29.md) for the method and limits.
+
 <a id="why-membrain"></a>
 
 ## Why memBrain

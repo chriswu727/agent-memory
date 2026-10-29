@@ -1,0 +1,34 @@
+{
+  "F": {
+    "overall": 0.8136363636363636,
+    "questions": 1540,
+    "temporal": 0.7071651090342679,
+    "open-domain": 0.5833333333333334,
+    "multi-hop": 0.7198581560283688,
+    "single-hop": 0.9120095124851367
+  },
+  "M": {
+    "overall": 0.6948051948051948,
+    "questions": 1540,
+    "temporal": 0.7133956386292835,
+    "open-domain": 0.53125,
+    "multi-hop": 0.5177304964539007,
+    "single-hop": 0.7657550535077289
+  },
+  "N": {
+    "overall": 0.024025974025974027,
+    "questions": 1540,
+    "temporal": 0.006230529595015576,
+    "open-domain": 0.1875,
+    "multi-hop": 0.024822695035460994,
+    "single-hop": 0.011890606420927468
+  },
+  "usage": {
+    "prompt_tokens": 39601090,
+    "completion_tokens": 90957,
+    "total_tokens": 39692047,
+    "prompt_cache_hit_tokens": 36634624,
+    "prompt_cache_miss_tokens": 2966466,
+    "calls": 6926
+  }
+}

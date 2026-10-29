@@ -133,7 +133,7 @@ Status: implemented (`membrain plugin import`, Hermes automatic import, per-host
 
 ### A6. Standard benchmarks
 
-Status: the LoCoMo harness is in [evaluations/locomo](../evaluations/locomo/README.md), verified against a stub model; real-model results and LongMemEval and PersonaMem are next.
+Status: LoCoMo done ([report](../evaluations/locomo-2026-10-29.md)): memBrain through the plugin path 69.5%, full context 81.4%, no memory 2.4%, with DeepSeek-V4.1-Flash answering and judging. LongMemEval and PersonaMem are next.
 
 Measure end-to-end answer accuracy with a judge, not retrieval alone, for these arms: no memory, full context (where it fits), and memBrain through the plugin path.
 
@@ -215,6 +215,8 @@ Status: implemented through typed notes: `agent_commitment` notes (promises, wit
 - These use the core's existing recall of the agent's own speech and commitments, and appear in Coming up.
 
 ### B6. Keeping notes tidy
+
+Status: partly implemented. Session start chooses notes within its budget by priority (pinned, the user's own, constraints and people, open plans and promises, then the newest), says how many were left out, and lists likely duplicates (same kind and person, high word overlap) for the agent to merge with `replaces`. Not built: embedding-based similarity, merge suggestions on the memory page, and decay.
 
 - Detect near-duplicate notes by embedding similarity and same `about`. Offer merges on the memory page, and let the host merge at session end when notes exceed a threshold.
 - When notes exceed the session-start budget, choose notes by pinned status, then by importance, recency and relevance to the session's first message.

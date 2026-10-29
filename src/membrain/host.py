@@ -820,6 +820,24 @@ def _finish_abandoned(directory: Path, client) -> int:
     return delivered
 
 
+def _session_notice(complete: bool, tools: dict | None, is_paused: bool, roleplay: str | None) -> str:
+    if complete:
+        notice = ("memBrain memory is active for this user. Their complete history from earlier sessions is "
+                  "below. " + notes_notice(tools))
+    else:
+        notice = ("memBrain memory is active for this user. Related messages from earlier conversations are "
+                  "added automatically before replies. " + (
+                      "When a request depends on the user's personal context and nothing relevant is shown, search "
+                      f"with the {tools['recall']} tool using a few concrete keywords before answering. "
+                      if tools else "") + notes_notice(tools))
+    notice = " ".join((notice.strip(), privacy_notice(tools))) + (" Recording is currently paused." if is_paused else "")
+    if roleplay:
+        notice = (f"This is a role-play with the character {' '.join(roleplay.split())}. The memory below is this "
+                  "story's own: it is fiction, not facts about the user's real life, and nothing said here is kept "
+                  "with their real-life memory. " + notice)
+    return notice
+
+
 def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_NAMES,
                     user_id: str | None = None, skip_imports_from=(), roleplay: str | None = None,
                     share_real_life: bool = False) -> str:
@@ -861,27 +879,15 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
                 log(directory, f"notes failed: {type(error).__name__}")
             try:
                 # Notice and history header take about 1,000 characters of the host's limit.
-                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - 1000) - len(notes or "") - len(
+                # Room for the longest notice, the history block's header and the separators between blocks.
+                reserved = max(len(_session_notice(value, tools, True, roleplay)) for value in (True, False)) + 400
+                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - reserved) - len(notes or "") - len(
                     coming or "") - len(shared or "")
                 history, complete = _history(client, session, budget)
             except Exception as error:
                 log(directory, f"timeline failed: {type(error).__name__}")
     _mark_history(directory, session, complete and history is not None)
-    if complete and history:
-        notice = ("memBrain memory is active for this user. Their complete history from earlier sessions is "
-                  "below. " + notes_notice(tools))
-    else:
-        notice = ("memBrain memory is active for this user. Related messages from earlier conversations are "
-                  "added automatically before replies. " + (
-                      "When a request depends on the user's personal context and nothing relevant is shown, search "
-                      f"with the {tools['recall']} tool using a few concrete keywords before answering. "
-                      if tools else "") + notes_notice(tools))
-    notice = " ".join((notice.strip(), privacy_notice(tools))) + (
-        " Recording is currently paused." if paused(directory, user_id) else "")
-    if roleplay:
-        notice = (f"This is a role-play with the character {' '.join(roleplay.split())}. The memory below is this "
-                  "story's own: it is fiction, not facts about the user's real life, and nothing said here is kept "
-                  "with their real-life memory. " + notice)
+    notice = _session_notice(complete and bool(history), tools, paused(directory, user_id), roleplay)
     return "\n\n".join(part for part in (notice, coming, notes, shared, history) if part)
 
 
