@@ -174,6 +174,9 @@ def select(data: list, sample: int, seed: int) -> list:
 
 def run(args) -> None:
     data = select(json.loads(Path(args.data).read_text()), args.sample, args.seed)
+    if args.shard:  # Run part of the sample, e.g. "2/3", in its own output directory and installation.
+        index, count = map(int, args.shard.split("/"))
+        data = data[index - 1::count]
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     arms = args.arms.split(",")
@@ -269,6 +272,7 @@ def main() -> None:
     parser.add_argument("--sample", type=int, default=0, help="Stratified sample size; 0 means all 500")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--ports", default="", help="API and database ports for a new installation, e.g. 8801,55441")
+    parser.add_argument("--shard", default="", help="Run only part i of n of the sample, e.g. 1/3")
     parser.add_argument("--label", default="")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
     parser.add_argument("--model", default="deepseek-flash")
