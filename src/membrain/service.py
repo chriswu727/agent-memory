@@ -312,8 +312,12 @@ class MemoryService:
                 (*params, previous["id"]),
             )
             descendants = self._retire_dependent_events(conn, principal, brain, [previous["id"]])
-            self._invalidate(conn, principal, brain, event_ids=[previous["id"], *descendants])
-            self._advance(conn, principal, brain)
+            invalidated = self._invalidate(conn, principal, brain, event_ids=[previous["id"], *descendants])
+            # An undelivered draft is never evidence, so recording its delivery changes nothing derived from it.
+            # Advancing here would make every other turn and cognitive job in the brain stale on each reply.
+            draft = (previous["document"] or {}).get("observed", {}).get("delivery_state") == "draft"
+            if descendants or invalidated or not draft:
+                self._advance(conn, principal, brain)
         brain["durable_sequence"] += 1
         document = {
             "event_id": previous["id"] if previous else (event_id or uid()),

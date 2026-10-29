@@ -296,6 +296,51 @@ def test_orientation_network_wait_does_not_prevent_lease_renewal():
         assert lease.orient()["orientation_job_id"] == "job"
 
 
+def http_error(status):
+    request = httpx.Request("POST", "http://memory.test/renew")
+    return httpx.HTTPStatusError("renew", request=request, response=httpx.Response(status, request=request))
+
+
+@pytest.mark.parametrize("failure", [http_error(503), httpx.ConnectError("refused")])
+def test_heartbeat_survives_a_transient_renewal_failure_while_the_lease_is_still_valid(failure):
+    # A background learning publication can hold the brain row past the turn's 2-second lock timeout, which the
+    # service reports as 503. The 2026-10-27 A/B lost turns permanently after one such renewal.
+    row = captured()
+    journal = Journal(row)
+    original_renew = journal.renew
+    outcomes = iter([failure])
+    recovered = threading.Event()
+
+    def renew(*args, **kwargs):
+        error = next(outcomes, None)
+        if error is not None:
+            raise error
+        recovered.set()
+        return original_renew(*args, **kwargs)
+
+    journal.renew = renew
+    with _Lease(journal, row, 0.6) as lease:
+        assert recovered.wait(2), "The heartbeat stopped after one transient failure"
+        assert lease.error is None
+        lease.stopped.set()
+
+
+@pytest.mark.parametrize("failure,seconds", [(http_error(409), 0.6), (http_error(422), 0.6), (http_error(503), 0.06)])
+def test_heartbeat_stops_on_a_lease_rejection_or_once_the_lease_must_have_expired(failure, seconds):
+    row = captured()
+    journal = Journal(row)
+
+    def renew(*args, **kwargs):
+        raise failure
+
+    journal.renew = renew
+    with _Lease(journal, row, seconds) as lease:
+        lease.thread.join(5)
+        assert not lease.thread.is_alive() and lease.error is failure
+        with pytest.raises(RuntimeBlocked, match="lease_lost"):
+            lease.check()
+
+
 def make_job(turns, *, kind="orient", turn_id=None, brain_id=None):
     job_id = uid()
     with turns.database.transaction(turns.principal) as conn:
