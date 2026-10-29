@@ -18,12 +18,12 @@ import time
 from pathlib import Path
 
 PRODUCER = "membrain-plugin"
-CONTEXT_CHARACTERS = 6000
+CONTEXT_CHARACTERS = 9000  # Under Claude Code's 10,000-character limit for hook output.
 LINE_CHARACTERS = 500
-RECALL_TOKENS = 16000  # Memory documents are large; this leaves room for about thirty ranked statements.
-MAX_MESSAGES = 8
-VECTOR_ONLY_STATEMENTS = 3  # Meaning-only matches have no relevance floor; keep only the closest few.
-MAX_REPLIES = 4  # Recalled questions whose next message (usually the answer) is shown too.
+RECALL_TOKENS = 32000  # Memory documents are large; this leaves room for about fifty ranked statements.
+MAX_MESSAGES = 12
+VECTOR_ONLY_STATEMENTS = 10  # Meaning-only matches have no relevance floor; keep only the closest ones.
+MAX_REPLIES = 8  # Recalled messages whose next message (the answer or reaction) is shown too, questions first.
 CUE_CHARACTERS = 500
 MESSAGE_CHARACTERS = 700
 # Hosts cap one injected context field at 10,000 characters; the notice uses the rest.
@@ -690,8 +690,8 @@ def _sources(response: dict, current_conversation: str | None, *, questions: set
 
 
 def _replies(client, messages: list[dict], limit: int = MAX_REPLIES) -> dict[str, dict]:
-    """The message right after each recalled question in its conversation: where the answer to it usually is."""
-    replies, done = {}, set()
+    """The message right after each of the first ``limit`` recalled messages in its conversation."""
+    replies, done, wanted = {}, set(), {message["event_id"] for message in messages[:limit]}
     for message in messages[:limit]:
         conversation = message.get("conversation_id")
         if not conversation or conversation in done:
@@ -701,7 +701,7 @@ def _replies(client, messages: list[dict], limit: int = MAX_REPLIES) -> dict[str
                                  max_item_characters=20_000, limit=1000).get("items", [])
         ordered = list(reversed(thread))  # The timeline is newest first.
         for index, item in enumerate(ordered[:-1]):
-            if item["event_id"] in {m["event_id"] for m in messages}:
+            if item["event_id"] in wanted:
                 replies.setdefault(item["event_id"], ordered[index + 1])
     return replies
 
@@ -737,7 +737,9 @@ def recall_context(client, query: str, *, current_conversation: str | None = Non
     ranked = [messages[event_id] for event_id, _ in sources if event_id in messages
               and messages[event_id].get("conversation_id") != current_conversation]
     try:
-        replies = _replies(client, [item for item in ranked if item["event_id"] in questions])
+        # The next message holds the answer to a recalled question, or the reaction to a recalled statement.
+        replies = _replies(client, [item for item in ranked if item["event_id"] in questions]
+                           + [item for item in ranked if item["event_id"] not in questions])
     except Exception:
         replies = {}
     for reply in replies.values():
