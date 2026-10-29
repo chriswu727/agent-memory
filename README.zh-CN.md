@@ -61,7 +61,7 @@ hermes config set memory.provider membrain   # 或：hermes memory setup
 
 之后 Hermes 会在每个会话开始时注入你的笔记和最近消息，在每次回复前加入相关的早期消息，记录每一轮对话，并获得 `membrain_note`、`membrain_search`、`membrain_pause` 和 `membrain_resume` 工具。Hermes 在 `USER.md` 中记下的关于你的内容会被导入，之后的写入也会同步为笔记；它的 `MEMORY.md`（环境信息）留在 Hermes 中。默认 Hermes 配置档与同一台电脑上的 Claude Code 共享记忆；其他配置档各自独立。该适配器已按 Hermes 的接口和真实 memBrain 服务测试，但尚未在真实的 Hermes 安装中运行过。
 
-**基准测试。** 在 LoCoMo（1540 道题）上，走插件流程的 memBrain 答对 76.4%，把整段对话放进上下文为 81.4%，没有记忆为 2.4%；memBrain 给模型的上下文约为后者的七分之一。在没有用于调整召回的 7 段对话上，得分从调整前的 69.3% 提高到 76.2%（[报告](evaluations/locomo-2026-10-29.md)）。在两个留出的、关于记住一个人生活的场景上（计划是否真的完成、相似的人名、即将发生的事、承诺、角色扮演），插件得分 18.5/22，Phase B 之前为 14.5，把完整历史放进提示词为 18（[报告](evaluations/v1-2026-10-29-phase-b.md)）。
+**基准测试。** 在 LoCoMo（1540 道题）上，走插件流程的 memBrain 答对 76.4%，把整段对话放进上下文为 81.4%，没有记忆为 2.4%；memBrain 给模型的上下文约为后者的七分之一。在没有用于调整召回的 7 段对话上，得分从调整前的 69.3% 提高到 76.2%（[报告](evaluations/locomo-2026-10-29.md)）。在 LongMemEval 的 30 题抽样上，它与把完整历史放进上下文打平（都答对 22 题），提示词 token 约为后者的二十分之一；薄弱点是询问助手自己之前说过什么的问题（[报告](evaluations/longmemeval-2026-10-29.md)）。在两个留出的、关于记住一个人生活的场景上（计划是否真的完成、相似的人名、即将发生的事、承诺、角色扮演），插件得分 18.5/22，Phase B 之前为 14.5，把完整历史放进提示词为 18（[报告](evaluations/v1-2026-10-29-phase-b.md)）。
 
 <a id="why-membrain"></a>
 

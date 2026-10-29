@@ -133,7 +133,7 @@ Status: implemented (`membrain plugin import`, Hermes automatic import, per-host
 
 ### A6. Standard benchmarks
 
-Status: LoCoMo done ([report](../evaluations/locomo-2026-10-29.md)), with DeepSeek-V4.1-Flash answering and judging: memBrain through the plugin path 76.4% after recall changes tuned on three of the ten conversations (76.2% on the other seven, up from 69.3%), full context 81.4%, no memory 2.4%. LongMemEval is running on a sample; PersonaMem is next.
+Status: LoCoMo done ([report](../evaluations/locomo-2026-10-29.md)), with DeepSeek-V4.1-Flash answering and judging: memBrain through the plugin path 76.4% after recall changes tuned on three of the ten conversations (76.2% on the other seven, up from 69.3%), full context 81.4%, no memory 2.4%. LongMemEval on a 30-question sample ([report](../evaluations/longmemeval-2026-10-29.md)): memBrain 22, full history 22, no memory 2; the full 500 questions need faster embedding. PersonaMem is next.
 
 Measure end-to-end answer accuracy with a judge, not retrieval alone, for these arms: no memory, full context (where it fits), and memBrain through the plugin path.
 

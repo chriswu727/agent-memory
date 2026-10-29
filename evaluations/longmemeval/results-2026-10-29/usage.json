@@ -1,0 +1,18 @@
+{
+  "M (30 questions, 3 shards)": {
+    "prompt_tokens": 174727,
+    "completion_tokens": 3322,
+    "total_tokens": 178049,
+    "prompt_cache_hit_tokens": 16384,
+    "prompt_cache_miss_tokens": 158343,
+    "calls": 62
+  },
+  "N and F (62 questions)": {
+    "prompt_tokens": 7164677,
+    "completion_tokens": 10344,
+    "total_tokens": 7175021,
+    "prompt_cache_hit_tokens": 116992,
+    "prompt_cache_miss_tokens": 7047685,
+    "calls": 249
+  }
+}
