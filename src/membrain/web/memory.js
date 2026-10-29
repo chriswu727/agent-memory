@@ -96,7 +96,31 @@ async function loadNotes() {
     list.append(element("p", "No notes yet. Your agent adds notes when you mention lasting facts; you can add your own above.", "empty"));
     return;
   }
-  for (const note of items) list.append(noteItem(note));
+  const pairs = duplicatePairs(items);
+  for (const note of items) list.append(noteItem(note, pairs.get(note.event_id)));
+}
+
+// Notes your agent saved about the same thing in nearly the same words (as session start points out).
+function words(text) {
+  return new Set((text.toLowerCase().match(/[\p{L}\p{N}_]+/gu) || []).filter((word) => word.length > 2));
+}
+
+function duplicatePairs(items) {
+  const own = items.filter((note) => note.actor_role !== "user").map((note) => {
+    const typed = typedNote(note.text);
+    const about = typed.tags.find((tag) => tag.startsWith("about ")) || "";
+    return { note, key: `${typed.tags[0] || ""}|${about}`, words: words(typed.sentence) };
+  });
+  const pairs = new Map();  // Newer note id -> older duplicate.
+  own.forEach((first, index) => {
+    for (const second of own.slice(index + 1)) {
+      if (first.key !== second.key || pairs.has(first.note.event_id)) continue;
+      const union = new Set([...first.words, ...second.words]);
+      const shared = [...first.words].filter((word) => second.words.has(word)).length;
+      if (union.size && shared / union.size >= 0.75) pairs.set(first.note.event_id, second.note);
+    }
+  });
+  return pairs;
 }
 
 const KINDS = ["person", "constraint", "preference", "plan", "routine", "milestone", "relationship",
@@ -110,7 +134,7 @@ function typedNote(text) {
   return { tags: tokens.map((token) => token.replace("agent_commitment", "my promise")), sentence: match[2] };
 }
 
-function noteItem(note) {
+function noteItem(note, duplicate) {
   const item = element("div", undefined, "item");
   const meta = element("div", undefined, "meta");
   meta.append(element("span", day(note.recorded_at)));
@@ -121,6 +145,12 @@ function noteItem(note) {
   const actions = element("span", undefined, "actions");
   const edit = element("button", "Edit", "link");
   const remove = element("button", "Delete", "link danger");
+  if (duplicate) {
+    const merge = element("button", "Merge duplicate", "link");
+    merge.title = `Nearly the same as: ${typedNote(duplicate.text).sentence}`;
+    merge.addEventListener("click", () => editNote(item, note, [duplicate]));
+    actions.append(merge);
+  }
   actions.append(edit, remove);
   meta.append(actions);
   const typed = typedNote(note.text);
@@ -137,11 +167,11 @@ function noteItem(note) {
   return item;
 }
 
-function editNote(item, note) {
+function editNote(item, note, merged = []) {
   const form = element("form", undefined, "row");
   const input = element("input");
   input.value = note.text;
-  input.maxLength = 300;
+  input.maxLength = 480;  // A typed note's header comes on top of its 300-character sentence.
   const save = element("button", "Save");
   const cancel = element("button", "Cancel", "secondary");
   cancel.type = "button";
@@ -151,10 +181,11 @@ function editNote(item, note) {
   cancel.addEventListener("click", loadNotes);
   onSubmit(form, async () => {
     const text = input.value.trim();
-    if (!text || text === note.text) return loadNotes();
+    if (!text || (text === note.text && !merged.length)) return loadNotes();
     await observe(text, NOTES, "user", "membrain-memory-page");
-    await forget("events", [note.event_id], "suppress_recall", NOTES);  // Kept for audit, no longer shown.
-    notify("Note corrected. Your version takes precedence.");
+    const replaced = [note.event_id, ...merged.map((other) => other.event_id)];
+    await forget("events", replaced, "suppress_recall", NOTES);  // Kept for audit, no longer shown.
+    notify(merged.length ? "Notes merged into your version." : "Note corrected. Your version takes precedence.");
     await loadNotes();
   });
 }
