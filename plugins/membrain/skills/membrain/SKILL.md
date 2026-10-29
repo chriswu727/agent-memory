@@ -44,7 +44,7 @@ Automatic recall matches the current message by keywords and meaning, so it can 
 
 When the user asks to forget something:
 
-1. Find the records with `memory_recall`; the `memory_versions` map gives each record's `memory_id`.
+1. Find the records with `memory_recall` and `with_ids: true`; the `memory_versions` map gives each record's `memory_id`.
 2. Call `memory_inspect` with those IDs to confirm the content and read the `scope_generation` from each memory's `scope`.
 3. Call `memory_forget` with `kind: "memories"`, the IDs, `expected_scope_generation`, and `mode: "erase_content"` when they want it deleted or `"suppress_recall"` when they only want it to stop coming up.
 4. Report exactly what the tool returned. Do not claim deletion without a successful result.

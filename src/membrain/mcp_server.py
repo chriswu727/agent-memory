@@ -42,38 +42,53 @@ def create_server(client: MemoryClient, *, directory=None) -> FastMCP:
         capabilities["supported_actions"] = ["observe", "prepare", "recall", "inspect", "checkpoint", "forget"]
         return {"adapter": capabilities, "service": await asyncio.to_thread(client.capabilities)}
 
-    @server.tool(annotations=READ_ONLY)
-    async def memory_recall(
-        query: str, conversation_id: str | None = None, branch_id: str | None = None,
-        additional_cues: list[str] | None = None, cue_event_ids: list[str] | None = None,
-        intent: Literal[
-            "continue_conversation", "exact_quote", "current_fact", "episode", "timeline",
-            "open_commitment", "procedure", "cue_recovery", "explore",
-        ] = "explore",
-        max_context_tokens: int = 16000,
-        evidence_mode: Literal["contextual", "prior_record_check"] = "contextual",
-        prior_to_event_id: str | None = None,
-        detail_level: Literal["auto", "summary", "full"] = "auto",
-    ) -> dict[str, Any]:
-        """Recall authorized evidence. Use prior_record_check to check what was recorded before a cue."""
-        retrieval: dict[str, Any] = {"evidence_mode": evidence_mode}
-        if detail_level != "auto":
-            retrieval["detail_level"] = detail_level
-        if prior_to_event_id is not None:
-            retrieval["evidence_cutoff"] = {"mode": "before_event", "event_id": prior_to_event_id}
-        def recall(embedding_calls):
-            return client.recall(
-                query, conversation_id=conversation_id, branch_id=branch_id, intent=intent,
-                additional_cues=additional_cues or (), cue_event_ids=cue_event_ids or (),
-                budget={**default_budget(max_context_tokens), "max_embedding_calls": embedding_calls}, **retrieval)
+    if directory is not None:
+        @server.tool(annotations=READ_ONLY)
+        async def memory_recall(query: str, with_ids: bool = False) -> dict[str, Any]:
+            """Search this user's memory from earlier sessions with a few concrete keywords (names, places, dates,
+            topics). Returns the matching messages with their dates, and the reply that followed the closest ones.
+            Set with_ids only when you need memory IDs (memory_versions) to inspect or forget records."""
+            from membrain import host
 
-        try:
-            response = await asyncio.to_thread(recall, 1)
-        except MemoryActionError:
-            response = await asyncio.to_thread(recall, 0)  # Without a usable query embedding, keyword recall still works.
-        return {"action": "recall", "outcome": response["outcome"],
-                "context": recalled_context(response),
-                "context_tokens": response["result"]["usage"]["context_tokens"]}
+            if with_ids:
+                response = await asyncio.to_thread(host.recall, client, host.scrub(query))
+                return {"action": "recall", "outcome": response["outcome"], "context": recalled_context(response)}
+            # The same compact recall the hooks inject, so tool results read like the rest of the memory context.
+            found = await asyncio.to_thread(host.recall_context, client, host.scrub(query))
+            return {"context": found or "No matching records."}
+    else:
+        @server.tool(annotations=READ_ONLY)
+        async def memory_recall(
+            query: str, conversation_id: str | None = None, branch_id: str | None = None,
+            additional_cues: list[str] | None = None, cue_event_ids: list[str] | None = None,
+            intent: Literal[
+                "continue_conversation", "exact_quote", "current_fact", "episode", "timeline",
+                "open_commitment", "procedure", "cue_recovery", "explore",
+            ] = "explore",
+            max_context_tokens: int = 16000,
+            evidence_mode: Literal["contextual", "prior_record_check"] = "contextual",
+            prior_to_event_id: str | None = None,
+            detail_level: Literal["auto", "summary", "full"] = "auto",
+        ) -> dict[str, Any]:
+            """Recall authorized evidence. Use prior_record_check to check what was recorded before a cue."""
+            retrieval: dict[str, Any] = {"evidence_mode": evidence_mode}
+            if detail_level != "auto":
+                retrieval["detail_level"] = detail_level
+            if prior_to_event_id is not None:
+                retrieval["evidence_cutoff"] = {"mode": "before_event", "event_id": prior_to_event_id}
+            def recall(embedding_calls):
+                return client.recall(
+                    query, conversation_id=conversation_id, branch_id=branch_id, intent=intent,
+                    additional_cues=additional_cues or (), cue_event_ids=cue_event_ids or (),
+                    budget={**default_budget(max_context_tokens), "max_embedding_calls": embedding_calls}, **retrieval)
+
+            try:
+                response = await asyncio.to_thread(recall, 1)
+            except MemoryActionError:
+                response = await asyncio.to_thread(recall, 0)  # Without a usable query embedding, keyword recall still works.
+            return {"action": "recall", "outcome": response["outcome"],
+                    "context": recalled_context(response),
+                    "context_tokens": response["result"]["usage"]["context_tokens"]}
 
     @server.tool(annotations=READ_ONLY)
     async def memory_inspect(
