@@ -430,8 +430,9 @@ def test_recalled_statements_are_shown_as_their_source_messages_oldest_first():
 
 
 def test_meaning_only_matches_are_capped_and_timeline_failure_falls_back_to_statements():
+    cap = host.VECTOR_ONLY_STATEMENTS
     items = [_source(f"user user (direct_statement): Vector match number {index} here.", f"v{index}",
-                     methods=("vector",), score=0.01 - index * 0.001) for index in range(6)]
+                     methods=("vector",), score=0.1 - index * 0.001) for index in range(cap + 3)]
 
     class Client:
         brain_id = "brain"
@@ -442,7 +443,8 @@ def test_meaning_only_matches_are_capped_and_timeline_failure_falls_back_to_stat
         def timeline(self, **options):
             raise RuntimeError("down")
 
-    assert [event for event, _ in host._sources(_response(*items), None)] == ["v0", "v1", "v2"]
+    assert [event for event, _ in host._sources(_response(*items), None)] == [
+        f"v{index}" for index in range(min(cap, host.MAX_MESSAGES))]
     assert "Vector match number 0 here." in plugin.recall_context(Client(), "q")
 
 
@@ -601,3 +603,33 @@ def test_workbuddy_launcher_queues_input_until_the_runtime_is_installed(tmp_path
         assert result.returncode == 0 and result.stdout == ""
     lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
     assert [json.loads(line) for line in lines] == [payload]
+
+
+def test_recall_shows_the_answer_that_followed_a_recalled_question():
+    question = _source("user user (inquiry): Any fun plans for the summer?", "q1", methods=("keyword",))
+    thread = [  # Newest first, as the timeline returns them.
+        {"event_id": "a2", "conversation_id": "c1", "actor_role": "user", "text": "Lovely!",
+         "recorded_at": "2026-05-25T10:03:00Z"},
+        {"event_id": "a1", "conversation_id": "c1", "actor_role": "user",
+         "text": "Researching adoption agencies, it has been a dream.", "recorded_at": "2026-05-25T10:02:00Z"},
+        {"event_id": "q1", "conversation_id": "c1", "actor_role": "user", "text": "Any fun plans for the summer?",
+         "recorded_at": "2026-05-25T10:01:00Z"},
+    ]
+
+    class Client:
+        brain_id = "brain"
+
+        def recall(self, query, **options):
+            return _response(question)
+
+        def timeline(self, **options):
+            if options.get("event_ids"):
+                return {"items": [item for item in thread if item["event_id"] in options["event_ids"]]}
+            assert options["conversation_id"] == "c1"
+            return {"items": thread}
+
+    context = plugin.recall_context(Client(), "What are Caroline's plans for the summer?")
+    lines = context.splitlines()
+    assert any("Any fun plans for the summer?" in line for line in lines)
+    assert any("Researching adoption agencies" in line for line in lines) and "Lovely!" not in context
+    assert [line for line in lines if line.startswith("- ")][0].endswith("Any fun plans for the summer?")

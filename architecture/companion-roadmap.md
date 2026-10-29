@@ -133,7 +133,7 @@ Status: implemented (`membrain plugin import`, Hermes automatic import, per-host
 
 ### A6. Standard benchmarks
 
-Status: LoCoMo done ([report](../evaluations/locomo-2026-10-29.md)): memBrain through the plugin path 69.5%, full context 81.4%, no memory 2.4%, with DeepSeek-V4.1-Flash answering and judging. LongMemEval and PersonaMem are next.
+Status: LoCoMo done ([report](../evaluations/locomo-2026-10-29.md)), with DeepSeek-V4.1-Flash answering and judging: memBrain through the plugin path 76.4% after recall changes tuned on three of the ten conversations (76.2% on the other seven, up from 69.3%), full context 81.4%, no memory 2.4%. LongMemEval on a 30-question sample ([report](../evaluations/longmemeval-2026-10-29.md)): memBrain 22, full history 22, no memory 2; the full 500 questions need faster embedding. PersonaMem is next.
 
 Measure end-to-end answer accuracy with a judge, not retrieval alone, for these arms: no memory, full context (where it fits), and memBrain through the plugin path.
 
@@ -216,13 +216,20 @@ Status: implemented through typed notes: `agent_commitment` notes (promises, wit
 
 ### B6. Keeping notes tidy
 
-Status: partly implemented. Session start chooses notes within its budget by priority (pinned, the user's own, constraints and people, open plans and promises, then the newest), says how many were left out, and lists likely duplicates (same kind and person, high word overlap) for the agent to merge with `replaces`. Not built: embedding-based similarity, merge suggestions on the memory page, and decay.
+Status: implemented, with two parts deliberately left out.
+
+- Session start chooses notes within its budget by priority (pinned, the user's own, constraints and people, open plans and promises, then the newest within each tier), says how many were left out, and lists likely duplicates (same kind and person, high word overlap) for the agent to merge with `replaces`.
+- The memory page marks the same likely duplicates and offers **Merge duplicate**: the person edits the merged sentence, which is saved as their own note and replaces both.
+- Not built: embedding similarity. Hooks run as short processes and cannot load the embedding model cheaply on every session start. Same kind, same person and word overlap catch the duplicates seen in the evaluations so far.
+- Not built: usage-based decay. Within each priority tier, newer notes already come first, and a note is never deleted automatically. Recording note use would mean a write on every recall, for a ranking change that has not been shown to matter.
 
 - Detect near-duplicate notes by embedding similarity and same `about`. Offer merges on the memory page, and let the host merge at session end when notes exceed a threshold.
 - When notes exceed the session-start budget, choose notes by pinned status, then by importance, recency and relevance to the session's first message.
 - Unpinned trivial notes lose priority over time (decay that resets on use) but are never deleted automatically.
 
 ### B7. Evaluation
+
+Status: held-out scenarios done with DeepSeek as host ([report](../evaluations/v1-2026-10-29-phase-b.md)): the plugin scored 18.5 of 22, against 14.5 before Phase B, 18 with full history and 7.5 without memory. Claude as host and PersonaMem are not run yet.
 
 - Run PersonaMem.
 - Run two new held-out scenarios written by a separate agent, targeting:

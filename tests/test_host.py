@@ -129,6 +129,22 @@ def test_mcp_offers_pause_tools_only_for_a_local_installation(tmp_path):
     assert not {"memory_pause", "memory_resume"} & tools(create_server(Client()))
 
 
+def test_mcp_recall_for_a_local_installation_is_the_compact_hook_recall(tmp_path, monkeypatch):
+    import asyncio
+
+    from membrain.mcp_server import create_server
+
+    seen = []
+    monkeypatch.setattr(host, "recall_context", lambda client, query, **options: seen.append(query) or "<recalled>")
+    server = create_server(Client(), directory=tmp_path)
+    tool = {tool.name: tool for tool in asyncio.run(server.list_tools())}["memory_recall"]
+    assert set(tool.inputSchema["properties"]) == {"query", "with_ids"}
+    _, result = asyncio.run(server.call_tool("memory_recall", {"query": "Mei's allergy"}))
+    assert result == {"context": "<recalled>"} and seen == ["Mei's allergy"]
+    generic = {tool.name: tool for tool in asyncio.run(create_server(Client()).list_tools())}["memory_recall"]
+    assert "intent" in generic.inputSchema["properties"]
+
+
 @pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
 def test_private_text_never_reaches_the_database(tmp_path):
     directory = tmp_path / "brain"

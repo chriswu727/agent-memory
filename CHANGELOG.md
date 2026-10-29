@@ -6,6 +6,18 @@ memBrain is a human-inspired memory engine for AI agents. It keeps persistent me
 
 ### Included
 
+- Memory of a person's life (Phase B):
+  - Typed notes: a note can carry a kind (person, constraint, preference, plan, routine, milestone, relationship, agent commitment), a person it is about, aliases, a plan status (intended, scheduled, done, cancelled), dates, pinned and sensitive. Notes are stored as plain text with a short header, so recall, the memory page and deletion work as before.
+  - Every session starts with a `<membrain-coming-up>` block of plans and promises that are due soon, overdue or still open, and with notes grouped by kind and chosen by priority within the budget.
+  - Alias names are used as recall cues, so "the sparky" finds the electrician.
+  - Role-play memory is kept apart from real life: a role-play character gets its own memory for each person (proxy header `X-Membrain-Roleplay`, the AstrBot setting, `ChatMemory(roleplay=…)`), and real-life notes are shown in a role-play only when allowed and never when marked sensitive.
+  - Likely duplicate notes are pointed out to the agent, and the memory page offers to merge them.
+  - On two held-out scenarios scored blind, the plugin went from 14.5 to 18.5 of 22 cases, against 18 for the whole history in the prompt and 7.5 for no memory ([report](evaluations/v1-2026-10-29-phase-b.md)).
+- Recall shows the reply that followed a recalled message (the answer to a recalled question, or the reaction to a recalled statement) and considers more candidates.
+- In Claude Code, Codex and WorkBuddy, the `memory_recall` tool now returns the same compact recall as the hooks. It used to return the service's generic rendering. `with_ids` still returns memory IDs for the forgetting steps.
+- `membrain plugin import` copies what Claude Code, Codex, Hermes and OpenClaw already remember about the person into notes, and session start skips imported notes that the host shows anyway.
+- Benchmarks: a LoCoMo harness and report (76.2% on the conversations not used for tuning, against 81.2% with the whole conversation in context; [2026-10-29](evaluations/locomo-2026-10-29.md)), and a LongMemEval harness with the benchmark's own reader and judge prompts. On a 30-question LongMemEval sample memBrain tied the whole history in context, 22 of 30 each ([report](evaluations/longmemeval-2026-10-29.md)). The full 500 questions have not been run; see Known limits.
+
 - Renamed the project to memBrain: distribution `membrain-ai`, command `membrain`, Claude Code plugin and marketplace `membrain`. Existing data directories, database and Docker volume names, the export format and `agent_memory` imports remain compatible.
 - A Claude Code plugin and marketplace (`plugins/membrain`) installable with one command. Hooks record messages and final replies, add matching records from earlier sessions before replies, queue records while the service starts, and never block the host. No Docker or extra model key is required.
 - An embedded PostgreSQL + pgvector database engine from the optional `embedded` extra, with the same schema, roles and row-level security as Docker. `desktop setup --database auto` selects it when installed; backup and restore keep the installation's engine. When run as root it uses a dedicated unprivileged account.
@@ -55,5 +67,7 @@ memBrain is a human-inspired memory engine for AI agents. It keeps persistent me
 Real-model observations still include historical information presented as current, irrelevant retrieved material and rejected valid semantic proposals. Earlier failed campaigns remain failed. See the [acceptance contract](architecture/v1-acceptance.md) and [closeout checklist](docs/releasing.md) for the remaining work and evidence boundaries.
 
 The [completed varied diagnostic](evaluations/v1-2026-10-26-longitudinal-round.md) attempted all 33 inputs on one brain, with 32 replies and one preserved timeout. Meaningful recall and source-faithful recollection still fail in some cases. Access-age tier changes did not demonstrate the intended gist-first forgetting behavior. These remain release blockers, not validated human-memory equivalence.
+
+The local embedding model embeds one memory per background job. After a large import, meaning-based recall covers new records only gradually: about 500 messages took twelve to thirteen minutes to store and embed on a four-core machine that was also running other benchmarks. Keyword recall works at once. For the same reason only 30 LongMemEval questions (each a history of about 500 messages) have been run.
 
 MCP exposes tools; installing it alone does not automatically intercept a closed AI client's conversations. Streaming, general tool loops, multimodal input, native one-click installation, personality and emotion are outside this release. Windows and Linux desktop flows have not received real-machine acceptance. Human-inspired describes the design direction, not proven biological equivalence or infallible recall.

@@ -46,7 +46,7 @@ codex plugin add membrain@membrain
 
 **QQ、微信、Telegram 等平台上的聊天机器人。** [AstrBot 插件](integrations/astrbot/README.zh-CN.md)为每一个和 AstrBot 机器人聊天的人提供独立的长期记忆，适用于 AstrBot 支持的所有平台和模型服务（包括 DeepSeek）。一个人说过的话永远不会出现在给另一个人的回复里，群聊默认也与私聊分开保存。该插件已在 Windows 11 上的 AstrBot 4.29.3 中配合 DeepSeek、通过 AstrBot 自带的 WebChat 实际运行（两个用户互相隔离、跨对话召回、笔记与检索）；尚未通过 NapCat 接入 QQ 测试。
 
-**任何可设置 `base_url` 的机器人（抖音和 B 站直播、NoneBot、Koishi、SillyTavern 等）。** [`membrain proxy`](integrations/openai-proxy/README.zh-CN.md) 是一个 OpenAI 兼容代理：把机器人的 `base_url` 从 DeepSeek 等模型服务改为指向它，每个人（通过请求的 `user` 字段或请求头区分）就有了自己的记忆。已在 Windows 11 上接入真实的 DeepSeek API 运行，流式和非流式回复都已验证；尚未配合具体的机器人项目运行。
+**任何可设置 `base_url` 的机器人（抖音和 B 站直播、NoneBot、Koishi、SillyTavern 等）。** [`membrain proxy`](integrations/openai-proxy/README.zh-CN.md) 是一个 OpenAI 兼容代理：把机器人的 `base_url` 从 DeepSeek 等模型服务改为指向它，每个人（通过请求的 `user` 字段或请求头区分）就有了自己的记忆。已在 Windows 11 上接入真实的 DeepSeek API 运行，流式和非流式回复都已验证；尚未配合具体的机器人项目运行。SillyTavern 等角色扮演前端可以用 `X-Membrain-Roleplay: <角色名>` 请求头，让每个角色的故事各有一份记忆，与这个人谈论自己真实生活的内容分开。
 
 **WorkBuddy 和 CodeBuddy。** 同一个插件也可以安装到腾讯的 WorkBuddy 和 CodeBuddy。在 WorkBuddy 中打开 **Skills → Plugins → Add Marketplace**（WorkBuddy 5.9.3），添加插件市场 `https://raw.githubusercontent.com/chriswu727/memBrain/main/.codebuddy-plugin/marketplace.json`，然后安装 **membrain**；在 CodeBuddy Code 中运行 `codebuddy plugin marketplace add chriswu727/memBrain` 和 `codebuddy plugin install membrain@membrain`。由于这些宿主不会把最终回复传给 Stop hook，memBrain 会从会话记录中读取回复。该 hook 流程已在 Linux 上用模拟的 WorkBuddy hook 输入验证，并在 Windows 11 上通过 WorkBuddy 5.8.3 自带、也用来运行 hook 的 Git Bash 验证；尚未在 WorkBuddy 或 CodeBuddy 应用内实际运行。
 
@@ -61,7 +61,7 @@ hermes config set memory.provider membrain   # 或：hermes memory setup
 
 之后 Hermes 会在每个会话开始时注入你的笔记和最近消息，在每次回复前加入相关的早期消息，记录每一轮对话，并获得 `membrain_note`、`membrain_search`、`membrain_pause` 和 `membrain_resume` 工具。Hermes 在 `USER.md` 中记下的关于你的内容会被导入，之后的写入也会同步为笔记；它的 `MEMORY.md`（环境信息）留在 Hermes 中。默认 Hermes 配置档与同一台电脑上的 Claude Code 共享记忆；其他配置档各自独立。该适配器已按 Hermes 的接口和真实 memBrain 服务测试，但尚未在真实的 Hermes 安装中运行过。
 
-**基准测试。** 在 LoCoMo（1540 道题）上，走插件流程的 memBrain 答对 69.5%，把整段对话放进上下文为 81.4%，没有记忆为 2.4%；memBrain 给模型的上下文约为后者的八分之一。方法和局限见[报告](evaluations/locomo-2026-10-29.md)。
+**基准测试。** 在 LoCoMo（1540 道题）上，走插件流程的 memBrain 答对 76.4%，把整段对话放进上下文为 81.4%，没有记忆为 2.4%；memBrain 给模型的上下文约为后者的七分之一。在没有用于调整召回的 7 段对话上，得分从调整前的 69.3% 提高到 76.2%（[报告](evaluations/locomo-2026-10-29.md)）。在 LongMemEval 的 30 题抽样上，它与把完整历史放进上下文打平（都答对 22 题），提示词 token 约为后者的二十分之一；薄弱点是询问助手自己之前说过什么的问题（[报告](evaluations/longmemeval-2026-10-29.md)）。在两个留出的、关于记住一个人生活的场景上（计划是否真的完成、相似的人名、即将发生的事、承诺、角色扮演），插件得分 18.5/22，Phase B 之前为 14.5，把完整历史放进提示词为 18（[报告](evaluations/v1-2026-10-29-phase-b.md)）。
 
 <a id="why-membrain"></a>
 
@@ -156,7 +156,7 @@ membrain desktop mcp-config
 
 将生成的配置添加到宿主。桥接进程会启动或连接同一个本地服务，并提供记忆工具。
 
-**MCP 当前为 `tools_only`。** 它不会捕获每一段对话、确认消息交付或接管上下文压缩。自动捕获和回复前回忆需要通过 Python 运行时或宿主适配器接入对话生命周期。QQ／聊天框架专用插件和兼容 OpenAI 的记忆网关尚未交付。详见 [MCP 参考](docs/reference.md#mcp)。
+**MCP 当前为 `tools_only`。** 它不会捕获每一段对话、确认消息交付或接管上下文压缩。自动捕获和回复前回忆需要接入对话生命周期：使用上文的插件和适配器、[记忆代理](integrations/openai-proxy/README.zh-CN.md)或 Python 运行时。详见 [MCP 参考](docs/reference.md#mcp)。
 
 <a id="how-memory-works"></a>
 
@@ -215,7 +215,7 @@ membrain desktop start
 
 当前候选版本支持**本地同步文本 Agent**，提供 Python 运行时、HTTP API、TypeScript 客户端、MCP 工具和直接终端聊天入口。核心记忆行为独立于聊天框架。桌面端到端验证目前覆盖 **macOS、uv 和 Docker** 的组合。
 
-[插件模式](architecture/plugin-mode.md)已在 **Linux x86_64** 上完成端到端验证。嵌入式数据库分别以 root 和普通用户身份，通过了真实的启动、重启、备份、恢复和激活检查。在隔离配置的 Claude Code 2.1.311 中，插件从本地插件市场安装成功；使用模拟模型 API 时，插件记录了消息和回复，新会话发给模型的请求中包含上一个会话的记录。这项检查覆盖的是集成流程，不是回答质量。自动召回基于词语匹配。在一台 Windows 11 机器上，嵌入式数据库、本地服务、hook 启动脚本（Git Bash 与 `cmd.exe`）、代理以及 AstrBot 和 OpenClaw 插件都已实际运行；这次运行发现并修复了两个安装问题，它们会让所有新的 Windows 安装以及 AstrBot 首次启动失败。Claude Code 和 Codex 尚未在 Windows 上运行，macOS 尚未在真实设备上运行。
+[插件模式](architecture/plugin-mode.md)已在 **Linux x86_64** 上完成端到端验证。嵌入式数据库分别以 root 和普通用户身份，通过了真实的启动、重启、备份、恢复和激活检查。在隔离配置的 Claude Code 2.1.311 中，插件从本地插件市场安装成功；使用模拟模型 API 时，插件记录了消息和回复，新会话发给模型的请求中包含上一个会话的记录。这项检查覆盖的是集成流程，不是回答质量。当时自动召回只做关键词匹配；现在安装本地模型后还会按语义匹配。在一台 Windows 11 机器上，嵌入式数据库、本地服务、hook 启动脚本（Git Bash 与 `cmd.exe`）、代理以及 AstrBot 和 OpenClaw 插件都已实际运行；这次运行发现并修复了两个安装问题，它们会让所有新的 Windows 安装以及 AstrBot 首次启动失败。Claude Code 和 Codex 尚未在 Windows 上运行，macOS 尚未在真实设备上运行。
 
 在一个全新的十会话场景上进行的[盲评 A/B 诊断](evaluations/v1-2026-10-27-ab-baselines.md)中，默认记忆运行时得 4.5 分（满分 12），无记忆基线得 2 分，直接放入完整历史的朴素做法得 11.5 分。记忆组消耗的 token 约为完整历史组的三十倍，并需要 58 次人工干预。它失分的主要原因是召回没有取回相关事实。在这样的小规模下，完整历史是更强的基线；更长的历史尚未测试。使用相同模型和用例对插件路径进行的[第二次盲评](evaluations/v1-2026-10-27-plugin-path-ab.md)中，插件在该场景得 10.5 分，完整历史得 11 分。在一个包含粘贴代码和日志的 34 会话长版本上，插件先得 7.5 分，针对问题改进历史注入和召回后得 12 分，完整历史得 11.5 分，插件消耗的 token 约为完整历史的四分之一。这些都是单次运行，且改进是在同一场景上设计的。由另一个智能体编写的[两个全新场景](evaluations/v1-2026-10-27-fresh-scenarios.md)对此做了检验：在第一个场景的长版本上，当时已合并的插件（含本地语义召回）只得 6 分，完整历史得 11 分。随后的重新设计（由宿主模型维护笔记、按整条消息召回）在预留的第二个场景长版本上得 11.5 分，与完整历史相同，而之前的插件只得 5.5 分，token 消耗约为完整历史的三分之一。这只是使用一个宿主模型（DeepSeek V4 Pro）的单次运行。
 
