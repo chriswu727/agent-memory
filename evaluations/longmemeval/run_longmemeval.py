@@ -103,10 +103,12 @@ def wait_for_embeddings(directory: Path, user: str, timeout: float = 3600) -> No
 
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        with host.ready_client(directory, user) as client:
-            status = client.dashboard()["status"]
-        if status.get("pending_jobs") == 0 and status.get("index_lag", 0) == 0:
-            return
+        client = host.ready_client(directory, user)
+        if client is not None:  # None while the service restarts; keep waiting.
+            with client:
+                status = client.dashboard()["status"]
+            if status.get("pending_jobs") == 0 and status.get("index_lag", 0) == 0:
+                return
         time.sleep(3)
     raise RuntimeError("embeddings did not finish")
 
@@ -193,6 +195,13 @@ def run(args) -> None:
         if arm == "M":
             from membrain import host
 
+            if args.ports and not (directory / "profile.json").exists():
+                # Fixed ports keep this run clear of other installations started on the same machine.
+                from membrain.embedded_database import default_engine
+                from membrain.local_profile import ensure_profile
+
+                api, database = map(int, args.ports.split(","))
+                ensure_profile(directory, api_port=api, database_port=database, database_engine=default_engine())
             host.ensure_installation(directory)
             if not args.no_semantic:
                 install_model(directory, out / "model-cache")
@@ -214,6 +223,12 @@ def run(args) -> None:
                 stream.write(json.dumps(row, ensure_ascii=False) + "\n")
             save_usage()
             log(name, entry["question_id"], "correct" if verdict["correct"] else "wrong", "|", result["answer"][:60])
+        if arm == "M":  # Free the service port for the next run.
+            from membrain import desktop
+            try:
+                desktop.stop(directory)
+            except desktop.DesktopError:
+                pass
     save_usage()
 
 
@@ -253,6 +268,7 @@ def main() -> None:
     parser.add_argument("--arms", default="N,F,M")
     parser.add_argument("--sample", type=int, default=0, help="Stratified sample size; 0 means all 500")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--ports", default="", help="API and database ports for a new installation, e.g. 8801,55441")
     parser.add_argument("--label", default="")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
     parser.add_argument("--model", default="deepseek-flash")
