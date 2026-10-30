@@ -13,7 +13,8 @@ PLUGIN = Path(__file__).parents[1] / "integrations" / "openclaw" / "membrain"
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is required for the OpenClaw plugin")
 @pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
-def test_openclaw_plugin_through_the_real_runtime(tmp_path):
+def test_openclaw_plugin_through_the_real_runtime(tmp_path, monkeypatch):
+    monkeypatch.setenv("MEMBRAIN_SEMANTIC", "0")
     directory = tmp_path / "brain"
     environment = {**os.environ, "MEMBRAIN_PYTHON": sys.executable, "MEMBRAIN_DIRECTORY": str(directory),
                    "MEMBRAIN_SEMANTIC": "0"}
