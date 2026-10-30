@@ -277,3 +277,81 @@ def test_mcp_from_a_uv_cache_environment_hands_over_to_the_installed_tool(tmp_pa
     assert calls == [[str(python), "-m", "membrain.cli", "plugin", "mcp", "--directory", str(tmp_path / "brain")]]
     monkeypatch.setattr(host.sys, "prefix", str(tools / "membrain-ai"))
     assert not host.running_from_uv_cache()
+
+
+@pytest.mark.parametrize("user_id", [None, "alice", "alice|roleplay:Ada"])
+def test_paused_prompts_never_reach_session_files_or_future_recall(tmp_path, monkeypatch, user_id):
+    client, cues = Client(), []
+    monkeypatch.setattr(host, "ready_client", lambda *args: client)
+    monkeypatch.setattr(host, "use_brain", lambda *args: None)
+    monkeypatch.setattr("membrain.notes.list_notes", lambda client: {"items": []})
+    monkeypatch.setattr(host, "recall_context", lambda *args, **kwargs: cues.extend(kwargs.get("cues", ())))
+    host.prompt_context(tmp_path, "s", "unfinished confidential", user_id=user_id)
+    host.pause(tmp_path, user_id=host.real_life_user(user_id))
+    assert "unfinished confidential" not in host._session_marker(tmp_path, "s").read_text()
+    host.prompt_context(tmp_path, "s", "paused confidential", user_id=user_id)
+    assert "paused confidential" not in host._session_marker(tmp_path, "s").read_text()
+    host.resume(tmp_path, user_id=host.real_life_user(user_id))
+    host.prompt_context(tmp_path, "s", "ordinary", user_id=user_id)
+    assert "paused confidential" not in cues and "unfinished confidential" not in cues
+    assert client.observed == []
+
+
+def test_pausing_one_user_preserves_another_users_pending_turn(tmp_path, monkeypatch):
+    monkeypatch.setattr(host, "ready_client", lambda *args: None)
+    monkeypatch.setattr(host, "start_in_background", lambda *args: None)
+    host.prompt_context(tmp_path, "alice-session", "alice private", user_id="alice")
+    host.prompt_context(tmp_path, "bob-session", "bob pending", user_id="bob")
+    bob_modified = host._session_marker(tmp_path, "bob-session").stat().st_mtime_ns
+    host.pause(tmp_path, user_id="alice")
+    assert host._session_marker(tmp_path, "bob-session").stat().st_mtime_ns == bob_modified
+    assert "alice private" not in host._session_marker(tmp_path, "alice-session").read_text()
+    assert host.session_state(tmp_path, "bob-session")["pending"]["text"] == "bob pending"
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_spool_append_during_replay_survives_success_and_failure(tmp_path, fail):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    started, appended = Event(), Event()
+    host.spool(tmp_path, host.message_record("s", "user", "first"))
+
+    class ReplayClient(Client):
+        def observe(self, **record):
+            started.set()
+            assert appended.wait(5), "spooling must not wait for a network request"
+            if fail:
+                raise ConnectionError("offline")
+            super().observe(**record)
+
+    with ThreadPoolExecutor() as pool:
+        replay = pool.submit(host.flush, ReplayClient(), tmp_path)
+        assert started.wait(5)
+        host.spool(tmp_path, host.message_record("s", "user", "second"))
+        appended.set()
+        if fail:
+            with pytest.raises(ConnectionError):
+                replay.result(timeout=5)
+        else:
+            assert replay.result(timeout=5) == 1
+    client = Client()
+    host.flush(client, tmp_path)
+    assert [item["text"] for item in client.observed] == (["first", "second"] if fail else ["second"])
+
+
+@pytest.mark.parametrize("pause_before_prompt", [True, False])
+def test_resuming_before_a_paused_turn_finishes_does_not_store_it(tmp_path, monkeypatch, pause_before_prompt):
+    client = Client()
+    monkeypatch.setattr(host, "ready_client", lambda *args: client)
+    monkeypatch.setattr(host, "use_brain", lambda *args: None)
+    if pause_before_prompt:
+        host.pause(tmp_path, user_id="alice")
+    host.prompt_context(tmp_path, "s", "confidential", user_id="alice")
+    if not pause_before_prompt:
+        host.pause(tmp_path, user_id="alice")
+    host.session_context(tmp_path, "s", user_id="alice")
+    host.resume(tmp_path, user_id="alice")
+    host.finish_turn(tmp_path, "s", "confidential reply", prompt="confidential")
+    assert client.observed == []
+    assert "confidential" not in host._session_marker(tmp_path, "s").read_text()

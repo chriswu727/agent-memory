@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import hashlib
 import importlib.util
 import json
 import sys
@@ -195,3 +196,47 @@ def test_astrbot_tool_docstrings_follow_astrbots_parameter_format(monkeypatch, t
         for kind in documented.values():
             outer, _, inner = kind.rstrip("]").partition("[")
             assert outer in supported and (not inner or inner in supported), (name, kind)
+
+
+@pytest.mark.parametrize("first,second", [
+    (Speaker("api", "group:123:alice"), Speaker("api", "alice", "123")),
+    (Speaker("api:one", "alice"), Speaker("api", "one:alice")),
+    (Speaker("api", "x" * 81), Speaker("api", hashlib.sha256(b"x" * 81).hexdigest())),
+])
+def test_ambiguous_speaker_ids_cannot_share_memory(tmp_path, first, second):
+    memory = ChatMemory(tmp_path)
+    assert memory.user_id(first) != memory.user_id(second)
+    assert memory.session(first, "same") != memory.session(second, "same")
+    assert memory.user_id(Speaker("telegram", "123")) == "telegram:123"
+
+
+def test_groups_cannot_share_session_state_even_with_the_same_conversation_id(tmp_path):
+    memory = ChatMemory(tmp_path)
+    assert memory.session(Speaker("api", "alice", "one"), "c") != memory.session(
+        Speaker("api", "alice", "two"), "c")
+
+
+def test_turning_off_real_life_sharing_invalidates_cached_context(tmp_path, monkeypatch):
+    monkeypatch.setattr(host, "session_context", lambda *args, **kwargs:
+                        "personal note" if kwargs["share_real_life"] else "story only")
+    monkeypatch.setattr(host, "prompt_context", lambda *args, **kwargs: None)
+    memory, speaker = ChatMemory(tmp_path), Speaker("api", "alice")
+    assert memory.context(speaker, "hi", session="s", roleplay="Ada", share_real_life=True) == "personal note"
+    assert memory.context(speaker, "hi", session="s", roleplay="Ada", share_real_life=False) == "story only"
+
+
+@pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
+def test_colliding_legacy_speakers_cannot_read_each_others_notes(tmp_path):
+    memory = ChatMemory(tmp_path)
+    private, group = Speaker("api", "group:123:alice"), Speaker("api", "alice", "123")
+    try:
+        host.start(tmp_path)
+        assert "error" not in memory.note(private, "Private appointment with Dr Juniper.")
+        own = memory.context(private, "hello", session=memory.session(private))
+        other = memory.context(group, "hello", session=memory.session(group))
+        assert "Dr Juniper" in own and "Dr Juniper" not in other
+    finally:
+        try:
+            desktop.stop(tmp_path)
+        except desktop.DesktopError:
+            pass

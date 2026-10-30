@@ -157,7 +157,9 @@ def _hook_command(event, hooks_file="claude-hooks.json"):
 @pytest.mark.parametrize("hooks_file,data_variable", [("claude-hooks.json", "CLAUDE_PLUGIN_DATA"),
                                                       ("codex-hooks.json", "PLUGIN_DATA")])
 @pytest.mark.parametrize("event", ["UserPromptSubmit", "Stop"])
-def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, event, hooks_file, data_variable):
+@pytest.mark.parametrize("runtime_fails", [False, True])
+def test_hook_commands_do_not_persist_unfiltered_input_without_the_runtime(
+        tmp_path, event, hooks_file, data_variable, runtime_fails):
     import shutil
     import subprocess
 
@@ -169,12 +171,16 @@ def test_hook_commands_queue_input_when_the_runtime_is_not_installed(tmp_path, e
     system_path = "/usr/bin:/bin"
     if shutil.which("uvx", path=system_path):
         pytest.skip("uvx is installed on the system path")
+    if runtime_fails:
+        launcher = tmp_path / "uvx"
+        launcher.write_text("#!/bin/sh\nexit 1\n")
+        launcher.chmod(0o700)
+        system_path = str(tmp_path) + ":" + system_path
     environment = {"PATH": system_path, data_variable: str(tmp_path / "data")}
     result = subprocess.run([bash, "-c", _hook_command(event, hooks_file)], input=json.dumps(payload, indent=2), text=True,
                             capture_output=True, env=environment, timeout=30)
     assert result.returncode == 0 and result.stdout == ""
-    lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
-    assert [json.loads(line) for line in lines] == [payload]
+    assert not (tmp_path / "data" / "pending-hooks.jsonl").exists()
 
 
 def test_host_queue_is_imported_with_roles_and_cleared(tmp_path, monkeypatch):
@@ -586,7 +592,7 @@ def test_every_host_manifest_points_only_at_its_own_files():
     assert market["plugins"][0]["source"]["subdir"] == "plugins/membrain"
 
 
-def test_workbuddy_launcher_queues_input_until_the_runtime_is_installed(tmp_path):
+def test_workbuddy_launcher_does_not_persist_unfiltered_input_without_the_runtime(tmp_path):
     import shutil
     import subprocess
     from pathlib import Path
@@ -601,8 +607,7 @@ def test_workbuddy_launcher_queues_input_until_the_runtime_is_installed(tmp_path
         result = subprocess.run([bash, str(launcher), event], input=json.dumps(payload, indent=2), text=True,
                                 capture_output=True, env=environment, timeout=30)
         assert result.returncode == 0 and result.stdout == ""
-    lines = (tmp_path / "data" / "pending-hooks.jsonl").read_text().splitlines()
-    assert [json.loads(line) for line in lines] == [payload]
+    assert not (tmp_path / "data" / "pending-hooks.jsonl").exists()
 
 
 def test_recall_shows_the_answer_that_followed_a_recalled_question():

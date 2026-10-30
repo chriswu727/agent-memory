@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as _datetime
 import hashlib
+import json
 import threading
 import time
 from dataclasses import dataclass
@@ -23,7 +24,6 @@ from .. import host
 TOOLS = {"note": "membrain_note", "recall": "membrain_search", "pause": "membrain_pause"}
 GROUP_MEMORY = ("separate", "shared")
 BLOCK_SECONDS = 300
-MAX_SESSION = 200
 
 
 @dataclass(frozen=True)
@@ -38,9 +38,8 @@ class Speaker:
         return bool(str(self.platform).strip() and str(self.user).strip())
 
 
-def _short(value: str, size: int = 24) -> str:
-    value = str(value)
-    return value if len(value) <= size else hashlib.sha256(value.encode()).hexdigest()[:size]
+def _identity(kind: str, parts: list) -> str:
+    return f"%{kind}:" + hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()
 
 
 class ChatMemory:
@@ -56,7 +55,7 @@ class ChatMemory:
         self.block_seconds = block_seconds
         # A bot that plays a character keeps that story's memory apart from each person's real-life memory.
         self.roleplay, self.share_real_life = roleplay or None, share_real_life
-        self._blocks: dict[str, tuple[float, str, str]] = {}
+        self._blocks: dict[str, tuple[float, str, str, bool]] = {}
         self._lock = threading.Lock()
         host.state_directory(self.directory)
 
@@ -69,16 +68,19 @@ class ChatMemory:
             client.close()
 
     def user_id(self, speaker: Speaker) -> str:
-        user = f"{_short(speaker.platform, 40)}:{_short(speaker.user, 80)}"
-        if speaker.group and self.group_memory == "separate":
-            return f"{_short(speaker.platform, 40)}:group:{_short(speaker.group, 60)}:{_short(speaker.user, 80)}"
-        return user
+        platform, user = str(speaker.platform), str(speaker.user)
+        group = str(speaker.group) if speaker.group and self.group_memory == "separate" else None
+        parts = [(platform, 40), (user, 80)]
+        if group is not None:
+            parts.append((group, 60))
+        if any(len(value) > limit or any(char in value for char in ":%|") for value, limit in parts):
+            return _identity("chat-v2", [platform, user, group])
+        return f"{platform}:group:{group}:{user}" if group is not None else f"{platform}:{user}"
 
     def session(self, speaker: Speaker, conversation: str | None = None, *, today: _datetime.date | None = None) -> str:
         """The memBrain session for this speaker today in this chat (or framework conversation)."""
         day = (today or _datetime.date.today()).isoformat()
-        chat = conversation or speaker.group or "private"
-        return f"{_short(speaker.platform, 40)}:{_short(chat, 60)}:{_short(speaker.user, 60)}:{day}"[:MAX_SESSION]
+        return _identity("session-v2", [self.user_id(speaker), speaker.group, conversation, day])
 
     def memory_user(self, speaker: Speaker, roleplay: str | None = None) -> str:
         """The memory this speaker's messages go to: their own, or their role-play with a character."""
@@ -91,17 +93,18 @@ class ChatMemory:
         now = time.monotonic()
         with self._lock:
             cached = self._blocks.get(session)
-        if cached and cached[1] == user and now - cached[0] < self.block_seconds:
+        if cached and cached[1] == user and cached[3] == share and now - cached[0] < self.block_seconds:
             return cached[2]
         block = host.session_context(self.directory, session, tools=self.tools, user_id=real_life, roleplay=roleplay,
                                      share_real_life=share)
         with self._lock:
-            self._blocks[session] = (now, user, block)
+            self._blocks[session] = (now, user, block, share)
         return block
 
     def _forget_blocks(self, user: str) -> None:
         with self._lock:
-            for session in [key for key, value in self._blocks.items() if value[1] == user]:
+            for session in [key for key, value in self._blocks.items()
+                            if value[1] == user or host.real_life_user(value[1]) == user]:
                 del self._blocks[session]
 
     def context(self, speaker: Speaker, text: str, *, session: str, turn_id: str | None = None,

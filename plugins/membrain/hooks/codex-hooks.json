@@ -31,7 +31,7 @@
             "type": "command",
             "timeout": 15,
             "additionalContextLimit": 7000,
-            "command": "input=$(cat); if command -v uvx >/dev/null 2>&1 && printf '%s' \"$input\" | uvx --offline --python 3.12 --from membrain-ai membrain plugin hook user-prompt --host codex 2>/dev/null; then :; elif [ -n \"$PLUGIN_DATA\" ]; then mkdir -p \"$PLUGIN_DATA\" && { printf '%s' \"$input\" | tr -d '\\n'; echo; } >> \"$PLUGIN_DATA/pending-hooks.jsonl\"; fi; true"
+            "command": "command -v uvx >/dev/null 2>&1 && uvx --offline --python 3.12 --from membrain-ai membrain plugin hook user-prompt --host codex 2>/dev/null; true"
           }
         ]
       }
@@ -42,7 +42,7 @@
           {
             "type": "command",
             "timeout": 10,
-            "command": "input=$(cat); if command -v uvx >/dev/null 2>&1 && printf '%s' \"$input\" | uvx --offline --python 3.12 --from membrain-ai membrain plugin hook stop --host codex 2>/dev/null; then :; elif [ -n \"$PLUGIN_DATA\" ]; then mkdir -p \"$PLUGIN_DATA\" && { printf '%s' \"$input\" | tr -d '\\n'; echo; } >> \"$PLUGIN_DATA/pending-hooks.jsonl\"; fi; true"
+            "command": "command -v uvx >/dev/null 2>&1 && uvx --offline --python 3.12 --from membrain-ai membrain plugin hook stop --host codex 2>/dev/null; true"
           }
         ]
       }

@@ -2,8 +2,8 @@
 
 Hooks never own the host's turn and always exit 0. ``SessionStart`` adds saved notes and recent history,
 ``UserPromptSubmit`` adds related earlier messages and stages the prompt, and ``Stop`` stores the prompt
-and the reply together. Before the runtime is installed, the hook commands queue raw hook input in the
-plugin data directory with plain shell; it is imported on the next start. Codex runs the same hooks with the
+and the reply together. Before the runtime is installed, hooks skip recording. Legacy bootstrap queues
+are imported with privacy filtering on the next start. Codex runs the same hooks with the
 same input fields, except that it identifies a turn by ``turn_id`` instead of ``prompt_id``.
 """
 from __future__ import annotations
@@ -62,11 +62,7 @@ def _turn(payload: dict) -> str | None:
 
 
 def _import_host_queue(directory: Path, producer: str = PRODUCER) -> int:
-    """Spool hook inputs that the host queued before the runtime was installed.
-
-    Hook commands append raw hook JSON to ``$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl`` with plain shell
-    when the runtime cannot start yet, so a first session's messages are not lost while it installs.
-    """
+    """Import bootstrap queues left by older plugins, filtering each record before spooling it."""
     root = os.environ.get("CLAUDE_PLUGIN_DATA") or os.environ.get("PLUGIN_DATA")  # Codex sets both.
     if not root:
         return 0

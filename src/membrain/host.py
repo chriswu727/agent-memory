@@ -17,6 +17,8 @@ import sys
 import time
 from pathlib import Path
 
+from .local_profile import profile_lock
+
 PRODUCER = "membrain-plugin"
 CONTEXT_CHARACTERS = 9000  # Under Claude Code's 10,000-character limit for hook output.
 LINE_CHARACTERS = 500
@@ -134,7 +136,9 @@ def real_life_user(user_id: str | None) -> str | None:
     """The real-life memory behind a role-play memory (``None`` is the installation's own)."""
     if user_id is None or ROLEPLAY not in user_id:
         return user_id
-    base = user_id.rsplit("|" + ROLEPLAY, 1)[0] if "|" + ROLEPLAY in user_id else None
+    if user_id.startswith(ROLEPLAY):
+        return None
+    base = user_id.split("|" + ROLEPLAY, 1)[0] if "|" + ROLEPLAY in user_id else None
     return base
 
 
@@ -354,14 +358,34 @@ def pause(directory: Path, hours: float | None = None, user_id: str | None = Non
         raise ValueError("Pause for a positive number of hours, at most a year.")
     until = None if hours is None else time.time() + float(hours) * 3600
     path = _pause_file(directory, user_id)
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-        json.dump({"since": time.time(), "until": until}, stream)
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        _write_state(path, {"since": time.time(), "until": until})
+        for marker in (state_directory(directory) / "sessions").glob("*.json"):
+            try:
+                state = json.loads(marker.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if not isinstance(state, dict):
+                continue
+            original = state.copy()
+            pending = state.get("pending")
+            owner = state.get("user_id", pending.get("_user") if isinstance(pending, dict) else None)
+            if user_id is None or owner == user_id or real_life_user(owner) == user_id:
+                if isinstance(pending, dict):
+                    state["paused_turn"] = True
+                    state["user_id"] = owner
+                state.pop("pending", None)
+                state.pop("last_prompt", None)
+            elif owner is None:
+                state.pop("last_prompt", None)  # Legacy completed turns have no owner metadata.
+            if state != original:
+                _write_state(marker, state)
     return {"recording": "paused", "until": until}
 
 
 def resume(directory: Path, user_id: str | None = None) -> dict:
-    _pause_file(directory, user_id).unlink(missing_ok=True)
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        _pause_file(directory, user_id).unlink(missing_ok=True)
     return {"recording": "on"}
 
 
@@ -457,9 +481,10 @@ def message_record(session: str, role: str, text: str, *, turn_id: str | None = 
 
 def spool(directory: Path, record: dict) -> None:
     path = state_directory(directory) / "spool.jsonl"
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
-        stream.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with profile_lock(state_directory(directory) / "spool-write-lock", timeout=5):
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def flush(client, directory: Path) -> int:
@@ -470,7 +495,9 @@ def flush(client, directory: Path) -> int:
         return 0
     try:
         with profile_lock(state_directory(directory) / "spool-lock", timeout=0):
-            lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            with profile_lock(state_directory(directory) / "spool-write-lock", timeout=5):
+                snapshot = path.read_bytes()
+            lines = [line for line in snapshot.decode("utf-8").splitlines() if line.strip()]
             delivered = 0
             current = client.brain_id
             try:
@@ -485,10 +512,13 @@ def flush(client, directory: Path) -> int:
                     delivered += 1
             finally:
                 client.brain_id = current
-            remaining = lines[delivered:]
-            temporary = path.with_suffix(".tmp")
-            temporary.write_text("".join(line + "\n" for line in remaining), encoding="utf-8")
-            os.replace(temporary, path)
+            with profile_lock(state_directory(directory) / "spool-write-lock", timeout=5):
+                remaining = path.read_bytes()[len(snapshot):]
+                temporary = path.with_suffix(".tmp")
+                descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(descriptor, "wb") as stream:
+                    stream.write(remaining)
+                os.replace(temporary, path)
             return delivered
     except LocalProfileBusy:
         return 0
@@ -536,16 +566,22 @@ def session_state(directory: Path, session: str) -> dict:
 
 
 def _write_session_state(directory: Path, session: str, state: dict) -> None:
-    path = _session_marker(directory, session)
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    _write_state(_session_marker(directory, session), state)
+
+
+def _write_state(path: Path, state: dict) -> None:
+    temporary = path.with_suffix(".tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
         json.dump(state, stream, ensure_ascii=False)
+    os.replace(temporary, path)
 
 
 def _mark_history(directory: Path, session: str, complete: bool) -> None:
-    state = session_state(directory, session)
-    _write_session_state(directory, session, {"complete": complete, **(
-        {"pending": state["pending"]} if state.get("pending") else {})})
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        state = session_state(directory, session)
+        _write_session_state(directory, session, {"complete": complete, **{
+            key: state[key] for key in ("pending", "user_id", "paused_turn") if key in state}})
     cutoff = time.time() - SESSION_MARKER_SECONDS
     for old in _session_marker(directory, session).parent.glob("*.json"):
         try:
@@ -561,20 +597,40 @@ def history_complete(directory: Path, session: str) -> bool:
 
 def _stage(directory: Path, session: str, record: dict, prompt: str) -> dict | None:
     """Keep this turn's user message until the reply arrives; return an earlier unfinished one."""
-    state = session_state(directory, session)
-    earlier = state.get("pending")
-    state["last_prompt"] = scrub(prompt)[-CUE_CHARACTERS:]
-    state["pending"] = None if paused(directory, record.get("_user")) else {**record, "text": scrub(record["text"])}
-    _write_session_state(directory, session, state)
-    return earlier if isinstance(earlier, dict) else None
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        state = session_state(directory, session)
+        earlier = state.get("pending")
+        state["user_id"] = record.get("_user")
+        if paused(directory, record.get("_user")):
+            state.pop("last_prompt", None)
+            state.pop("pending", None)
+            state["paused_turn"] = True
+            earlier = None
+        else:
+            state.pop("paused_turn", None)
+            state["last_prompt"] = scrub(prompt)[-CUE_CHARACTERS:]
+            state["pending"] = {**record, "text": scrub(record["text"])}
+        _write_session_state(directory, session, state)
+        return earlier if isinstance(earlier, dict) else None
 
 
 def _take_pending(directory: Path, session: str) -> dict | None:
-    state = session_state(directory, session)
-    pending = state.pop("pending", None)
-    if pending is not None:
-        _write_session_state(directory, session, state)
-    return pending if isinstance(pending, dict) else None
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        state = session_state(directory, session)
+        pending = state.pop("pending", None)
+        if pending is not None:
+            _write_session_state(directory, session, state)
+        return pending if isinstance(pending, dict) else None
+
+
+def _take_turn(directory: Path, session: str) -> tuple[dict | None, bool, str | None]:
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        state = session_state(directory, session)
+        pending = state.pop("pending", None)
+        paused_turn = state.pop("paused_turn", False)
+        if pending is not None or paused_turn:
+            _write_session_state(directory, session, state)
+        return (pending if isinstance(pending, dict) else None), bool(paused_turn), state.get("user_id")
 
 
 # Recall -------------------------------------------------------------------------------------------------------
@@ -844,16 +900,18 @@ def _finish_abandoned(directory: Path, client) -> int:
     """Store messages of turns that never finished (a host closed mid-turn), so nothing waits indefinitely."""
     delivered, cutoff = 0, time.time() - ABANDONED_TURN_SECONDS
     for marker in (state_directory(directory) / "sessions").glob("*.json"):
-        try:
-            if marker.stat().st_mtime > cutoff:
+        with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+            try:
+                if marker.stat().st_mtime > cutoff:
+                    continue
+                state = json.loads(marker.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
                 continue
-            state = json.loads(marker.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if isinstance(state, dict) and isinstance(state.get("pending"), dict):
+            if not isinstance(state, dict) or not isinstance(state.get("pending"), dict):
+                continue
             pending = state.pop("pending")
-            marker.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
-            delivered += deliver(directory, client, pending)
+            _write_state(marker, state)
+        delivered += deliver(directory, client, pending)
     return delivered
 
 
@@ -967,10 +1025,10 @@ def finish_turn(directory: Path, session: str, reply: str | None, *, turn_id: st
     Hosts that report the whole turn at once pass ``prompt``; it is recorded if no prompt was staged for it.
     """
     user_id = roleplay_user(user_id, roleplay)
-    pending = _take_pending(directory, session)
-    if user_id is None and pending:
-        user_id = pending.get("_user")
-    if paused(directory, user_id):
+    pending, paused_turn, staged_user = _take_turn(directory, session)
+    if user_id is None:
+        user_id = pending.get("_user") if pending else staged_user
+    if paused_turn or paused(directory, user_id):
         return
     records = [pending] if pending else []
     if isinstance(prompt, str) and prompt.strip() and (pending is None or pending["text"] != scrub(prompt)):

@@ -7,10 +7,5 @@ if [ "$1" = start ]; then
   ( uv tool install --quiet --python 3.12 "$package"; uvx --offline --python 3.12 --from membrain-ai membrain plugin start ) </dev/null >/dev/null 2>&1 &
   exit 0
 fi
-input=$(cat)
-if command -v uvx >/dev/null 2>&1 && printf '%s' "$input" | uvx --offline --python 3.12 --from membrain-ai membrain plugin hook "$1" --host workbuddy 2>/dev/null; then
-  :
-elif [ -n "$CLAUDE_PLUGIN_DATA" ] && [ "$1" != session-start ]; then
-  mkdir -p "$CLAUDE_PLUGIN_DATA" && { printf '%s' "$input" | tr -d '\n'; echo; } >> "$CLAUDE_PLUGIN_DATA/pending-hooks.jsonl"
-fi
+command -v uvx >/dev/null 2>&1 && uvx --offline --python 3.12 --from membrain-ai membrain plugin hook "$1" --host workbuddy 2>/dev/null
 exit 0
