@@ -103,7 +103,21 @@ def test_proxy_roleplay_header_selects_the_story_memory(tmp_path):
         client.post("/v1/chat/completions", headers={"X-Membrain-Roleplay": "Captain  Vale",
                                                       "X-Membrain-Share-Real-Life": "1"},
                     json={"model": "m", "user": "st:hao", "messages": [{"role": "user", "content": "Ahoy"}]})
-    (kind, session, roleplay, share), record = calls
-    assert roleplay == "Captain Vale" and share is True and "roleplay:Captain Vale" in session
+        client.post("/v1/chat/completions",
+                    json={"model": "m", "user": "st:hao", "messages": [{"role": "user", "content": "Hello"}]})
+    (kind, session, roleplay, share), record, real_context, real_record = calls
+    assert roleplay == "Captain Vale" and share is True
     assert record == ("record", session, "Captain Vale")
+    assert real_context[1] != session and real_context[2] is None
+    assert real_record == ("record", real_context[1], None)
     assert json.dumps(calls)
+
+
+@pytest.mark.parametrize("user_id", [None, "qq:1"])
+def test_character_names_with_roleplay_delimiters_still_follow_the_users_pause(tmp_path, user_id):
+    story = host.roleplay_user(user_id, "Captain|roleplay:Vale")
+    assert host.real_life_user(story) == user_id
+    host.pause(tmp_path, user_id=user_id)
+    assert host.paused(tmp_path, story)
+    if user_id is not None:
+        assert not host.paused(tmp_path, host.roleplay_user("qq:2", "Captain|roleplay:Vale"))

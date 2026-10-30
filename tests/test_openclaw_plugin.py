@@ -19,7 +19,7 @@ def test_openclaw_plugin_through_the_real_runtime(tmp_path):
                    "MEMBRAIN_SEMANTIC": "0"}
     try:
         host.start(directory)
-        result = subprocess.run(["node", "--test", "membrain.test.js"], cwd=PLUGIN, env=environment,
+        result = subprocess.run(["node", "--test", "--test-reporter=tap", "membrain.test.js"], cwd=PLUGIN, env=environment,
                                 capture_output=True, text=True, timeout=300)
         assert result.returncode == 0, result.stdout + result.stderr
         assert "# pass 3" in result.stdout and "# skipped 0" in result.stdout
