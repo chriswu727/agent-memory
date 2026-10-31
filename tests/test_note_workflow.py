@@ -138,3 +138,33 @@ def test_note_name_fields_cannot_bypass_privacy_filtering(brain, fields):
     with pytest.raises(DomainError):
         write(brain, 'A lasting fact.', kind='person', **fields)
     assert brain.timeline(roles=('assistant',), conversation_id=NOTES_CONVERSATION)['items'] == []
+
+
+def test_note_provenance_survives_archive_restore_without_reviving_erased_content(brain):
+    import json
+
+    import httpx
+
+    from membrain.client import MemoryActionError, MemoryClient
+
+    def handle(request):
+        return httpx.Response(200, json=brain.service.handle(brain.principal, json.loads(request.content)))
+
+    source = brain.say('My appointment is on November 4.')
+    note = write(brain, 'Appointment on November 4.', source_event_ids=[source], kind='plan', status='scheduled')
+    with MemoryClient('http://memory.test', 'test-key', brain.brain, transport=httpx.MockTransport(handle)) as client:
+        archive = client.export()['result']
+        first = brain.service.create_brain(brain.principal, 'Source-linked archive')['id']
+        client.restore(archive['archive_id'], expected_manifest_sha256=archive['manifest_sha256'],
+                       expected_scope_generation=1, mode='new_brain', brain_id=first)
+        restored = brain.service.timeline(brain.principal, first, roles=('assistant',),
+                                           conversation_id=NOTES_CONVERSATION)['items']
+        assert len(restored) == 1 and restored[0]['event_id'] == note['note_id']
+        assert restored[0]['source_event_ids'] == [source]
+        generation = brain.service.dashboard(brain.principal, brain.brain)['brain']['scope_generation']
+        client.forget([source], kind='events', mode='erase_content', expected_scope_generation=generation)
+        second = brain.service.create_brain(brain.principal, 'Archive after erasure')['id']
+        with pytest.raises(MemoryActionError, match='invalid_archive'):
+            client.restore(archive['archive_id'], expected_manifest_sha256=archive['manifest_sha256'],
+                           expected_scope_generation=1, mode='new_brain', brain_id=second)
+        assert brain.service.timeline(brain.principal, second, roles=('user', 'assistant'))['items'] == []
