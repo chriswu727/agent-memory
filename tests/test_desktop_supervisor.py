@@ -151,25 +151,3 @@ def test_downloaded_model_is_not_reported_enabled_before_the_service_activates_i
         assert result["semantic_recall"] == "restart_required"
 
 
-def test_busy_worker_yields_briefly_and_idle_worker_sleeps(supervisor, monkeypatch):
-    from contextlib import contextmanager
-
-    from membrain import desktop
-
-    waits = []
-    class Stop:
-        def is_set(self):
-            return len(waits) >= 2
-        def wait(self, seconds):
-            waits.append(seconds)
-    supervisor.stopped = Stop()
-    jobs = iter([1, 0])
-    service = SimpleNamespace(list_brains=lambda principal: [{"id": "brain"}], work_once=lambda *args: next(jobs))
-    @contextmanager
-    def configured(settings):
-        yield service
-    monkeypatch.setattr(desktop, "configured_service", configured)
-    clock = iter(range(0, 100, 3))
-    monkeypatch.setattr(desktop.time, "monotonic", lambda: next(clock))
-    supervisor.work()
-    assert waits == [desktop.WORK_BACKLOG_WAIT_SECONDS, 1]

@@ -1,0 +1,78 @@
+{
+  "scope": "Sequential local observations; same candidate code, busy wait overridden only in control process. Lexical synthetic fixture; not production capacity or an accuracy benchmark.",
+  "decision": "Retain original scheduler; reject 50 ms busy wait due to ingestion trade-off.",
+  "busy_wait_50_ms": {
+    "mode": "lexical only; synthetic fixture; warm process; excludes ready_client startup; not model generation latency",
+    "results": [
+      {
+        "events": 100,
+        "added": 100,
+        "ingest_seconds": 0.45,
+        "ingest_and_index_seconds": 2.53,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 236.09,
+          "p95_ms": 250.06,
+          "max_ms": 258.65
+        },
+        "nonempty_results": 20
+      },
+      {
+        "events": 1000,
+        "added": 900,
+        "ingest_seconds": 29.96,
+        "ingest_and_index_seconds": 75.52,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 267.99,
+          "p95_ms": 277.92,
+          "max_ms": 285.52
+        },
+        "nonempty_results": 20,
+        "eight_concurrent_recall": {
+          "n": 24,
+          "median_ms": 2107.36,
+          "p95_ms": 2132.47,
+          "max_ms": 2143.9
+        }
+      }
+    ]
+  },
+  "busy_wait_1_s_control": {
+    "mode": "lexical only; synthetic fixture; warm process; excludes ready_client startup; not model generation latency",
+    "results": [
+      {
+        "events": 100,
+        "added": 100,
+        "ingest_seconds": 0.49,
+        "ingest_and_index_seconds": 2.6,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 243.21,
+          "p95_ms": 252.6,
+          "max_ms": 351.16
+        },
+        "nonempty_results": 20
+      },
+      {
+        "events": 1000,
+        "added": 900,
+        "ingest_seconds": 9.14,
+        "ingest_and_index_seconds": 78.7,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 266.28,
+          "p95_ms": 275.24,
+          "max_ms": 323.58
+        },
+        "nonempty_results": 20,
+        "eight_concurrent_recall": {
+          "n": 24,
+          "median_ms": 2146.65,
+          "p95_ms": 2195.45,
+          "max_ms": 2201.52
+        }
+      }
+    ]
+  }
+}

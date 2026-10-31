@@ -50,7 +50,6 @@ def _port_open(port: int) -> bool:
 
 
 WORK_SLICE_SECONDS = 2.0
-WORK_BACKLOG_WAIT_SECONDS = 0.05
 
 
 def _environment() -> dict[str, str]:
@@ -423,7 +422,6 @@ class LocalSupervisor:
             with configured_service(self.settings) as service:
                 principal = Principal(self.profile.tenant_id, self.profile.principal_id)
                 while not self.stopped.is_set():
-                    backlog = False
                     try:
                         self.worker_state = "busy"
                         for brain in service.list_brains(principal):
@@ -431,19 +429,15 @@ class LocalSupervisor:
                                 break
                             # Drain queued work briefly instead of one job per second; backfills can be long.
                             deadline = time.monotonic() + WORK_SLICE_SECONDS
-                            while not self.stopped.is_set():
-                                if not service.work_once(principal, brain["id"]):
-                                    break
-                                if time.monotonic() >= deadline:
-                                    backlog = True
-                                    break
+                            while (service.work_once(principal, brain["id"]) and not self.stopped.is_set()
+                                   and time.monotonic() < deadline):
+                                pass
                         self.last_progress = time.monotonic()
                         self.worker_state = "ready"
                     except Exception as error:
-                        backlog = False
                         self.worker_state = "retrying"
                         self.log("worker_iteration_failed", error)
-                    self.stopped.wait(WORK_BACKLOG_WAIT_SECONDS if backlog else 1)
+                    self.stopped.wait(1)
         except Exception as error:
             self.worker_state = "failed"
             self.log("worker_failed", error)
