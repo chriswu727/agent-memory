@@ -79,7 +79,15 @@ Hermes then starts each session with your notes and recent messages, adds relate
 
 ## Quickstart
 
-Install [uv](https://docs.astral.sh/uv/). You will need a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
+**For an agent you already use:** install the Claude Code or Codex plugin above, approve its memory tools and hooks, then talk normally. No extra model API key is needed. After the runtime is installed, run:
+
+```sh
+membrain plugin setup
+```
+
+This starts local memory and opens a guided page. It distinguishes a running service from actual incoming agent messages, offers a retry if the local semantic model download fails, and explains how to check recall in a new session. Messages sent before the first runtime installation are skipped; check the page before relying on capture. You can also add a preference there. Corrections and removals refresh saved-note context before the next reply in an ongoing session; unchanged notes are not injected again. This updates the agent's context, but cannot remove text already seen by the host model.
+
+**For standalone chat:** install [uv](https://docs.astral.sh/uv/) and follow the commands below. This optional mode needs a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
 
 ```sh
 uv tool install --python 3.12 'membrain-ai[embedded,semantic] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'

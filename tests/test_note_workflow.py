@@ -168,3 +168,19 @@ def test_note_provenance_survives_archive_restore_without_reviving_erased_conten
             client.restore(archive['archive_id'], expected_manifest_sha256=archive['manifest_sha256'],
                            expected_scope_generation=1, mode='new_brain', brain_id=second)
         assert brain.service.timeline(brain.principal, second, roles=('user', 'assistant'))['items'] == []
+
+
+def test_connection_counts_exclude_notes_and_other_brains_and_remove_erased_messages(brain):
+    write(brain, "Prefers concise replies.", kind="preference", role="user")
+    assert brain.service.memory_status(brain.principal, brain.brain)["recorded_messages"] == 0
+    source = brain.say("My agent received this message.")
+    foreign = Brain(brain.service, Principal(uid(), uid()))
+    foreign.say("Another user's message.")
+    status = brain.service.memory_status(brain.principal, brain.brain)
+    assert status["recorded_messages"] == 1 and status["last_message_producer"] == "timeline-test"
+    assert status["last_message_at"] and "agent received" not in str(status)
+    generation = brain.service.dashboard(brain.principal, brain.brain)["brain"]["scope_generation"]
+    brain.action("forget", {"idempotency_key": uid(), "selector": {"kind": "events", "ids": [source]},
+                            "mode": "erase_content", "expected_scope_generation": generation})
+    status = brain.service.memory_status(brain.principal, brain.brain)
+    assert status["recorded_messages"] == 0 and status["last_message_producer"] is None

@@ -50,6 +50,7 @@ def _port_open(port: int) -> bool:
 
 
 WORK_SLICE_SECONDS = 2.0
+WORK_BACKLOG_WAIT_SECONDS = 0.05
 
 
 def _environment() -> dict[str, str]:
@@ -422,6 +423,7 @@ class LocalSupervisor:
             with configured_service(self.settings) as service:
                 principal = Principal(self.profile.tenant_id, self.profile.principal_id)
                 while not self.stopped.is_set():
+                    backlog = False
                     try:
                         self.worker_state = "busy"
                         for brain in service.list_brains(principal):
@@ -429,15 +431,19 @@ class LocalSupervisor:
                                 break
                             # Drain queued work briefly instead of one job per second; backfills can be long.
                             deadline = time.monotonic() + WORK_SLICE_SECONDS
-                            while (service.work_once(principal, brain["id"]) and not self.stopped.is_set()
-                                   and time.monotonic() < deadline):
-                                pass
+                            while not self.stopped.is_set():
+                                if not service.work_once(principal, brain["id"]):
+                                    break
+                                if time.monotonic() >= deadline:
+                                    backlog = True
+                                    break
                         self.last_progress = time.monotonic()
                         self.worker_state = "ready"
                     except Exception as error:
+                        backlog = False
                         self.worker_state = "retrying"
                         self.log("worker_iteration_failed", error)
-                    self.stopped.wait(1)
+                    self.stopped.wait(WORK_BACKLOG_WAIT_SECONDS if backlog else 1)
         except Exception as error:
             self.worker_state = "failed"
             self.log("worker_failed", error)
@@ -547,8 +553,25 @@ class LocalSupervisor:
                     pending = sum(bool(line.strip()) for line in stream)
             except FileNotFoundError:
                 pending = 0
-            return {**self.snapshot(), "semantic_recall": host.semantic_state(self.profile.directory),
+            semantic = host.semantic_state(self.profile.directory)
+            if semantic == "ready" and not (self.settings.embedding_local_directory or self.settings.embedding_base_url):
+                semantic = "restart_required"
+            return {**self.snapshot(), "semantic_recall": semantic,
                     "pending_records": pending}
+
+        @app.post("/v1/local/semantic-model")
+        def prepare_semantic_model(authorization: str | None = Header(default=None)):
+            from . import host
+
+            authenticate(authorization)
+            state = host.semantic_state(self.profile.directory)
+            if state == "unavailable":
+                raise HTTPException(409, "Local model support is missing. Reinstall with the semantic extra.")
+            if state != "ready":
+                host._fetch_in_background(self.profile.directory)
+            elif not self.settings.embedding_local_directory:
+                host._fetch_in_background(self.profile.directory)
+            return {"semantic_recall": host.semantic_state(self.profile.directory)}
 
         @app.get("/v1/local/status")
         def local_status(authorization: str | None = Header(default=None)):

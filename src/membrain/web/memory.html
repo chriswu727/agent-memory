@@ -26,6 +26,34 @@
     <div><strong id="service-heading">Checking memory…</strong><p id="service-detail" class="muted"></p></div>
     <button id="refresh-status" class="secondary">Refresh status</button>
   </section>
+  <details id="first-use" class="card first-use" open hidden>
+    <summary><strong>Your agent's memory</strong><span id="connection-summary" class="hint"></span></summary>
+    <p class="muted">Connect once, then talk normally. Your agent records conversations and brings useful memories
+      into later sessions. You can review and correct them here.</p>
+    <ol class="setup-checks" aria-label="Connection checks">
+      <li><strong>Local memory</strong><span id="setup-service" class="hint">Checking…</span></li>
+      <li><strong>Messages from your agent</strong><span id="setup-recording" class="hint">Waiting for a message…</span></li>
+      <li><strong>Recall by meaning</strong><span id="setup-semantic" class="hint">Checking…</span></li>
+    </ol>
+    <div class="row"><button id="prepare-model" class="secondary" hidden>Enable recall by meaning</button></div>
+    <details id="connect-agent">
+      <summary>Connect Claude Code or Codex</summary>
+      <label class="field" for="setup-host">Your agent
+        <select id="setup-host"><option value="claude-code">Claude Code</option><option value="codex">Codex</option></select>
+      </label>
+      <p class="hint">Run this in a terminal, then open a new agent session. Approve its memory tools and hooks when asked.</p>
+      <pre id="setup-command"></pre>
+      <button id="copy-setup" class="secondary">Copy install command</button>
+    </details>
+    <div class="try-memory">
+      <h2>Try remembering across sessions</h2>
+      <p>Tell your agent a real preference, such as “I prefer short answers.” Open a new session and ask
+        “How should you format answers for me?” Check the saved note or original message here.</p>
+      <p class="hint">Receiving messages confirms recording. The new-session exercise checks whether your agent
+        actually uses them. You do not need to maintain notes by hand.</p>
+      <button id="first-preference" class="secondary">Add a preference here</button>
+    </div>
+  </details>
   <section id="signin" class="panel narrow" hidden>
     <h1>Your memory</h1>
     <p class="muted">Open this page with <code>membrain plugin ui</code>. It starts the local service and opens a
@@ -85,7 +113,7 @@
   </section>
 
   <section id="view-privacy" class="view" hidden>
-    <div class="heading"><div><h1>Privacy</h1><p class="muted">Memory lives only on this computer.</p></div></div>
+    <div class="heading"><div><h1>Privacy</h1><p class="muted">Memory is stored on this computer. Recalled text is sent to the agent you use; configured model providers may also process it.</p></div></div>
     <div class="card">
       <h2>Recording</h2>
       <p id="recording-text" class="muted"></p>

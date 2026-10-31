@@ -126,7 +126,8 @@ class MembrainProvider(_Base):
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         if self._directory is None or not self._writes:
             return ""
-        return host.prompt_context(self._directory, session_id or self._session, query, producer=PRODUCER, include_source=True) or ""
+        return host.prompt_context(self._directory, session_id or self._session, query, producer=PRODUCER,
+                                   include_source=True, tools=TOOLS) or ""
 
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "",
                   messages: list[dict[str, Any]] | None = None, **kwargs) -> None:

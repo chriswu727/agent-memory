@@ -246,7 +246,7 @@ def select_notes(parsed: list, budget: int = NOTES_CHARACTERS) -> tuple[list, in
     order = sorted(range(len(parsed)), key=lambda index: (_priority(parsed[index]), -index))
     chosen, used = set(), 0
     for index in order:
-        size = len(parsed[index][2]) + 60
+        size = len(_line(*parsed[index])) + 35
         if used + size > budget:
             continue
         chosen.add(index)
@@ -318,7 +318,8 @@ def _as_date(value: str | None) -> _datetime.date | None:
         return None
 
 
-def render_coming_up(response: dict, *, today: _datetime.date | None = None, skip_imports_from=()) -> str | None:
+def render_coming_up(response: dict, *, today: _datetime.date | None = None, skip_imports_from=(),
+                     budget: int = 1500) -> str | None:
     """Open plans and commitments that are due soon, overdue, or undated, with today's date."""
     today = today or _datetime.date.today()
     soon, passed, undated = [], [], []
@@ -343,10 +344,20 @@ def render_coming_up(response: dict, *, today: _datetime.date | None = None, ski
     lines = sorted(soon) + passed + undated
     if not lines:
         return None
-    return ("<membrain-coming-up>\nToday is " + f"{today.isoformat()} ({today.strftime('%A')}). Plans and promises "
+    header = ("<membrain-coming-up>\nToday is " + f"{today.isoformat()} ({today.strftime('%A')}). Plans and promises "
             "that are due soon, overdue or still open. Follow up naturally when it fits (\"Did the passport "
             "arrive?\"); never assume a planned action happened, and when the user confirms or cancels one, replace "
-            "its note with the new status.\n" + "\n".join(lines) + "\n</membrain-coming-up>")
+            "its note with the new status.\n")
+    footer = "\n</membrain-coming-up>"
+    more = "\nMore plans did not fit; search when needed."
+    if len(header) + len(footer) + len(more) > budget:
+        return None
+    chosen, used = [], len(header) + len(footer) + len(more)
+    for line in lines:
+        if used + len(line) + 1 <= budget:
+            chosen.append(line)
+            used += len(line) + 1
+    return header + "\n".join(chosen) + (more if len(chosen) < len(lines) else "") + footer
 
 
 def alias_cues(response: dict, text: str) -> tuple[str, ...]:

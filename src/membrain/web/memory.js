@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const uid = () => crypto.randomUUID();
 const HOST_NAMES = { "claude-code": "Claude Code", codex: "Codex", hermes: "Hermes", openclaw: "OpenClaw", workbuddy: "WorkBuddy" };
 const NOTES = "membrain-notes";
-const state = { key: "", brain: "", notes: [] };
+const state = { key: "", brain: "", notes: [], connectionShown: false };
 let messageTimer;
 
 function notify(text, error = false) {
@@ -447,6 +447,61 @@ guard($("erase"), async () => {
   notify("Everything was erased.");
 });
 
+const INSTALL_COMMANDS = {
+  "claude-code": "claude plugin install membrain --marketplace chriswu727/membrain",
+  codex: "codex plugin marketplace add chriswu727/memBrain\ncodex plugin add membrain@membrain",
+};
+function setupCommand() { $("setup-command").textContent = INSTALL_COMMANDS[$("setup-host").value]; }
+$("setup-host").addEventListener("change", setupCommand);
+setupCommand();
+guard($("copy-setup"), async () => {
+  try { await navigator.clipboard.writeText($("setup-command").textContent); notify("Install command copied."); }
+  catch { notify("Select and copy the install command above."); }
+});
+guard($("first-preference"), async () => {
+  await show("notes"); $("add-note").open = true;
+  const form = $("note-form-host").querySelector("form");
+  form.elements.kind.value = "preference"; form.elements.kind.dispatchEvent(new Event("change"));
+  form.elements.text.focus();
+});
+guard($("prepare-model"), async () => {
+  await api("/v1/local/semantic-model", {});
+  notify("Preparing recall by meaning. Keyword search keeps working; this page will update automatically.");
+  await loadServiceStatus();
+});
+
+function showConnection(brain, local) {
+  if (!local) { $("first-use").hidden = true; return; }
+  $("first-use").hidden = false;
+  const received = brain.recorded_messages > 0;
+  $("connection-summary").textContent = received ? "Messages are arriving" : "Finish connecting your agent";
+  if (!state.connectionShown) {
+    $("first-use").open = !received; $("connect-agent").open = !received;
+    if (brain.last_message_producer === "membrain-codex") $("setup-host").value = "codex";
+    setupCommand(); state.connectionShown = true;
+  }
+  $("setup-service").textContent = local.ready ? "Running on this computer." : "Needs attention. Run membrain doctor for a diagnosis.";
+  const producer = { "membrain-plugin": "Claude Code", "membrain-codex": "Codex", "membrain-hermes": "Hermes",
+    "membrain-openclaw": "OpenClaw", "membrain-workbuddy": "WorkBuddy" }[brain.last_message_producer];
+  $("setup-recording").textContent = received
+    ? `${brain.recorded_messages} message(s) recorded${producer ? `; latest from ${producer}` : ""}${brain.last_message_at ? ` on ${day(brain.last_message_at)}` : ""}.`
+    : "No agent messages received yet. Connect below, send a message and wait for its reply, then refresh.";
+  const semantic = local.semantic_recall;
+  $("setup-semantic").textContent = semantic === "ready"
+    ? `Enabled. ${brain.embedding_pending ? `${brain.embedding_pending} memory item(s) still preparing.` : "Finds related wording across languages."}`
+    : semantic === "downloading" ? "Downloading the local model (about 135 MB). Keyword search already works."
+    : semantic === "download_failed" ? "The download failed. Check your connection and retry below; keyword search still works."
+    : semantic === "restart_required" ? "The model is downloaded. Finish enabling it below."
+    : semantic === "unavailable" ? "Local model support is missing. Reinstall using the documented semantic extra."
+    : "Optional local model; no API key or usage charge. Keyword search already works.";
+  for (const [id, ready] of [["setup-service", local.ready], ["setup-recording", received], ["setup-semantic", semantic === "ready"]]) {
+    $(id).parentElement.dataset.ready = String(Boolean(ready));
+  }
+  $("prepare-model").hidden = ["ready", "downloading", "unavailable"].includes(semantic);
+  $("prepare-model").textContent = semantic === "download_failed" ? "Retry model download"
+    : semantic === "restart_required" ? "Finish enabling recall" : "Enable recall by meaning";
+}
+
 async function loadServiceStatus() {
   $("service-status").hidden = false;
   try {
@@ -454,11 +509,17 @@ async function loadServiceStatus() {
       api(`/v1/brains/${encodeURIComponent(state.brain)}/status`), api("/v1/local/memory-status").catch(() => null),
     ]);
     const lag = brain.index_lag;
-    $("service-heading").textContent = (local && !local.ready) || brain.failed_jobs ? "Memory service needs attention"
-      : local?.pending_records ? "Messages waiting for delivery" : lag ? "Indexing your messages" : "Memory is ready";
     const semantic = local?.semantic_recall;
-    const recall = semantic === "ready" ? "Keyword and semantic recall ready" : semantic === "downloading" ? "Keyword recall ready; semantic model downloading" : "Keyword recall ready; semantic model not installed";
+    $("service-heading").textContent = (local && !local.ready) || brain.failed_jobs ? "Memory service needs attention"
+      : local?.pending_records ? "Messages waiting for delivery" : lag ? "Indexing your messages"
+      : semantic === "ready" ? "Memory is ready" : "Keyword memory is ready";
+    const recall = semantic === "ready" ? "Keyword and semantic recall enabled"
+      : semantic === "downloading" ? "Keyword recall ready; semantic model downloading"
+      : semantic === "download_failed" ? "Keyword recall ready; model download needs a retry"
+      : semantic === "restart_required" ? "Keyword recall ready; semantic model needs activation"
+      : local ? "Keyword recall ready; semantic model not enabled" : "Keyword recall available; local model status unknown";
     $("service-detail").textContent = `${recall}. ${lag ? `${lag} message(s) waiting for indexing.` : "Message index is up to date."} ${local?.pending_records ? `${local.pending_records} queued record(s).` : ""} ${brain.failed_jobs ? `${brain.failed_jobs} background job(s) need attention. Run membrain doctor.` : ""}`;
+    showConnection(brain, local);
   } catch (error) {
     $("service-heading").textContent = "Unable to check memory";
     $("service-detail").textContent = `${error.message} Run membrain doctor for help.`;

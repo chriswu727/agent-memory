@@ -24,14 +24,16 @@ codebuddy plugin install membrain@membrain
 
 Requires [uv](https://docs.astral.sh/uv/). No Docker, setup wizard or extra model API key.
 
+After the runtime is installed, run `membrain plugin setup` to open the guided memory page. It shows whether messages have actually arrived from your agent, helps you retry the optional local model download, and walks through checking a preference in a new session. Service readiness alone does not confirm that host hooks are trusted or recording. `--no-browser` prints the single-use link instead.
+
 ## What it does
 
 | Hook | Behaviour |
 | --- | --- |
 | `SessionStart` (asynchronous) | Installs or updates the runtime with `uv tool install` and starts the local service with an embedded PostgreSQL database. |
 | `SessionStart` | Adds Claude's saved notes about you and your recent messages from other sessions. |
-| `UserPromptSubmit` | Recalls related earlier messages by keywords and meaning, in any language, adds them as dated, attributed messages, then records the message. |
-| `Stop` | Records Claude's final reply. |
+| `UserPromptSubmit` | Refreshes changed saved notes, recalls related earlier messages by keywords and meaning, and stages the privacy-filtered user message. |
+| `Stop` | Records the staged user message and Claude's final reply together. |
 
 Every hook fails open: if memory is unavailable the prompt and reply proceed unchanged, and, once the runtime is installed, privacy-filtered records are queued locally until the service is ready. Before the runtime can run, recording is skipped; shell hooks never persist raw input. The bundled MCP server adds `memory_note` (Claude saves short lasting facts, such as health limits, people and dates, and replaces them when they change), `memory_recall`, `memory_inspect`, `memory_observe` and `memory_forget`; the skill tells Claude when to use them. Claude Code may ask you once to allow these tools.
 
