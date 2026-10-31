@@ -24,6 +24,8 @@ def add_commands(commands):
                          help="Also import project and environment memory, not only memory about the person")
     imports.add_argument("--dry-run", action="store_true", help="Report what would be imported without saving")
     actions.add_parser("start", help="Create the local installation if needed and start the service")
+    setup = actions.add_parser("setup", help="Start memory and open a guided connection check; no model API key needed")
+    setup.add_argument("--no-browser", action="store_true", help="Print the guided memory page link without opening it")
     actions.add_parser("mcp", help="Run the MCP stdio bridge, creating and starting the installation if needed")
     actions.add_parser("status", help="Show installation, service and pending-record state")
     actions.add_parser("fetch-model", help="Download the local multilingual embedding model for semantic recall")
@@ -75,12 +77,16 @@ def dispatch(args) -> None:
             result = plugin.start(directory)
         elif args.plugin_command == "fetch-model":
             result = plugin.fetch_model(directory)
-        elif args.plugin_command == "ui":
+        elif args.plugin_command in ("setup", "ui"):
             from . import host
             from .local_profile import load_profile
 
-            plugin.start(directory)
+            result = plugin.start(directory)
             url = f"{load_profile(directory).base_url}/memory?code={host.issue_ui_code(directory)}"
+            if args.plugin_command == "setup":
+                print("Local memory is running. No extra model API key is needed.")
+                print(f"Recall: {result['semantic_recall']}. Recording: {result['recording']}.")
+                print("Use the page below to check that your agent records messages, then try a new session.")
             if not args.no_browser:
                 import webbrowser
 

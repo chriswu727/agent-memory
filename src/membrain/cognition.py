@@ -382,7 +382,9 @@ def _lexical_score_terms(query_terms, text_terms) -> float:
 
 def speech_requested(request: dict) -> bool:
     return request["intent"] in {"episode", "open_commitment", "exact_quote"} or bool(re.search(
-        r"你说|你答应|你的建议|you said|you promised|your suggestion|(?:did|do) you (?:say|suggest|promise)",
+        r"你(?:之前|以前|上次|曾经|当时)?(?:说|答应|推荐|建议)|你的(?:建议|推荐)|"
+        r"\byou (?:said|promised|suggested|recommended)\b|\byour (?:earlier |previous )?(?:suggestions?|recommendations?)\b|"
+        r"\b(?:did|do|have) you (?:say|suggest|promise|recommend)(?:ed)?\b",
         request["query"], re.I,
     ))
 

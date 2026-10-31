@@ -59,6 +59,18 @@ code { background: var(--wash); padding: 1px 5px; border-radius: 4px; font-size:
 
 .service-status { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .service-status p { margin: 4px 0 0; font-size: 13px; }
+.first-use > summary { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+.first-use > summary::before { content: "▸"; }
+.first-use[open] > summary::before { content: "▾"; }
+.first-use > summary strong { color: var(--ink); }
+.setup-checks { padding-left: 24px; }
+.setup-checks li { padding: 5px 0 5px 4px; }
+.setup-checks li span { display: block; }
+.setup-checks li[data-ready="true"]::marker { color: var(--accent); }
+.try-memory { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 20px; }
+.try-memory p { margin: 6px 0 12px; }
+#connect-agent .field { max-width: 300px; margin-top: 12px; }
+#setup-command { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--wash); padding: 12px; border-radius: 8px; font-size: 13px; }
 .note-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
 .field:has(textarea), .source-picker, .editor-actions { grid-column: 1 / -1; }

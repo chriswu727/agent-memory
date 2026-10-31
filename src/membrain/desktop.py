@@ -547,8 +547,25 @@ class LocalSupervisor:
                     pending = sum(bool(line.strip()) for line in stream)
             except FileNotFoundError:
                 pending = 0
-            return {**self.snapshot(), "semantic_recall": host.semantic_state(self.profile.directory),
+            semantic = host.semantic_state(self.profile.directory)
+            if semantic == "ready" and not (self.settings.embedding_local_directory or self.settings.embedding_base_url):
+                semantic = "restart_required"
+            return {**self.snapshot(), "semantic_recall": semantic,
                     "pending_records": pending}
+
+        @app.post("/v1/local/semantic-model")
+        def prepare_semantic_model(authorization: str | None = Header(default=None)):
+            from . import host
+
+            authenticate(authorization)
+            state = host.semantic_state(self.profile.directory)
+            if state == "unavailable":
+                raise HTTPException(409, "Local model support is missing. Reinstall with the semantic extra.")
+            if state != "ready":
+                host._fetch_in_background(self.profile.directory)
+            elif not self.settings.embedding_local_directory:
+                host._fetch_in_background(self.profile.directory)
+            return {"semantic_recall": host.semantic_state(self.profile.directory)}
 
         @app.get("/v1/local/status")
         def local_status(authorization: str | None = Header(default=None)):

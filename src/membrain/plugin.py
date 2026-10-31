@@ -110,8 +110,9 @@ def session_start(payload: dict, directory: Path, producer: str = PRODUCER) -> s
 
 def user_prompt(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
     _import_host_queue(directory, producer)
+    name = next((key for key, value in PRODUCERS.items() if value == producer), "claude-code")
     return host.prompt_context(directory, _conversation(payload), payload.get("prompt"), turn_id=_turn(payload),
-                               producer=producer, include_source=True)
+                               producer=producer, include_source=True, tools=HOST_TOOLS.get(name, host.TOOL_NAMES))
 
 
 def _text(content) -> str:

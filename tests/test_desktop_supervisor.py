@@ -121,3 +121,31 @@ def test_log_refuses_hard_link(supervisor, tmp_path):
     with pytest.raises(LocalProfileError):
         _logger(supervisor.profile)
     assert original.read_text() == "keep me"
+
+
+def test_model_retry_requires_authentication_and_starts_only_the_local_download(supervisor, monkeypatch):
+    from membrain import host
+
+    monkeypatch.setattr(host, "semantic_state", lambda directory: "download_failed")
+    launched = []
+    monkeypatch.setattr(host, "_fetch_in_background", launched.append)
+    with TestClient(supervisor.app(), base_url="http://127.0.0.1") as client:
+        assert client.post("/v1/local/semantic-model").status_code == 401
+        assert launched == []
+        headers = {"Authorization": "Bearer " + supervisor.profile.api_key}
+        assert client.post("/v1/local/semantic-model", headers=headers).status_code == 200
+        assert launched == [supervisor.profile.directory]
+        monkeypatch.setattr(host, "semantic_state", lambda directory: "unavailable")
+        assert client.post("/v1/local/semantic-model", headers=headers).status_code == 409
+        assert len(launched) == 1
+
+
+def test_downloaded_model_is_not_reported_enabled_before_the_service_activates_it(supervisor, monkeypatch):
+    from membrain import host
+
+    monkeypatch.setattr(host, "semantic_state", lambda directory: "ready")
+    monkeypatch.setattr(supervisor, "snapshot", lambda: {"ready": True})
+    with TestClient(supervisor.app(), base_url="http://127.0.0.1") as client:
+        headers = {"Authorization": "Bearer " + supervisor.profile.api_key}
+        result = client.get("/v1/local/memory-status", headers=headers).json()
+        assert result["semantic_recall"] == "restart_required"

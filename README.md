@@ -31,7 +31,7 @@ From the next session on, the plugin:
 - recalls related earlier messages before each reply, by keywords and, once the local model is installed, by meaning across languages;
 - gives Claude memory tools for deliberate searches, short notes and user-requested deletion.
 
-Packaged host installers pin the runtime to a verified Git revision. For a custom build, set `MEMBRAIN_PACKAGE` in shell launchers or change the MCP configuration’s `--from` argument.
+Packaged host installers download a source archive pinned to a verified full Git revision; the Git command is not required. For a custom build, set `MEMBRAIN_PACKAGE` in shell launchers or change the MCP configuration’s `--from` argument.
 
 The first session installs the runtime and an embedded PostgreSQL database in the background; recording starts once the runtime can run. Messages sent before then are skipped, so unfiltered input is never queued by the shell. Once the runtime is installed, messages are privacy-filtered and queued if the database service is unavailable. Automatic recall matches the current message by keywords and, once a local multilingual model (about 135 MB, no API key) has downloaded in the background, by meaning across languages. Claude is also instructed to search memory deliberately when personal context matters. Set `HF_ENDPOINT` to download the model from a Hugging Face mirror. Run `membrain plugin import` once to copy what Claude Code, Hermes, OpenClaw or Codex already remember about you into memBrain (`--dry-run` to preview). Run `membrain plugin ui` to open a local memory page where you can review, correct and delete what is remembered, pause recording, or export everything. The page has separate People and Plans views, labelled source messages, a structured note editor, and service, indexing and recall readiness. Run `membrain doctor` to diagnose startup, model, queue and disk problems with concrete recovery commands. Model-driven background learning stays off unless you configure a provider. Memory lives in your user data directory (for example `~/.local/share/membrain` on Linux) and is shared by your sessions. See [plugin mode](architecture/plugin-mode.md) for the design, verification and limits.
 
@@ -79,7 +79,15 @@ Hermes then starts each session with your notes and recent messages, adds relate
 
 ## Quickstart
 
-Install [uv](https://docs.astral.sh/uv/). You will need a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
+**For an agent you already use:** install the Claude Code or Codex plugin above, approve its memory tools and hooks, then talk normally. No extra model API key is needed. After the runtime is installed, run:
+
+```sh
+membrain plugin setup
+```
+
+This starts local memory and opens a guided page. It distinguishes a running service from actual incoming agent messages, offers a retry if the local semantic model download fails, and explains how to check recall in a new session. Messages sent before the first runtime installation are skipped; check the page before relying on capture. You can also add a preference there. Corrections and removals refresh saved-note context before the next reply in an ongoing session; unchanged notes are not injected again. This updates the agent's context, but cannot remove text already seen by the host model.
+
+**For standalone chat:** install [uv](https://docs.astral.sh/uv/) and follow the commands below. This optional mode needs a Chat Completions-compatible model endpoint, model name, and API key; memory learning also requires JSON mode.
 
 ```sh
 uv tool install --python 3.12 'membrain-ai[embedded,semantic] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'

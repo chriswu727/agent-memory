@@ -31,7 +31,7 @@ memBrain 以本地服务运行。将 Agent 的对话生命周期接入一次后�
 - 在每次回复前召回相关的早期消息：按关键词匹配，本地模型安装后还会跨语言按语义匹配；
 - 为 Claude 提供记忆工具，用于主动检索、记录简短笔记以及按用户要求删除。
 
-随插件提供的宿主安装入口会将运行时固定到已验证的 Git 提交。需要自定义版本时，可在 shell 启动入口设置 `MEMBRAIN_PACKAGE`，或修改 MCP 配置中的 `--from` 参数。
+随插件提供的宿主安装入口会下载固定到已验证完整 Git 提交的源码压缩包，不需要 Git 命令。需要自定义版本时，可在 shell 启动入口设置 `MEMBRAIN_PACKAGE`，或修改 MCP 配置中的 `--from` 参数。
 
 第一个会话会在后台安装运行时和嵌入式 PostgreSQL 数据库；运行时能够运行后才开始记录。在此之前发送的消息会跳过，避免 shell 将未经隐私过滤的原文写入队列。运行时安装完成后，如果数据库服务不可用，消息会先经过隐私过滤再排队。自动召回按关键词匹配当前消息；本地多语言模型（约 135 MB，无需 API key）在后台下载完成后，还会按语义跨语言匹配。当问题涉及个人背景时，Claude 也会被引导主动检索记忆。可通过设置 `HF_ENDPOINT` 从 Hugging Face 镜像下载该模型。运行一次 `membrain plugin import`，可以把 Claude Code、Hermes、OpenClaw 或 Codex 已经记住的关于你的内容导入 memBrain（加 `--dry-run` 先预览）。运行 `membrain plugin ui` 可打开本地记忆页面，查看、更正和删除已记住的内容，暂停记录，或导出全部数据。页面提供独立的人物和计划视图、原始消息来源、结构化笔记编辑，以及服务、索引和召回就绪状态。运行 `membrain doctor` 可诊断启动、模型、队列和磁盘问题，并获得具体恢复命令。除非你配置了模型服务，否则不会启用由模型驱动的后台学习。记忆保存在你的用户数据目录（例如 Linux 上的 `~/.local/share/membrain`），由你的各个会话共享。设计、验证和限制详见[插件模式](architecture/plugin-mode.md)。
 
@@ -80,7 +80,15 @@ hermes config set memory.provider membrain   # 或：hermes memory setup
 
 ## 快速开始
 
-安装 [uv](https://docs.astral.sh/uv/)。准备好兼容 Chat Completions 的模型服务地址、模型名称和 API key；记忆学习还要求模型支持 JSON 模式。
+**为已有的 Agent 增加记忆：** 安装上面的 Claude Code 或 Codex 插件，批准其记忆工具和 hooks，然后正常聊天。不需要额外的模型 API key。运行时安装完成后，运行：
+
+```sh
+membrain plugin setup
+```
+
+命令会启动本地记忆并打开引导页面。页面区分“服务运行中”和“确实收到 Agent 消息”，本地语义模型下载失败时可重试，并说明如何在新会话中检查回忆。在首次运行时安装完成前发送的消息会跳过；依赖自动记录前，请先检查页面。你也可以直接在页面添加偏好。在进行中的会话里，笔记更正和移除会在下一次回复前刷新已保存笔记的上下文；未变化的笔记不会重复注入。这会更新 Agent 的上下文，但无法撤回宿主模型已经看到的文本。
+
+**使用独立聊天模式：** 安装 [uv](https://docs.astral.sh/uv/)，再执行下面的命令。这是可选模式，需要兼容 Chat Completions 的模型服务地址、模型名称和 API key；记忆学习还要求模型支持 JSON 模式。
 
 ```sh
 uv tool install --python 3.12 'membrain-ai[embedded,semantic] @ https://github.com/chriswu727/membrain/archive/refs/heads/main.zip'

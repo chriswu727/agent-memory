@@ -1495,6 +1495,8 @@ class MemoryService:
                            "recorded_at": row["document"]["system_time"]["recorded_at"]} for row in rows]}
 
     def memory_status(self, principal, brain_id):
+        from .notes import NOTES_CONVERSATION
+
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
             jobs = conn.execute(
@@ -1503,9 +1505,24 @@ class MemoryService:
                 "count(*) FILTER (WHERE kind='embed' AND state IN ('queued','running','failed')) AS embedding_pending "
                 "FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s",
                 self._params(principal, brain_id)).fetchone()
+            messages = conn.execute(
+                "SELECT count(*) AS recorded_messages, max(sequence) AS last_sequence "
+                "FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND is_current "
+                "AND NOT deleted AND NOT suppressed AND NOT retired AND document IS NOT NULL "
+                "AND conversation_id IS DISTINCT FROM %s AND producer_ref <> 'membrain-memory-page' "
+                "AND document #>> '{observed,event_kind}'='message' "
+                "AND document #>> '{observed,actor_role}' IN ('user','assistant')",
+                (*self._params(principal, brain_id), NOTES_CONVERSATION)).fetchone()
+            latest = conn.execute(
+                "SELECT producer_ref, document #>> '{system_time,recorded_at}' AS recorded_at "
+                "FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s AND sequence=%s",
+                (*self._params(principal, brain_id), messages["last_sequence"])).fetchone()
             return {"brain_id": brain_id, "durable_sequence": brain["durable_sequence"],
                     "indexed_sequence": brain["indexed_sequence"],
-                    "index_lag": max(0, brain["durable_sequence"] - brain["indexed_sequence"]), **jobs}
+                    "index_lag": max(0, brain["durable_sequence"] - brain["indexed_sequence"]), **jobs,
+                    "recorded_messages": messages["recorded_messages"],
+                    "last_message_at": latest["recorded_at"] if latest else None,
+                    "last_message_producer": latest["producer_ref"] if latest else None}
 
     def dashboard(self, principal, brain_id):
         from .dynamics import DEFAULT_POLICY

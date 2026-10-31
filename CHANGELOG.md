@@ -6,6 +6,9 @@ memBrain is a human-inspired memory engine for AI agents. It keeps persistent me
 
 ### Included
 
+- Guided first use through `membrain plugin setup`: actual incoming-message status, host connection instructions, a cross-session exercise and local semantic-model retry without an extra API key.
+- Saved notes refresh inside ongoing sessions after corrections, removals and coming-up changes. Fingerprints are bound to the selected brain, failed reads preserve the previous snapshot, and unchanged snapshots are not repeated. Previously delivered text cannot be retracted from a host model.
+- Explicit questions about earlier assistant recommendations retain attributed speech recall even when complete user history is already loaded. Other people's recommendations do not enable assistant-speech recall.
 - Memory of a person's life (Phase B):
   - Typed notes: a note can carry a kind (person, constraint, preference, plan, routine, milestone, relationship, agent commitment), a person it is about, aliases, a plan status (intended, scheduled, done, cancelled), dates, pinned and sensitive. Notes are stored as plain text with a short header, so recall, the memory page and deletion work as before.
   - Every session starts with a `<membrain-coming-up>` block of plans and promises that are due soon, overdue or still open, and with notes grouped by kind and chosen by priority within the budget.

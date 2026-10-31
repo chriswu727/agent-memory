@@ -250,7 +250,7 @@ def start(directory: Path) -> dict:
     state = semantic_state(directory)
     if state == "not_downloaded" and os.environ.get("MEMBRAIN_SEMANTIC", "1") != "0":
         _fetch_in_background(directory)
-        state = "downloading"
+        state = semantic_state(directory)
     result["semantic_recall"] = state
     result["recording"] = "paused" if paused(directory) else "on"
     return result
@@ -282,7 +282,9 @@ def semantic_state(directory: Path) -> str:
         return "unavailable"
     if installed(directory):
         return "ready"
-    return "downloading" if _download_active(directory) else "not_downloaded"
+    if _download_active(directory):
+        return "downloading"
+    return "download_failed" if (Path(directory) / "plugin" / "model-download-error.json").exists() else "not_downloaded"
 
 
 def _download_marker(directory: Path) -> Path:
@@ -309,7 +311,12 @@ def _fetch_in_background(directory: Path) -> None:
         except FileExistsError:
             return
     os.close(descriptor)
-    _detached(["plugin", "fetch-model", "--directory", str(directory)])
+    (marker.parent / "model-download-error.json").unlink(missing_ok=True)
+    try:
+        _detached(["plugin", "fetch-model", "--directory", str(directory)])
+    except OSError as error:
+        _write_state(marker.parent / "model-download-error.json", {"time": time.time(), "type": type(error).__name__})
+        marker.unlink(missing_ok=True)
 
 
 def fetch_model(directory: Path) -> dict:
@@ -319,6 +326,7 @@ def fetch_model(directory: Path) -> dict:
 
     try:
         download(directory)
+        (state_directory(directory) / "model-download-error.json").unlink(missing_ok=True)
         log(directory, "semantic model installed")
         restarted = False
         if (Path(directory) / "profile.json").exists() and desktop.status(directory).get("state") in {
@@ -327,6 +335,8 @@ def fetch_model(directory: Path) -> dict:
             restarted = True
         return {"semantic_recall": semantic_state(directory), "service_restarted": restarted}
     except Exception as error:
+        _write_state(state_directory(directory) / "model-download-error.json",
+                     {"time": time.time(), "type": type(error).__name__})
         log(directory, f"semantic model download failed: {type(error).__name__}")
         raise
     finally:
@@ -573,10 +583,10 @@ def _write_state(path: Path, state: dict) -> None:
     os.replace(temporary, path)
 
 
-def _mark_history(directory: Path, session: str, complete: bool) -> None:
+def _mark_history(directory: Path, session: str, complete: bool, brain_id: str | None = None) -> None:
     with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
         state = session_state(directory, session)
-        _write_session_state(directory, session, {"complete": complete, **{
+        _write_session_state(directory, session, {"complete": complete, "history_brain": brain_id, **{
             key: state[key] for key in ("pending", "user_id", "paused_turn") if key in state}})
     cutoff = time.time() - SESSION_MARKER_SECONDS
     for old in _session_marker(directory, session).parent.glob("*.json"):
@@ -587,8 +597,33 @@ def _mark_history(directory: Path, session: str, complete: bool) -> None:
             pass
 
 
-def history_complete(directory: Path, session: str) -> bool:
-    return session_state(directory, session).get("complete") is True
+def history_complete(directory: Path, session: str, brain_id: str | None = None) -> bool:
+    state = session_state(directory, session)
+    return state.get("complete") is True and (brain_id is None or state.get("history_brain") == brain_id)
+
+
+def _remember_context(directory, session, brain_id, current, options):
+    with profile_lock(state_directory(directory) / "session-state-lock", timeout=5):
+        state = session_state(directory, session)
+        state["memory_context"] = {"brain_id": brain_id, "fingerprint": current["fingerprint"], **options}
+        _write_session_state(directory, session, state)
+
+
+def _saved_context(client, real_life, roleplay, options):
+    from .host_context import snapshot
+    from .notes import list_notes
+
+    saved = list_notes(client)
+    shared = None
+    if roleplay and options.get("share_real_life"):
+        current = client.brain_id
+        try:
+            use_brain(client, real_life)
+            shared = list_notes(client)
+        finally:
+            client.brain_id = current
+    return saved, snapshot(saved, brain_id=client.brain_id, shared=shared,
+                           tools=options["tools"], skip_imports_from=options.get("skip_imports_from", ()))
 
 
 def _stage(directory: Path, session: str, record: dict, prompt: str) -> dict | None:
@@ -952,58 +987,54 @@ def session_context(directory: Path, session: str, *, tools: dict | None = TOOL_
     are not repeated. ``roleplay`` names a role-play character whose separate memory is used; with
     ``share_real_life`` the person's non-sensitive real-life notes are shown too, marked as such.
     """
-    from .notes import list_notes, render_coming_up, render_notes
-
     real_life = user_id
     user_id = roleplay_user(user_id, roleplay)
-    shared = None
-
-    history, notes, coming, complete = None, None, None, False
+    options = {"tools": tools, "skip_imports_from": list(skip_imports_from), "share_real_life": share_real_life}
+    history, current, complete = None, None, False
     client = ready_client(directory, user_id)
     if client is None:
         start_in_background(directory)
+        _mark_history(directory, session, False)
+        return ("memBrain is starting or unavailable. Earlier memory has not been loaded; do not claim it is "
+                "active or that you remember earlier sessions. Continue helping normally. Memory will be "
+                "retried on the next message. Run membrain plugin setup to check the connection. "
+                + privacy_notice(tools) + (" Recording is currently paused." if paused(directory, user_id) else ""))
     else:
         with client:
             flush(client, directory)
             _finish_pending(directory, client, session)
             _finish_abandoned(directory, client)
             try:
-                saved = list_notes(client)
-                notes = render_notes(saved, tool=tools["note"] if tools else None,
-                                     skip_imports_from=tuple(skip_imports_from))
-                coming = render_coming_up(saved, skip_imports_from=tuple(skip_imports_from))
-                if roleplay and share_real_life:
-                    current = client.brain_id
-                    try:
-                        use_brain(client, real_life)
-                        shared = render_notes(list_notes(client), tool=None, real_life=True)
-                    finally:
-                        client.brain_id = current
+                _, current = _saved_context(client, real_life, roleplay, options)
             except Exception as error:
                 log(directory, f"notes failed: {type(error).__name__}")
             try:
                 # Notice and history header take about 1,000 characters of the host's limit.
                 # Room for the longest notice, the history block's header and the separators between blocks.
                 reserved = max(len(_session_notice(value, tools, True, roleplay)) for value in (True, False)) + 400
-                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - reserved) - len(notes or "") - len(
-                    coming or "") - len(shared or "")
+                budget = min(HISTORY_CHARACTERS, SESSION_CONTEXT_CHARACTERS - reserved) - len(
+                    current["text"] if current else "")
                 history, complete = _history(client, session, budget)
             except Exception as error:
                 log(directory, f"timeline failed: {type(error).__name__}")
-    _mark_history(directory, session, complete and history is not None)
+    _mark_history(directory, session, complete and history is not None, client.brain_id)
+    if current is not None:
+        _remember_context(directory, session, client.brain_id, current, options)
     notice = _session_notice(complete and bool(history), tools, paused(directory, user_id), roleplay)
-    return "\n\n".join(part for part in (notice, coming, notes, shared, history) if part)
+    return "\n\n".join(part for part in (notice, current["text"] if current else None, history) if part)
 
 
 def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str | None = None,
                    producer: str = PRODUCER, user_id: str | None = None, roleplay: str | None = None,
-                   include_source: bool = False) -> str | None:
+                   include_source: bool = False, tools: dict | None = TOOL_NAMES) -> str | None:
     """Related earlier messages for this prompt. The prompt is staged and stored when the turn finishes."""
     if not isinstance(prompt, str) or not prompt.strip():
         return None
+    real_life = user_id
     user_id = roleplay_user(user_id, roleplay)
     record = message_record(session, "user", prompt, turn_id=turn_id, producer=producer, user_id=user_id)
-    previous = session_state(directory, session).get("last_prompt")
+    state = session_state(directory, session)
+    previous = state.get("last_prompt") if state.get("user_id") == user_id else None
     earlier = _stage(directory, session, record, prompt)
     client = ready_client(directory, user_id)
     if client is None:
@@ -1018,21 +1049,45 @@ def prompt_context(directory: Path, session: str, prompt: str, *, turn_id: str |
                                  "source_revision": 1}], ensure_ascii=False)
                   + ". This reference links after the turn is recorded.\n</membrain-source>")
     with client:
+        from .host_context import update
+        from .notes import alias_cues
+
+        saved, refreshed = {"items": []}, None
+        context = session_state(directory, session).get("memory_context") or {}
+        same_brain = context.get("brain_id") == client.brain_id
+        options = ({name: context[name] for name in ("tools", "skip_imports_from", "share_real_life")}
+                   if same_brain else {"tools": tools, "skip_imports_from": [], "share_real_life": False})
+        try:
+            saved, current = _saved_context(client, real_life, roleplay, options)
+            refreshed = update(current, context.get("fingerprint") if same_brain else None)
+            if not same_brain:
+                notice = "memBrain memory is active for this user. "
+                if roleplay:
+                    notice += "This memory belongs to the current role-play, not the user's real life. "
+                if options["tools"]:
+                    notice += (f"Save lasting facts with {options['tools']['note']}; search with "
+                               f"{options['tools']['recall']} when personal context is missing. ")
+                refreshed = notice + "\n\n" + refreshed
+            _remember_context(directory, session, client.brain_id, current, options)
+        except Exception as error:
+            log(directory, f"notes refresh failed: {type(error).__name__}")
+        prefix = "\n\n".join(part for part in (source, refreshed) if part)
         try:
             flush(client, directory)
             if earlier:
                 deliver(directory, client, earlier)
-            if history_complete(directory, session):
-                return source or None  # The complete earlier history is already in this session's context.
-            from .notes import alias_cues, list_notes
+            from .cognition import speech_requested
 
-            cues = ((previous,) if isinstance(previous, str) else ()) + alias_cues(list_notes(client), prompt)
+            if history_complete(directory, session, client.brain_id) and not speech_requested({"intent": "explore", "query": prompt}):
+                return prefix or None  # The complete earlier history is already in this session's context.
+
+            cues = ((previous,) if isinstance(previous, str) else ()) + alias_cues(saved, prompt)
             recalled = recall_context(client, scrub(prompt), current_conversation=session, cues=cues,
-                                      limit=(6500 if producer == "membrain-codex" else CONTEXT_CHARACTERS) - len(source) - 2)
-            return "\n\n".join(part for part in (source, recalled) if part) or None
+                                      limit=(6500 if producer == "membrain-codex" else CONTEXT_CHARACTERS) - len(prefix) - 2)
+            return "\n\n".join(part for part in (prefix, recalled) if part) or None
         except Exception as error:
             log(directory, f"recall failed: {type(error).__name__}")
-            return None
+            return prefix or None
 
 
 def finish_turn(directory: Path, session: str, reply: str | None, *, turn_id: str | None = None,
