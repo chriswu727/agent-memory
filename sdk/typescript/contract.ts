@@ -162,6 +162,7 @@ export type EventContent = {
 };
 
 export type ObservedEventInput = {
+  "source_references"?: { producer_ref: string; source_event_key: string; source_revision: number }[];
   "source_event_key": Identifier;
   "source_revision": number;
   "producer_ref": Identifier;

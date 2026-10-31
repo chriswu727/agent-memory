@@ -1,0 +1,118 @@
+{
+  "scope": "Synthetic local fixtures; historical before/after is not a paired controlled A/B test; no model generation latency or paid model calls.",
+  "historical_review": {
+    "mode": "lexical only; synthetic fixture; warm process; excludes ready_client startup; not model generation latency",
+    "results": [
+      {
+        "events": 100,
+        "added": 100,
+        "ingest_seconds": 1.36,
+        "ingest_and_index_seconds": 4.56,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 298.22,
+          "p95_ms": 316.4,
+          "max_ms": 323.37
+        },
+        "nonempty_results": 20
+      },
+      {
+        "events": 1000,
+        "added": 900,
+        "ingest_seconds": 19.49,
+        "ingest_and_index_seconds": 52.22,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 354.97,
+          "p95_ms": 384.62,
+          "max_ms": 414.96
+        },
+        "nonempty_results": 20,
+        "eight_concurrent_recall": {
+          "n": 24,
+          "median_ms": 2245.62,
+          "p95_ms": 2312.77,
+          "max_ms": 2318.88
+        }
+      }
+    ]
+  },
+  "current_workflow": {
+    "mode": "lexical only; synthetic fixture; warm process; excludes ready_client startup; not model generation latency",
+    "results": [
+      {
+        "events": 100,
+        "added": 100,
+        "ingest_seconds": 0.53,
+        "ingest_and_index_seconds": 2.62,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 242.46,
+          "p95_ms": 254.06,
+          "max_ms": 254.36
+        },
+        "nonempty_results": 20
+      },
+      {
+        "events": 1000,
+        "added": 900,
+        "ingest_seconds": 10.64,
+        "ingest_and_index_seconds": 79.58,
+        "sequential_recall": {
+          "n": 20,
+          "median_ms": 269.83,
+          "p95_ms": 307.17,
+          "max_ms": 307.41
+        },
+        "nonempty_results": 20,
+        "eight_concurrent_recall": {
+          "n": 24,
+          "median_ms": 2145.07,
+          "p95_ms": 2180.47,
+          "max_ms": 2244.71
+        }
+      }
+    ]
+  },
+  "local_onnx_32_documents": {
+    "individual_seconds": [
+      0.07313554093707353,
+      0.0713980000000447,
+      0.06790520797949284
+    ],
+    "batch_seconds": [
+      0.047626250074245036,
+      0.04593904200010002,
+      0.045631458051502705
+    ],
+    "individual_median_seconds": 0.0713980000000447,
+    "batch_median_seconds": 0.04593904200010002,
+    "minimum_cosine": 0.9991721662773551,
+    "documents": 32,
+    "dimensions": 384,
+    "paid_calls": 0
+  },
+  "in_process_index_control": [
+    {
+      "mode": "unpooled",
+      "events": 500,
+      "ingest_seconds": 3.193954416899942,
+      "index_seconds": 33.326255708001554,
+      "completed_work_calls": 500
+    },
+    {
+      "mode": "pooled",
+      "events": 500,
+      "ingest_seconds": 1.1547770000761375,
+      "index_seconds": 5.524116666987538,
+      "completed_work_calls": 500
+    },
+    {
+      "mode": "pooled-unprepared",
+      "events": 500,
+      "ingest_seconds": 1.3265060830162838,
+      "index_seconds": 25.539799415972084,
+      "completed_work_calls": 500
+    }
+  ]
+}

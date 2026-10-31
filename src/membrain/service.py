@@ -348,6 +348,9 @@ class MemoryService:
             "UPDATE memory_brains SET durable_sequence=%s WHERE tenant_id=%s AND owner_id=%s AND id=%s",
             (brain["durable_sequence"], *params),
         )
+        from .note_sources import link
+
+        link(self, conn, principal, brain, document)
         job = self._job(conn, principal, brain, "extract", {"event_id": document["event_id"], "revision": document["revision"]})
         if (self.semantic_processor and target.get("conversation_ref") and target.get("branch_ref")
                 and incoming["delivery_state"] in ("received", "delivered", "partially_delivered")
@@ -1404,7 +1407,7 @@ class MemoryService:
         return LearningEngine(self).work_once(principal, brain_id)
 
     def timeline(self, principal, brain_id, *, roles=("user",), max_characters=8000, max_item_characters=1500,
-                 limit=200, exclude_conversation=None, event_ids=None, conversation_id=None):
+                 limit=200, exclude_conversation=None, event_ids=None, conversation_id=None, before_sequence=None):
         """Original messages, newest first, within a character budget.
 
         Deleted, suppressed, retired and superseded records are excluded. ``complete`` is true only when every
@@ -1412,6 +1415,8 @@ class MemoryService:
         restricts the result to those messages, for example the sources of recalled memories, and
         ``conversation_id`` to one conversation.
         """
+        if before_sequence is not None and (type(before_sequence) is not int or not 1 <= before_sequence <= 2**63 - 1):
+            raise DomainError("validation_failed", "Timeline cursor must be a positive sequence.")
         roles = tuple(roles)
         if not roles or any(role not in TIMELINE_ROLES for role in roles):
             raise DomainError("validation_failed", "Timeline roles must be user, assistant, operator or tool.")
@@ -1432,15 +1437,18 @@ class MemoryService:
         with self.database.transaction(principal) as conn:
             brain = self._brain(conn, principal, brain_id)
             rows = conn.execute(
-                "SELECT conversation_id, producer_ref, document FROM memory_events WHERE tenant_id=%s AND owner_id=%s "
+                "SELECT conversation_id, producer_ref, document, ARRAY(SELECT d.input_event_id FROM memory_event_dependencies d "
+                "WHERE d.tenant_id=memory_events.tenant_id AND d.owner_id=memory_events.owner_id "
+                "AND d.brain_id=memory_events.brain_id AND d.output_event_id=memory_events.id ORDER BY d.input_event_id) "
+                "AS source_event_ids FROM memory_events WHERE tenant_id=%s AND owner_id=%s "
                 "AND brain_id=%s AND is_current AND NOT deleted AND NOT suppressed AND NOT retired "
                 "AND document IS NOT NULL AND document->'observed'->>'event_kind'='message' "
                 "AND document->'observed'->>'actor_role'=ANY(%s::text[]) "
                 "AND (%s::text IS NULL OR conversation_id IS DISTINCT FROM %s) "
                 "AND (%s::text[] IS NULL OR id=ANY(%s::text[])) AND (%s::text IS NULL OR conversation_id=%s) "
-                "ORDER BY sequence DESC LIMIT %s",
+                "AND (%s::bigint IS NULL OR sequence<%s) ORDER BY sequence DESC LIMIT %s",
                 (*self._params(principal, brain["id"]), list(roles), exclude_conversation, exclude_conversation,
-                 event_ids, event_ids, conversation_id, conversation_id, limit + 1),
+                 event_ids, event_ids, conversation_id, conversation_id, before_sequence, before_sequence, limit + 1),
             ).fetchall()
         items, used, complete = [], 0, len(rows) <= limit
         for row in rows[:limit]:
@@ -1454,10 +1462,50 @@ class MemoryService:
                 complete = False
                 break
             used += len(text)
-            items.append({"event_id": document["event_id"], "conversation_id": row["conversation_id"],
+            items.append({"event_id": document["event_id"], "sequence": document["sequence"], "conversation_id": row["conversation_id"],
                           "actor_role": document["observed"]["actor_role"], "producer": row["producer_ref"],
-                          "recorded_at": document["system_time"]["recorded_at"], "text": text})
-        return {"items": items, "complete": complete, "characters": used}
+                          "recorded_at": document["system_time"]["recorded_at"], "text": text,
+                          "source_event_ids": row["source_event_ids"],
+                          "pending_source_count": max(0, len(document["observed"].get("source_references", [])) - len(row["source_event_ids"]))})
+        return {"items": items, "complete": complete, "characters": used,
+                "next_before_sequence": items[-1]["sequence"] if items and not complete else None}
+
+    def following(self, principal, brain_id, event_ids):
+        if not 1 <= len(event_ids) <= 12 or any(not isinstance(value, str) or not 1 <= len(value) <= 256
+                                              for value in event_ids):
+            raise DomainError("validation_failed", "Choose 1 to 12 source messages.")
+        with self.database.transaction(principal) as conn:
+            self._brain(conn, principal, brain_id)
+            rows = conn.execute(
+                "SELECT origin.id AS source_event_id, reply.document, reply.conversation_id FROM memory_events origin "
+                "CROSS JOIN LATERAL (SELECT document,conversation_id FROM memory_events next "
+                "WHERE next.tenant_id=origin.tenant_id AND next.owner_id=origin.owner_id AND next.brain_id=origin.brain_id "
+                "AND next.conversation_id IS NOT DISTINCT FROM origin.conversation_id "
+                "AND next.branch_id IS NOT DISTINCT FROM origin.branch_id AND next.sequence>origin.sequence "
+                "AND next.is_current AND NOT next.deleted AND NOT next.suppressed AND NOT next.retired "
+                "AND next.document IS NOT NULL AND next.document->'observed'->>'event_kind'='message' "
+                "AND next.document->'observed'->>'actor_role' IN ('user','assistant') ORDER BY next.sequence LIMIT 1) reply "
+                "WHERE origin.tenant_id=%s AND origin.owner_id=%s AND origin.brain_id=%s AND origin.id=ANY(%s::text[]) "
+                "AND origin.is_current AND NOT origin.deleted AND NOT origin.suppressed AND NOT origin.retired "
+                "AND origin.document IS NOT NULL", (*self._params(principal, brain_id), event_ids)).fetchall()
+        return {"items": [{"source_event_id": row["source_event_id"], "event_id": row["document"]["event_id"],
+                           "conversation_id": row["conversation_id"],
+                           "actor_role": row["document"]["observed"]["actor_role"],
+                           "text": (row["document"]["observed"]["content"].get("text") or "")[:20000],
+                           "recorded_at": row["document"]["system_time"]["recorded_at"]} for row in rows]}
+
+    def memory_status(self, principal, brain_id):
+        with self.database.transaction(principal) as conn:
+            brain = self._brain(conn, principal, brain_id)
+            jobs = conn.execute(
+                "SELECT count(*) FILTER (WHERE state IN ('queued','running','failed')) AS pending_jobs, "
+                "count(*) FILTER (WHERE state='failed') AS failed_jobs, "
+                "count(*) FILTER (WHERE kind='embed' AND state IN ('queued','running','failed')) AS embedding_pending "
+                "FROM memory_jobs WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s",
+                self._params(principal, brain_id)).fetchone()
+            return {"brain_id": brain_id, "durable_sequence": brain["durable_sequence"],
+                    "indexed_sequence": brain["indexed_sequence"],
+                    "index_lag": max(0, brain["durable_sequence"] - brain["indexed_sequence"]), **jobs}
 
     def dashboard(self, principal, brain_id):
         from .dynamics import DEFAULT_POLICY

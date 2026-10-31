@@ -68,7 +68,7 @@ def dispatch(args) -> None:
         plugin.ensure_installation(directory)
         run_mcp(directory)
         return
-    from .desktop import DesktopError, status
+    from .desktop import DesktopError
 
     try:
         if args.plugin_command == "start":
@@ -92,15 +92,9 @@ def dispatch(args) -> None:
 
             result = host.pause(directory, args.hours) if args.plugin_command == "pause" else host.resume(directory)
         else:
-            result = status(directory) if (directory / "profile.json").exists() else {
-                "profile": str(directory), "state": "not_installed", "ready": False}
-            spool = directory / "plugin" / "spool.jsonl"
-            result["pending_records"] = (sum(1 for line in spool.read_text(encoding="utf-8").splitlines()
-                                              if line.strip()) if spool.exists() else 0)
-            result["semantic_recall"] = plugin.semantic_state(directory)
             from . import host
 
-            result["recording"] = "paused" if host.paused(directory) else "on"
+            result = host.installation_status(directory)
     except DesktopError as error:
         print(f"{error.code}: {error}", file=sys.stderr)
         raise SystemExit(1) from None

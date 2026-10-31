@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 const uid = () => crypto.randomUUID();
 const HOST_NAMES = { "claude-code": "Claude Code", codex: "Codex", hermes: "Hermes", openclaw: "OpenClaw", workbuddy: "WorkBuddy" };
 const NOTES = "membrain-notes";
-const state = { key: "", brain: "" };
+const state = { key: "", brain: "", notes: [] };
 let messageTimer;
 
 function notify(text, error = false) {
@@ -41,7 +41,8 @@ function action(name, payload, conversation = "membrain-memory-page") {
 function timeline(params) {
   const query = new URLSearchParams({ max_characters: "200000", max_item_characters: "20000", limit: "1000" });
   for (const [key, value] of Object.entries(params)) {
-    for (const item of [].concat(value)) query.append(key, item);
+    if (["role", "event_id"].includes(key)) for (const item of [].concat(value)) query.append(key, item);
+    else query.set(key, String(value));
   }
   return api(`/v1/brains/${encodeURIComponent(state.brain)}/timeline?${query}`);
 }
@@ -86,35 +87,39 @@ function onSubmit(form, task) {
   });
 }
 
-// Notes ------------------------------------------------------------------------------------------------------
+const KINDS = ["person", "constraint", "preference", "plan", "routine", "milestone", "relationship", "agent_commitment", "other"];
+const STATUSES = ["intended", "scheduled", "done", "cancelled", "superseded"];
+const LABELS = { person: "Person", constraint: "Health or constraint", preference: "Preference", plan: "Plan", routine: "Routine",
+  milestone: "Milestone", relationship: "Relationship", agent_commitment: "Agent promise", other: "Other" };
+const openPlan = (fields) => ["intended", "scheduled"].includes(fields.status || "intended");
 
-async function loadNotes() {
-  const { items } = await timeline({ role: ["assistant", "user"], conversation_id: NOTES });
-  const list = $("notes");
-  list.replaceChildren();
-  if (!items.length) {
-    list.append(element("p", "No notes yet. Your agent adds notes when you mention lasting facts; you can add your own above.", "empty"));
-    return;
+function typedNote(text) {
+  const match = /^\[([^\[\]]{1,200})\] ([\s\S]+)$/.exec(text || "");
+  const tokens = match ? match[1].split(" · ") : [];
+  const fields = {};
+  if (!match || !KINDS.includes(tokens[0])) return { fields, tags: [], sentence: text };
+  fields.kind = tokens[0];
+  for (const token of tokens.slice(1)) {
+    if (STATUSES.includes(token)) fields.status = token;
+    else if (["pinned", "sensitive"].includes(token)) fields[token] = true;
+    else if (/^(due|on) \d{4}-\d{2}(-\d{2})?$/.test(token)) fields[token.startsWith("due ") ? "due" : "occurs_at"] = token.split(" ")[1];
+    else if (token.startsWith("about ")) fields.about = token.slice(6);
+    else if (token.startsWith("aka ")) fields.aliases = token.slice(4).split(",").map((value) => value.trim());
+    else return { fields: {}, tags: [], sentence: text };
   }
-  const pairs = duplicatePairs(items);
-  for (const note of items) list.append(noteItem(note, pairs.get(note.event_id)));
+  return { fields, tags: tokens.map((token) => token.replace("agent_commitment", "agent promise")), sentence: match[2] };
 }
 
-// Notes your agent saved about the same thing in nearly the same words (as session start points out).
 function words(text) {
   return new Set((text.toLowerCase().match(/[\p{L}\p{N}_]+/gu) || []).filter((word) => word.length > 2));
 }
 
 function duplicatePairs(items) {
-  const own = items.filter((note) => note.actor_role !== "user").map((note) => {
-    const typed = typedNote(note.text);
-    const about = typed.tags.find((tag) => tag.startsWith("about ")) || "";
-    return { note, key: `${typed.tags[0] || ""}|${about}`, words: words(typed.sentence) };
-  });
-  const pairs = new Map();  // Newer note id -> older duplicate.
-  own.forEach((first, index) => {
-    for (const second of own.slice(index + 1)) {
-      if (first.key !== second.key || pairs.has(first.note.event_id)) continue;
+  const parsed = items.filter((note) => note.actor_role !== "user").map((note) => ({ note, ...typedNote(note.text), words: words(typedNote(note.text).sentence) }));
+  const pairs = new Map();
+  parsed.forEach((first, index) => {
+    for (const second of parsed.slice(index + 1)) {
+      if (first.fields.kind !== second.fields.kind || first.fields.about !== second.fields.about || pairs.has(first.note.event_id)) continue;
       const union = new Set([...first.words, ...second.words]);
       const shared = [...first.words].filter((word) => second.words.has(word)).length;
       if (union.size && shared / union.size >= 0.75) pairs.set(first.note.event_id, second.note);
@@ -123,86 +128,167 @@ function duplicatePairs(items) {
   return pairs;
 }
 
-const KINDS = ["person", "constraint", "preference", "plan", "routine", "milestone", "relationship",
-  "agent_commitment", "other"];
+async function loadNotes(view = "notes") {
+  const response = await timeline({ role: ["assistant", "user"], conversation_id: NOTES });
+  state.notes = response.items;
+  const list = $(view);
+  list.replaceChildren();
+  let items = state.notes;
+  if (view === "people") items = items.filter((note) => typedNote(note.text).fields.kind === "person");
+  if (view === "plans") items = items.filter((note) => {
+    const fields = typedNote(note.text).fields;
+    return ["plan", "agent_commitment", "milestone"].includes(fields.kind) && ($("show-completed").checked || openPlan(fields));
+  });
+  items = [...items].sort((a, b) => Number(Boolean(typedNote(b.text).fields.pinned)) - Number(Boolean(typedNote(a.text).fields.pinned)));
+  if (!response.complete) list.append(element("p", "This is a partial list. Some older notes did not fit; use Search to find them.", "hint"));
+  if (!items.length) list.append(element("p", view === "notes" ? "No notes yet. Add a lasting fact above, or ask your connected agent to remember one." : "Nothing here yet. Add a note with the matching kind.", "empty"));
+  const pairs = duplicatePairs(items);
+  for (const note of items) list.append(noteItem(note, pairs.get(note.event_id)));
+}
 
-// Typed notes start with a header such as "[plan · intended · due 2026-11-14 · about Mei]"; show it as tags.
-function typedNote(text) {
-  const match = /^\[([^\[\]]{1,200})\] ([\s\S]+)$/.exec(text || "");
-  const tokens = match ? match[1].split(" · ") : [];
-  if (!match || !KINDS.includes(tokens[0])) return { tags: [], sentence: text };
-  return { tags: tokens.map((token) => token.replace("agent_commitment", "my promise")), sentence: match[2] };
+function field(form, controls, name, label, type = "text", options) {
+  const wrapper = element("label", undefined, "field");
+  wrapper.append(element("span", label));
+  const control = element(type === "textarea" ? "textarea" : options ? "select" : "input");
+  if (type !== "textarea" && !options) control.type = type;
+  if (options) for (const [value, title] of options) {
+    const option = element("option", title); option.value = value; control.append(option);
+  }
+  control.name = name;
+  wrapper.append(control); form.append(wrapper); controls[name] = control;
+  return control;
+}
+
+function noteEditor(note, merged = [], after = () => loadNotes(), initialSources = []) {
+  const form = element("form", undefined, "note-editor");
+  const controls = {};
+  const parsed = typedNote(note?.text || "");
+  const fields = parsed.fields;
+  const text = field(form, controls, "text", "Note text", "textarea");
+  text.value = parsed.sentence || ""; text.maxLength = 300; text.required = true; text.rows = 3;
+  field(form, controls, "kind", "Kind", "text", KINDS.map((kind) => [kind, LABELS[kind]])).value = fields.kind || "other";
+  field(form, controls, "status", "Plan status", "text", STATUSES.map((value) => [value, value])).value = fields.status || "intended";
+  field(form, controls, "about", "Person or topic").value = fields.about || "";
+  field(form, controls, "aliases", "Other names, separated by commas").value = (fields.aliases || []).join(", ");
+  for (const [name, title] of [["due", "Due date"], ["occurs_at", "Event date"]]) {
+    const value = fields[name] || "";
+    field(form, controls, name, title, value.length === 7 ? "month" : "date").value = value;
+  }
+  for (const [name, title] of [["pinned", "Pin this note"], ["sensitive", "Sensitive: mention only when I bring it up"]]) {
+    const input = field(form, controls, name, title, "checkbox"); input.checked = Boolean(fields[name]); input.parentElement.classList.add("check");
+  }
+  const sources = new Set([...(note?.source_event_ids || []), ...initialSources]);
+  const sourceDetails = element("details", undefined, "source-picker");
+  sourceDetails.append(element("summary", "Link original messages"), element("p", "Choose messages this note is based on. Unlinked notes stay clearly labelled.", "hint"));
+  const select = element("select"); select.multiple = true; select.size = 5; select.setAttribute("aria-label", "Original messages");
+  sourceDetails.append(select); form.append(sourceDetails);
+  let loaded = false;
+  for (const id of sources) { const option = element("option", `Linked message ${id}`); option.value = id; option.selected = true; select.append(option); }
+  sourceDetails.addEventListener("toggle", async () => {
+    if (!sourceDetails.open || loaded) return;
+    try {
+      const { items } = await timeline({ role: ["user", "assistant"] });
+      const candidates = items.filter((item) => item.conversation_id !== NOTES);
+      for (const message of candidates) {
+        let option = [...select.options].find((value) => value.value === message.event_id);
+        if (!option) { option = element("option"); option.value = message.event_id; select.append(option); }
+        option.textContent = `${day(message.recorded_at)} · ${message.actor_role === "user" ? "You" : "Agent"}: ${message.text.slice(0, 130)}`;
+        option.selected = sources.has(message.event_id);
+      }
+      loaded = true;
+    } catch (error) { notify(error.message, true); }
+  });
+  const actions = element("div", undefined, "row editor-actions");
+  const save = element("button", note?.event_id ? "Save correction" : "Add note");
+  const cancel = element("button", "Cancel", "secondary"); cancel.type = "button";
+  actions.append(save, cancel); form.append(actions);
+  cancel.addEventListener("click", after);
+  const updateStatus = () => { controls.status.parentElement.hidden = !["plan", "agent_commitment"].includes(controls.kind.value); };
+  controls.kind.addEventListener("change", updateStatus); updateStatus();
+  let requestId = uid(), previousBody = "";
+  onSubmit(form, async () => {
+    const body = { text: controls.text.value.trim(), kind: controls.kind.value, role: "user", producer: "membrain-memory-page",
+      replaces: note?.event_id ? [note.event_id, ...merged.map((item) => item.event_id)] : [],
+      source_event_ids: [...select.selectedOptions].map((option) => option.value) };
+    for (const name of ["about", "due", "occurs_at"]) if (controls[name].value.trim()) body[name] = controls[name].value.trim();
+    if (!controls.status.parentElement.hidden) body.status = controls.status.value;
+    if (controls.aliases.value.trim()) body.aliases = controls.aliases.value.split(",").map((value) => value.trim()).filter(Boolean);
+    body.pinned = controls.pinned.checked; body.sensitive = controls.sensitive.checked;
+    const serialized = JSON.stringify(body);
+    if (serialized !== previousBody) { requestId = uid(); previousBody = serialized; }
+    await api(`/v1/brains/${encodeURIComponent(state.brain)}/notes`, { request_id: requestId, ...body });
+    notify(note?.event_id ? "Note corrected. Your version takes precedence." : "Note added.");
+    await after(); await loadServiceStatus();
+  });
+  return form;
+}
+
+function resetNoteForm() {
+  $("note-form-host").replaceChildren(noteEditor(null, [], async () => {
+    resetNoteForm(); $("add-note").open = false; await loadNotes();
+  }));
+}
+
+async function showSources(container, ids) {
+  container.replaceChildren(element("p", "Loading original messages…", "hint"));
+  try {
+    const { items } = await timeline({ role: ["user", "assistant", "operator", "tool"], event_id: ids });
+    container.replaceChildren();
+    if (items.length < ids.length) container.append(element("p", "Some original messages are no longer available.", "hint"));
+    for (const message of items.reverse()) {
+      const block = element("div", undefined, "message");
+      block.append(element("div", `${day(message.recorded_at)} · ${message.actor_role === "user" ? "You" : "Agent"}`, "meta"), element("p", message.text));
+      container.append(block);
+    }
+  } catch (error) { container.replaceChildren(element("p", error.message, "hint")); }
 }
 
 function noteItem(note, duplicate) {
-  const item = element("div", undefined, "item");
+  const item = element("article", undefined, "item");
+  const parsed = typedNote(note.text), fields = parsed.fields;
   const meta = element("div", undefined, "meta");
   meta.append(element("span", day(note.recorded_at)));
-  const source = (note.producer || "").startsWith("membrain-import:") ? note.producer.slice(16) : null;
-  const label = note.actor_role === "user" ? "written by you"
-    : source ? `imported from ${HOST_NAMES[source] || source}` : "saved by your agent";
-  meta.append(element("span", label, note.actor_role === "user" ? "tag user" : "tag"));
+  const imported = (note.producer || "").startsWith("membrain-import:") ? note.producer.slice(16) : null;
+  meta.append(element("span", note.actor_role === "user" ? "written by you" : imported ? `imported from ${HOST_NAMES[imported] || imported}` : "saved by your agent", "tag"));
+  for (const tag of parsed.tags) meta.append(element("span", tag, "tag"));
   const actions = element("span", undefined, "actions");
-  const edit = element("button", "Edit", "link");
-  const remove = element("button", "Delete", "link danger");
+  const edit = element("button", "Edit", "link"), remove = element("button", "Delete", "link danger");
+  actions.append(edit, remove); meta.append(actions); item.append(meta, element("p", parsed.sentence));
+  const date = fields.due || fields.occurs_at;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (date && openPlan(fields) && date < (date.length === 7 ? today.slice(0, 7) : today)) item.append(element("p", "Date has passed; completion is not confirmed.", "hint"));
+  const ids = note.source_event_ids || [];
+  if (note.pending_source_count) item.append(element("p", "Waiting for the source message to finish recording.", "hint"));
+  if (ids.length) {
+    const details = element("details"); details.append(element("summary", `${ids.length} original message${ids.length === 1 ? "" : "s"}`));
+    const content = element("div"); details.append(content); item.append(details);
+    let loaded = false;
+    details.addEventListener("toggle", () => { if (details.open && !loaded) { loaded = true; showSources(content, ids); } });
+  } else if (!note.pending_source_count) item.append(element("p", note.actor_role === "user" ? "Standalone note written by you." : "Original message not linked. Edit to attach its source.", "hint"));
+  edit.addEventListener("click", () => { item.replaceChildren(noteEditor(note, [], () => show(currentView()))); item.querySelector("textarea").focus(); });
   if (duplicate) {
     const merge = element("button", "Merge duplicate", "link");
-    merge.title = `Nearly the same as: ${typedNote(duplicate.text).sentence}`;
-    merge.addEventListener("click", () => editNote(item, note, [duplicate]));
-    actions.append(merge);
+    merge.addEventListener("click", () => item.replaceChildren(noteEditor(note, [duplicate], () => show(currentView())))); actions.prepend(merge);
   }
-  actions.append(edit, remove);
-  meta.append(actions);
-  const typed = typedNote(note.text);
-  for (const tag of typed.tags) meta.insertBefore(element("span", tag, "tag"), actions);
-  const text = element("p", typed.sentence);
-  item.append(meta, text);
-  edit.addEventListener("click", () => editNote(item, note));
   guard(remove, async () => {
     if (!confirm("Delete this note? Its content is erased.")) return;
-    await forget("events", [note.event_id], "erase_content", NOTES);
-    notify("Note deleted.");
-    await loadNotes();
+    await forget("events", [note.event_id], "erase_content", NOTES); notify("Note deleted."); await show(currentView());
   });
   return item;
 }
 
-function editNote(item, note, merged = []) {
-  const form = element("form", undefined, "row");
-  const input = element("input");
-  input.value = note.text;
-  input.maxLength = 480;  // A typed note's header comes on top of its 300-character sentence.
-  const save = element("button", "Save");
-  const cancel = element("button", "Cancel", "secondary");
-  cancel.type = "button";
-  form.append(input, save, cancel);
-  item.replaceChildren(form);
-  input.focus();
-  cancel.addEventListener("click", loadNotes);
-  onSubmit(form, async () => {
-    const text = input.value.trim();
-    if (!text || (text === note.text && !merged.length)) return loadNotes();
-    await observe(text, NOTES, "user", "membrain-memory-page");
-    const replaced = [note.event_id, ...merged.map((other) => other.event_id)];
-    await forget("events", replaced, "suppress_recall", NOTES);  // Kept for audit, no longer shown.
-    notify(merged.length ? "Notes merged into your version." : "Note corrected. Your version takes precedence.");
-    await loadNotes();
-  });
-}
-
-onSubmit($("note-form"), async () => {
-  const text = $("note-text").value.trim();
-  if (!text) return;
-  await observe(text, NOTES, "user", "membrain-memory-page");
-  $("note-text").value = "";
-  notify("Note added.");
-  await loadNotes();
-});
+$("show-completed").addEventListener("change", () => loadNotes("plans"));
+const currentView = () => $("tabs").querySelector("button.active")?.dataset.view || "notes";
 
 // Conversations ----------------------------------------------------------------------------------------------
 
-async function loadConversations() {
-  const { items } = await timeline({ role: ["user", "assistant"] });
+async function loadConversations(reset = true) {
+  const response = await timeline({ role: ["user", "assistant"], limit: 100,
+    ...(reset || !state.conversationCursor ? {} : { before_sequence: state.conversationCursor }) });
+  state.conversations = reset ? response.items : [...state.conversations, ...response.items];
+  state.conversationCursor = response.next_before_sequence;
+  const items = state.conversations;
   const groups = new Map();
   for (const message of items) {
     if (message.conversation_id === NOTES) continue;
@@ -216,6 +302,10 @@ async function loadConversations() {
     return;
   }
   for (const [conversation, messages] of groups) list.append(conversationItem(conversation, messages.reverse()));
+  if (state.conversationCursor) {
+    const more = element("button", "Load older messages", "secondary");
+    guard(more, () => loadConversations(false)); list.append(more);
+  }
 }
 
 function conversationItem(conversation, messages) {
@@ -231,6 +321,12 @@ function conversationItem(conversation, messages) {
     const remove = element("button", "Delete", "link danger");
     const actions = element("span", undefined, "actions");
     actions.append(remove);
+    const saveNote = element("button", "Save as note", "link");
+    actions.prepend(saveNote);
+    saveNote.addEventListener("click", () => {
+      const editor = noteEditor({ text: message.text.slice(0, 300), source_event_ids: [message.event_id] }, [], loadConversations);
+      block.replaceChildren(editor); editor.querySelector("textarea").focus();
+    });
     meta.append(actions);
     block.append(meta, element("p", message.text));
     guard(remove, async () => {
@@ -351,48 +447,65 @@ guard($("erase"), async () => {
   notify("Everything was erased.");
 });
 
-// Navigation and sign-in -------------------------------------------------------------------------------------
+async function loadServiceStatus() {
+  $("service-status").hidden = false;
+  try {
+    const [brain, local] = await Promise.all([
+      api(`/v1/brains/${encodeURIComponent(state.brain)}/status`), api("/v1/local/memory-status").catch(() => null),
+    ]);
+    const lag = brain.index_lag;
+    $("service-heading").textContent = (local && !local.ready) || brain.failed_jobs ? "Memory service needs attention"
+      : local?.pending_records ? "Messages waiting for delivery" : lag ? "Indexing your messages" : "Memory is ready";
+    const semantic = local?.semantic_recall;
+    const recall = semantic === "ready" ? "Keyword and semantic recall ready" : semantic === "downloading" ? "Keyword recall ready; semantic model downloading" : "Keyword recall ready; semantic model not installed";
+    $("service-detail").textContent = `${recall}. ${lag ? `${lag} message(s) waiting for indexing.` : "Message index is up to date."} ${local?.pending_records ? `${local.pending_records} queued record(s).` : ""} ${brain.failed_jobs ? `${brain.failed_jobs} background job(s) need attention. Run membrain doctor.` : ""}`;
+  } catch (error) {
+    $("service-heading").textContent = "Unable to check memory";
+    $("service-detail").textContent = `${error.message} Run membrain doctor for help.`;
+  }
+}
+guard($("refresh-status"), loadServiceStatus);
 
-const loaders = { notes: loadNotes, conversations: loadConversations, search: async () => {}, privacy: loadRecording };
+const loaders = { notes: () => loadNotes(), people: () => loadNotes("people"), plans: () => loadNotes("plans"),
+  conversations: loadConversations, search: async () => {}, privacy: loadRecording };
 
 async function show(view) {
-  for (const button of $("tabs").querySelectorAll("button")) button.classList.toggle("active", button.dataset.view === view);
+  for (const button of $("tabs").querySelectorAll("button")) {
+    button.classList.toggle("active", button.dataset.view === view);
+    button.setAttribute("aria-pressed", String(button.dataset.view === view));
+  }
   for (const name of Object.keys(loaders)) $(`view-${name}`).hidden = name !== view;
   try { await loaders[view](); } catch (error) { notify(error.message, true); }
 }
-
 for (const button of $("tabs").querySelectorAll("button")) button.addEventListener("click", () => show(button.dataset.view));
 
 async function open(key, brain) {
-  state.key = key;
-  state.brain = brain;
+  state.key = key; state.brain = brain;
   if (!state.brain) state.brain = (await api("/v1/brains")).brains?.[0]?.id || "";
+  if (!state.brain) throw new Error("No memory installation found. Run membrain plugin start first.");
+  await api(`/v1/brains/${encodeURIComponent(state.brain)}/status`);
   try { sessionStorage.setItem("membrain-page", JSON.stringify({ key: state.key, brain: state.brain })); } catch { /* private window */ }
-  $("signin").hidden = true;
-  $("tabs").hidden = false;
-  await loadRecording();
-  await show("notes");
+  $("signin").hidden = true; $("tabs").hidden = false;
+  resetNoteForm();
+  await Promise.all([loadRecording(), loadServiceStatus(), show("notes")]);
 }
-
 onSubmit($("key-form"), () => open($("key").value.trim(), ""));
+setInterval(() => { if (state.key && !$("tabs").hidden) { loadServiceStatus(); loadRecording(); } }, 30000);
 
 (async () => {
   const code = new URLSearchParams(location.search).get("code");
   if (code) {
     history.replaceState(null, "", "/memory");
     try {
-      const session = await fetch("/v1/local/ui-session", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }) });
+      const session = await fetch("/v1/local/ui-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
       const data = await session.json();
       if (!session.ok) throw new Error(data.detail || "This link has expired.");
       return await open(data.api_key, data.brain_id);
-    } catch (error) {
-      notify(error.message, true);
-    }
+    } catch (error) { notify(error.message, true); }
   }
   try {
     const saved = JSON.parse(sessionStorage.getItem("membrain-page") || "null");
     if (saved?.key) return await open(saved.key, saved.brain);
-  } catch { /* fall through to sign-in */ }
+  } catch { try { sessionStorage.removeItem("membrain-page"); } catch { /* private window */ } }
   $("signin").hidden = false;
 })();

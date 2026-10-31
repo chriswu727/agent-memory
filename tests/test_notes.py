@@ -55,3 +55,14 @@ def test_notes_written_by_the_user_are_labelled():
         {"event_id": "a1", "actor_role": "assistant", "recorded_at": "2026-04-01T00:00:00Z", "text": "Vegetarian."}]})
     assert "- [2026-04-01] Vegetarian. (id: a1)" in rendered
     assert "- [2026-05-01 · written by the user] I'm vegan now. (id: u1)" in rendered
+
+
+def test_typed_note_metadata_cannot_make_the_stored_note_unparseable_or_truncated():
+    import pytest
+
+    with pytest.raises(ValueError, match="Shorten the note fields"):
+        notes.format_note("Appointment.", kind="person", aliases=["A" * 60, "B" * 60, "C" * 60, "D" * 60])
+    with pytest.raises(ValueError, match="Shorten the note fields"):
+        notes.format_note("x" * 300, kind="person", about="A" * 60, aliases=["B" * 60, "C" * 60])
+    stored = notes.format_note("x" * 300, kind="person", about="Mei", aliases=["little sister"])
+    assert notes.parse_note(stored) == ({"kind": "person", "about": "Mei", "aliases": ["little sister"]}, "x" * 300)

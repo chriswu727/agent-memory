@@ -111,8 +111,17 @@ def main() -> None:
     add_commands(commands)
     from .plugin_cli import add_commands as add_plugin_commands
     add_plugin_commands(commands)
+    doctor = commands.add_parser("doctor", help="Diagnose a local installation without changing it")
+    doctor.add_argument("--directory", type=Path, default=None)
     args = parser.parse_args()
-    if args.command == "desktop":
+    if args.command == "doctor":
+        from .diagnostics import diagnose
+        from .host import profile_directory
+
+        result = diagnose(profile_directory(args.directory))
+        print(json.dumps(result, indent=2))
+        raise SystemExit(0 if result["ok"] else 1)
+    elif args.command == "desktop":
         from .desktop_cli import dispatch
         dispatch(args)
     elif args.command == "plugin":

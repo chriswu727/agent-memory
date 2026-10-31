@@ -797,5 +797,9 @@ class LearningEngine:
                 job = self.jobs.claim(principal, brain_id, worker_id=uid(), kinds=kinds, lease_seconds=120)
         if job is None:
             return 0
+        if job["kind"] == "embed" and not getattr(self.service.embedding_provider, "metered", True):
+            from .vector_jobs import embed_local_batch
+
+            return embed_local_batch(self.service, principal, brain_id, job)
         self._execute(principal, brain_id, job)
         return 1

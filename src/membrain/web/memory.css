@@ -56,3 +56,26 @@ code { background: var(--wash); padding: 1px 5px; border-radius: 4px; font-size:
   background: var(--ink); color: var(--paper); max-width: calc(100vw - 32px); }
 #message:empty { display: none; }
 #message.error { background: var(--danger); }
+
+.service-status { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.service-status p { margin: 4px 0 0; font-size: 13px; }
+.note-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+.field:has(textarea), .source-picker, .editor-actions { grid-column: 1 / -1; }
+.check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 8px 0; }
+.check input { width: auto; }
+.source-picker select { margin-top: 8px; }
+.note-compose summary { margin-top: 0; }
+.note-compose[open] summary { margin-bottom: 16px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 3px;
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 600px) {
+  .note-editor { grid-template-columns: 1fr; }
+  .service-status { align-items: stretch; flex-direction: column; }
+  header { gap: 10px; }
+  nav { order: 3; width: 100%; }
+  nav button { padding: 6px 8px; font-size: 13px; }
+  .item .meta .actions { width: 100%; margin-left: 0; margin-top: 6px; }
+}

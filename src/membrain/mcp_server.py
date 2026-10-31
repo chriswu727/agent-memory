@@ -118,7 +118,8 @@ def create_server(client: MemoryClient, *, directory=None) -> FastMCP:
 
     @server.tool(annotations=WRITE, description=NOTE_TOOL_DESCRIPTION)
     async def memory_note(
-        text: str, replaces: list[str] | None = None,
+        text: str, replaces: list[str] | None = None, source_event_ids: list[str] | None = None,
+        source_messages: list[dict[str, Any]] | None = None,
         kind: Literal["person", "constraint", "preference", "plan", "routine", "milestone", "relationship",
                       "agent_commitment", "other"] | None = None,
         about: str | None = None, aliases: list[str] | None = None,
@@ -127,9 +128,15 @@ def create_server(client: MemoryClient, *, directory=None) -> FastMCP:
     ) -> dict[str, Any]:
         from membrain.notes import note_fields, save_note
 
+        if directory is not None:
+            from membrain import host
+
+            if host.paused(directory):
+                return {"error": "Recording is paused. Resume before saving agent notes."}
         fields = note_fields({"kind": kind, "about": about, "aliases": aliases, "status": status, "due": due,
                               "occurs_at": occurs_at, "pinned": pinned, "sensitive": sensitive})
-        return await asyncio.to_thread(save_note, client, text, replaces=replaces or (), **fields)
+        return await asyncio.to_thread(save_note, client, text, replaces=replaces or (),
+                                       source_event_ids=source_event_ids or (), source_messages=source_messages or (), **fields)
 
     if directory is not None:
         from membrain import host

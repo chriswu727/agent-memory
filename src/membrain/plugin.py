@@ -111,7 +111,7 @@ def session_start(payload: dict, directory: Path, producer: str = PRODUCER) -> s
 def user_prompt(payload: dict, directory: Path, producer: str = PRODUCER) -> str | None:
     _import_host_queue(directory, producer)
     return host.prompt_context(directory, _conversation(payload), payload.get("prompt"), turn_id=_turn(payload),
-                               producer=producer)
+                               producer=producer, include_source=True)
 
 
 def _text(content) -> str:
@@ -208,6 +208,8 @@ def run_tool(name: str, directory: Path | None = None, stream=None) -> int:
             result = host.pause(directory, arguments.get("hours"))
         elif name == "resume":
             result = host.resume(directory)
+        elif name == "note" and host.paused(directory):
+            result = {"error": "Recording is paused. Resume before saving agent notes."}
         else:
             client = host.ready_client(directory)
             if client is None:
@@ -218,6 +220,8 @@ def run_tool(name: str, directory: Path | None = None, stream=None) -> int:
                     if name == "note":
                         result = save_note(client, host.scrub(str(arguments.get("text") or "")),
                                            replaces=tuple(arguments.get("replaces") or ()),
+                                           source_event_ids=arguments.get("source_event_ids") or (),
+                                           source_messages=arguments.get("source_messages") or (),
                                            **note_fields(arguments))
                     else:
                         found = host.recall_context(client, host.scrub(str(arguments.get("query") or "")),

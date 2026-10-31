@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 
 const PACKAGE = process.env.MEMBRAIN_PACKAGE ||
-  "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/memBrain";
+  "membrain-ai[embedded,semantic] @ git+https://github.com/chriswu727/memBrain@08695f537a07eb6221c4b17c8733a56d6635b2d5";
 const BLOCK_MS = 5 * 60 * 1000;
 
 function run(command, args, { input, timeoutMs = 12_000, env } = {}) {
@@ -62,6 +62,10 @@ const TOOLS = [
     parameters: { type: "object", properties: {
       text: { type: "string" },
       replaces: { type: "array", items: { type: "string" } },
+      source_event_ids: { type: "array", items: { type: "string" }, maxItems: 64 },
+      source_messages: { type: "array", maxItems: 64, items: { type: "object", properties: {
+        producer_ref: { type: "string" }, source_event_key: { type: "string" }, source_revision: { type: "integer", minimum: 1 },
+      }, required: ["producer_ref", "source_event_key", "source_revision"] } },
       kind: { type: "string", enum: ["person", "constraint", "preference", "plan", "routine", "milestone",
         "relationship", "agent_commitment", "other"] },
       about: { type: "string" },

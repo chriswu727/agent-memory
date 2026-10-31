@@ -120,7 +120,7 @@ class ChatMemory:
         share = self.share_real_life if share_real_life is None else share_real_life
         block = self._block(session, self.memory_user(speaker, roleplay), self.user_id(speaker), roleplay, share)
         recalled = host.prompt_context(self.directory, session, text, turn_id=turn_id, producer=self.producer,
-                                       user_id=self.user_id(speaker), roleplay=roleplay)
+                                       user_id=self.user_id(speaker), roleplay=roleplay, include_source=True)
         return "\n\n".join(part for part in (block, recalled) if part) or None
 
     def record(self, speaker: Speaker, reply: str | None, *, session: str, turn_id: str | None = None,
@@ -130,15 +130,17 @@ class ChatMemory:
             host.finish_turn(self.directory, session, reply, turn_id=turn_id, producer=self.producer, prompt=prompt,
                              user_id=self.user_id(speaker), roleplay=roleplay or self.roleplay)
 
-    def note(self, speaker: Speaker, text: str, replaces=(), *, roleplay: str | None = None, **fields) -> dict:
+    def note(self, speaker: Speaker, text: str, replaces=(), *, roleplay: str | None = None, source_event_ids=(), source_messages=(), **fields) -> dict:
         from ..notes import note_fields, save_note
 
         user = self.memory_user(speaker, roleplay)
+        if host.paused(self.directory, user):
+            return {"error": "Recording is paused. Resume before saving agent notes."}
         client = self._client(user)
         if client is None:
             return {"error": "memBrain is starting; try again in a few seconds."}
         with client:
-            result = save_note(client, host.scrub(str(text or "")), replaces=tuple(replaces or ()),
+            result = save_note(client, host.scrub(str(text or "")), replaces=tuple(replaces or ()), source_event_ids=source_event_ids, source_messages=source_messages,
                                **note_fields(fields))
         self._forget_blocks(user)
         return result

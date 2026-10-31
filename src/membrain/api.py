@@ -29,6 +29,30 @@ class RuntimeBody(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
 
+class NoteSource(RuntimeBody):
+    producer_ref: RuntimeIdentifier
+    source_event_key: RuntimeIdentifier
+    source_revision: RuntimeRevision = 1
+
+
+class NoteWrite(RuntimeBody):
+    request_id: Annotated[str, Field(min_length=1, max_length=120)]
+    text: Annotated[str, Field(min_length=1, max_length=300)]
+    replaces: Annotated[list[RuntimeIdentifier], Field(max_length=100)] = []
+    source_event_ids: Annotated[list[RuntimeIdentifier], Field(max_length=64)] = []
+    source_messages: Annotated[list[NoteSource], Field(max_length=64)] = []
+    role: Literal["user", "assistant"] = "assistant"
+    producer: Annotated[str, Field(min_length=1, max_length=120)] = "membrain-notes"
+    kind: str | None = None
+    status: str | None = None
+    about: str | None = None
+    aliases: Annotated[list[str], Field(max_length=12)] = []
+    due: str | None = None
+    occurs_at: str | None = None
+    pinned: bool = False
+    sensitive: bool = False
+
+
 class RuntimeBegin(RuntimeBody):
     turn_id: RuntimeIdentifier
     conversation_id: RuntimeIdentifier
@@ -392,11 +416,29 @@ def create_app(settings: Settings | None = None, service=None, turns=None, jobs=
     def timeline(brain_id: str, role: list[str] = Query(default=["user"]), max_characters: int = 8000,
                  max_item_characters: int = 1500, limit: int = 200, exclude_conversation: str | None = None,
                  event_id: list[str] = Query(default=[]), conversation_id: str | None = None,
-                 principal: Principal = Depends(authenticate)):
+                 before_sequence: int | None = None, principal: Principal = Depends(authenticate)):
         return service.timeline(principal, brain_id, roles=role, max_characters=max_characters,
                                 max_item_characters=max_item_characters, limit=limit,
                                 exclude_conversation=exclude_conversation, event_ids=event_id or None,
-                                conversation_id=conversation_id)
+                                conversation_id=conversation_id, before_sequence=before_sequence)
+
+    @app.get("/v1/brains/{brain_id}/status")
+    def memory_status(brain_id: str, principal: Principal = Depends(authenticate)):
+        return service.memory_status(principal, brain_id)
+
+    @app.get("/v1/brains/{brain_id}/timeline/following")
+    def following(brain_id: str, event_id: list[str] = Query(default=[]),
+                  principal: Principal = Depends(authenticate)):
+        return service.following(principal, brain_id, event_id)
+
+    @app.post("/v1/brains/{brain_id}/notes")
+    async def write_note(brain_id: str, request: Request, principal: Principal = Depends(authenticate)):
+        from starlette.concurrency import run_in_threadpool
+
+        from .notes import store_note
+
+        body = await runtime_body(request, NoteWrite)
+        return await run_in_threadpool(store_note, service, principal, brain_id, body)
 
     @app.post("/v1/brains/{brain_id}/work")
     def work(brain_id: str, principal: Principal = Depends(authenticate)):

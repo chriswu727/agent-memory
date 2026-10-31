@@ -36,9 +36,20 @@ def schema_status(conn, *, require_current: bool = False) -> dict:
 
 
 class Database:
-    def __init__(self, dsn: str, migration_dsn: str | None = None):
+    def __init__(self, dsn: str, migration_dsn: str | None = None, *, pool: bool = False):
         self.dsn = dsn
         self.migration_dsn = migration_dsn or dsn
+        self.pool = None
+        if pool:
+            from psycopg_pool import ConnectionPool
+
+            self.pool = ConnectionPool(dsn, min_size=0, max_size=8, timeout=5, max_waiting=32,
+                                       kwargs={"row_factory": dict_row, "connect_timeout": 5}, open=True)
+
+    def close(self):
+        if self.pool is not None:
+            self.pool.close()
+
 
     def check_compatibility(self, *, require_current: bool = False) -> dict:
         with psycopg.connect(self.migration_dsn, row_factory=dict_row, connect_timeout=5) as conn:
@@ -62,7 +73,9 @@ class Database:
 
     @contextmanager
     def transaction(self, principal):
-        with psycopg.connect(self.dsn, row_factory=dict_row) as conn:
+        connection = self.pool.connection() if self.pool is not None else psycopg.connect(
+            self.dsn, row_factory=dict_row, connect_timeout=5)
+        with connection as conn:
             conn.execute("SELECT set_config('app.tenant_id', %s, true)", (principal.tenant_id,))
             conn.execute("SELECT set_config('app.principal_id', %s, true)", (principal.principal_id,))
             yield conn

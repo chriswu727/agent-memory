@@ -1,7 +1,15 @@
 name: Verify
 
 on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'evaluations/**'
   workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -9,6 +17,7 @@ permissions:
 jobs:
   runtime:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -21,6 +30,8 @@ jobs:
           --health-cmd "pg_isready -U postgres -d agent_memory"
           --health-interval 2s --health-timeout 2s --health-retries 30
     env:
+      PYTHON_DOTENV_DISABLED: '1'
+      MEMBRAIN_SEMANTIC: '0'
       MEMORY_DATABASE_URL: postgresql://memory_app:ci-disposable-app@127.0.0.1:55432/agent_memory
       MEMORY_MIGRATION_DATABASE_URL: postgresql://postgres:ci-disposable-admin@127.0.0.1:55432/agent_memory
       MEMORY_DATABASE_APP_PASSWORD: ci-disposable-app
@@ -36,7 +47,7 @@ jobs:
       - run: uv sync --frozen
       - run: uv run membrain migrate
       - run: uv run ruff check src tests examples
-      - run: uv run pytest -q
+      - run: uv run pytest -v --durations=15
       - run: npm ci && npm test && npm run typecheck
         working-directory: sdk/typescript
       - run: uv build
