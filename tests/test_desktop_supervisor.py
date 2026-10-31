@@ -149,5 +149,3 @@ def test_downloaded_model_is_not_reported_enabled_before_the_service_activates_i
         headers = {"Authorization": "Bearer " + supervisor.profile.api_key}
         result = client.get("/v1/local/memory-status", headers=headers).json()
         assert result["semantic_recall"] == "restart_required"
-
-
