@@ -24,6 +24,8 @@ codebuddy plugin install membrain@membrain
 
 Requires [uv](https://docs.astral.sh/uv/). No Docker, setup wizard or extra model API key.
 
+The runtime is downloaded as an archive pinned to a full commit, so installation does not require the Git command.
+
 After the runtime is installed, run `membrain plugin setup` to open the guided memory page. It shows whether messages have actually arrived from your agent, helps you retry the optional local model download, and walks through checking a preference in a new session. Service readiness alone does not confirm that host hooks are trusted or recording. `--no-browser` prints the single-use link instead.
 
 ## What it does

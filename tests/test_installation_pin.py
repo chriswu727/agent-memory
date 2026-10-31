@@ -10,8 +10,10 @@ def test_packaged_host_launchers_pin_the_same_immutable_runtime_revision():
     files.append(root / 'integrations' / 'openclaw' / 'membrain' / 'index.js')
     revisions = set()
     for path in files:
-        matches = re.findall(r'git\+https://github\.com/chriswu727/membrain(?:@([0-9a-f]+))?(?![\w@./-])',
-                             path.read_text(), re.IGNORECASE)
+        contents = path.read_text()
+        assert 'git+https://' not in contents, path
+        matches = re.findall(r'https://github\.com/chriswu727/membrain/archive/([0-9a-f]+)\.zip',
+                             contents, re.IGNORECASE)
         assert matches and all(len(revision) == 40 for revision in matches), path
         revisions.update(matches)
     assert len(revisions) == 1
