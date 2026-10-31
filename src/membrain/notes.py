@@ -11,6 +11,7 @@ import datetime as _datetime
 import re
 
 from .helpers import uid
+from .privacy import scrub
 
 NOTES_CONVERSATION = "membrain-notes"
 NOTE_CHARACTERS = 300  # The sentence; a typed note's header comes on top.
@@ -35,7 +36,9 @@ NOTE_TOOL_DESCRIPTION = (
     "aliases, and the relation in the text), constraint, preference, plan (with status intended until the user "
     "confirms it is scheduled or done, and due or occurs_at as YYYY-MM-DD), routine, milestone, relationship, or "
     "agent_commitment for something you promised to do. When a fact changes (a plan is done, moved or cancelled), "
-    "save the updated note and pass the old note's id in replaces. Do not save routine requests or anything the "
+    "save the updated note and pass the old note's id in replaces. Use source_messages from the current "
+    "membrain-source block or source_event_ids from recorded history when available; never invent sources. "
+    "Do not save routine requests or anything the "
     "user asked you not to keep.")
 NOTE_FIELDS = {
     "kind": {"type": "string", "enum": list(KINDS)},
@@ -48,6 +51,12 @@ NOTE_FIELDS = {
     "pinned": {"type": "boolean", "description": "Always show this note."},
     "sensitive": {"type": "boolean", "description": "Health, money or other private matters."},
 }
+SOURCE_FIELD = {"source_event_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 64,
+                                     "description": "Original message IDs in this brain; never invent sources."}}
+SOURCE_FIELD["source_messages"] = {"type": "array", "maxItems": 64, "items": {
+    "type": "object", "properties": {"producer_ref": {"type": "string"}, "source_event_key": {"type": "string"},
+                                      "source_revision": {"type": "integer", "minimum": 1}},
+    "required": ["producer_ref", "source_event_key", "source_revision"], "additionalProperties": False}}
 NOTE_PRODUCER = "membrain-notes"
 # Notes copied from a host's own memory files carry the host in their producer, e.g. ``membrain-import:hermes``.
 IMPORT_PREFIX = "membrain-import:"
@@ -67,7 +76,7 @@ def list_notes(client, *, max_characters: int = 200_000) -> dict:
 
 
 def _name(value, field: str) -> str:
-    value = " ".join(str(value).split())
+    value = scrub(" ".join(str(value).split()))
     if not value or len(value) > 60 or any(mark in value for mark in "[]·,"):
         raise ValueError(f"{field} must be a short name without brackets, commas or '·'.")
     return value
@@ -77,6 +86,10 @@ def _date(value, field: str) -> str:
     value = str(value).strip()
     if not _DATE.fullmatch(value):
         raise ValueError(f"{field} must be a date as YYYY-MM-DD.")
+    try:
+        _datetime.date.fromisoformat(value if len(value) == 10 else value + "-01")
+    except ValueError:
+        raise ValueError(f"{field} must be a valid calendar date.") from None
     return value
 
 
@@ -109,7 +122,11 @@ def format_note(text: str, *, kind=None, about=None, aliases=(), status=None, du
     names = [_name(alias, "aliases") for alias in (aliases or ())]
     tokens += [f"aka {', '.join(names)}"] if names else []
     tokens += ["pinned"] * bool(pinned) + ["sensitive"] * bool(sensitive)
-    return f"[{' · '.join(tokens)}] {text}"
+    header = ' · '.join(tokens)
+    stored = f"[{header}] {text}"
+    if len(header) > 200 or len(stored) > STORED_CHARACTERS:
+        raise ValueError("Shorten the note fields so the complete note fits within 480 characters.")
+    return stored
 
 
 def parse_note(stored: str) -> tuple[dict, str]:
@@ -141,7 +158,7 @@ def parse_note(stored: str) -> tuple[dict, str]:
     return fields, match.group(2)
 
 
-def save_note(client, text: str, *, replaces=(), producer: str = NOTE_PRODUCER, **fields) -> dict:
+def save_note(client, text: str, *, replaces=(), producer: str = NOTE_PRODUCER, source_event_ids=(), source_messages=(), **fields) -> dict:
     """Save one note; ``replaces`` lists IDs of notes it supersedes, which stop being shown.
 
     ``fields`` are the optional typed-note fields (``NOTE_FIELDS``); without them the note is plain text.
@@ -150,6 +167,13 @@ def save_note(client, text: str, *, replaces=(), producer: str = NOTE_PRODUCER, 
     if unknown:
         raise ValueError(f"Unknown note fields: {', '.join(sorted(unknown))}.")
     text = format_note(text, **fields)
+    writer = getattr(client, "write_note", None)
+    if callable(writer):
+        parsed, sentence = parse_note(text)
+        return writer(sentence, replaces=list(replaces), producer=producer,
+                      source_event_ids=list(source_event_ids), source_messages=list(source_messages), **parsed)
+    if source_event_ids or source_messages:
+        raise ValueError("This client does not support source-linked notes.")
     response = client.observe(text, conversation_id=NOTES_CONVERSATION, branch_id="main",
                               source_event_key="note-" + uid(), role="assistant", actor_ref="assistant",
                               producer_ref=producer, delivery_state="unknown")
@@ -332,3 +356,83 @@ def alias_cues(response: dict, text: str) -> tuple[str, ...]:
         if fields.get("about") and any(f" {alias.casefold()}" in lowered for alias in fields.get("aliases", ())):
             cues.append(fields["about"])
     return tuple(dict.fromkeys(cues))
+
+
+def store_note(service, principal, brain_id: str, arguments: dict) -> dict:
+    from psycopg.types.json import Jsonb
+
+    from .helpers import DomainError, digest
+    from .privacy import scrub
+
+    try:
+        text = format_note(scrub(arguments["text"]), **note_fields(arguments))
+    except (TypeError, ValueError) as error:
+        raise DomainError("validation_failed", str(error)) from None
+    request_id = arguments["request_id"]
+    if arguments.get("producer") in ("memory-service", "archive-import"):
+        raise DomainError("invalid_evidence", "Reserved producers cannot write notes.")
+    params = service._params(principal, brain_id)
+    fingerprint = digest(arguments)
+    with service.database.transaction(principal) as conn:
+        conn.execute("SET LOCAL lock_timeout = '5s'")
+        brain = service._brain(conn, principal, brain_id)
+        cached = conn.execute(
+            "SELECT request_hash,response FROM memory_requests WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND action='note' AND key=%s", (*params, request_id)).fetchone()
+        if cached:
+            if cached["request_hash"] != fingerprint:
+                raise DomainError("idempotency_conflict", "This note request already has different content.")
+            if cached["response"] is None:
+                raise DomainError("version_conflict", "This note request was invalidated; use a new request ID.")
+            return cached["response"]
+        replaces = list(dict.fromkeys(arguments.get("replaces", [])))
+        old = conn.execute(
+            "SELECT id,document FROM memory_events WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND id=ANY(%s::text[]) AND conversation_id=%s AND is_current AND NOT deleted AND NOT suppressed "
+            "AND NOT retired AND document IS NOT NULL", (*params, replaces, NOTES_CONVERSATION)).fetchall()
+        stale = [row["id"] for row in old]
+        if len(stale) != len(replaces):
+            raise DomainError("version_conflict", "A note changed or is unavailable. Refresh before correcting it.")
+        sources = set(arguments.get("source_event_ids", []))
+        sources.update(row["input_event_id"] for row in conn.execute(
+            "SELECT input_event_id FROM memory_event_dependencies WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND output_event_id=ANY(%s::text[])", (*params, stale)))
+        available = service._events(conn, principal, brain, event_ids=list(sources), limit=64) if sources else []
+        if len(available) != len(sources) or any(
+                event["scope"]["conversation_id"] == NOTES_CONVERSATION for event in available):
+            raise DomainError("source_unavailable", "A note source is unavailable in this brain.")
+        from .note_sources import reference
+
+        references = list(arguments.get("source_messages", []))
+        references.extend(reference(event["observed"]) for event in available)
+        references.extend(ref for row in old for ref in row["document"]["observed"].get("source_references", []))
+        references = list({digest(ref): ref for ref in references}.values())
+        if len(references) > 64:
+            raise DomainError("validation_failed", "A note can reference at most 64 original messages.")
+        incoming = {"source_event_key": "note-" + request_id, "source_revision": 1,
+                    "producer_ref": arguments.get("producer", NOTE_PRODUCER),
+                    "actor_ref": arguments.get("role", "assistant"), "actor_role": arguments.get("role", "assistant"),
+                    "event_kind": "message", "content": {"media_type": "text/plain", "text": text},
+                    "occurred_time": {"start": None, "end": None, "precision": "unknown", "basis": "unknown"},
+                    "interpretation_hint": "unknown", "delivery_state": "received" if arguments.get("role") == "user" else "unknown",
+                    "parent_source_event_keys": [], "source_references": references}
+        target = {"brain_ref": brain_id, "conversation_ref": NOTES_CONVERSATION, "branch_ref": "main"}
+        note_id, _, _ = service._append_event(conn, principal, brain, target, incoming)
+        if stale:
+            service._forget(conn, principal, brain, {
+                "request_id": "replace-" + request_id, "target": target,
+                "payload": {"idempotency_key": "replace-" + request_id, "selector": {"kind": "events", "ids": stale},
+                            "mode": "suppress_recall", "expected_scope_generation": brain["scope_generation"]}})
+        for source_id in sorted(sources):
+            conn.execute(
+                "INSERT INTO memory_event_dependencies(tenant_id,owner_id,brain_id,input_event_id,output_event_id) "
+                "VALUES(%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", (*params, source_id, note_id))
+        linked = [row["input_event_id"] for row in conn.execute(
+            "SELECT input_event_id FROM memory_event_dependencies WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+            "AND output_event_id=%s ORDER BY input_event_id", (*params, note_id))]
+        result = {"note_id": note_id, "replaced": stale, "unknown": [value for value in replaces if value not in stale],
+                  "source_event_ids": linked, "pending_source_count": max(0, len(references) - len(linked))}
+        conn.execute(
+            "INSERT INTO memory_requests(tenant_id,owner_id,brain_id,action,key,request_hash,response) "
+            "VALUES(%s,%s,%s,'note',%s,%s,%s)", (*params, request_id, fingerprint, Jsonb(result)))
+        return result

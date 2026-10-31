@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type {
   Action, ActionPayloads, ActionRequest, ActionResponse, Budget, ReadFence,
   ScopeSelector, IntegrationCapabilities, ObservedEventInput, RecallPayload,
@@ -487,7 +487,7 @@ export class MemoryClient {
   /** Original messages, newest first, within a character budget; `complete` means nothing was left out. */
   timeline(options: {
     roles?: readonly string[]; maxCharacters?: number; maxItemCharacters?: number; limit?: number;
-    excludeConversation?: string; eventIds?: readonly string[]; conversationId?: string; brainId?: string;
+    excludeConversation?: string; eventIds?: readonly string[]; conversationId?: string; brainId?: string; beforeSequence?: number;
   } = {}): Promise<JsonObject> {
     const brain = encodeURIComponent(this.#scope(options).brain_ref);
     const query = new URLSearchParams();
@@ -498,7 +498,29 @@ export class MemoryClient {
     if (options.excludeConversation !== undefined) query.set("exclude_conversation", options.excludeConversation);
     for (const eventId of options.eventIds ?? []) query.append("event_id", eventId);
     if (options.conversationId !== undefined) query.set("conversation_id", options.conversationId);
+    if (options.beforeSequence !== undefined) query.set("before_sequence", String(options.beforeSequence));
     return this.#request("GET", `v1/brains/${brain}/timeline?${query}`);
+  }
+  writeNote(text: string, options: { requestId?: string; brainId?: string; replaces?: readonly string[];
+    sourceEventIds?: readonly string[]; sourceMessages?: readonly { producer_ref: string; source_event_key: string; source_revision: number }[];
+    kind?: string; status?: string; about?: string; aliases?: readonly string[]; due?: string; occursAt?: string;
+    pinned?: boolean; sensitive?: boolean; role?: "user" | "assistant" } = {}): Promise<JsonObject> {
+    const brain = encodeURIComponent(this.#scope(options).brain_ref);
+    return this.#request("POST", `v1/brains/${brain}/notes`, {
+      request_id: options.requestId ?? randomUUID(), text, replaces: options.replaces ?? [],
+      source_event_ids: options.sourceEventIds ?? [], source_messages: options.sourceMessages ?? [],
+      ...Object.fromEntries(Object.entries({ kind: options.kind, status: options.status, about: options.about,
+        aliases: options.aliases, due: options.due, occurs_at: options.occursAt, pinned: options.pinned,
+        sensitive: options.sensitive, role: options.role }).filter(([, value]) => value !== undefined)),
+    });
+  }
+  memoryStatus(brainId?: string): Promise<JsonObject> {
+    return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/status`);
+  }
+  following(eventIds: readonly string[], brainId?: string): Promise<JsonObject> {
+    const query = new URLSearchParams();
+    for (const id of eventIds) query.append("event_id", id);
+    return this.#request("GET", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/timeline/following?${query}`);
   }
   work(brainId?: string): Promise<JsonObject> {
     return this.#request("POST", `v1/brains/${encodeURIComponent(this.#scope({ brainId }).brain_ref)}/work`);

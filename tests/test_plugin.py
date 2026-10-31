@@ -133,8 +133,8 @@ def test_hooks_carry_memory_across_sessions_on_an_embedded_installation(tmp_path
     try:
         plugin.start(directory)
         assert "memBrain memory is active" in hook("session-start", {"session_id": "a"})
-        assert hook("user-prompt", {"session_id": "a", "prompt_id": "1",
-                                    "prompt": "My physio says my left knee cannot handle consecutive run days."}) is None
+        assert "<membrain-source>" in hook("user-prompt", {"session_id": "a", "prompt_id": "1",
+                                    "prompt": "My physio says my left knee cannot handle consecutive run days."})
         hook("stop", {"session_id": "a", "prompt_id": "1", "last_assistant_message": "I will plan rest days."})
         context = hook("user-prompt", {"session_id": "b", "prompt_id": "2",
                                        "prompt": "Can I add another run? Remember my knee."})
@@ -263,7 +263,7 @@ def test_complete_history_is_injected_once_and_replaces_per_message_recall(tmp_p
     context = plugin.session_start({"session_id": "s2"}, tmp_path)
     assert "complete history from earlier sessions" in context and "- [2026-10-03] I'm vegetarian." in context
     assert len(client.timeline_calls) == 1
-    assert plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "Plan dinner"}, tmp_path) is None
+    assert "<membrain-source>" in plugin.user_prompt({"session_id": "s2", "prompt_id": "p", "prompt": "Plan dinner"}, tmp_path)
     assert client.recalls == 0 and client.observed == []
     plugin.stop({"session_id": "s2", "prompt_id": "p", "last_assistant_message": "Pasta?"}, tmp_path)
     assert [(record["role"], record["text"]) for record in client.observed] == [
@@ -301,7 +301,7 @@ def test_new_sessions_receive_the_complete_history_from_the_real_service(tmp_pat
         hook("stop", {"session_id": "a", "prompt_id": "2", "last_assistant_message": "Updated."})
         context = hook("session-start", {"session_id": "b"})
         assert context.index("I'm vegetarian") < context.index("December 7") and "complete history" in context
-        assert hook("user-prompt", {"session_id": "b", "prompt_id": "3", "prompt": "What should I eat?"}) is None
+        assert "<membrain-source>" in hook("user-prompt", {"session_id": "b", "prompt_id": "3", "prompt": "What should I eat?"})
         hook("stop", {"session_id": "b", "prompt_id": "3", "last_assistant_message": "Lentil curry."})
         assert "What should I eat?" in hook("session-start", {"session_id": "c"})
     finally:
@@ -638,3 +638,33 @@ def test_recall_shows_the_answer_that_followed_a_recalled_question():
     assert any("Any fun plans for the summer?" in line for line in lines)
     assert any("Researching adoption agencies" in line for line in lines) and "Lovely!" not in context
     assert [line for line in lines if line.startswith("- ")][0].endswith("Any fun plans for the summer?")
+
+
+def test_recall_budget_keeps_the_highest_ranked_update_before_chronological_rendering():
+    sources = [_source(f"user user (direct_statement): {'Latest corrected appointment' if index == 0 else 'Older appointment details'} "
+                       + "relevant " * 80, f"e{index}", methods=("keyword",)) for index in range(12)]
+
+    class Client:
+        def recall(self, *args, **kwargs):
+            return _response(*sources)
+
+        def timeline(self, **options):
+            if options.get("conversation_id"):
+                return {"items": []}
+            return {"items": [{"event_id": f"e{index}", "conversation_id": f"c{index}", "actor_role": "user",
+                               "recorded_at": f"2026-01-{30-index:02d}T09:00:00Z",
+                               "text": ("Latest corrected appointment" if index == 0 else "Older appointment details")
+                                       + " relevant" * 90} for index in range(12)]}
+
+    context = host.recall_context(Client(), "appointment", limit=1800)
+    assert "Latest corrected appointment" in context and len(context) <= 1800
+
+
+def test_agent_note_tool_cannot_write_while_recording_is_paused(tmp_path, monkeypatch, capsys):
+    host.pause(tmp_path)
+    def unexpected(*args):
+        raise AssertionError('A paused note must not open a client or store content')
+    monkeypatch.setattr(host, 'ready_client', unexpected)
+    assert plugin.run_tool('note', tmp_path, stream=io.BytesIO(b'{"text":"confidential appointment"}')) == 0
+    assert 'paused' in json.loads(capsys.readouterr().out)['error']
+    assert not (tmp_path / 'plugin' / 'spool.jsonl').exists()

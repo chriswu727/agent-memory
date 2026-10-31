@@ -228,10 +228,11 @@ def test_users_of_a_shared_bot_keep_separate_memories(tmp_path, monkeypatch):
             host.session_context(directory, f"chat:{user}", user_id=user)
             host.prompt_context(directory, f"chat:{user}", text, turn_id="1", user_id=user)
             host.finish_turn(directory, f"chat:{user}", "Noted.", turn_id="1", user_id=user)
-        monkeypatch.setattr(host, "ready_client", lambda directory, user_id=None: None)
-        host.finish_turn(directory, "chat:telegram:alice", "Spooled reply.", turn_id="2",
-                         prompt="My sister is called Mei.", user_id="telegram:alice")
-        monkeypatch.undo()
+        with monkeypatch.context() as offline:
+            offline.setattr(host, "ready_client", lambda directory, user_id=None: None)
+            offline.setattr(host, "start_in_background", lambda directory: None)
+            host.finish_turn(directory, "chat:telegram:alice", "Spooled reply.", turn_id="2",
+                             prompt="My sister is called Mei.", user_id="telegram:alice")
         with host.ready_client(directory) as client:
             assert host.flush(client, directory) == 2
         for user, own in turns.items():
@@ -355,3 +356,32 @@ def test_resuming_before_a_paused_turn_finishes_does_not_store_it(tmp_path, monk
     host.finish_turn(tmp_path, "s", "confidential reply", prompt="confidential")
     assert client.observed == []
     assert "confidential" not in host._session_marker(tmp_path, "s").read_text()
+
+
+@pytest.mark.skipif(not embedded_database.available(), reason="embedded PostgreSQL binaries are not installed")
+def test_a_note_saved_before_the_reply_links_back_to_the_current_user_message(tmp_path, unused_tcp_port):
+    from membrain.local_profile import ensure_profile
+    from membrain.notes import NOTES_CONVERSATION, save_note
+
+    directory = tmp_path / "brain"
+    ensure_profile(directory, database_engine="embedded", api_port=unused_tcp_port)
+    try:
+        host.start(directory)
+        context = host.prompt_context(directory, "current", "My appointment is on November 4.",
+                                      turn_id="one", include_source=True)
+        references, _ = json.JSONDecoder().raw_decode(context.split("source_messages=", 1)[1])
+        with host.ready_client(directory) as client:
+            note = save_note(client, "Appointment on November 4.", source_messages=references, kind="plan",
+                             status="scheduled", occurs_at="2026-11-04")
+            assert note["pending_source_count"] == 1
+        host.finish_turn(directory, "current", "Noted.", turn_id="one")
+        with host.ready_client(directory) as client:
+            stored = client.timeline(roles=("assistant",), conversation_id=NOTES_CONVERSATION)["items"][0]
+            original = client.timeline(event_ids=stored["source_event_ids"])["items"][0]
+            assert original["text"] == "My appointment is on November 4." and stored["pending_source_count"] == 0
+        assert "Appointment on November 4" in host.session_context(directory, "next")
+    finally:
+        try:
+            desktop.stop(directory)
+        except desktop.DesktopError:
+            pass

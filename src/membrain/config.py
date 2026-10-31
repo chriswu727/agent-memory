@@ -144,12 +144,17 @@ def configured_service(settings: Settings):
     from .service import MemoryService
     from .storage import Database
 
-    database = Database(settings.database_url)
-    database.check_compatibility(require_current=True)
+    database = Database(settings.database_url, pool=True)
+    try:
+        database.check_compatibility(require_current=True)
+    except Exception:
+        database.close()
+        raise
     from .recovery_authority import configure_authority
 
-    configure_authority(database, settings)
     with ExitStack() as resources:
+        resources.callback(database.close)
+        configure_authority(database, settings)
         processor, embedding = None, None
         if settings.cognition_base_url is not None:
             provider = resources.enter_context(ChatCompletionsSemanticProvider(

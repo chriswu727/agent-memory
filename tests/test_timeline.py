@@ -23,9 +23,9 @@ class Brain:
         assert response["outcome"] == "completed", response
         return response["result"]
 
-    def say(self, text, *, conversation="first", role="user"):
+    def say(self, text, *, conversation="first", role="user", source_key=None):
         result = self.action("observe", {"idempotency_key": uid(), "events": [{
-            "source_event_key": uid(), "source_revision": 1, "producer_ref": "timeline-test", "actor_ref": role,
+            "source_event_key": source_key or uid(), "source_revision": 1, "producer_ref": "timeline-test", "actor_ref": role,
             "actor_role": role, "event_kind": "message", "content": {"media_type": "text/plain", "text": text},
             "occurred_time": {"start": None, "end": None, "precision": "unknown", "basis": "unknown"},
             "interpretation_hint": "unknown", "delivery_state": "delivered" if role == "assistant" else "received",
@@ -131,3 +131,26 @@ def test_ensure_brain_is_idempotent_and_never_takes_another_owners_brain(brain):
     assert brain.service.timeline(brain.principal, brain_id)["items"] == []
     with pytest.raises(DomainError):
         brain.service.ensure_brain(Principal(uid(), uid()), brain_id, "stranger")
+
+
+def test_following_reads_the_next_visible_reply_for_several_conversations_in_one_call(brain):
+    first = brain.say("Where should we meet?", conversation="a")
+    brain.say("A message in another chat", conversation="b")
+    reply = brain.say("At the blue cafe.", conversation="a", role="assistant")
+    second = brain.say("What time?", conversation="b")
+    reply2 = brain.say("At seven.", conversation="b", role="assistant")
+    result = brain.service.following(brain.principal, brain.brain, [first, second])
+    assert {item["source_event_id"]: item["event_id"] for item in result["items"]} == {first: reply, second: reply2}
+    with pytest.raises(DomainError):
+        brain.service.following(Principal(uid(), uid()), brain.brain, [first])
+
+
+def test_timeline_pagination_keeps_older_messages_without_duplicates_when_new_messages_arrive(brain):
+    original = [brain.say(f"Message number {index}.") for index in range(7)]
+    first = brain.timeline(limit=3)
+    brain.say("A newer message arrived while browsing.")
+    second = brain.timeline(limit=3, before_sequence=first["next_before_sequence"])
+    third = brain.timeline(limit=3, before_sequence=second["next_before_sequence"])
+    ids = [item["event_id"] for page in (first, second, third) for item in page["items"]]
+    assert ids == list(reversed(original))
+    assert third["complete"] and third["next_before_sequence"] is None

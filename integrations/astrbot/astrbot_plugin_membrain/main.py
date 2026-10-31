@@ -63,7 +63,8 @@ class MembrainPlugin(star.Star):
     async def membrain_note(self, event: AstrMessageEvent, text: str, replaces: list | None = None,
                             kind: str | None = None, about: str | None = None, aliases: list | None = None,
                             status: str | None = None, due: str | None = None, occurs_at: str | None = None,
-                            pinned: bool = False, sensitive: bool = False):
+                            pinned: bool = False, sensitive: bool = False, source_event_ids: list | None = None,
+                            source_messages: list | None = None):
         """Save one short, lasting fact about the user you are talking to (health, people, dates, places, preferences, decisions, plans and their changes) so it is shown in every later conversation. One fact per note, under 300 characters. Set kind when it is clear; a plan stays intended until the user confirms it is scheduled or done. When a fact changes, save the new note and pass the old note's id in replaces. Do not save routine requests or anything the user asked you not to keep.
 
         Args:
@@ -77,9 +78,12 @@ class MembrainPlugin(star.Star):
             occurs_at(string): YYYY-MM-DD on which an event happens.
             pinned(boolean): Always show this note.
             sensitive(boolean): Health, money or other private matters.
+            source_event_ids(array[string]): Original recorded message IDs, when available.
+            source_messages(array[object]): Exact source references from the current membrain-source block.
         """
         fields = {"kind": kind, "about": about, "aliases": aliases, "status": status, "due": due,
-                  "occurs_at": occurs_at, "pinned": pinned, "sensitive": sensitive}
+                  "occurs_at": occurs_at, "pinned": pinned, "sensitive": sensitive,
+                  "source_event_ids": source_event_ids or [], "source_messages": source_messages or []}
         try:
             result = await asyncio.to_thread(self.memory.note, _speaker(event), text, replaces or (), **fields)
         except ValueError as error:

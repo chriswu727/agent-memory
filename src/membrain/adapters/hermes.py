@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import host
-from ..notes import NOTE_FIELDS, NOTE_TOOL_DESCRIPTION
+from ..notes import NOTE_FIELDS, NOTE_TOOL_DESCRIPTION, SOURCE_FIELD
 
 try:  # Hermes is only present when this module is loaded by Hermes; tests run without it.
     from agent.memory_provider import MemoryProvider as _Base
@@ -28,7 +28,7 @@ TOOLS = {"note": "membrain_note", "recall": "membrain_search", "pause": "membrai
 _SCHEMAS = [
     {"name": "membrain_note", "description": NOTE_TOOL_DESCRIPTION,
      "parameters": {"type": "object", "properties": {
-         "text": {"type": "string"}, "replaces": {"type": "array", "items": {"type": "string"}}, **NOTE_FIELDS},
+         "text": {"type": "string"}, "replaces": {"type": "array", "items": {"type": "string"}}, **NOTE_FIELDS, **SOURCE_FIELD},
          "required": ["text"]}},
     {"name": "membrain_search", "description": (
         "Search the user's earlier conversations and notes by a few concrete keywords (names, places, activities, "
@@ -126,7 +126,7 @@ class MembrainProvider(_Base):
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         if self._directory is None or not self._writes:
             return ""
-        return host.prompt_context(self._directory, session_id or self._session, query, producer=PRODUCER) or ""
+        return host.prompt_context(self._directory, session_id or self._session, query, producer=PRODUCER, include_source=True) or ""
 
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "",
                   messages: list[dict[str, Any]] | None = None, **kwargs) -> None:
@@ -152,6 +152,8 @@ class MembrainProvider(_Base):
                 return json.dumps(host.pause(self._directory, args.get("hours")))
             if tool_name == "membrain_resume":
                 return json.dumps(host.resume(self._directory))
+            if tool_name == "membrain_note" and host.paused(self._directory):
+                return json.dumps({"error": "Recording is paused. Resume before saving agent notes."})
             client = host.ready_client(self._directory)
             if client is None:
                 host.start_in_background(self._directory)
@@ -159,7 +161,8 @@ class MembrainProvider(_Base):
             with client:
                 if tool_name == "membrain_note":
                     return json.dumps(save_note(client, args.get("text", ""), replaces=args.get("replaces") or (),
-                                                **note_fields(args)))
+                                                source_event_ids=args.get("source_event_ids") or (),
+                                                source_messages=args.get("source_messages") or (), **note_fields(args)))
                 if tool_name == "membrain_search":
                     found = host.recall_context(client, host.scrub(str(args.get("query", ""))),
                                                 current_conversation=self._session)

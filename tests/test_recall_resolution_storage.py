@@ -85,7 +85,8 @@ def test_runtime_without_resolution_migration_refuses_the_upgraded_database(cand
     from membrain import storage
     from membrain.storage import SchemaCompatibilityError
 
-    assert storage.MIGRATIONS[-1][0] == "024_recall_resolution.sql"
-    monkeypatch.setattr(storage, "MIGRATIONS", storage.MIGRATIONS[:-1])
+    assert "024_recall_resolution.sql" in dict(storage.MIGRATIONS)
+    monkeypatch.setattr(storage, "MIGRATIONS", tuple(
+        migration for migration in storage.MIGRATIONS if migration[0] < "024_recall_resolution.sql"))
     with pytest.raises(SchemaCompatibilityError):
         candidates.database.check_compatibility(require_current=True)

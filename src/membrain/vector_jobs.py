@@ -61,6 +61,11 @@ def embed_memory(service, principal, brain_id, job):
         statement = row["document"]["statement"]
     result = _call(service, principal, brain_id, job, EmbeddingRequest((statement,)))
 
+    _publish_embedding(service, principal, brain_id, job, statement, result, result.vectors[0])
+
+
+def _publish_embedding(service, principal, brain_id, job, statement, result, vector):
+    params, version = service._params(principal, brain_id), job["payload"]
     def publish(conn, _):
         row = conn.execute(
             "SELECT document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
@@ -73,7 +78,7 @@ def embed_memory(service, principal, brain_id, job):
             "INSERT INTO memory_embeddings(tenant_id,owner_id,brain_id,memory_id,memory_revision,model,model_version,"
             "dimensions,content_hash,embedding) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::vector) ON CONFLICT DO NOTHING",
             (*params, version["memory_id"], version["revision"], result.space.model, result.space.model_version,
-             result.space.dimensions, digest(statement), json.dumps(result.vectors[0])),
+             result.space.dimensions, digest(statement), json.dumps(vector)),
         )
 
     JobStore(service.database).complete(principal, brain_id, job["id"], lease_token=job["lease_token"],
@@ -198,3 +203,60 @@ def backfill_embeddings(service, principal, brain_id, *, clock=time.monotonic):
     states[key] = ({"after": last, "resume_at": 0.0} if last is not None
                    else {"after": ("", 0), "resume_at": clock() + BACKFILL_RESCAN_SECONDS})
     return queued
+
+
+def embed_local_batch(service, principal, brain_id, first, *, limit=32):
+    """Batch local inference while each job retains its own lease and publication checks."""
+    jobs = JobStore(service.database)
+    claimed = [first]
+    for _ in range(limit - 1):
+        job = jobs.claim(principal, brain_id, worker_id=uid(), kinds=["embed"], lease_seconds=120)
+        if job is None:
+            break
+        claimed.append(job)
+    params = service._params(principal, brain_id)
+    completed = set()
+    try:
+        with service.database.transaction(principal) as conn:
+            service._brain(conn, principal, brain_id)
+            rows = conn.execute(
+                "SELECT id,revision,document FROM memory_assertions WHERE tenant_id=%s AND owner_id=%s AND brain_id=%s "
+                "AND id=ANY(%s::text[]) AND is_current AND NOT invalidated AND NOT suppressed AND NOT deleted "
+                "AND document IS NOT NULL", (*params, [job["payload"]["memory_id"] for job in claimed])).fetchall()
+        lookup = {(row["id"], row["revision"]): row["document"]["statement"] for row in rows}
+        valid = [job for job in claimed if (job["payload"]["memory_id"], job["payload"]["revision"]) in lookup]
+        if not valid:
+            raise DomainError("source_unavailable", "Embedding sources are unavailable.")
+        texts = tuple(lookup[(job["payload"]["memory_id"], job["payload"]["revision"])] for job in valid)
+        result = _call(service, principal, brain_id, valid[0], EmbeddingRequest(texts))
+        failure = None
+        for job, statement, vector in zip(valid, texts, result.vectors, strict=True):
+            try:
+                _publish_embedding(service, principal, brain_id, job, statement, result, vector)
+            except DomainError as error:
+                failure = error
+                try:
+                    jobs.fail(principal, brain_id, job["id"], lease_token=job["lease_token"], fence=job["fence"],
+                              failure_code="source_unavailable", retry=False)
+                except DomainError:
+                    pass
+            completed.add(job["id"])
+        for job in claimed:
+            if job["id"] not in completed:
+                jobs.fail(principal, brain_id, job["id"], lease_token=job["lease_token"], fence=job["fence"],
+                          failure_code="source_unavailable", retry=False)
+        if failure is not None:
+            raise failure
+        return len(claimed)
+    except Exception as error:
+        for job in claimed:
+            if job["id"] in completed:
+                continue
+            try:
+                jobs.fail(principal, brain_id, job["id"], lease_token=job["lease_token"], fence=job["fence"],
+                          failure_code=error.code if isinstance(error, DomainError) and error.code in {
+                              "source_unavailable", "context_stale", "budget_exceeded", "provider_uncertain"} else "internal_error",
+                          retry=error.retryable if isinstance(error, DomainError) else True)
+            except DomainError:
+                pass
+        raise

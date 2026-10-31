@@ -403,6 +403,31 @@
             "unknown",
             "not_applicable"
           ]
+        },
+        "source_references": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "producer_ref",
+              "source_event_key",
+              "source_revision"
+            ],
+            "properties": {
+              "producer_ref": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "source_event_key": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "source_revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
         }
       },
       "required": [
@@ -6217,7 +6242,10 @@
       "type": "object",
       "properties": {
         "policy_version": {
-          "enum": ["bounded-source-context-v1", "bounded-source-context-v2"]
+          "enum": [
+            "bounded-source-context-v1",
+            "bounded-source-context-v2"
+          ]
         },
         "evidence_ref": {
           "$ref": "#/$defs/EvidenceRef"

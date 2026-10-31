@@ -231,7 +231,7 @@ class MemoryClient:
     def timeline(self, *, roles: Sequence[str] = ("user",), max_characters: int = 8000,
                  max_item_characters: int = 1500, limit: int = 200, exclude_conversation: str | None = None,
                  event_ids: Sequence[str] = (), conversation_id: str | None = None,
-                 brain_id: str | None = None) -> JsonObject:
+                 brain_id: str | None = None, before_sequence: int | None = None) -> JsonObject:
         """Original messages, newest first, within a character budget; ``complete`` means nothing was left out."""
         brain = self._scope(brain_id=brain_id)["brain_ref"]
         params = [("role", role) for role in roles] + [
@@ -241,7 +241,24 @@ class MemoryClient:
         params += [("event_id", event_id) for event_id in event_ids]
         if conversation_id is not None:
             params.append(("conversation_id", conversation_id))
+        if before_sequence is not None:
+            params.append(("before_sequence", before_sequence))
         return self._request("GET", f"v1/brains/{quote(brain, safe='')}/timeline", params=params)
+
+    def write_note(self, text: str, *, request_id: str | None = None, **fields) -> JsonObject:
+        brain = self._scope()["brain_ref"]
+        return self._request("POST", f"v1/brains/{quote(brain, safe='')}/notes",
+                             json={"request_id": request_id or str(uuid4()),
+                                   "text": text, **fields})
+
+    def following(self, event_ids: Sequence[str]) -> JsonObject:
+        brain = self._scope()["brain_ref"]
+        return self._request("GET", f"v1/brains/{quote(brain, safe='')}/timeline/following",
+                             params=[("event_id", value) for value in event_ids])
+
+    def memory_status(self, brain_id: str | None = None) -> JsonObject:
+        brain = self._scope(brain_id=brain_id)["brain_ref"]
+        return self._request("GET", f"v1/brains/{quote(brain, safe='')}/status")
 
     def work(self, brain_id: str | None = None) -> JsonObject:
         brain = self._scope(brain_id=brain_id)["brain_ref"]

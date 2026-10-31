@@ -170,7 +170,7 @@ def test_unmetered_local_models_do_not_consume_the_background_budget(turns):
         turns.observe(f"Local memory number {index} about the canal boat.")
     drain(turns)
     result = turns.service.handle(turns.principal, recall_request(turns, "canal boat"))
-    assert result["outcome"] == "completed" and local.calls >= 4
+    assert result["outcome"] == "completed" and local.calls == 2
     with turns.database.transaction(turns.principal) as conn:
         assert conn.execute("SELECT coalesce(sum(model_calls),0) AS n FROM memory_jobs WHERE brain_id=%s "
                             "AND kind IN ('embed','query_embedding')", (turns.brain,)).fetchone()["n"] == 0
@@ -186,3 +186,61 @@ def test_other_script_neighbours_are_interleaved_without_duplicates():
     merged = _interleave(primary, [row("zh0"), row("en1"), row("zh1"), row("zh2"), row("zh3")])
     assert [item["document"]["memory_id"] for item in merged] == [
         "en0", "en1", "en2", "zh0", "en3", "en4", "en5", "zh1", "en6", "zh2", "zh3"]
+
+
+def test_local_indexing_batches_inference_without_consuming_paid_budgets(turns):
+    from membrain.embeddings import EmbeddingResult, EmbeddingSpace
+    from membrain.helpers import digest
+
+    class Local:
+        metered = False
+        space = EmbeddingSpace("local-batch-test", "v1", 3)
+
+        def __init__(self):
+            self.calls = []
+
+        def __call__(self, request):
+            self.calls.append(request.texts)
+            with turns.database.transaction(turns.principal) as conn:
+                conn.execute("SET LOCAL lock_timeout='200ms'")
+                conn.execute("SELECT id FROM memory_brains WHERE id=%s FOR UPDATE", (turns.brain,))
+            return EmbeddingResult(self.space, tuple((1.0, 0.0, 0.0) for _ in request.texts), {},
+                                   digest(request.texts), sum(len(text.encode()) for text in request.texts))
+
+    vectors = Local()
+    turns.service.embedding_provider = vectors
+    for text in ("The appointment is on Monday.", "The meeting is at the blue cafe.", "My sister lives in Lisbon."):
+        turns.observe(text)
+    drain(turns)
+    assert any(len(batch) > 1 for batch in vectors.calls)
+    with turns.database.transaction(turns.principal) as conn:
+        assert conn.execute("SELECT count(*) AS n FROM memory_embeddings WHERE brain_id=%s", (turns.brain,)).fetchone()["n"] >= 3
+        assert conn.execute("SELECT sum(model_calls) AS n FROM memory_jobs WHERE brain_id=%s AND kind='embed'",
+                            (turns.brain,)).fetchone()["n"] == 0
+
+
+def test_erasure_during_a_local_batch_does_not_publish_erased_content_or_cancel_other_sources(turns):
+    from membrain.embeddings import EmbeddingResult, EmbeddingSpace
+
+    first = turns.observe("A private appointment is on Monday.")
+    turns.observe("The meeting is at the blue cafe.")
+    drain(turns)
+
+    class Local:
+        metered = False
+        space = EmbeddingSpace("local-erasure-batch", "v1", 3)
+
+        def __call__(self, request):
+            turns.action("forget", {"idempotency_key": uid(), "selector": {"kind": "events", "ids": [first["event_id"]]},
+                                    "mode": "erase_content", "expected_scope_generation": 1})
+            return EmbeddingResult(self.space, tuple((1.0, 0.0, 0.0) for _ in request.texts), None, "local", 0)
+
+    turns.service.embedding_provider = Local()
+    with pytest.raises(DomainError):
+        turns.service.work_once(turns.principal, turns.brain)
+    with turns.database.transaction(turns.principal) as conn:
+        rows = conn.execute("SELECT a.document FROM memory_embeddings v JOIN memory_assertions a ON "
+                            "a.tenant_id=v.tenant_id AND a.owner_id=v.owner_id AND a.brain_id=v.brain_id "
+                            "AND a.id=v.memory_id AND a.revision=v.memory_revision WHERE v.brain_id=%s",
+                            (turns.brain,)).fetchall()
+        assert rows and all("private appointment" not in row["document"]["statement"] for row in rows)

@@ -536,6 +536,20 @@ class LocalSupervisor:
                 return host.resume(self.profile.directory)
             raise HTTPException(422, "Set paused to true or false")
 
+        @app.get("/v1/local/memory-status")
+        def memory_status(authorization: str | None = Header(default=None)):
+            from . import host
+
+            authenticate(authorization)
+            path = self.profile.directory / "plugin" / "spool.jsonl"
+            try:
+                with path.open(encoding="utf-8") as stream:
+                    pending = sum(bool(line.strip()) for line in stream)
+            except FileNotFoundError:
+                pending = 0
+            return {**self.snapshot(), "semantic_recall": host.semantic_state(self.profile.directory),
+                    "pending_records": pending}
+
         @app.get("/v1/local/status")
         def local_status(authorization: str | None = Header(default=None)):
             authenticate(authorization)

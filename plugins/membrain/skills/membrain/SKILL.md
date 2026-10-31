@@ -13,6 +13,8 @@ Raw messages pile up and only part of them fits in a session, so durable facts m
 
 - Save: health conditions and limits, allergies and diet, people and their roles (with names that are easy to confuse), dates and places of plans, budgets and numbers that will matter, preferences about how you should work, decisions, and plans that were only intended but not yet confirmed done ("Plans to buy visitor insurance for Mom; not confirmed bought as of 23 Mar").
 - Include dates when timing matters, and who the fact is about.
+- When a `<membrain-source>` block is provided for the current message, copy its exact `source_messages` into the note call. The reference resolves when the turn is recorded. For earlier recorded messages, use `source_event_ids` when known. Never invent a source or assume the most recent message belongs to the current session. Unlinked notes are labelled as such.
+- A stale replacement can return a conflict. Refresh the current notes before retrying; do not create a second conflicting version as a workaround.
 - When a fact changes (a date moves, a plan is cancelled, something planned is now done), save the updated note and pass the old note's `id` from `<membrain-notes>` in `replaces`.
 - Set the note's `kind` when it is clear, so notes are grouped and followed up:
   - `person` for someone in the user's life: `about` is their name, `aliases` holds other names the user uses ("the sparky", a nickname), and the text says the relation ("Mei is the user's younger sister; allergic to sesame").

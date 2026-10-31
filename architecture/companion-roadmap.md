@@ -1,6 +1,6 @@
 # Roadmap: memory for chat and life agents
 
-Status: **in progress.** Implemented so far: A3 privacy controls, A2 memory page, the shared `membrain.host` layer, A4 adapters (Hermes, Codex, OpenClaw, WorkBuddy and CodeBuddy, AstrBot and the OpenAI-compatible proxy; real-host status in [plugin mode](plugin-mode.md)) and A5 host-memory import. Everything else is planned. This document turns the competitive review of 2026-10-27 into phased work. Implemented and verified behaviour is described in [plugin mode](plugin-mode.md) and the [evaluation reports](../evaluations/).
+Status: **in progress.** Workflow hardening now includes source-linked notes, structured editing and People/Plans views, a readiness panel and `membrain doctor`, bounded connection reuse, local embedding batches, ranked recall budgets and automatic code PR verification. Real-model behavior and external package publishing remain separate acceptance gates. Implemented so far: A3 privacy controls, A2 memory page, the shared `membrain.host` layer, A4 adapters (Hermes, Codex, OpenClaw, WorkBuddy and CodeBuddy, AstrBot and the OpenAI-compatible proxy; real-host status in [plugin mode](plugin-mode.md)) and A5 host-memory import. Everything else is planned. This document turns the competitive review of 2026-10-27 into phased work. Implemented and verified behaviour is described in [plugin mode](plugin-mode.md) and the [evaluation reports](../evaluations/).
 
 ## Positioning
 
@@ -164,7 +164,7 @@ Goal: be measurably better than the alternatives at remembering a person.
 
 ### B1. Typed notes
 
-Status: implemented. Instead of `application/json` content, a typed note is plain text with a parseable header (`[plan · intended · due 2026-11-14 · about Mei] …`): JSON content would bypass sentence segmentation and put serialized keys into the recall index, while the header keeps recall, the memory page, replacement and deletion unchanged. `source_event_ids` is not stored yet.
+Status: implemented. Instead of `application/json` content, a typed note is plain text with a parseable header (`[plan · intended · due 2026-11-14 · about Mei] …`): JSON content would bypass sentence segmentation and put serialized keys into the recall index, while the header keeps recall, the memory page, replacement and deletion unchanged. `source_event_ids` and deferred exact source-message references are stored as dependency links; the memory page can inspect the original messages.
 
 A note becomes a JSON document, stored as an assistant-authored event with `application/json` content in the notes conversation, so no schema migration is needed. It has these fields:
 
